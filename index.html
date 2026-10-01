@@ -326,7 +326,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
-<script src="data.js?v=38"></script>
+<script src="data.js?v=39"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -351,7 +351,7 @@ $("#letters").innerHTML = [..."FAMILY"].map((c, i) =>
   `<span style="background:var(${PAL[i]});--r:${rot(i + 2)};animation-delay:${i * .12}s">${c}</span>`).join("");
 const founders = D.founders.filter(f => f.founder).sort((a, b) => b.main - a.main), core = D.founders.filter(f => !f.founder);
 const TRAITOR_ORDER = ["VirusIvan", "Sensuous", "Dandadan888", "IOO7I"];  // order on the posters and the stew shelf
-const traitors = D.founders.filter(f => f.traitor)
+const traitors = [...D.founders, ...D.members].filter(f => f.traitor)
   .sort((a, b) => (TRAITOR_ORDER.indexOf(a.name) + 1 || 99) - (TRAITOR_ORDER.indexOf(b.name) + 1 || 99));
 const newest = D.members[D.members.length - 1];
 const inFamily = D.members.filter(m => m.now === "Family").length;
@@ -398,7 +398,7 @@ function renderMembers() {
     (filter === "all" || (filter === "elsewhere" ? !D.guilds.includes(m.now) : m.now === filter))
   ).map(m => `
     <div class="card" data-n="${m.n}">
-      <span class="num">#${m.n}</span>
+      <span class="num">#${m.n}</span>${m.traitor ? '<span class="badge"><img class="px" src="media/skull.png" style="width:22px" alt="traitor"></span>' : ""}
       <div class="pic">${m.sprite ? `<img class="px cut" src="${m.sprite}" alt="" loading="lazy">` : '<span style="font-size:40px">❔</span>'}</div>
       <div class="nm" style="color:${gcol(m.now)}">${esc(m.name)}</div>
       <div class="sub">joined ${fmt(m.date)}${m.early ? "*" : ""}</div>
@@ -413,7 +413,7 @@ document.addEventListener("click", e => {
   $("#sheet").innerHTML = `<button class="x" aria-label="close">×</button>
     <div class="big">${m.sprite ? `<img class="px cut" src="${m.sprite}" alt="">` : ""}
       <h2 style="margin:6px 0 0;color:${gcol(m.now)}">${esc(m.name)}</h2>
-      <div class="tag">#${m.n} to join</div> <div class="tag">now: ${D.guilds.includes(m.now) ? m.now : "outside the guilds"}</div></div>
+      <div class="tag">#${m.n} to join</div> <div class="tag">now: ${D.guilds.includes(m.now) ? m.now : m.now ? "outside the guilds" : "unknown"}</div></div>
     <ul class="hist">${m.early && m.moves.length && m.moves[0].action !== "joined" ? `<li style="--c:${gcol(m.joined)}"><div class="d">${fmt(m.date)}*</div>already in <b style="color:${gcol(m.joined)}">${m.joined}</b> when records began</li>` : ""}${m.moves.length ? m.moves.map(v => `<li style="--c:${gcol(v.guild)}"><div class="d">${fmt(v.date)}</div>
       ${words[v.action] || v.action} <b style="color:${gcol(v.guild)}">${v.guild}</b></li>`).join("")
       : `<li><div class="d">${fmt(m.date)}${m.early ? "*" : ""}</div>first seen in <b>${m.joined}</b></li>`}</ul>
