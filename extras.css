@@ -175,3 +175,21 @@
 .dungeon .poster .face { height: 160px; }
 .dungeon .poster .who { font-size: 24px; }
 .ouch.bot { background: #c83c32; color: #fff; border-color: #6e1e14; font-weight: 700; font-size: 15px; z-index: 6; }
+
+/* ---------- Professor CrtlAltDel quiz */
+.quiz { position: fixed; inset: 0; z-index: 75; background: rgba(30,24,40,.6); display: flex; align-items: center; justify-content: center; padding: 14px; }
+.quiz[hidden] { display: none; }
+.qbox { position: relative; width: min(360px, 100%); background: #2f4a3a; color: #f3ecde; border: 8px solid #8a5f36; border-radius: 16px;
+        padding: 18px 18px 16px; text-align: center; box-shadow: 8px 12px 0 rgba(0,0,0,.35); animation: pop .2s; font-family: "Courier New", monospace; }
+.qbox .x { position: absolute; top: 4px; right: 10px; border: 0; background: none; color: #f3ecde; font-size: 26px; cursor: pointer; }
+.prof { position: relative; height: 96px; display: flex; align-items: flex-end; justify-content: center; }
+.prof img { max-height: 92px; image-rendering: pixelated; }
+.prof .cap { position: absolute; top: -6px; left: 50%; margin-left: -4px; font-size: 30px; transform: rotate(-12deg); }
+.qtitle { font-weight: 700; font-size: 20px; margin-top: 4px; color: #ffe066; }
+.qsub { font-size: 14px; color: #cfe0cf; margin-bottom: 10px; }
+.qq { font-size: 34px; font-weight: 700; margin: 6px 0 10px; letter-spacing: 1px; }
+#quizIn { width: 140px; font: 700 26px "Courier New", monospace; text-align: center; padding: 6px; border-radius: 10px; border: 3px solid #ffe066;
+          background: #1f3328; color: #fff; }
+#quizForm .btn { display: block; margin: 10px auto 0; background: #ffe066; color: #2d2832; font-family: inherit; }
+.qmsg { min-height: 20px; margin-top: 8px; font-weight: 700; } .qmsg.ok { color: #9dff9d; } .qmsg.no { color: #ff8a80; }
+.qbox.shakeq { animation: shake .12s 4; }

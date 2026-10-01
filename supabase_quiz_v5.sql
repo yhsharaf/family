@@ -1,0 +1,3 @@
+-- (applied in the SQL editor) Bonks go through Professor CrtlAltDel's math quiz: get_quiz() makes a question and
+-- keeps the answer server-side, answer_quiz(id, answer, founder) adds 1 only if correct; add_bonk is closed to visitors.
+-- See the conversation log / Supabase SQL history for the exact function bodies.

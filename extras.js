@@ -296,9 +296,8 @@ function squeak(pitch = 1) {
     o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .22);
   } catch (e) {}
 }
-const REVERSED = ["Joonie"];  // bonking these takes 3 bonks AWAY (also enforced in the database)
 const OUCH = ["ow!", "why me 😭", "gm to you too", "BONK", "*squeak*", "rude!", "I founded this guild!", "x_x", "not the face!", "ok I deserved that"];
-const bonkPending = {}, bonkCounts = {};
+const bonkCounts = {};
 function showBonks() {
   let top = null, tv = 0;
   document.querySelectorAll("#founderGrid .card, #coreGrid .card, #earlyGrid .card").forEach(c => {
@@ -312,17 +311,10 @@ function showBonks() {
 async function loadBonks() {
   if (!(await ready)) return;
   const { data } = await sb.from("founder_bonks").select("founder,value");
-  (data || []).forEach(r => { bonkCounts[r.founder] = Math.max(0, Number(r.value) + (REVERSED.includes(r.founder) ? -3 : 1) * (bonkPending[r.founder] || 0)); });
+  (data || []).forEach(r => { bonkCounts[r.founder] = Number(r.value); });
   showBonks();
 }
-async function flushBonks() {
-  if (!(await ready)) return;
-  for (const f of Object.keys(bonkPending)) {
-    const n = Math.min(30, bonkPending[f]); if (!n) continue; bonkPending[f] -= n;
-    const { error } = await sb.rpc("add_bonk", { f, n }); if (error) { bonkPending[f] += n; return; }
-  }
-}
-setInterval(flushBonks, 3000); setInterval(loadBonks, 30000); loadBonks();
+setInterval(loadBonks, 30000); loadBonks();
 function stars(x, y) {
   for (let i = 0; i < 5; i++) {
     const st = document.createElement("div"); st.className = "bonkstar"; st.textContent = ["⭐", "✨", "💫"][i % 3];
@@ -357,15 +349,52 @@ function caughtBot(c) {
   }
   setTimeout(() => { if (performance.now() > botUntil) botStrikes = Math.max(0, botStrikes - 1); }, 20000);
 }
-function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer bonks
-  const c = e.target.closest(".card"); if (!c) return;
-  if (looksLikeBot(e)) { caughtBot(c); return; }
-  squeak(.9 + Math.random() * .3); stars(e.clientX, e.clientY);
+// ---------- Professor CrtlAltDel's math quiz: every bonk needs a correct answer (checked by the database)
+const PROF_OK = ["Correct! Bonk approved ✅", "Smart AND violent 🔨", "A+ bonk", "The Professor is proud 🎓"];
+const PROF_NO = ["Wrong! Go back to class 📚", "Professor CrtlAltDel is disappointed 😤", "Nope. Did you use a calculator? 🧮"];
+let quizCard = null, quizId = null, quizBusy = false;
+async function openQuiz(card) {
+  quizCard = card; quizId = null;
+  $("#quizWho").textContent = card.title; $("#quizQ").textContent = "…"; $("#quizMsg").textContent = ""; $("#quizMsg").className = "qmsg";
+  $("#quizIn").value = ""; $("#quiz").hidden = false;
+  if (!(await ready)) { $("#quizQ").textContent = "offline"; return; }
+  const { data, error } = await sb.rpc("get_quiz");
+  if (error || !data) { $("#quizQ").textContent = "try again later"; return; }
+  quizId = data.id; $("#quizQ").textContent = data.question + " = ?";
+  setTimeout(() => $("#quizIn").focus(), 50);
+}
+function closeQuiz() { $("#quiz").hidden = true; quizCard = null; }
+function bonkAnim(c) {
+  const r = c.getBoundingClientRect();
+  squeak(.9 + Math.random() * .3); stars(r.left + r.width / 2, r.top + r.height / 2);
   c.classList.remove("bonked"); void c.offsetWidth; c.classList.add("bonked");
   const say = document.createElement("div"); say.className = "ouch"; say.textContent = OUCH[Math.floor(Math.random() * OUCH.length)];
   c.appendChild(say); setTimeout(() => say.remove(), 900);
-  const name = c.title; bonkPending[name] = (bonkPending[name] || 0) + 1;  // the database decides +1 or -1
-  bonkCounts[name] = Math.max(0, (bonkCounts[name] || 0) + (REVERSED.includes(name) ? -3 : 1)); showBonks();
+}
+$("#quizForm").onsubmit = async ev => {
+  ev.preventDefault();
+  if (!quizId || quizBusy || !quizCard) return;
+  const ans = parseInt($("#quizIn").value, 10); if (isNaN(ans)) return;
+  quizBusy = true;
+  const { data } = await sb.rpc("answer_quiz", { qid: quizId, ans, f: quizCard.title });
+  quizBusy = false;
+  const msg = $("#quizMsg");
+  if (data != null && data >= 0) {
+    msg.className = "qmsg ok"; msg.textContent = PROF_OK[Math.floor(Math.random() * PROF_OK.length)];
+    const c = quizCard; bonkCounts[c.title] = Number(data); showBonks();
+    setTimeout(() => { closeQuiz(); bonkAnim(c); }, 650);
+  } else {
+    msg.className = "qmsg no"; msg.textContent = PROF_NO[Math.floor(Math.random() * PROF_NO.length)];
+    blip(140, .3, .3); $("#quizBox").classList.remove("shakeq"); void $("#quizBox").offsetWidth; $("#quizBox").classList.add("shakeq");
+    setTimeout(() => { if (quizCard) openQuiz(quizCard); }, 1100);  // a fresh question
+  }
+};
+$("#quizX").onclick = closeQuiz;
+$("#quiz").addEventListener("click", e => { if (e.target.id === "quiz") closeQuiz(); });
+function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer bonks
+  const c = e.target.closest(".card"); if (!c || !$("#quiz").hidden) return;
+  if (looksLikeBot(e)) { caughtBot(c); return; }
+  openQuiz(c);
 }
 $("#founderGrid").addEventListener("click", onBonk);
 $("#coreGrid").addEventListener("click", onBonk);

@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="extras.css?v=31">
+<link rel="stylesheet" href="extras.css?v=34">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -232,7 +232,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 
 <section id="founders">
   <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#c86e3c;--r:2deg">Founders</span></h2>
-  <div class="memhead"><p class="lead">The three who started it all. Your cursor is a squeaky hammer 🔨, tap anyone to bonk them!</p>
+  <div class="memhead"><p class="lead">The three who started it all. Your cursor is a squeaky hammer 🔨, tap anyone, pass Professor CrtlAltDel's math quiz, and bonk them!</p>
     <button class="btn" id="playWhack" type="button" style="background:#e0559a">🎮 Whack-a-Founder</button></div>
   <div class="grid" id="founderGrid"></div>
   <h2 style="margin-top:34px"><span class="word" style="background:#6e9a4a">Core</span><span class="word" style="background:var(--gold);--r:2deg">Family</span></h2>
@@ -309,6 +309,18 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 </section>
 </main>
 
+<div class="quiz" id="quiz" hidden>
+  <div class="qbox" id="quizBox">
+    <button class="x" id="quizX" aria-label="close">×</button>
+    <div class="prof"><img class="px" src="sprites/m_097.png" alt=""><span class="cap">🎓</span></div>
+    <div class="qtitle">Professor CrtlAltDel</div>
+    <div class="qsub">Solve this to bonk <b id="quizWho"></b></div>
+    <form id="quizForm"><div class="qq" id="quizQ"></div>
+      <input id="quizIn" type="number" inputmode="numeric" autocomplete="off" placeholder="answer">
+      <button class="btn" type="submit">Submit</button></form>
+    <div class="qmsg" id="quizMsg"></div>
+  </div>
+</div>
 <div class="arcade" id="arcade" hidden>
   <div class="cabinet">
     <button class="x" id="arcX" aria-label="close">×</button>
@@ -537,6 +549,6 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="extras.js?v=33"></script>
+<script src="extras.js?v=34"></script>
 </body>
 </html>
