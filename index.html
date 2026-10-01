@@ -201,6 +201,13 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .counter b { font-size: 34px; color: #ffcc4a; }
 .dungeon .skull { position: absolute; width: 60px; image-rendering: pixelated; animation: float 2.4s infinite ease-in-out; }
 footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px; }
+/* no grey tap flash or accidental text selection when tapping buttons and game pieces (typing boxes stay normal) */
+html { -webkit-tap-highlight-color: transparent; }
+button, a, nav, .btn, .wwp, .dp, .leaf, .card, .poster, .chip, .sk-tools, .sk-players, .ww-players, .ww-top, .sk-top, label, select {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+.nopaste { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 99999; background: var(--ink); color: #fcfaf4;
+  padding: 9px 16px; border-radius: 12px; font-weight: 700; box-shadow: 3px 4px 0 rgba(60,45,30,.25); animation: pop .2s; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -660,6 +667,21 @@ dun.addEventListener("pointerdown", e => {
   }
 });
 show();
+// everything on the site is typed by hand: no pasting or dragging text into any box
+(() => {
+  let t = null;
+  const note = () => {
+    let n = document.querySelector(".nopaste");
+    if (!n) { n = document.createElement("div"); n.className = "nopaste"; document.body.appendChild(n); }
+    n.textContent = "No pasting! Type it yourself 🙂"; clearTimeout(t); t = setTimeout(() => n.remove(), 1800);
+  };
+  const isBox = el => el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["file", "checkbox", "radio", "range", "button", "submit"].includes(el.type)) || el.isContentEditable);
+  document.addEventListener("paste", e => { if (isBox(e.target)) { e.preventDefault(); note(); } }, true);
+  document.addEventListener("drop", e => { if (isBox(e.target)) { e.preventDefault(); note(); } }, true);
+  document.addEventListener("beforeinput", e => {  // iPhone keyboard "Paste" button / drag-in
+    if (isBox(e.target) && /^insertFrom(Paste|Drop)/.test(e.inputType || "")) { e.preventDefault(); note(); }
+  }, true);
+})();
 </script>
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=10"></script>
