@@ -189,7 +189,7 @@ create or replace function ww_join(p_room text, p_name text, p_tok uuid) returns
 language plpgsql security definer set search_path = public as $$
 #variable_conflict use_column
 declare rm text := left(coalesce(nullif(p_room, ''), 'public'), 20); nm text := left(trim(coalesce(p_name, '')), 20);
-        gm ww_games; pl ww_players; n int;
+        gm ww_games; pl ww_players; n int; why text;
 begin
   delete from ww_games where created_at < now() - interval '6 hours';
   if p_tok is not null then
@@ -206,6 +206,7 @@ begin
     return json_build_object('r', 'running');
   end if;
   if gm.id is null or gm.status <> 'lobby' or gm.seen_at < now() - interval '10 minutes' then
+    why := ww_room_ok(); if why is not null then return json_build_object('r', why); end if;   -- max 5 open games (supabase_limits_v10.sql)
     if gm.id is not null then update ww_games set status = 'over' where id = gm.id and status <> 'over'; end if;  -- abandoned
     insert into ww_games (room, host) values (rm, nm) returning * into gm;
   end if;

@@ -97,10 +97,12 @@ async function join(name, tok) {
   if (!(await client())) { $w("#wwErr").textContent = "The game needs the database connection."; return; }
   room = roomFromHash() || "public";
   const { data, error } = await sb.rpc("ww_join", { p_room: room, p_name: name || "", p_tok: tok || null });
-  if (error || !data) { $w("#wwErr").textContent = "Couldn't connect, try again."; return; }
+  if (error || !data) { $w("#wwErr").textContent = /slow down/.test(error && error.message) ? "Too many tries, wait a minute 🙂" : "Couldn't connect, try again."; return; }
   const why = { name: "Type a name first.", taken: "Someone in this room already has that name.", full: "This room is full (20 players). Try a private room!",
                 running: "A game is already running in this room. Wait for it to end, or create a private room!",
-                kicked: "The host kicked you from this room." }[data.r];
+                kicked: "The host kicked you from this room.",
+                busy: "All 5 Werewolf games are being played right now. Join one with its invite link, or try again in a few minutes!",
+                slow: "You've opened a lot of rooms. Wait a few minutes before making another one." }[data.r];
   if (why) { if (!tok) $w("#wwErr").textContent = why; return data.r; }
   sess = { game: data.game, token: data.token, name: data.name }; store.set(tokKey(), JSON.stringify(sess));
   enter(); return "ok";
