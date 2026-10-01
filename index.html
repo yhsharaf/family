@@ -462,10 +462,24 @@ const dun = $("#dungeon");
   s.style.left = x + "%"; s.style.top = y + "%"; s.style.animationDelay = -i * .6 + "s"; dun.appendChild(s);
 });
 let AC = null, whips = 0;
+// One shared sound engine. iPhones only allow sound after a finished tap, so it's (re)started on every tap,
+// and marked as "playback" so the ring/silent switch doesn't mute it (iOS 17+).
+function getAC() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (AC.state !== "running") AC.resume().catch(() => {});
+  return AC;
+}
+window.getAC = getAC;
+function unlockAudio() {
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+  const ac = getAC(); if (!ac) return;
+  const b = ac.createBufferSource(); b.buffer = ac.createBuffer(1, 1, 22050); b.connect(ac.destination); b.start(0);
+}
+["touchend", "click", "keydown"].forEach(t => addEventListener(t, unlockAudio, { capture: true, passive: true }));
 try { whips = +localStorage.getItem("family_whips") || 0; } catch (e) {}
 $("#whips").textContent = whips;
 function crack() {
-  AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+  if (!getAC()) return;
   const t = AC.currentTime, sr = AC.sampleRate;
   const buf = AC.createBuffer(1, sr * .4, sr), ch = buf.getChannelData(0);
   for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
@@ -509,6 +523,6 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="extras.js?v=23"></script>
+<script src="extras.js?v=24"></script>
 </body>
 </html>

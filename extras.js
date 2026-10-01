@@ -99,8 +99,8 @@ function dragify(el) {
 }
 function blip(f = 300 + Math.random() * 500, len = .08, vol = .25) {
   try {
-    window.AC = window.AC || new (window.AudioContext || window.webkitAudioContext)();
-    const ac = window.AC, t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    const ac = getAC(); if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
     o.type = "sine"; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.8, t + len);
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + len);
     o.connect(g).connect(ac.destination); o.start(t); o.stop(t + len + .02);
@@ -273,8 +273,8 @@ checkMegaphone(); setInterval(checkMegaphone, 30000);
 // ======================================================== founders: squeaky hammer bonks + Whack-a-Founder arcade
 function squeak(pitch = 1) {
   try {
-    window.AC = window.AC || new (window.AudioContext || window.webkitAudioContext)();
-    const ac = window.AC, t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    const ac = getAC(); if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
     o.type = "triangle"; o.frequency.setValueAtTime(900 * pitch, t); o.frequency.exponentialRampToValueAtTime(1700 * pitch, t + .06);
     o.frequency.exponentialRampToValueAtTime(700 * pitch, t + .16);
     g.gain.setValueAtTime(.001, t); g.gain.exponentialRampToValueAtTime(.35, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .2);
