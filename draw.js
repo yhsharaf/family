@@ -288,7 +288,7 @@ function renderPlayers() {
 setInterval(() => {
   if (!ch) return;
   const left = S.until ? Math.max(0, Math.ceil((S.until - Date.now()) / 1000)) : "";
-  $d("#drawTimer").textContent = (S.phase === "drawing" || S.phase === "choosing") ? `⏱ ${left}` : "";
+  $d("#drawTimer").textContent = (S.phase === "drawing" || S.phase === "choosing") ? `${left}` : "";
 }, 250);
 
 $d("#drawCopy").onclick = () => {

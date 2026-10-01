@@ -160,3 +160,58 @@
   .sk-tools .cols { grid-template-columns: repeat(13, 1fr); width: calc(100% - 44px); flex: 1 1 auto; }
   .sk-tools .col { width: 100%; height: 18px; }
 }
+
+/* ===== Family paper theme (overrides the blue skribbl colors; layout stays) ===== */
+#draw.sk { margin: 0; padding: 0 0 20px; min-height: 0; color: var(--ink); background: none; }
+.sk-h { margin: 10px 0 14px; }
+.sk-panel { background: var(--card); border: 1px solid var(--edge); border-radius: 14px; box-shadow: 4px 6px 0 rgba(60,45,30,.12); color: var(--ink); }
+.sk-home { justify-content: start; }
+.sk-name input { border: 2px solid var(--edge); border-radius: 12px; }
+.sk-sugg { border-radius: 0 0 12px 12px; border: 1px solid var(--edge); }
+.sk-sugg button:hover, .sk-sugg button.on { background: #fff3d6; }
+.sk-warn { background: #fff3c4; color: #6b4e00; border: 1px solid #e8cf7a; border-radius: 10px; }
+.sk-avatar { background: #f3ecde; border: 1px dashed var(--edge); border-radius: 12px; }
+.sk-face img { filter: drop-shadow(2px 0 0 #fcfaf4) drop-shadow(-2px 0 0 #fcfaf4) drop-shadow(0 2px 0 #fcfaf4) drop-shadow(0 -2px 0 #fcfaf4) drop-shadow(3px 5px 3px rgba(60,45,30,.35)); }
+.sk-arrow { color: var(--ink); }
+.sk-btn { border-radius: 12px; box-shadow: 3px 4px 0 rgba(60,45,30,.25); text-shadow: none; }
+.sk-play { background: var(--teal); } .sk-play:hover { background: #2f8f8f; }
+.sk-private { background: #5a5064; } .sk-private:hover { background: #4a4154; }
+.sk-err { color: var(--red); }
+.sk-fame { margin: 18px 0 0; }
+.dboard { color: var(--ink); }
+.dboard li { background: #fff; border: 1px solid var(--edge); border-radius: 10px; }
+.dboard li span { color: var(--muted); }
+.sk-game { background: #e9dfc9; border-radius: 18px; padding: 8px; box-shadow: 6px 9px 0 rgba(60,45,30,.18); }
+.sk-top, .sk-players .dp, .sk-chat, .sk-board { border-radius: 12px; }
+.sk-top { border: 1px solid var(--edge); background: var(--card); }
+.sk-clock { border-color: var(--ink); } .sk-clock::before { background: var(--ink); }
+/* the "GUESS THIS" label sits on its own as a small pill; the word itself is smaller and tidier */
+.sk-word small { display: inline-block; background: var(--ink); color: #fcfaf4; border-radius: 8px; padding: 1px 8px; font-size: 10px;
+  letter-spacing: 1.5px; margin-bottom: 4px; }
+#drawWord .ltr { width: 15px; height: 20px; font-size: 16px; line-height: 18px; border-bottom-width: 2px; border-color: var(--ink); }
+#drawWord .plain { font-size: 18px; color: var(--red); }
+#drawWord .cnt { font-size: 11px; }
+.sk-players .dp { background: var(--card); border: 1px solid var(--edge); }
+.sk-players .dp:nth-child(even) { background: #f6f0e2; }
+.sk-players .dp.got { background: #c9ecb9 !important; border-color: #8cc472; }
+.sk-players .dp.me .dn b { color: var(--blue); }
+.sk-board { border: 1px solid var(--edge); }
+.doverlay, .dchoose { background: rgba(45, 40, 50, .82); }
+.doverlay .dw-big { color: #ffcc4a; }
+.dchoose .btn { border-radius: 12px; border-color: #fcfaf4; }
+.sk-settings { background: rgba(252, 250, 244, .97); color: var(--ink); }
+.sk-set select, .sk-set textarea, .sk-invite input { border: 2px solid var(--edge); }
+.sk-chat { border: 1px solid var(--edge); }
+.dlog .msg:nth-child(even) { background: #f6f0e2; }
+.dlog .msg.info { color: var(--purple); } .dlog .msg.ok, .dlog .msg.secret { color: #2e8b3a; }
+#drawMsg { border-radius: 10px; border-color: var(--edge); }
+#drawSend { background: var(--teal); border-radius: 10px; }
+.sk-tools .cur { border-color: var(--edge); border-radius: 10px; }
+.sk-tools .cols { border-radius: 8px; border: 1px solid var(--edge); }
+.sk-tools .sz, .sk-tools .tl { border: 1px solid var(--edge); border-radius: 10px; background: var(--card); }
+.sk-tools .sz.on, .sk-tools .tl.on { background: #ffe8a3; border-color: var(--gold); }
+@media (max-width: 900px) {
+  #draw.sk.playing { padding: 4px; min-height: 100dvh; }
+  .sk-game { padding: 4px; border-radius: 12px; }
+  #drawWord .ltr { width: 12px; height: 18px; font-size: 14px; }
+}
