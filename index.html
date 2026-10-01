@@ -468,7 +468,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
-<script src="data.js?v=40"></script>
+<script src="data.js?v=41"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -497,7 +497,9 @@ const TRAITOR_ORDER = ["VirusIvan", "Sensuous", "Dandadan888", "IOO7I"];  // ord
 const traitors = D.founders.filter(f => f.traitor)
   .sort((a, b) => (TRAITOR_ORDER.indexOf(a.name) + 1 || 99) - (TRAITOR_ORDER.indexOf(b.name) + 1 || 99));
 const newest = D.members[D.members.length - 1];
-const inFamily = D.members.filter(m => m.now === "Family").length;
+// everyone in the 5 sister guilds today (counts from mapleidle.gg; fall back to the member list)
+const inFamily = D.guild_counts ? Object.values(D.guild_counts.counts).reduce((a, b) => a + b, 0)
+                                : D.members.filter(m => D.guilds.includes(m.now)).length;
 $("#stats").innerHTML = [
   [founders.length, "Founders"], [core.length, "Core Family"], [D.members.length, "members on record"], [inFamily, "in Family right now"],
   [D.guilds.length, "sister guilds"], [D.memories.length, "memories saved"], [traitors.length, "traitors (cooked)"],
