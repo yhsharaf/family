@@ -165,3 +165,11 @@
 .board ol { margin: 0; padding-left: 28px; text-align: left; } .board li { padding: 1px 0; }
 .board li span { display: inline-block; width: 70px; letter-spacing: 3px; } .board li b { color: #7dff8a; }
 @media (max-width: 500px) { .hole { height: 96px; } .hole .mole { height: 80px; } .mole img { max-height: 76px; } .arcmenu h3 { font-size: 24px; } }
+
+.poster .tw { margin-top: 6px; font-size: 15px; color: #8c2a24; } .poster .tw b { font-size: 20px; }
+@media (max-width: 700px) { .tr img { max-height: 70px; } .tr { width: 90px; } }
+.dungeon .posters { gap: 22px; }
+.dungeon .poster { width: 228px; padding: 12px 10px 14px; }
+.dungeon .poster h3 { font-size: 42px; }
+.dungeon .poster .face { height: 160px; }
+.dungeon .poster .who { font-size: 24px; }

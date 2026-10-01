@@ -23,28 +23,42 @@ const ready = (async () => {
 let device = store.get("family_device");
 if (!device) { device = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)); store.set("family_device", device); }
 
-// ---------- guild-wide counters (whips, stews)
-const pending = { whips: 0, stews: 0 };
+// ---------- guild-wide counters: whips per traitor (they always add up to the guild total) + stews
+const pending = { stews: 0 }, pendingWhips = {}, whipCounts = {};
+function showWhips() {
+  let total = 0;
+  document.querySelectorAll(".poster[data-name]").forEach(p => {
+    const n = whipCounts[p.dataset.name] || 0; total += n; p.querySelector(".tw b").textContent = n.toLocaleString();
+  });
+  $("#gwhips").textContent = total.toLocaleString();
+}
 async function loadCounters() {
   if (!(await ready)) { $("#gwhips").textContent = "soon"; $("#gstews").textContent = "soon"; return; }
-  const { data } = await sb.from("counters").select("name,value");
-  (data || []).forEach(r => { const el = $(r.name === "whips" ? "#gwhips" : "#gstews"); if (el) el.textContent = Number(r.value).toLocaleString(); });
+  const [w, c] = await Promise.all([sb.from("traitor_whips").select("traitor,value"), sb.from("counters").select("name,value")]);
+  (w.data || []).forEach(r => { whipCounts[r.traitor] = Number(r.value) + (pendingWhips[r.traitor] || 0); });
+  showWhips();
+  (c.data || []).forEach(r => { if (r.name === "stews") $("#gstews").textContent = (Number(r.value) + pending.stews).toLocaleString(); });
 }
 async function flush() {
   if (!(await ready)) return;
-  for (const k of ["whips", "stews"]) {
-    while (pending[k] > 0) {
-      const n = Math.min(50, pending[k]); pending[k] -= n;
-      const { data, error } = await sb.rpc("add_count", { k, n });
-      if (error) { pending[k] += n; return; }
-      const el = $(k === "whips" ? "#gwhips" : "#gstews"); if (el && data != null) el.textContent = Number(data).toLocaleString();
-    }
+  for (const t of Object.keys(pendingWhips)) {
+    const n = Math.min(50, pendingWhips[t]); if (!n) continue; pendingWhips[t] -= n;
+    const { error } = await sb.rpc("add_whip", { t, n }); if (error) { pendingWhips[t] += n; return; }
+  }
+  while (pending.stews > 0) {
+    const n = Math.min(50, pending.stews); pending.stews -= n;
+    const { data, error } = await sb.rpc("add_count", { k: "stews", n });
+    if (error) { pending.stews += n; return; }
+    if (data != null) $("#gstews").textContent = Number(data).toLocaleString();
   }
 }
 setInterval(flush, 2500);
 setInterval(loadCounters, 30000);
 loadCounters();
-$("#dungeon").addEventListener("pointerdown", e => { if (e.target.closest(".poster")) pending.whips++; });
+$("#dungeon").addEventListener("pointerdown", e => {
+  const p = e.target.closest(".poster[data-name]"); if (!p) return;
+  const t = p.dataset.name; pendingWhips[t] = (pendingWhips[t] || 0) + 1; whipCounts[t] = (whipCounts[t] || 0) + 1; showWhips();
+});
 
 function route() { if (location.hash === "#guestbook") loadGuestbook(); }
 addEventListener("hashchange", route);
@@ -65,8 +79,8 @@ function placeShelf() {
   traitors.forEach((t, i) => {
     const d = document.createElement("div"); d.className = "tr";
     d.innerHTML = `<img src="${t.sprite}" alt=""><br><span class="nm">${esc(t.name)}</span>`;
-    const narrow = kitchen.clientWidth < 500;  // phones: stack them on the shelf, clear of the pot
-    d.style.left = (narrow ? 0 : i * 70) + "px"; d.style.top = (narrow ? i * 118 : 40 + i * 10) + "px"; d.dataset.home = i;
+    const narrow = kitchen.clientWidth < 500;  // phones: one column on the shelf; wider screens: 2 x 2
+    d.style.left = (narrow ? 0 : (i % 2) * 72) + "px"; d.style.top = (narrow ? i * 80 : (i >> 1) * 125) + "px"; d.dataset.home = i;
     kitchen.appendChild(d); dragify(d);
   });
 }
@@ -90,10 +104,11 @@ function dragify(el) {
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     if (cx > p.left && cx < p.right && cy > p.top - 80 && cy < p.bottom) {  // dropped on the pot: in it goes
       el.classList.add("inpot");
-      const slot = inPot() - 1;
-      el.style.left = (p.left - k.left + p.width / 2 - 115 + slot * 110) + "px";
+      const slot = inPot() - 1, step = p.width / 4.6;  // up to 4 side by side in the pot
+      el.style.left = (p.left - k.left + p.width / 2 - 1.5 * step - el.offsetWidth / 2 + slot * step) + "px";
       el.style.top = (p.top - k.top + 76 - .78 * el.querySelector("img").offsetHeight) + "px";  // head and shoulders above the stew
-      splash(); if (inPot() === traitors.length) $("#stewHint").textContent = "Now stir! Drag in circles over the pot, or tap 🥄 Stir.";
+      splash(); $("#stewHint").textContent = inPot() === traitors.length ? "All four in! Now stir: drag in circles over the pot, or tap 🥄 Stir."
+        : "In it goes! Stir now, or throw in more traitors first.";
     }
   });
 }
@@ -117,7 +132,7 @@ function bubbles(n) {
 }
 function stir(amount) {
   if (served) return;
-  if (inPot() < traitors.length) { $("#stewHint").textContent = "Put both traitors in the pot first!"; return; }
+  if (!inPot()) { $("#stewHint").textContent = "Throw at least one traitor in the pot first!"; return; }
   setHeat(heat + amount); bubbles(2); blip();
 }
 let stirring = false, lastAng = null, acc = 0;
@@ -142,7 +157,7 @@ function serve() {
 }
 function resetStew() {
   served = false; kitchen.querySelectorAll(".served").forEach(s => s.remove()); setHeat(0); placeShelf();
-  $("#stewHint").textContent = "Drag Sensuous and VirusIvan into the pot.";
+  $("#stewHint").textContent = "Drag any traitor into the pot, one or all four.";
 }
 $("#resetStew").onclick = resetStew;
 $("#mystews").textContent = +store.get("family_stews") || 0;
