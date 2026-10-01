@@ -113,3 +113,55 @@
 .smega button { border: 0; background: none; font-size: 20px; cursor: pointer; color: #3a2410; }
 @keyframes marquee { to { transform: translateX(-100%); } }
 @media (max-width: 700px) { .smega { top: 98px; } .mob { width: 50px; height: 50px; } .mob img { max-width: 42px; max-height: 42px; } }
+
+/* ---------- founders: squeaky hammer + arcade */
+#founderGrid .card { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect x='24' y='20' width='7' height='34' rx='3' fill='%23f6d36b' stroke='%235a3a1e' stroke-width='2' transform='rotate(-35 28 37)'/%3E%3Crect x='6' y='4' width='34' height='22' rx='9' fill='%23ff7eb6' stroke='%235a3a1e' stroke-width='2.5' transform='rotate(-35 23 15)'/%3E%3Crect x='10' y='8' width='9' height='14' rx='4' fill='%23ffd1e6' transform='rotate(-35 23 15)'/%3E%3C/svg%3E") 10 10, pointer;
+                    user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.card.bonked { animation: bonk .35s; }
+@keyframes bonk { 25% { transform: scale(1.06, .82) translateY(8px); } 60% { transform: scale(.96, 1.06); } }
+.card.bonked .pic img { animation: dizzy .35s; }
+@keyframes dizzy { 30% { transform: rotate(-12deg) scale(1.1, .8); } }
+.ouch { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #fff; border: 2px solid var(--ink); border-radius: 12px;
+        padding: 2px 8px; font-size: 13px; white-space: nowrap; z-index: 5; animation: pop .2s, fadeup .9s forwards; pointer-events: none; }
+@keyframes fadeup { 70% { opacity: 1; } to { opacity: 0; transform: translate(-50%, -18px); } }
+.bonkstar { position: fixed; pointer-events: none; z-index: 60; font-size: 18px; animation: starfly .7s ease-out forwards; }
+@keyframes starfly { from { transform: translate(-50%, -50%) rotate(var(--a)) translateY(0); opacity: 1; }
+                     to { transform: translate(-50%, -50%) rotate(var(--a)) translateY(-46px) rotate(180deg); opacity: 0; } }
+.bonks { position: absolute; bottom: 6px; right: 8px; font-size: 11px; color: var(--muted); }
+.card.mostbonked::after { content: "🏆 most bonked"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #e0559a; color: #fff;
+                          font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.arcade { position: fixed; inset: 0; z-index: 70; background: rgba(20,14,30,.75); display: flex; align-items: center; justify-content: center; padding: 10px; }
+.arcade[hidden] { display: none; }
+.cabinet { position: relative; width: min(560px, 100%); max-height: 96vh; overflow: auto; background: linear-gradient(#2a1d48, #160f28); border: 6px solid #e0559a;
+           border-radius: 22px; padding: 16px 14px 18px; color: #fff; font-family: "Courier New", monospace; box-shadow: 0 0 30px #e0559a88;
+           cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Crect x='24' y='20' width='7' height='34' rx='3' fill='%23f6d36b' stroke='%235a3a1e' stroke-width='2' transform='rotate(-35 28 37)'/%3E%3Crect x='6' y='4' width='34' height='22' rx='9' fill='%23ff7eb6' stroke='%235a3a1e' stroke-width='2.5' transform='rotate(-35 23 15)'/%3E%3C/svg%3E") 10 10, pointer; }
+.cabinet .x { position: absolute; top: 4px; right: 10px; border: 0; background: none; color: #fff; font-size: 28px; cursor: pointer; z-index: 3; }
+.hud { display: flex; justify-content: space-around; font-weight: 700; letter-spacing: 1px; margin: 4px 30px 12px 0; }
+.hud b { color: #ffe066; font-size: 22px; }
+.holes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.hole { position: relative; height: 120px; overflow: hidden; border-radius: 0 0 50% 50% / 0 0 30% 30%; }
+.hole .dirt { position: absolute; left: 4%; right: 4%; bottom: 0; height: 30px; border-radius: 50%; background: radial-gradient(#3a2614, #5a3a1e 70%); z-index: 2; }
+.hole .mole { position: absolute; left: 0; right: 0; bottom: 12px; height: 100px; display: flex; align-items: flex-end; justify-content: center;
+              transform: translateY(105%); transition: transform .12s ease-out; z-index: 1; }
+.hole.up .mole { transform: translateY(0); }
+.hole.hit .mole { transform: translateY(10%) scaleY(.75); filter: brightness(1.4); }
+.mole img { max-height: 96px; max-width: 100%; image-rendering: pixelated; pointer-events: none; }
+.mole .mk { position: absolute; top: 0; right: 14%; font-size: 22px; }
+.pts { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 26px; color: #7dff8a; z-index: 3;
+       text-shadow: 2px 2px 0 #000; animation: fadeup .7s forwards; pointer-events: none; }
+.pts.neg { color: #ff5a5a; }
+.arcrules { text-align: center; font-size: 13px; margin: 10px 0 4px; color: #d8c8f0; }
+.arcmenu { position: absolute; inset: 0; background: rgba(22,15,40,.94); display: flex; flex-direction: column; align-items: center; justify-content: center;
+           gap: 10px; padding: 20px; border-radius: 16px; text-align: center; z-index: 2; }
+.arcmenu[hidden] { display: none; }
+.arcmenu h3 { font-size: 30px; margin: 0; color: #ff7eb6; text-shadow: 3px 3px 0 #000; letter-spacing: 2px; }
+.arcmenu .btn { background: #e0559a; font-family: inherit; font-size: 18px; letter-spacing: 2px; }
+.final { font-size: 22px; } .final b { color: #ffe066; font-size: 34px; }
+.initials { display: flex; flex-direction: column; align-items: center; gap: 8px; letter-spacing: 2px; }
+.initials input { width: 150px; text-align: center; font: 700 40px "Courier New", monospace; letter-spacing: 12px; background: #000; color: #ffe066;
+                  border: 3px solid #ffe066; border-radius: 10px; padding: 4px 0 4px 12px; text-transform: uppercase; }
+.initials input.bad { animation: shake .12s 4; border-color: #ff5a5a; }
+.board { width: 100%; max-width: 280px; } .board h4 { margin: 8px 0 4px; color: #ffe066; letter-spacing: 2px; }
+.board ol { margin: 0; padding-left: 28px; text-align: left; } .board li { padding: 1px 0; }
+.board li span { display: inline-block; width: 70px; letter-spacing: 3px; } .board li b { color: #7dff8a; }
+@media (max-width: 500px) { .hole { height: 96px; } .hole .mole { height: 80px; } .mole img { max-height: 76px; } .arcmenu h3 { font-size: 24px; } }

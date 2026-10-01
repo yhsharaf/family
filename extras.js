@@ -270,6 +270,130 @@ async function checkMegaphone() {
 $("#smegaX").onclick = () => { shownShout = $("#smega").dataset.id; store.set("family_smega_hidden", shownShout); $("#smega").hidden = true; };
 checkMegaphone(); setInterval(checkMegaphone, 30000);
 
+// ======================================================== founders: squeaky hammer bonks + Whack-a-Founder arcade
+function squeak(pitch = 1) {
+  try {
+    window.AC = window.AC || new (window.AudioContext || window.webkitAudioContext)();
+    const ac = window.AC, t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = "triangle"; o.frequency.setValueAtTime(900 * pitch, t); o.frequency.exponentialRampToValueAtTime(1700 * pitch, t + .06);
+    o.frequency.exponentialRampToValueAtTime(700 * pitch, t + .16);
+    g.gain.setValueAtTime(.001, t); g.gain.exponentialRampToValueAtTime(.35, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .2);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .22);
+  } catch (e) {}
+}
+const OUCH = ["ow!", "why me 😭", "gm to you too", "BONK", "*squeak*", "rude!", "I founded this guild!", "x_x", "not the face!", "ok I deserved that"];
+const bonkPending = {}, bonkCounts = {};
+function showBonks() {
+  let top = null, tv = 0;
+  document.querySelectorAll("#founderGrid .card").forEach(c => {
+    const n = bonkCounts[c.title] || 0;
+    let b = c.querySelector(".bonks"); if (!b) { b = document.createElement("span"); b.className = "bonks"; c.appendChild(b); }
+    b.textContent = n ? `🔨 ${n.toLocaleString()}` : ""; c.classList.remove("mostbonked");
+    if (n > tv) { tv = n; top = c; }
+  });
+  if (top) top.classList.add("mostbonked");
+}
+async function loadBonks() {
+  if (!(await ready)) return;
+  const { data } = await sb.from("founder_bonks").select("founder,value");
+  (data || []).forEach(r => { bonkCounts[r.founder] = Number(r.value) + (bonkPending[r.founder] || 0); });
+  showBonks();
+}
+async function flushBonks() {
+  if (!(await ready)) return;
+  for (const f of Object.keys(bonkPending)) {
+    const n = Math.min(30, bonkPending[f]); if (!n) continue; bonkPending[f] -= n;
+    const { error } = await sb.rpc("add_bonk", { f, n }); if (error) { bonkPending[f] += n; return; }
+  }
+}
+setInterval(flushBonks, 3000); setInterval(loadBonks, 30000); loadBonks();
+function stars(x, y) {
+  for (let i = 0; i < 5; i++) {
+    const st = document.createElement("div"); st.className = "bonkstar"; st.textContent = ["⭐", "✨", "💫"][i % 3];
+    st.style.left = x + "px"; st.style.top = y + "px"; st.style.setProperty("--a", (i * 72) + "deg");
+    document.body.appendChild(st); setTimeout(() => st.remove(), 700);
+  }
+}
+$("#founderGrid").addEventListener("pointerdown", e => {
+  const c = e.target.closest(".card"); if (!c) return;
+  squeak(.9 + Math.random() * .3); stars(e.clientX, e.clientY);
+  c.classList.remove("bonked"); void c.offsetWidth; c.classList.add("bonked");
+  const say = document.createElement("div"); say.className = "ouch"; say.textContent = OUCH[Math.floor(Math.random() * OUCH.length)];
+  c.appendChild(say); setTimeout(() => say.remove(), 900);
+  const name = c.title; bonkPending[name] = (bonkPending[name] || 0) + 1; bonkCounts[name] = (bonkCounts[name] || 0) + 1; showBonks();
+});
+
+// ---------- Whack-a-Founder
+const arc = $("#arcade"), holes = $("#holes");
+holes.innerHTML = Array.from({ length: 9 }, (_, i) => `<div class="hole" data-i="${i}"><div class="mole"></div><div class="dirt"></div></div>`).join("");
+let game = null, best = +store.get("family_whack_best") || 0;
+$("#arcBest").textContent = best;
+const regular = D.founders.filter(f => !f.main && !f.traitor), rain = D.founders.find(f => f.main);
+function openArcade() { arc.hidden = false; document.body.style.overflow = "hidden"; menu(); loadBoard(); }
+function closeArcade() { stopGame(); arc.hidden = true; document.body.style.overflow = ""; }
+$("#playWhack").onclick = openArcade; $("#arcX").onclick = closeArcade;
+function menu(endHtml = "") { $("#arcMenu").hidden = false; $("#arcEnd").innerHTML = endHtml; }
+async function loadBoard() {
+  if (!(await ready)) { $("#arcBoard").innerHTML = "<li>connect the database to see high scores</li>"; return; }
+  const { data } = await sb.from("arcade_scores").select("initials,score").order("score", { ascending: false }).order("created_at").limit(10);
+  $("#arcBoard").innerHTML = (data || []).map(r => `<li><span>${esc(r.initials)}</span><b>${r.score}</b></li>`).join("") || "<li>no scores yet, be the first!</li>";
+}
+function stopGame() { if (!game) return; clearInterval(game.tick); clearTimeout(game.spawn); holes.querySelectorAll(".hole").forEach(h => h.classList.remove("up")); game = null; }
+function popOne() {
+  if (!game) return;
+  const free = [...holes.querySelectorAll(".hole:not(.up)")]; if (!free.length) { game.spawn = setTimeout(popOne, 200); return; }
+  const h = free[Math.floor(Math.random() * free.length)], r = Math.random();
+  const who = r < .12 ? rain : r < .27 ? traitors[Math.floor(Math.random() * traitors.length)] : regular[Math.floor(Math.random() * regular.length)];
+  const kind = who === rain ? "rain" : who.traitor ? "traitor" : "founder";
+  const m = h.querySelector(".mole");
+  m.innerHTML = `<img src="${who.sprite}" alt="">${kind === "traitor" ? '<span class="mk">💀</span>' : kind === "rain" ? '<span class="mk">👑</span>' : ""}`;
+  h.dataset.kind = kind; h.classList.remove("hit"); h.classList.add("up");
+  const left = Math.max(0, game.end - Date.now()), stay = 550 + left / 30000 * 550;  // faster near the end
+  const id = Math.random(); h.dataset.id = id;
+  setTimeout(() => { if (h.dataset.id == id) h.classList.remove("up"); }, stay);
+  game.spawn = setTimeout(popOne, 250 + left / 30000 * 400);
+}
+holes.addEventListener("pointerdown", e => {
+  const h = e.target.closest(".hole"); if (!game || !h || !h.classList.contains("up") || h.classList.contains("hit")) return;
+  h.classList.add("hit"); h.dataset.id = "";
+  const pts = { founder: 1, traitor: 5, rain: -10 }[h.dataset.kind];
+  game.score = Math.max(0, game.score + pts); $("#arcScore").textContent = game.score;
+  if (pts < 0) { blip(140, .35, .35); if (navigator.vibrate) navigator.vibrate(200); } else squeak(pts > 1 ? .7 : 1);
+  const f = document.createElement("div"); f.className = "pts " + (pts < 0 ? "neg" : ""); f.textContent = (pts > 0 ? "+" : "") + pts;
+  h.appendChild(f); setTimeout(() => f.remove(), 700);
+  setTimeout(() => h.classList.remove("up"), 180);
+});
+$("#arcStart").onclick = () => {
+  stopGame(); $("#arcMenu").hidden = true;
+  game = { score: 0, end: Date.now() + 30000 }; $("#arcScore").textContent = 0; $("#arcTime").textContent = 30;
+  game.tick = setInterval(() => {
+    const left = Math.ceil((game.end - Date.now()) / 1000); $("#arcTime").textContent = Math.max(0, left);
+    if (left <= 0) finish();
+  }, 200);
+  popOne();
+};
+function finish() {
+  const score = game.score; stopGame();
+  const newBest = score > best; if (newBest) { best = score; store.set("family_whack_best", best); $("#arcBest").textContent = best; }
+  const last = store.get("family_initials") || "";
+  menu(`<div class="final">SCORE <b>${score}</b>${newBest && score ? " · NEW BEST!" : ""}</div>` + (score > 0 ? `
+    <form id="initForm" class="initials">ENTER YOUR INITIALS
+      <input id="initIn" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(last)}" placeholder="AAA">
+      <button class="btn" type="submit">SAVE</button></form>` : ""));
+  $("#arcStart").textContent = "▶ PLAY AGAIN";
+  const f = $("#initForm"); if (!f) return;
+  const inp = $("#initIn"); inp.focus();
+  inp.oninput = () => { inp.value = inp.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3); };
+  f.onsubmit = async ev => {
+    ev.preventDefault(); const initials = inp.value;
+    if (!/^[A-Z0-9]{3}$/.test(initials)) { inp.classList.add("bad"); setTimeout(() => inp.classList.remove("bad"), 500); return; }
+    if (/^(FUK|FUC|FCK|SEX|ASS|KKK|NIG|FAG|CUM|DIK|TIT|GAY|KYS)$/.test(initials)) { inp.value = ""; return; }
+    store.set("family_initials", initials); f.innerHTML = "SAVING…";
+    if (await ready) await sb.from("arcade_scores").insert({ initials, score: Math.min(score, 400) });
+    f.innerHTML = `SAVED AS <b>${initials}</b> 🏆`; loadBoard();
+  };
+}
+
 // ======================================================== 9. votes + 10. uploads on the Memories page
 let voted = {};  // photo -> "love" | "hate" (this device's reaction)
 try { voted = JSON.parse(store.get("family_reacts") || "{}"); } catch (e) {}

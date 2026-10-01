@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="extras.css?v=21">
+<link rel="stylesheet" href="extras.css?v=22">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -230,7 +230,8 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 
 <section id="founders">
   <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#c86e3c;--r:2deg">Founders</span></h2>
-  <p class="lead">The first members, from before the records began. Rain raised the banner; everyone else fell in line.</p>
+  <div class="memhead"><p class="lead">The first members, from before the records began. Your cursor is a squeaky hammer 🔨, tap a Founder to bonk them!</p>
+    <button class="btn" id="playWhack" type="button" style="background:#e0559a">🎮 Whack-a-Founder</button></div>
   <div class="grid" id="founderGrid"></div>
 </section>
 
@@ -302,6 +303,20 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 </section>
 </main>
 
+<div class="arcade" id="arcade" hidden>
+  <div class="cabinet">
+    <button class="x" id="arcX" aria-label="close">×</button>
+    <div class="hud"><span>SCORE <b id="arcScore">0</b></span><span>TIME <b id="arcTime">30</b></span><span>BEST <b id="arcBest">0</b></span></div>
+    <div class="holes" id="holes"></div>
+    <div class="arcrules">Founder <b>+1</b> · Traitor 💀 <b>+5</b> · Rain 👑 <b>−10</b> (never bonk the Main Founder!)</div>
+    <div class="arcmenu" id="arcMenu">
+      <h3 id="arcTitle">WHACK-A-FOUNDER</h3>
+      <div id="arcEnd"></div>
+      <button class="btn" id="arcStart" type="button">▶ START</button>
+      <div class="board"><h4>🏆 HIGH SCORES</h4><ol id="arcBoard"></ol></div>
+    </div>
+  </div>
+</div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
@@ -494,6 +509,6 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="extras.js?v=21"></script>
+<script src="extras.js?v=22"></script>
 </body>
 </html>
