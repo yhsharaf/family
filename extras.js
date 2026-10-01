@@ -174,7 +174,35 @@ function findMe() {
   setTimeout(() => leaf.classList.remove("glow"), 4200);
 }
 $("#findBtn").onclick = findMe;
-$("#findme").addEventListener("keydown", e => { if (e.key === "Enter") findMe(); });
+// suggestions while typing: a few letters show matching faces, tap one to jump to that leaf
+let findIdx = -1;
+function findSuggest() {
+  const q = $("#findme").value.trim().toLowerCase(), box = $("#findSugg");
+  if (!q) { box.hidden = true; return; }
+  const seen = new Set(), hits = [];
+  document.querySelectorAll("#tree .leaf").forEach(l => {
+    const n = l.title || "", k = n.toLowerCase();
+    if (k.includes(q) && !seen.has(k)) { seen.add(k); hits.push({ n, img: (l.querySelector("img") || {}).src }); }
+  });
+  hits.sort((a, b) => (b.n.toLowerCase().startsWith(q) - a.n.toLowerCase().startsWith(q)) || a.n.length - b.n.length);
+  if (!hits.length) { box.innerHTML = `<i>No one by that name yet</i>`; box.hidden = false; return; }
+  findIdx = -1;
+  box.innerHTML = hits.slice(0, 8).map(h => `<button type="button" data-n="${esc(h.n)}">${h.img ? `<img src="${h.img}" alt="">` : "<span>👤</span>"}${esc(h.n)}</button>`).join("");
+  box.hidden = false;
+}
+const pickFind = n => { $("#findme").value = n; $("#findSugg").hidden = true; $("#findme").blur(); findMe(); };
+$("#findSugg").addEventListener("pointerdown", e => {  // pointerdown so it fires before the input loses focus
+  const b = e.target.closest("button"); if (!b) return; e.preventDefault(); pickFind(b.dataset.n);
+});
+$("#findme").addEventListener("input", findSuggest);
+$("#findme").addEventListener("focus", findSuggest);
+$("#findme").addEventListener("blur", () => setTimeout(() => $("#findSugg").hidden = true, 150));
+$("#findme").addEventListener("keydown", e => {
+  const items = [...$("#findSugg").querySelectorAll("button")];
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { if (!items.length) return; e.preventDefault();
+    findIdx = (findIdx + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length; items.forEach((b, i) => b.classList.toggle("on", i === findIdx)); }
+  if (e.key === "Enter") { e.preventDefault(); items.length && (findIdx >= 0 || items.length === 1) ? pickFind(items[Math.max(findIdx, 0)].dataset.n) : ($("#findSugg").hidden = true, findMe()); }
+});
 let lastShake = 0;
 function shakeTree() {
   if (Date.now() - lastShake < 1500) return; lastShake = Date.now();

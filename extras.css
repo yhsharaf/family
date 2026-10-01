@@ -40,7 +40,17 @@
 
 /* ---------- tree tools */
 .treetools { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 0 0 16px; }
-.treetools input { flex: 1 1 200px; max-width: 320px; }
+.treetools .findwrap { position: relative; flex: 1 1 200px; max-width: 320px; display: flex; }
+.treetools input { flex: 1; min-width: 0; }
+.findsugg { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; background: var(--card); border: 2px solid var(--edge);
+  border-radius: 12px; box-shadow: 3px 6px 0 rgba(60,45,30,.2); max-height: 300px; overflow: auto; text-align: left; }
+.findsugg[hidden] { display: none; }
+.findsugg button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; padding: 6px 10px; font: inherit; font-weight: 700;
+  color: var(--ink); text-align: left; cursor: pointer; border-bottom: 1px dashed var(--edge); }
+.findsugg button:last-child { border-bottom: 0; }
+.findsugg button:hover, .findsugg button.on { background: #fff3d6; }
+.findsugg img, .findsugg span { width: 34px; height: 34px; object-fit: contain; object-position: bottom; image-rendering: pixelated; display: grid; place-items: center; }
+.findsugg i { display: block; padding: 8px 12px; color: var(--muted); }
 .leaf.glow { animation: glow 1s ease-in-out 4; position: relative; z-index: 3; }
 .leaf.glow .nm { background: #ffcc4a; }
 @keyframes glow { 50% { transform: scale(1.5); filter: drop-shadow(0 0 12px #ffe680) drop-shadow(0 0 4px #fff); } }

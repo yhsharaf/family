@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="draw.css?v=11">
-<link rel="stylesheet" href="extras.css?v=38">
+<link rel="stylesheet" href="extras.css?v=39">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -256,7 +256,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 <section id="timeline">
   <h2><span class="word" style="background:var(--green)">Family</span><span class="word" style="background:var(--wood);--r:2deg">Tree</span></h2>
   <p class="lead">The newest members are at the top. Scroll down through the months, branch by branch, all the way to the roots: the Founders.</p>
-  <div class="treetools"><input id="findme" list="names" placeholder="Find yourself in the tree…" autocomplete="off">
+  <div class="treetools"><span class="findwrap"><input id="findme" placeholder="Find yourself in the tree…" autocomplete="off" autocapitalize="off" spellcheck="false"><span class="findsugg" id="findSugg" hidden></span></span>
     <button class="btn" id="findBtn">🔍 Find me</button><button class="btn" id="shakeBtn" style="background:var(--green)">🌳 Shake the tree</button></div>
   <div class="treehint">↓ scroll down to the roots ↓</div>
   <div class="tree" id="tree"></div>
@@ -618,6 +618,6 @@ show();
 </script>
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=9"></script>
-<script src="extras.js?v=37"></script>
+<script src="extras.js?v=38"></script>
 </body>
 </html>
