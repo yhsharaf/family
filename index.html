@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="draw.css?v=2">
+<link rel="stylesheet" href="draw.css?v=3">
 <link rel="stylesheet" href="extras.css?v=34">
 <style>
 :root {
@@ -292,6 +292,13 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
   <div id="drawGame" class="dgame" hidden>
     <div class="dbar"><span id="drawTimer"></span><span id="drawRound"></span><span id="drawWord" class="dword"></span>
       <span><button class="btn" id="drawStart" hidden style="background:var(--green)">Start</button> <button class="btn" id="drawLeave" style="background:#5a5064">Leave</button></span></div>
+    <div class="dsettings gb" id="drawSettings" hidden>
+      <b>Room settings</b> <span class="msg">(host only)</span>
+      <div class="row"><label>Rounds <select id="dsRounds"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select></label>
+        <label>Draw time <select id="dsTime"><option value="30">30s</option><option value="45">45s</option><option value="60">60s</option><option value="80" selected>80s</option><option value="100">100s</option><option value="120">120s</option><option value="150">150s</option><option value="180">180s</option></select></label></div>
+      <textarea id="dsWords" maxlength="3000" placeholder="Custom words, separated by commas (e.g. zakum, pink bean, henesys)"></textarea>
+      <label class="mega"><input type="checkbox" id="dsOnly"> Use only my custom words (needs at least 3)</label>
+    </div>
     <div class="dmain">
       <div class="dplayers" id="drawPlayers"></div>
       <div class="dcanvas">
@@ -586,7 +593,7 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="draw.js?v=1"></script>
+<script src="draw.js?v=2"></script>
 <script src="extras.js?v=34"></script>
 </body>
 </html>

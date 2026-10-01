@@ -62,3 +62,8 @@
   .dtools .cols { grid-template-columns: repeat(8, 30px); } .dtools .col { width: 30px; height: 30px; }
 }
 @media (max-width: 900px) { .dp { padding-right: 44px; } }
+.dsettings { max-width: none; margin-bottom: 8px; }
+.dsettings select { font: inherit; padding: 6px 8px; border-radius: 10px; border: 2px solid var(--edge); margin-left: 4px; }
+.dsettings textarea { min-height: 54px; }
+.dp .kick { position: absolute; right: 6px; bottom: 4px; border: 0; background: #f3d6d3; color: #a0281e; border-radius: 6px;
+            font-size: 11px; padding: 1px 5px; cursor: pointer; }

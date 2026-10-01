@@ -8,7 +8,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;",
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
                 set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 const BAD = /\b(fuck|shit|bitch|cunt|nigg|fag|retard|whore|slut|dick|pussy|kys)\w*/i;
-const ROUNDS = 3, CHOOSE_SECS = 15, REVEAL_SECS = 6;
+const MAX_PLAYERS = 20, CHOOSE_SECS = 15, REVEAL_SECS = 6;
+let settings = { rounds: 3, time: 80, words: "", onlyCustom: false };  // host-chosen room settings
 const COLORS = ["#000000", "#ffffff", "#7f7f7f", "#c1c1c1", "#ef130b", "#ff7100", "#ffe400", "#00cc00", "#00b2ff", "#231fd3",
                 "#a300ba", "#d37caa", "#a0522d", "#592f2a", "#ecbcb4", "#2e7d32"];
 const SIZES = [4, 10, 22, 40];
@@ -73,6 +74,8 @@ function connect() {
   ch.on("presence", { event: "sync" }, () => {
     players = {};
     for (const [id, metas] of Object.entries(ch.presenceState())) players[id] = metas[0];
+    const order = Object.entries(players).sort((a, b) => a[1].joined - b[1].joined).map(x => x[0]);
+    if (order.indexOf(myId) >= MAX_PLAYERS) { leave(); $d("#drawJoinMsg").textContent = `This room is full (${MAX_PLAYERS} players). Try a private room!`; return; }
     pickHost(); renderPlayers();
   });
   ch.on("broadcast", { event: "state" }, ({ payload }) => { if (payload.from === hostId()) adopt(payload.s); });
@@ -81,6 +84,10 @@ function connect() {
   ch.on("broadcast", { event: "guessed" }, ({ payload }) => onGuessed(payload));
   ch.on("broadcast", { event: "picked" }, ({ payload }) => { if (localHost) hostPicked(payload); });
   ch.on("broadcast", { event: "start" }, () => { if (localHost) hostStart(); });
+  ch.on("broadcast", { event: "kick" }, ({ payload }) => {
+    if (payload.from !== hostId()) return;
+    if (payload.id === myId) { leave(); $d("#drawJoinMsg").textContent = "You were kicked from the room by the host."; }
+  });
   ch.on("broadcast", { event: "sync?" }, () => { if (S.drawer === myId) ch.send({ type: "broadcast", event: "op", payload: { t: "all", ops } }); });
   ch.subscribe(async st => {
     if (st !== "SUBSCRIBED") return;
@@ -112,8 +119,9 @@ function push() { S.v = (S.v || 0) + 1; send("state", { from: myId, s: S }); ado
 function present() { return Object.keys(players); }
 function hostStart() {
   if (present().length < 2) { sys("Need at least 2 players to start."); return; }
+  readSettings();
   S = { phase: "turn", round: 1, turn: -1, order: present().sort((a, b) => players[a].joined - players[b].joined),
-        scores: {}, names: {}, guessed: [] };
+        scores: {}, names: {}, guessed: [], kicked: S.kicked || [], settings: { ...settings } };
   for (const id of S.order) S.names[id] = players[id].name;
   nextTurn();
 }
@@ -121,7 +129,7 @@ $d("#drawStart").onclick = () => { if (localHost) hostStart(); else send("start"
 function nextTurn() {
   S.turn++;
   if (S.turn >= S.order.length) { S.turn = 0; S.round++; }
-  if (S.round > ROUNDS) { S.phase = "end"; S.until = Date.now() + 15000; push(); return; }
+  if (S.round > S.settings.rounds) { S.phase = "end"; S.until = Date.now() + 15000; push(); return; }
   const drawer = S.order[S.turn];
   if (!players[drawer]) { nextTurn(); return; }  // left the room: skip their turn
   Object.assign(S, { phase: "choosing", drawer, roundId: null, mask: "", word: null, guessed: [], until: Date.now() + CHOOSE_SECS * 1000 + 2000 });
@@ -178,7 +186,9 @@ function adopt(s, mine) {
 }
 async function offerWords() {
   const key = S.round + ":" + S.turn; if (choiceShown === key) return; choiceShown = key;
-  const { data, error } = await sb.rpc("draw_new_round", { room, drawer: me.name });
+  const st = S.settings || settings;
+  const custom = st.words.split(/[,\n]/).map(w => w.trim().toLowerCase()).filter(w => /^[a-z0-9 ]{2,30}$/.test(w));
+  const { data, error } = await sb.rpc("draw_new_round", { room, drawer: me.name, dur: st.time, custom, only_custom: st.onlyCustom });
   if (error || !data) return;
   const pick = async w => {
     $d("#drawChoose").innerHTML = "";
@@ -195,7 +205,10 @@ let myWord = null;
 function render() {
   const drawing = S.phase === "drawing", iDraw = S.drawer === myId && (drawing || S.phase === "choosing");
   $d("#drawTools").hidden = !(drawing && S.drawer === myId);
-  $d("#drawRound").textContent = S.round ? `Round ${Math.min(S.round, ROUNDS)} of ${ROUNDS}` : "";
+  const R = (S.settings || settings).rounds;
+  $d("#drawRound").textContent = S.round ? `Round ${Math.min(S.round, R)} of ${R}` : "";
+  $d("#drawSettings").hidden = !(localHost && (S.phase === "lobby" || S.phase === "end"));
+  if (S.kicked && S.kicked.includes(me.name) && ch) { leave(); $d("#drawJoinMsg").textContent = "You were kicked from the room by the host."; return; }
   $d("#drawWord").innerHTML = drawing ? (S.drawer === myId ? `<b>${esc(myWord || "")}</b>` : esc(S.mask || "")) :
     S.phase === "reveal" ? `<b>${esc(S.word || "")}</b>` : "";
   const ov = $d("#drawOverlay");
@@ -221,7 +234,7 @@ function renderPlayers() {
     return `<div class="dp ${g ? "got" : ""} ${id === myId ? "me" : ""}"><span class="rk">#${i + 1}</span>
       ${p.sprite ? `<img src="${p.sprite}" alt="">` : "<span class='np'>?</span>"}
       <div class="dn"><b>${esc(p.name)}${id === myId ? " (you)" : ""}</b><span>${sc} pts</span></div>
-      ${S.drawer === id && S.phase !== "lobby" ? "<span class='pen'>✏️</span>" : ""}${id === host ? "<span class='crown' title='host'>👑</span>" : ""}</div>`;
+      ${S.drawer === id && S.phase !== "lobby" ? "<span class='pen'>✏️</span>" : ""}${id === host ? "<span class='crown' title='host'>👑</span>" : ""}${localHost && id !== myId ? `<button class="kick" data-id="${id}" title="kick">✖</button>` : ""}</div>`;
   }).join("");
   $d("#drawStart").hidden = !(localHost && (S.phase === "lobby" || S.phase === "end"));
 }
@@ -230,6 +243,20 @@ setInterval(() => {
   const left = S.until ? Math.max(0, Math.ceil((S.until - Date.now()) / 1000)) : "";
   $d("#drawTimer").textContent = (S.phase === "drawing" || S.phase === "choosing") ? `⏱ ${left}` : "";
 }, 250);
+
+$d("#drawPlayers").addEventListener("click", e => {
+  const b = e.target.closest(".kick"); if (!b || !localHost) return;
+  const p = players[b.dataset.id]; if (!p || !confirm(`Kick ${p.name} from the room?`)) return;
+  S.kicked = [...(S.kicked || []), p.name]; send("kick", { from: myId, id: b.dataset.id });
+  sys(`${esc(p.name)} was kicked.`); push();
+});
+function readSettings() {
+  settings = { rounds: +$d("#dsRounds").value, time: +$d("#dsTime").value, words: $d("#dsWords").value.slice(0, 3000),
+               onlyCustom: $d("#dsOnly").checked };
+}
+["#dsRounds", "#dsTime", "#dsWords", "#dsOnly"].forEach(sel => $d(sel).addEventListener("change", () => {
+  readSettings(); if (localHost) { S.settings = { ...settings }; push(); }
+}));
 
 // ------------------------------------------------------------------ chat + guessing
 function sys(html, cls = "") { const d = document.createElement("div"); d.className = "msg sys " + cls; d.innerHTML = html; addMsg(d); }
