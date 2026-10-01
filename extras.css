@@ -193,3 +193,4 @@
 #quizForm .btn { display: block; margin: 10px auto 0; background: #ffe066; color: #2d2832; font-family: inherit; }
 .qmsg { min-height: 20px; margin-top: 8px; font-weight: 700; } .qmsg.ok { color: #9dff9d; } .qmsg.no { color: #ff8a80; }
 .qbox.shakeq { animation: shake .12s 4; }
+#gbForm button[disabled] { background: #9a93a3; cursor: not-allowed; }

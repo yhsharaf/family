@@ -256,12 +256,21 @@ $("#gbForm").onsubmit = async e => {
   const message = $("#gbMsg").value.trim().slice(0, 280), megaphone = $("#gbMega").checked, out = $("#gbOut");
   if (!message) { out.className = "msg err"; out.textContent = "Write a message first."; return; }
   if (BAD.test(message)) { out.className = "msg err"; out.textContent = "Keep it family friendly 🙂"; return; }
-  const lastPost = +store.get("family_gb_last") || 0;
-  if (Date.now() - lastPost < 60000) { out.className = "msg err"; out.textContent = "Slow down, one message a minute."; return; }
+  if ((+store.get("family_gb_next") || 0) > Date.now()) { out.className = "msg err"; out.textContent = "You can post once every 8 hours."; return; }
   if (!(await ready)) { out.className = "msg err"; out.textContent = "The guestbook isn't connected yet."; return; }
   out.className = "msg"; out.textContent = "";
   openQuiz({ title: "guestbook", post: { message, mob: myMob, megaphone } });  // Professor CrtlAltDel's quiz first
 };
+
+// one post per 8 hours: the Post button turns into a countdown (the database enforces the same rule)
+function gbTimer() {
+  const btn = $("#gbForm button[type=submit]"), left = (+store.get("family_gb_next") || 0) - Date.now();
+  if (left > 0) {
+    const h = Math.floor(left / 3600000), m = Math.floor(left / 60000) % 60, sec = Math.floor(left / 1000) % 60;
+    btn.disabled = true; btn.textContent = `⏳ Next post in ${h ? h + "h " : ""}${m}m ${h ? "" : sec + "s"}`;
+  } else { btn.disabled = false; btn.textContent = "✍️ Post"; }
+}
+gbTimer(); setInterval(gbTimer, 1000);
 
 // ---------- megaphone banner on every page: the latest shout from the last 5 minutes
 let shownShout = store.get("family_smega_hidden");
@@ -373,9 +382,10 @@ $("#quizForm").onsubmit = async ev => {
   const msg = $("#quizMsg");
   if (quizCard.post) {  // guestbook: the database checks the answer AND posts the note in one go
     const p = quizCard.post, out = $("#gbOut");
-    const { data: res } = await sb.rpc("post_guestbook", { qid: quizId, ans, message: p.message, mob: p.mob, megaphone: p.megaphone });
+    const { data: res } = await sb.rpc("post_guestbook", { qid: quizId, ans, message: p.message, mob: p.mob, megaphone: p.megaphone, device });
     quizBusy = false;
     const r = res && res.r;
+    if (res && res.until) { store.set("family_gb_next", Date.parse(res.until)); gbTimer(); }
     if (r === "wrong" || !r) {
       msg.className = "qmsg no"; msg.textContent = PROF_NO[Math.floor(Math.random() * PROF_NO.length)];
       blip(140, .3, .3); $("#quizBox").classList.remove("shakeq"); void $("#quizBox").offsetWidth; $("#quizBox").classList.add("shakeq");
@@ -384,7 +394,8 @@ $("#quizForm").onsubmit = async ev => {
     closeQuiz();
     const said = { ok: p.megaphone ? "📣 Shouted to the whole site!" : "Posted! Professor CrtlAltDel approves 🎓",
       bad: "Keep it family friendly 🙂", busy: "The guestbook is busy, try again in a minute.",
-      cooling: "📣 Someone just used the megaphone, try again in a few minutes (or untick it).", length: "Message is too long." };
+      cooling: "📣 Someone just used the megaphone, try again in a few minutes (or untick it).", length: "Message is too long.",
+      wait: "You can post once every 8 hours. See the timer on the button." };
     out.className = r === "ok" ? "msg ok" : "msg err"; out.textContent = said[r] || "Couldn't post, try again later.";
     if (r === "ok") { store.set("family_gb_last", Date.now()); $("#gbMsg").value = ""; $("#gbMega").checked = false;
       loadGuestbook(true); if (p.megaphone) checkMegaphone(); }
