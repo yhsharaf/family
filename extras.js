@@ -401,10 +401,12 @@ $("#quizForm").onsubmit = async ev => {
       loadGuestbook(true); if (p.megaphone) checkMegaphone(); }
     return;
   }
-  const { data } = await sb.rpc("answer_quiz", { qid: quizId, ans, f: quizCard.title });
+  const { data: res } = await sb.rpc("quiz_pass", { qid: quizId, ans, f: quizCard.title });
   quizBusy = false;
+  const data = res && res.r === "ok" ? res.value : null;
+  if (data != null) { bonkPass = { id: res.pass, left: res.left }; showPass(); }
   if (data != null && data >= 0) {
-    msg.className = "qmsg ok"; msg.textContent = PROF_OK[Math.floor(Math.random() * PROF_OK.length)];
+    msg.className = "qmsg ok"; msg.textContent = PROF_OK[Math.floor(Math.random() * PROF_OK.length)] + " +9 free bonks!";
     const c = quizCard; bonkCounts[c.title] = Number(data); showBonks();
     setTimeout(() => { closeQuiz(); bonkAnim(c); }, 650);
   } else {
@@ -415,9 +417,26 @@ $("#quizForm").onsubmit = async ev => {
 };
 $("#quizX").onclick = closeQuiz;
 $("#quiz").addEventListener("click", e => { if (e.target.id === "quiz") closeQuiz(); });
+// one solved quiz = 10 bonks: the first right away, then 9 free taps (the database counts them)
+let bonkPass = null;
+function showPass() {
+  let b = $("#bonkPass");
+  if (!b) { b = document.createElement("div"); b.id = "bonkPass"; b.className = "bonkpass"; document.body.appendChild(b); }
+  const n = bonkPass ? bonkPass.left : 0;
+  b.innerHTML = n > 0 ? `🔨 <b>${n}</b> free bonk${n === 1 ? "" : "s"} left` : "";
+  b.hidden = !n || !["#founders"].includes(location.hash);
+}
+addEventListener("hashchange", showPass);
+async function freeBonk(c) {
+  const pass = bonkPass; pass.left--; showPass(); bonkAnim(c);
+  const { data } = await sb.rpc("bonk_pass_use", { pass: pass.id, f: c.title });
+  if (data && data.r === "ok") { bonkCounts[c.title] = Number(data.value); pass.left = data.left; showBonks(); showPass(); }
+  else { bonkPass = null; showPass(); }
+}
 function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer bonks
   const c = e.target.closest(".card"); if (!c || !$("#quiz").hidden) return;
   if (looksLikeBot(e)) { caughtBot(c); return; }
+  if (bonkPass && bonkPass.left > 0) { freeBonk(c); return; }
   openQuiz(c);
 }
 $("#founderGrid").addEventListener("click", onBonk);

@@ -194,3 +194,7 @@
 .qmsg { min-height: 20px; margin-top: 8px; font-weight: 700; } .qmsg.ok { color: #9dff9d; } .qmsg.no { color: #ff8a80; }
 .qbox.shakeq { animation: shake .12s 4; }
 #gbForm button[disabled] { background: #9a93a3; cursor: not-allowed; }
+.bonkpass { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 60; background: #e0559a; color: #fff;
+  font-weight: 700; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 0 rgba(0,0,0,.2); animation: pop .2s; }
+.bonkpass[hidden], .bonkpass:empty { display: none; }
+.bonkpass { white-space: nowrap; }
