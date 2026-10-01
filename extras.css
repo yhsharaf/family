@@ -174,3 +174,4 @@
 .dungeon .poster h3 { font-size: 42px; }
 .dungeon .poster .face { height: 160px; }
 .dungeon .poster .who { font-size: 24px; }
+.ouch.bot { background: #c83c32; color: #fff; border-color: #6e1e14; font-weight: 700; font-size: 15px; z-index: 6; }

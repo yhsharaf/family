@@ -329,8 +329,36 @@ function stars(x, y) {
     document.body.appendChild(st); setTimeout(() => st.remove(), 700);
   }
 }
+// ---------- anti-autoclicker: too fast (>12/s), robot-steady rhythm, or fake (script) clicks don't count
+const clickTimes = []; let botStrikes = 0, botUntil = 0;
+const BOT_SAYS = ["Autoclick? 🤨", "Are You Sure? 🤖", "Ok Slow Down!!! 🛑"];
+function looksLikeBot(e) {
+  const now = performance.now();
+  if (!e.isTrusted) return true;
+  if (now < botUntil) return true;                              // cooling down after being caught
+  clickTimes.push(now); while (clickTimes.length > 12) clickTimes.shift();
+  const recent = clickTimes.filter(t => now - t < 1000).length;
+  let steady = false;
+  if (clickTimes.length >= 10) {                                // humans are never perfectly even
+    const gaps = clickTimes.slice(1).map((t, i) => t - clickTimes[i]);
+    const avg = gaps.reduce((a, b) => a + b) / gaps.length;
+    const sd = Math.sqrt(gaps.reduce((a, g) => a + (g - avg) ** 2, 0) / gaps.length);
+    steady = avg < 250 && sd < 6;
+  }
+  return recent > 12 || steady;
+}
+function caughtBot(c) {
+  const msg = BOT_SAYS[Math.min(botStrikes, BOT_SAYS.length - 1)];
+  botStrikes++; botUntil = performance.now() + 1500 * Math.min(botStrikes, 4); clickTimes.length = 0;
+  if (!c.querySelector(".ouch.bot")) {
+    const say = document.createElement("div"); say.className = "ouch bot"; say.textContent = msg;
+    c.appendChild(say); setTimeout(() => say.remove(), 1400);
+  }
+  setTimeout(() => { if (performance.now() > botUntil) botStrikes = Math.max(0, botStrikes - 1); }, 20000);
+}
 $("#founderGrid").addEventListener("click", e => {  // "click" = a real tap; scrolling over a card no longer bonks
   const c = e.target.closest(".card"); if (!c) return;
+  if (looksLikeBot(e)) { caughtBot(c); return; }
   squeak(.9 + Math.random() * .3); stars(e.clientX, e.clientY);
   c.classList.remove("bonked"); void c.offsetWidth; c.classList.add("bonked");
   const say = document.createElement("div"); say.className = "ouch"; say.textContent = OUCH[Math.floor(Math.random() * OUCH.length)];
