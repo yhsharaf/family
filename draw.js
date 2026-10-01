@@ -242,6 +242,7 @@ async function offerWords() {
 }
 let myWord = null;
 function render() {
+  $d("#drawGame").classList.toggle("inlobby", S.phase === "lobby" || S.phase === "end");
   const drawing = S.phase === "drawing", iDraw = S.drawer === myId && (drawing || S.phase === "choosing");
   $d("#drawTools").hidden = !(drawing && S.drawer === myId);
   const R = (S.settings || settings).rounds;
@@ -311,7 +312,8 @@ function readSettings() {
 
 // ------------------------------------------------------------------ chat + guessing
 function sys(html, cls = "") { const d = document.createElement("div"); d.className = "msg sys " + cls; d.innerHTML = html; addMsg(d); }
-function addMsg(d) { const log = $d("#drawLog"); log.appendChild(d); while (log.children.length > 150) log.firstChild.remove(); log.scrollTop = log.scrollHeight; }
+// newest message on top, older ones move down
+function addMsg(d) { const log = $d("#drawLog"); log.prepend(d); while (log.children.length > 150) log.lastChild.remove(); log.scrollTop = 0; }
 function canSeeSecret() { return S.drawer === myId || (S.guessed || []).includes(myId); }
 function onChat(m) {
   if (m.secret && !canSeeSecret()) return;  // after guessing, your chat is only for others who also know the word

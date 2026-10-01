@@ -215,3 +215,20 @@
   .sk-game { padding: 4px; border-radius: 12px; }
   #drawWord .ltr { width: 12px; height: 18px; font-size: 14px; }
 }
+/* chat: guess box on top, newest messages first */
+#drawChat { border-bottom: 1px solid var(--edge); }
+.dlog .msg:first-child { animation: pop .2s; }
+/* phones, before the game starts: show the waiting screen / room settings as a normal panel instead of squeezing it into the canvas */
+@media (max-width: 900px) {
+  .sk-game.inlobby { grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "top" "pl" "board" "chat"; }
+  .sk-game.inlobby .sk-board { aspect-ratio: auto; height: auto; width: 100%; max-height: none; overflow: visible; }
+  .sk-game.inlobby #drawCanvas { display: none; }
+  .sk-game.inlobby .sk-settings, .sk-game.inlobby .doverlay { position: static; inset: auto; border-radius: 12px; }
+  .sk-game.inlobby .doverlay { padding: 18px 12px; font-size: 17px; }
+  .sk-settings { gap: 8px; }
+  .sk-set { font-size: 14px; } .sk-set select { min-width: 110px; padding: 5px 8px; }
+  .sk-set textarea { min-height: 38px; font-size: 14px; }
+  .sk-settings .sk-play { font-size: 22px; padding: 8px; margin-top: 4px; }
+  .sk-chat { min-height: 120px; }
+}
+@media (max-width: 900px) { #draw.sk.playing .sk-h { display: none; } }

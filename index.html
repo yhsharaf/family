@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="draw.css?v=9">
+<link rel="stylesheet" href="draw.css?v=11">
 <link rel="stylesheet" href="extras.css?v=34">
 <style>
 :root {
@@ -323,9 +323,9 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
       </div>
     </div>
     <div class="sk-chat">
-      <div class="dlog" id="drawLog"></div>
       <form id="drawChat" action="#" autocomplete="off"><input id="drawMsg" maxlength="100" placeholder="Type your guess here..." autocomplete="off"
         autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send"><button type="submit" id="drawSend">Send</button></form>
+      <div class="dlog" id="drawLog"></div>
     </div>
     <div class="sk-tools" id="drawTools" hidden>
       <span class="cur" id="drawCur"></span>
@@ -617,7 +617,7 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="draw.js?v=7"></script>
+<script src="draw.js?v=8"></script>
 <script src="extras.js?v=34"></script>
 </body>
 </html>
