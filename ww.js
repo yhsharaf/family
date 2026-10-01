@@ -324,6 +324,9 @@ function sendChat() {
 $w("#wwChat").addEventListener("submit", e => { e.preventDefault(); sendChat(); });
 $w("#wwMsg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); sendChat(); } });
 
+// switching back from Discord etc.: catch up right away instead of waiting for the next poll
+document.addEventListener("visibilitychange", () => { if (!document.hidden && sess) { polling = false; poll(); } });
+
 // ------------------------------------------------------------------ clock + sounds
 setInterval(() => {
   if (!st || st.left == null) { $w("#wwClock").textContent = ""; return; }

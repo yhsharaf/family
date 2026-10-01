@@ -209,7 +209,7 @@ begin
     if gm.id is not null then update ww_games set status = 'over' where id = gm.id and status <> 'over'; end if;  -- abandoned
     insert into ww_games (room, host) values (rm, nm) returning * into gm;
   end if;
-  delete from ww_players where game_id = gm.id and seen_at < now() - interval '30 seconds';  -- left without saying bye
+  delete from ww_players where game_id = gm.id and seen_at < now() - interval '2 minutes';  -- left without saying bye
   select count(*) into n from ww_players where game_id = gm.id;
   if n >= 20 then return json_build_object('r', 'full'); end if;
   if lower(nm) = any (select lower(k) from unnest(gm.kicked) k) then return json_build_object('r', 'kicked'); end if;
@@ -234,7 +234,7 @@ begin
   select * into gm from ww_games where id = p_game;
   if gm.seen_at < now() - interval '4 seconds' then update ww_games set seen_at = now() where id = p_game; end if;
   if gm.status = 'lobby' then
-    delete from ww_players where game_id = p_game and seen_at < now() - interval '30 seconds';
+    delete from ww_players where game_id = p_game and seen_at < now() - interval '2 minutes';
     if not exists (select 1 from ww_players where game_id = p_game and name = gm.host) then
       update ww_games set host = (select name from ww_players where game_id = p_game order by joined_at limit 1) where id = p_game returning * into gm;
     end if;
@@ -270,7 +270,7 @@ begin
   select * into gm from ww_games where id = p_game for update;
   if me.name is null or gm.host <> me.name then return json_build_object('r', 'host'); end if;
   if gm.status <> 'lobby' then return json_build_object('r', 'started'); end if;
-  delete from ww_players where game_id = p_game and seen_at < now() - interval '30 seconds';
+  delete from ww_players where game_id = p_game and seen_at < now() - interval '2 minutes';
   select count(*) into n from ww_players where game_id = p_game;
   if n < 5 then return json_build_object('r', 'few', 'n', n); end if;
   w := case when n <= 6 then 1 when n <= 10 then 2 when n <= 15 then 3 else 4 end;
