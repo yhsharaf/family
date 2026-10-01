@@ -314,7 +314,7 @@ function stars(x, y) {
     document.body.appendChild(st); setTimeout(() => st.remove(), 700);
   }
 }
-$("#founderGrid").addEventListener("pointerdown", e => {
+$("#founderGrid").addEventListener("click", e => {  // "click" = a real tap; scrolling over a card no longer bonks
   const c = e.target.closest(".card"); if (!c) return;
   squeak(.9 + Math.random() * .3); stars(e.clientX, e.clientY);
   c.classList.remove("bonked"); void c.offsetWidth; c.classList.add("bonked");
