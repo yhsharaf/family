@@ -102,11 +102,19 @@ $d("#drawJoin").onclick = async () => {
   sb = sb || window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
   me = { name: p.name, sprite: p.sprite || null, guest: !!p.guest }; if (!p.guest) store.set("family_me", p.name);
   room = roomFromHash() || "public"; joinedAt = Date.now();
+  // at most 5 rooms at once (public + 4 private): check in with the database first
+  const { data: rr, error: re } = await sb.rpc("draw_room", { p_room: room });
+  const why = re ? (/slow down/.test(re.message) ? "Too many tries, wait a minute 🙂" : "Couldn't connect, try again.")
+    : { busy: "All private rooms are taken right now (max 5 games at once). Play in the public room, or try again in a few minutes!",
+        slow: "You've opened a lot of rooms. Wait a few minutes before making another one." }[rr && rr.r];
+  if (why) { $d("#drawJoinMsg").textContent = why; return; }
   connect();
 };
+let roomPing = null;  // keep checking in while inside, so the room stays counted as in use
 
 // ------------------------------------------------------------------ realtime
 function connect() {
+  clearInterval(roomPing); roomPing = setInterval(() => sb.rpc("draw_room", { p_room: room }), 30000);
   ch = sb.channel("draw:" + room, { config: { broadcast: { self: false }, presence: { key: myId } } });
   ch.on("presence", { event: "sync" }, () => {
     players = {};
@@ -137,6 +145,7 @@ function connect() {
   });
 }
 function leave() {
+  clearInterval(roomPing); roomPing = null;
   if (hostTimer) clearInterval(hostTimer); hostTimer = null; localHost = false;
   if (ch) { ch.untrack(); sb.removeChannel(ch); ch = null; }
   $d("#drawLobby").hidden = false; $d("#drawGame").hidden = true; $d("#draw").classList.remove("playing"); document.body.classList.remove("sk-playing"); S = { phase: "lobby" }; ops = []; redraw();
