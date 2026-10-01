@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="extras.css?v=29">
+<link rel="stylesheet" href="extras.css?v=30">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -87,6 +87,8 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .card.main { grid-column: span 2; border: 3px solid var(--gold); background: #fff8e4; }
 .card.main .pic { height: 190px; } .card.main .pic img { transform: scale(1.8); transform-origin: 50% 100%; }
 .card.grave img { opacity: .8; }
+.nopic { width: 84px; height: 100px; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 700; color: #b8ab96;
+         border: 3px dashed #d7cdbc; border-radius: 40px 40px 14px 14px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
 .toolbar input { flex: 1 1 220px; font: inherit; padding: 10px 14px; border-radius: 12px; border: 2px solid var(--edge); background: var(--card); }
 .chip { border: 2px solid var(--edge); background: var(--card); border-radius: 20px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
@@ -230,9 +232,12 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 
 <section id="founders">
   <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#c86e3c;--r:2deg">Founders</span></h2>
-  <div class="memhead"><p class="lead">The first members, from before the records began. Your cursor is a squeaky hammer 🔨, tap a Founder to bonk them!</p>
+  <div class="memhead"><p class="lead">The three who started it all. Your cursor is a squeaky hammer 🔨, tap anyone to bonk them!</p>
     <button class="btn" id="playWhack" type="button" style="background:#e0559a">🎮 Whack-a-Founder</button></div>
   <div class="grid" id="founderGrid"></div>
+  <h2 style="margin-top:34px"><span class="word" style="background:#6e9a4a">Core</span><span class="word" style="background:var(--gold);--r:2deg">Family</span></h2>
+  <p class="lead">The first members, from before the records began.</p>
+  <div class="grid" id="coreGrid"></div>
 </section>
 
 <section id="members">
@@ -308,7 +313,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
     <button class="x" id="arcX" aria-label="close">×</button>
     <div class="hud"><span>SCORE <b id="arcScore">0</b></span><span>TIME <b id="arcTime">30</b></span><span>BEST <b id="arcBest">0</b></span></div>
     <div class="holes" id="holes"></div>
-    <div class="arcrules">Founder <b>+1</b> · Traitor 💀 <b>+5</b> · Rain 👑 <b>−10</b> (never bonk the Main Founder!)</div>
+    <div class="arcrules">Bonk <b>+1</b> · Traitor 💀 <b>+5</b> · Rain 👑 <b>−10</b> (never bonk the Main Founder!)</div>
     <div class="arcmenu" id="arcMenu">
       <h3 id="arcTitle">WHACK-A-FOUNDER</h3>
       <div id="arcEnd"></div>
@@ -321,7 +326,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
-<script src="data.js?v=36"></script>
+<script src="data.js?v=37"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -344,13 +349,14 @@ addEventListener("hashchange", show);
 // ---------- home
 $("#letters").innerHTML = [..."FAMILY"].map((c, i) =>
   `<span style="background:var(${PAL[i]});--r:${rot(i + 2)};animation-delay:${i * .12}s">${c}</span>`).join("");
+const founders = D.founders.filter(f => f.founder).sort((a, b) => b.main - a.main), core = D.founders.filter(f => !f.founder);
 const TRAITOR_ORDER = ["VirusIvan", "Sensuous", "Dandadan888", "IOO7I"];  // order on the posters and the stew shelf
 const traitors = D.founders.filter(f => f.traitor)
   .sort((a, b) => (TRAITOR_ORDER.indexOf(a.name) + 1 || 99) - (TRAITOR_ORDER.indexOf(b.name) + 1 || 99));
 const newest = D.members[D.members.length - 1];
 const inFamily = D.members.filter(m => m.now === "Family").length;
 $("#stats").innerHTML = [
-  [D.founders.length, "Founders"], [D.members.length, "members on record"], [inFamily, "in Family right now"],
+  [founders.length, "Founders"], [core.length, "Core Family"], [D.members.length, "members on record"], [inFamily, "in Family right now"],
   [D.guilds.length, "sister guilds"], [D.memories.length, "memories saved"], [traitors.length, "traitors (cooked)"],
   [esc(newest.name), "newest member · " + fmt(newest.date)],
 ].map(([b, s]) => `<div class="stat"><b style="${String(b).length > 5 ? "font-size:24px;padding:8px 0" : ""}">${b}</b><span>${s}</span></div>`).join("");
@@ -365,14 +371,16 @@ const LYR = [["Intro", "Aquila night, the guild chat's glowing / \"gm\" from Rai
 $("#lyrics").innerHTML = LYR.map(([h, t]) => `<h4>${h}</h4><p>${t.split(" / ").join("<br>")}</p>`).join("");
 
 // ---------- founders
-$("#founderGrid").innerHTML = D.founders.map((f, i) => `
+const founderCard = (f, i) => `
   <div class="card ${f.main ? "main" : ""} ${f.grave ? "grave" : ""}" style="--r:${rot(i)}" title="${esc(f.name)}">
     ${f.grave ? '<span class="badge" title="grave">🪦</span>' : ""}
     ${f.traitor ? '<span class="badge"><img class="px" src="media/skull.png" style="width:24px" alt="traitor"></span>' : ""}
-    <div class="pic"><img class="px cut" src="${f.sprite}" alt="" loading="lazy"></div>
+    <div class="pic">${f.sprite ? `<img class="px cut" src="${f.sprite}" alt="" loading="lazy">` : '<span class="nopic">?</span>'}</div>
     <div class="nm" style="color:var(--gold)">${esc(f.name)}</div>
-    <div class="sub">${f.main ? "👑 Main Founder" : f.traitor ? "Founder · traitor" : f.grave ? "Founder · grave" : "Founder"}</div>
-  </div>`).join("");
+    <div class="sub">${f.main ? "👑 Main Founder" : f.founder ? "Founder" : f.traitor ? "Core Family · traitor" : f.grave ? "Core Family · grave" : "Core Family"}</div>
+  </div>`;
+$("#founderGrid").innerHTML = founders.map(founderCard).join("");
+$("#coreGrid").innerHTML = core.map((f, i) => founderCard(f, i + 3)).join("");
 
 // ---------- members
 let filter = "all";
@@ -439,8 +447,8 @@ $("#tree").innerHTML = `<div style="position:relative"><div class="trunk"></div>
   }).join("") + `</div>
   <div class="ground"></div>
   <div class="roots"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${rootPaths}</svg>
-    <h3>🌱 The Roots</h3><p>The ${D.founders.length} Founders, from before the records began. Everything above grew from them.</p>
-    <div class="leaves">${D.founders.map(f => leaf(f, f.main ? "main" : "")).join("")}</div></div>`;
+    <h3>🌱 The Roots</h3><p>The ${founders.length} Founders and the ${core.length} Core Family, from before the records began. Everything above grew from them.</p>
+    <div class="leaves">${[...founders, ...core].map(f => leaf(f, f.main ? "main" : "")).join("")}</div></div>`;
 // leaves pop in as you scroll down to them
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
   { rootMargin: "0px 0px -40px 0px" });
@@ -526,6 +534,6 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="extras.js?v=29"></script>
+<script src="extras.js?v=30"></script>
 </body>
 </html>

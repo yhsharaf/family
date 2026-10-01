@@ -300,7 +300,7 @@ const OUCH = ["ow!", "why me 😭", "gm to you too", "BONK", "*squeak*", "rude!"
 const bonkPending = {}, bonkCounts = {};
 function showBonks() {
   let top = null, tv = 0;
-  document.querySelectorAll("#founderGrid .card").forEach(c => {
+  document.querySelectorAll("#founderGrid .card, #coreGrid .card").forEach(c => {
     const n = bonkCounts[c.title] || 0;
     let b = c.querySelector(".bonks"); if (!b) { b = document.createElement("span"); b.className = "bonks"; c.appendChild(b); }
     b.textContent = n ? `🔨 ${n.toLocaleString()}` : ""; c.classList.remove("mostbonked");
@@ -356,7 +356,7 @@ function caughtBot(c) {
   }
   setTimeout(() => { if (performance.now() > botUntil) botStrikes = Math.max(0, botStrikes - 1); }, 20000);
 }
-$("#founderGrid").addEventListener("click", e => {  // "click" = a real tap; scrolling over a card no longer bonks
+function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer bonks
   const c = e.target.closest(".card"); if (!c) return;
   if (looksLikeBot(e)) { caughtBot(c); return; }
   squeak(.9 + Math.random() * .3); stars(e.clientX, e.clientY);
@@ -364,14 +364,16 @@ $("#founderGrid").addEventListener("click", e => {  // "click" = a real tap; scr
   const say = document.createElement("div"); say.className = "ouch"; say.textContent = OUCH[Math.floor(Math.random() * OUCH.length)];
   c.appendChild(say); setTimeout(() => say.remove(), 900);
   const name = c.title; bonkPending[name] = (bonkPending[name] || 0) + 1; bonkCounts[name] = (bonkCounts[name] || 0) + 1; showBonks();
-});
+}
+$("#founderGrid").addEventListener("click", onBonk);
+$("#coreGrid").addEventListener("click", onBonk);
 
 // ---------- Whack-a-Founder
 const arc = $("#arcade"), holes = $("#holes");
 holes.innerHTML = Array.from({ length: 9 }, (_, i) => `<div class="hole" data-i="${i}"><div class="mole"></div><div class="dirt"></div></div>`).join("");
 let game = null, best = +store.get("family_whack_best") || 0;
 $("#arcBest").textContent = best;
-const regular = D.founders.filter(f => !f.main && !f.traitor), rain = D.founders.find(f => f.main);
+const regular = D.founders.filter(f => !f.main && !f.traitor && f.sprite), rain = D.founders.find(f => f.main);
 function openArcade() { arc.hidden = false; document.body.style.overflow = "hidden"; menu(); loadBoard(); }
 function closeArcade() { stopGame(); arc.hidden = true; document.body.style.overflow = ""; }
 $("#playWhack").onclick = openArcade; $("#arcX").onclick = closeArcade;
