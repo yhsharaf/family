@@ -192,34 +192,83 @@ $("#shakeBtn").onclick = async () => {
   } catch (e) {}
 };
 
-// ======================================================== 7. guestbook
+// ======================================================== 7. guestbook: monster avatars, Fame, megaphone
+const MOBS = [["orange_mushroom", "Orange Mushroom"], ["green_mushroom", "Green Mushroom"], ["blue_mushroom", "Blue Mushroom"],
+  ["horny_mushroom", "Horny Mushroom"], ["zombie_mushroom", "Zombie Mushroom"], ["spotty_mushroom", "Spotty Mushroom"],
+  ["slime", "Slime"], ["king_slime", "King Slime"], ["pig", "Pig"], ["ribbon_pig", "Ribbon Pig"], ["fire_boar", "Fire Boar"],
+  ["snail", "Snail"], ["blue_snail", "Blue Snail"], ["red_snail", "Red Snail"], ["stump", "Stump"], ["lupin", "Lupin"],
+  ["jr_balrog", "Jr. Balrog"]];
+const MOBNAME = Object.fromEntries(MOBS);
+const mobImg = k => `media/mobs/${MOBNAME[k] ? k : "orange_mushroom"}.png`;
+let myMob = MOBNAME[store.get("family_mob")] ? store.get("family_mob") : MOBS[Math.floor(Math.random() * MOBS.length)][0];
+$("#mobPick").innerHTML = MOBS.map(([k, n]) => `<button type="button" class="mob" data-k="${k}" title="${n}"><img src="${mobImg(k)}" alt="${n}"></button>`).join("");
+function pickMob(k) {
+  myMob = k; store.set("family_mob", k); $("#mobName").textContent = MOBNAME[k];
+  document.querySelectorAll("#mobPick .mob").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+}
+$("#mobPick").onclick = e => { const b = e.target.closest(".mob"); if (b) { pickMob(b.dataset.k); blip(500 + Math.random() * 300, .08, .2); } };
+pickMob(myMob);
+
+let fameMine = {};
+try { fameMine = JSON.parse(store.get("family_fame") || "{}"); } catch (e) {}
 let gbLoaded = 0;
 async function loadGuestbook(force) {
   if (!force && Date.now() - gbLoaded < 20000) return; gbLoaded = Date.now();
   if (!(await ready)) { $("#gbList").innerHTML = ""; $("#gbSoon").hidden = false; return; }
   $("#gbSoon").hidden = true;
-  const { data, error } = await sb.from("guestbook").select("id,name,message,created_at").order("created_at", { ascending: false }).limit(150);
+  const { data, error } = await sb.from("guestbook_board").select("id,message,created_at,mob,megaphone,fame")
+    .order("fame", { ascending: false }).order("created_at", { ascending: false }).limit(150);
   if (error) { $("#gbList").innerHTML = `<p class="msg err">Couldn't load the guestbook.</p>`; return; }
-  $("#gbList").innerHTML = (data || []).map((g, i) => { const p = byName[g.name.toLowerCase()];
-    return `<div class="note-card" style="--r:${rot(i)}">${p && p.sprite ? `<img src="${p.sprite}" alt="">` : ""}<b>${esc(g.name)}</b><p>${esc(g.message)}</p>
-      <time>${new Date(g.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div>`; }).join("")
-    || '<p class="lead">No messages yet. Be the first!</p>';
+  $("#gbList").innerHTML = (data || []).filter(g => g.fame > -8).map((g, i) => {
+    const mine = fameMine[g.id];
+    return `<div class="note-card ${g.fame <= -3 ? "faded" : ""} ${g.megaphone ? "shout" : ""}" style="--r:${rot(i)}" data-id="${g.id}">
+      <img src="${mobImg(g.mob)}" alt=""><b>a mysterious ${esc(MOBNAME[g.mob] || "monster")}${g.megaphone ? " 📣" : ""}</b><p>${esc(g.message)}</p>
+      <div class="foot"><time>${new Date(g.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</time>
+        <span class="fame"><button class="${mine === -1 ? "on" : ""}" data-d="-1" title="-Fame">⬇️</button><b>${g.fame > 0 ? "+" : ""}${g.fame}</b><button class="${mine === 1 ? "on" : ""}" data-d="1" title="+Fame">⬆️</button></span></div></div>`;
+  }).join("") || '<p class="lead">No messages yet. Be the first monster!</p>';
 }
+$("#gbList").addEventListener("click", async e => {
+  const b = e.target.closest(".fame button"); if (!b) return;
+  const card = b.closest(".note-card"), id = +card.dataset.id, d = +b.dataset.d;
+  if (fameMine[id]) { $("#gbOut").className = "msg err"; $("#gbOut").textContent = "You already famed that one."; return; }
+  fameMine[id] = d; store.set("family_fame", JSON.stringify(fameMine));
+  const v = card.querySelector(".fame b"); const n = parseInt(v.textContent) + d; v.textContent = (n > 0 ? "+" : "") + n; b.classList.add("on");
+  blip(d > 0 ? 880 : 200, .12, .25);
+  if (await ready) { await sb.from("guestbook_fame").insert({ note_id: id, device, delta: d }); }
+});
 $("#gbForm").onsubmit = async e => {
   e.preventDefault();
-  const name = $("#gbName").value.trim().slice(0, 40), message = $("#gbMsg").value.trim().slice(0, 280), out = $("#gbOut");
-  if (!name || !message) { out.className = "msg err"; out.textContent = "Write your name and a message."; return; }
-  if (BAD.test(name + " " + message)) { out.className = "msg err"; out.textContent = "Keep it family friendly 🙂"; return; }
+  const message = $("#gbMsg").value.trim().slice(0, 280), megaphone = $("#gbMega").checked, out = $("#gbOut");
+  if (!message) { out.className = "msg err"; out.textContent = "Write a message first."; return; }
+  if (BAD.test(message)) { out.className = "msg err"; out.textContent = "Keep it family friendly 🙂"; return; }
   const lastPost = +store.get("family_gb_last") || 0;
   if (Date.now() - lastPost < 60000) { out.className = "msg err"; out.textContent = "Slow down, one message a minute."; return; }
   if (!(await ready)) { out.className = "msg err"; out.textContent = "The guestbook isn't connected yet."; return; }
-  const { error } = await sb.from("guestbook").insert({ name, message });
-  if (error) { out.className = "msg err"; out.textContent = "Couldn't post, try again later."; return; }
-  store.set("family_gb_last", Date.now()); store.set("family_me", name);
-  $("#gbMsg").value = ""; out.className = "msg ok"; out.textContent = "Posted! (If messages need approval, it shows once an admin approves it.)";
-  loadGuestbook(true);
+  const { error } = await sb.from("guestbook").insert({ name: MOBNAME[myMob], message, mob: myMob, megaphone });
+  if (error) {
+    out.className = "msg err";
+    out.textContent = /cooling/.test(error.message) ? "📣 Someone just used the megaphone, try again in a few minutes (or untick it)." : "Couldn't post, try again later.";
+    return;
+  }
+  store.set("family_gb_last", Date.now());
+  $("#gbMsg").value = ""; $("#gbMega").checked = false; out.className = "msg ok"; out.textContent = megaphone ? "📣 Shouted to the whole site!" : "Posted!";
+  loadGuestbook(true); if (megaphone) checkMegaphone();
 };
-$("#gbName").value = store.get("family_me") || "";
+
+// ---------- megaphone banner on every page: the latest shout from the last 5 minutes
+let shownShout = store.get("family_smega_hidden");
+async function checkMegaphone() {
+  if (!(await ready)) return;
+  const since = new Date(Date.now() - 5 * 60000).toISOString();
+  const { data } = await sb.from("guestbook_board").select("id,message,mob").eq("megaphone", true).gt("created_at", since)
+    .order("created_at", { ascending: false }).limit(1);
+  const m = (data || [])[0];
+  if (!m || String(m.id) === shownShout) { $("#smega").hidden = true; return; }
+  $("#smegaText").innerHTML = `<img src="${mobImg(m.mob)}" alt=""> <b>${esc(MOBNAME[m.mob] || "a monster")}</b>: ${esc(m.message)}`;
+  $("#smega").dataset.id = m.id; $("#smega").hidden = false;
+}
+$("#smegaX").onclick = () => { shownShout = $("#smega").dataset.id; store.set("family_smega_hidden", shownShout); $("#smega").hidden = true; };
+checkMegaphone(); setInterval(checkMegaphone, 30000);
 
 // ======================================================== 9. votes + 10. uploads on the Memories page
 let voted = {};  // photo -> "love" | "hate" (this device's reaction)

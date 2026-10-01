@@ -81,3 +81,35 @@
 .addmem { background: var(--purple); font-size: 16px; padding: 11px 18px; }
 .upload.flash .gb { animation: flash 1.2s 2; }
 @keyframes flash { 50% { box-shadow: 0 0 0 4px var(--purple), 4px 6px 0 rgba(60,45,30,.12); } }
+
+/* ---------- guestbook v2 */
+.moblabel { font-size: 15px; }
+.mobs { display: flex; flex-wrap: wrap; gap: 6px; }
+.mob { width: 58px; height: 58px; border: 2px solid var(--edge); background: #fff; border-radius: 12px; cursor: pointer; padding: 4px;
+       display: flex; align-items: flex-end; justify-content: center; touch-action: manipulation; }
+.mob img { max-width: 48px; max-height: 48px; image-rendering: pixelated; }
+.mob:hover img { transform: translateY(-3px); }
+.mob.on { border-color: var(--purple); background: #f4e8f8; box-shadow: 0 0 0 2px var(--purple); }
+.mob.on img { animation: idle 1.2s ease-in-out infinite; }
+@keyframes idle { 50% { transform: translateY(-3px); } }
+.mega { font-size: 14px; display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.note-card { padding-left: 74px; min-height: 100px; }
+.note-card img { max-width: 60px; max-height: 64px; left: 7px; bottom: auto; top: 14px; }
+.note-card .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.fame { display: inline-flex; align-items: center; gap: 4px; }
+.fame b { min-width: 26px; text-align: center; display: inline-block; }
+.fame button { border: 2px solid transparent; background: #fff; border-radius: 10px; padding: 1px 5px; cursor: pointer; font-size: 14px; touch-action: manipulation; }
+.fame button.on { border-color: var(--ink); }
+.note-card.faded { opacity: .38; filter: grayscale(.6); }
+.note-card.shout { background: #ffe6a8; box-shadow: 4px 6px 0 rgba(60,45,30,.15), 0 0 0 3px #f0a020 inset; }
+.smega { position: sticky; top: 56px; z-index: 19; display: flex; align-items: center; gap: 8px; margin: 0 auto; max-width: 1180px;
+         background: linear-gradient(90deg, #f0a020, #f5c84a); color: #3a2410; padding: 6px 10px; border-radius: 0 0 14px 14px;
+         box-shadow: 0 4px 0 rgba(60,45,30,.2); overflow: hidden; }
+.smega[hidden] { display: none; }
+.smega .tag { background: #fff; padding: 2px 8px; }
+.smega .track { flex: 1; overflow: hidden; white-space: nowrap; }
+.smega .track span { display: inline-block; padding-left: 100%; animation: marquee 14s linear infinite; }
+.smega .track img { height: 24px; vertical-align: middle; image-rendering: pixelated; }
+.smega button { border: 0; background: none; font-size: 20px; cursor: pointer; color: #3a2410; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+@media (max-width: 700px) { .smega { top: 98px; } .mob { width: 50px; height: 50px; } .mob img { max-width: 42px; max-height: 42px; } }
