@@ -312,6 +312,7 @@ function markTools() {
   document.querySelectorAll("#drawColors .col").forEach(b => b.classList.toggle("on", b.dataset.c === color && tool !== "eraser"));
   document.querySelectorAll("#drawSizes .sz").forEach(b => b.classList.toggle("on", +b.dataset.s === size));
   document.querySelectorAll("#drawTools [data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === tool));
+  $d("#drawCur").style.background = tool === "eraser" ? "repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0/12px 12px" : color;
 }
 markTools();
 const myTurn = () => ch && S.phase === "drawing" && S.drawer === myId;

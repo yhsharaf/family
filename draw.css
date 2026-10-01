@@ -67,3 +67,10 @@
 .dsettings textarea { min-height: 54px; }
 .dp .kick { position: absolute; right: 6px; bottom: 4px; border: 0; background: #f3d6d3; color: #a0281e; border-radius: 6px;
             font-size: 11px; padding: 1px 5px; cursor: pointer; }
+.dsettings[hidden], .dtools[hidden] { display: none !important; }
+/* clearer tool bar: labelled groups */
+.dtools { gap: 14px; }
+.dtools .grp { display: flex; flex-direction: column; gap: 3px; }
+.dtools .grp > small { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.dtools .row2 { display: flex; gap: 4px; }
+.dtools .cur { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #ccc; }

@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="draw.css?v=3">
+<link rel="stylesheet" href="draw.css?v=4">
 <link rel="stylesheet" href="extras.css?v=34">
 <style>
 :root {
@@ -310,10 +310,13 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
         <form id="drawChat"><input id="drawMsg" maxlength="100" placeholder="Type your guess here…" autocomplete="off"></form></div>
     </div>
     <div class="dtools" id="drawTools" hidden>
-      <div class="cols" id="drawColors"></div><div class="sizes" id="drawSizes"></div>
-      <button class="btn tl" data-tool="brush" title="brush">🖌️</button><button class="btn tl" data-tool="fill" title="fill">🪣</button>
-      <button class="btn tl" data-tool="eraser" title="eraser">🧽</button><button class="btn tl" id="drawUndo" title="undo">↶</button>
-      <button class="btn tl" id="drawClear" title="clear">🗑️</button>
+      <div class="grp"><small>Color</small><div class="row2"><span class="cur" id="drawCur"></span><div class="cols" id="drawColors"></div></div></div>
+      <div class="grp"><small>Size</small><div class="sizes" id="drawSizes"></div></div>
+      <div class="grp"><small>Tool</small><div class="row2">
+        <button class="btn tl" data-tool="brush" title="Brush">🖌️</button><button class="btn tl" data-tool="fill" title="Fill bucket">🪣</button>
+        <button class="btn tl" data-tool="eraser" title="Eraser">🧽</button></div></div>
+      <div class="grp"><small>Edit</small><div class="row2">
+        <button class="btn tl" id="drawUndo" title="Undo last line">↶</button><button class="btn tl" id="drawClear" title="Clear everything">🗑️</button></div></div>
     </div>
   </div>
   <h2 style="margin-top:30px"><span class="word" style="background:var(--gold)">Artist</span><span class="word" style="background:#5a64a0;--r:2deg">Hall of Fame</span></h2>
@@ -593,7 +596,7 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="draw.js?v=2"></script>
+<script src="draw.js?v=3"></script>
 <script src="extras.js?v=34"></script>
 </body>
 </html>
