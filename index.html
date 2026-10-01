@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="draw.css?v=11">
 <link rel="stylesheet" href="ww.css?v=1">
-<link rel="stylesheet" href="extras.css?v=39">
+<link rel="stylesheet" href="extras.css?v=42">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -448,7 +448,13 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <div class="cabinet">
     <button class="x" id="arcX" aria-label="close">×</button>
     <div class="hud"><span>SCORE <b id="arcScore">0</b></span><span>TIME <b id="arcTime">30</b></span><span>BEST <b id="arcBest">0</b></span></div>
-    <div class="holes" id="holes"></div>
+    <div class="tbar"><i id="arcBar"></i></div>
+    <div class="field" id="field">
+      <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+      <div class="holes" id="holes"></div>
+      <div class="combo" id="arcCombo"></div>
+      <div class="count" id="arcCount"></div>
+    </div>
     <div class="arcrules">Bonk <b>+1</b> · Traitor 💀 <b>+5</b> · Rain 👑 <b>−10</b> (never bonk the Main Founder!)</div>
     <div class="arcmenu" id="arcMenu">
       <h3 id="arcTitle">WHACK-A-FOUNDER</h3>
@@ -688,6 +694,6 @@ show();
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=10"></script>
 <script src="ww.js?v=4"></script>
-<script src="extras.js?v=39"></script>
+<script src="extras.js?v=40"></script>
 </body>
 </html>

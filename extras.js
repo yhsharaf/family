@@ -473,7 +473,15 @@ $("#earlyGrid").addEventListener("click", onBonk);
 
 // ---------- Whack-a-Founder
 const arc = $("#arcade"), holes = $("#holes");
-holes.innerHTML = Array.from({ length: 9 }, (_, i) => `<div class="hole" data-i="${i}"><div class="mole"></div><div class="dirt"></div></div>`).join("");
+holes.innerHTML = Array.from({ length: 9 }, (_, i) =>
+  `<div class="hole" data-i="${i}"><div class="back"></div><div class="pit"><div class="mole"></div></div><div class="front"></div></div>`).join("");
+const HAMMER = `<svg viewBox="0 0 56 56" width="64" height="64"><rect x="24" y="20" width="7" height="34" rx="3" fill="#f6d36b" stroke="#5a3a1e" stroke-width="2"/>
+  <rect x="6" y="4" width="40" height="22" rx="9" fill="#ff7eb6" stroke="#5a3a1e" stroke-width="2.5"/><rect x="10" y="8" width="10" height="5" rx="2" fill="#fff" opacity=".6"/></svg>`;
+function fx(cls, html, x, y, ms) {  // a short-lived effect at a point inside the field
+  const f = $("#field"), r = f.getBoundingClientRect(), d = document.createElement("div");
+  d.className = cls; d.innerHTML = html; d.style.left = (x - r.left) + "px"; d.style.top = (y - r.top) + "px";
+  f.appendChild(d); setTimeout(() => d.remove(), ms);
+}
 let game = null, best = +store.get("family_whack_best") || 0;
 $("#arcBest").textContent = best;
 const regular = D.founders.filter(f => !f.main && !f.traitor && f.sprite), rain = D.founders.find(f => f.main);
@@ -486,7 +494,8 @@ async function loadBoard() {
   const { data } = await sb.from("arcade_scores").select("initials,score").order("score", { ascending: false }).order("created_at").limit(10);
   $("#arcBoard").innerHTML = (data || []).map(r => `<li><span>${esc(r.initials)}</span><b>${r.score}</b></li>`).join("") || "<li>no scores yet, be the first!</li>";
 }
-function stopGame() { if (!game) return; clearInterval(game.tick); clearTimeout(game.spawn); holes.querySelectorAll(".hole").forEach(h => h.classList.remove("up")); game = null; }
+function stopGame() { if (!game) return; clearInterval(game.tick); clearTimeout(game.spawn); holes.querySelectorAll(".hole").forEach(h => h.classList.remove("up")); game = null;
+  $("#arcCount").textContent = ""; $("#arcCombo").textContent = ""; }
 function popOne() {
   if (!game) return;
   const free = [...holes.querySelectorAll(".hole:not(.up)")]; if (!free.length) { game.spawn = setTimeout(popOne, 200); return; }
@@ -494,7 +503,7 @@ function popOne() {
   const who = r < .12 ? rain : r < .27 ? traitors[Math.floor(Math.random() * traitors.length)] : regular[Math.floor(Math.random() * regular.length)];
   const kind = who === rain ? "rain" : who.traitor ? "traitor" : "founder";
   const m = h.querySelector(".mole");
-  m.innerHTML = `<img src="${who.sprite}" alt="">${kind === "traitor" ? '<span class="mk">💀</span>' : kind === "rain" ? '<span class="mk">👑</span>' : ""}`;
+  m.innerHTML = `<img src="${who.sprite}" alt="">${kind === "traitor" ? '<span class="mk">💀</span>' : kind === "rain" ? '<span class="mk">👑</span>' : ""}<span class="dizzy">💫</span>`;
   h.dataset.kind = kind; h.classList.remove("hit"); h.classList.add("up");
   const left = Math.max(0, game.end - Date.now()), stay = 550 + left / 30000 * 550;  // faster near the end
   const id = Math.random(); h.dataset.id = id;
@@ -502,24 +511,48 @@ function popOne() {
   game.spawn = setTimeout(popOne, 250 + left / 30000 * 400);
 }
 holes.addEventListener("pointerdown", e => {
-  const h = e.target.closest(".hole"); if (!game || !h || !h.classList.contains("up") || h.classList.contains("hit")) return;
+  if (!game || !game.live) return;
+  fx("hammer", HAMMER, e.clientX, e.clientY, 260);   // the hammer swings wherever you tap
+  const h = e.target.closest(".hole");
+  if (!h || !h.classList.contains("up") || h.classList.contains("hit")) {   // whiff
+    game.combo = 0; showCombo(); fx("miss", "miss", e.clientX, e.clientY, 600); return;
+  }
   h.classList.add("hit"); h.dataset.id = "";
   const pts = { founder: 1, traitor: 5, rain: -10 }[h.dataset.kind];
   game.score = Math.max(0, game.score + pts); $("#arcScore").textContent = game.score;
-  if (pts < 0) { blip(140, .35, .35); if (navigator.vibrate) navigator.vibrate(200); } else squeak(pts > 1 ? .7 : 1);
-  const f = document.createElement("div"); f.className = "pts " + (pts < 0 ? "neg" : ""); f.textContent = (pts > 0 ? "+" : "") + pts;
-  h.appendChild(f); setTimeout(() => f.remove(), 700);
-  setTimeout(() => h.classList.remove("up"), 320);  // short black flash, then sink back down
+  game.combo = pts < 0 ? 0 : game.combo + 1; showCombo();
+  if (pts < 0) {
+    blip(140, .35, .35); if (navigator.vibrate) navigator.vibrate(200);
+    $("#field").classList.remove("quake"); void $("#field").offsetWidth; $("#field").classList.add("quake");
+  } else squeak(pts > 1 ? .7 : 1);
+  const r = h.getBoundingClientRect(), cx = r.left + r.width / 2;
+  fx("bonk", pts < 0 ? "OUCH!" : "BONK!", cx, r.top + r.height * .35, 450);
+  fx("dmg " + (pts < 0 ? "neg" : pts > 1 ? "crit" : ""), (pts > 1 ? "<small>CRITICAL</small>" : "") + (pts > 0 ? "+" : "") + pts, cx, r.top + r.height * .1, 900);
+  setTimeout(() => h.classList.remove("up"), 380);  // short black flash with dizzy stars, then sink back down
 });
+function showCombo() {
+  const c = $("#arcCombo");
+  if (game.combo >= 3) { c.textContent = `COMBO ×${game.combo}`; c.classList.remove("go"); void c.offsetWidth; c.classList.add("go"); }
+  else c.textContent = "";
+}
 $("#arcStart").onclick = () => {
   stopGame(); $("#arcMenu").hidden = true;
-  game = { score: 0, end: Date.now() + 30000 }; $("#arcScore").textContent = 0; $("#arcTime").textContent = 30;
-  game.tick = setInterval(() => {
-    const left = Math.ceil((game.end - Date.now()) / 1000); $("#arcTime").textContent = Math.max(0, left);
-    if (left <= 0) finish();
-  }, 200);
-  popOne();
+  game = { score: 0, combo: 0, live: false }; $("#arcScore").textContent = 0; $("#arcTime").textContent = 30; setBar(1); $("#arcCombo").textContent = "";
+  const g = game, cd = $("#arcCount"), steps = ["3", "2", "1", "GO!"];
+  steps.forEach((t, i) => setTimeout(() => {   // 3-2-1-GO! countdown before the moles come up
+    if (game !== g) return;
+    cd.textContent = t; cd.classList.remove("go"); void cd.offsetWidth; cd.classList.add("go"); blip(t === "GO!" ? 880 : 520, .12, .2);
+    if (t !== "GO!") return;
+    setTimeout(() => { if (game === g) cd.textContent = ""; }, 500);
+    g.live = true; g.end = Date.now() + 30000;
+    g.tick = setInterval(() => {
+      const ms = g.end - Date.now(), left = Math.ceil(ms / 1000); $("#arcTime").textContent = Math.max(0, left); setBar(ms / 30000);
+      if (left <= 0) finish();
+    }, 100);
+    popOne();
+  }, i * 650));
 };
+function setBar(f) { const b = $("#arcBar"); b.style.width = Math.max(0, f) * 100 + "%"; b.classList.toggle("low", f < 1 / 6); }
 function finish() {
   const score = game.score; stopGame();
   const newBest = score > best; if (newBest) { best = score; store.set("family_whack_best", best); $("#arcBest").textContent = best; }
