@@ -160,7 +160,8 @@ function hostStart() {
   if (present().length < 2) { sys("Need at least 2 players to start."); return; }
   readSettings();
   S = { phase: "turn", round: 1, turn: -1, order: present().sort((a, b) => players[a].joined - players[b].joined),
-        scores: {}, names: {}, guessed: [], kicked: S.kicked || [], settings: { ...settings } };
+        scores: {}, names: {}, guessed: [], kicked: S.kicked || [], settings: { ...settings },
+        game: Math.random().toString(36).slice(2, 8) };  // unique per game, so turns from different games never clash
   for (const id of S.order) S.names[id] = players[id].name;
   nextTurn();
 }
@@ -223,17 +224,20 @@ function adopt(s, mine) {
   }
   pickHost(); render();
 }
+let picking = false, offeredAt = 0;
 async function offerWords() {
-  const key = S.round + ":" + S.turn; if (choiceShown === key) return; choiceShown = key;
+  const key = S.game + ":" + S.round + ":" + S.turn; if (choiceShown === key) return; choiceShown = key; offeredAt = Date.now();
   const st = S.settings || settings;
   const custom = st.words.split(/[,\n]/).map(w => w.trim().toLowerCase()).filter(w => /^[a-z0-9 ]{2,30}$/.test(w));
   const { data, error } = await sb.rpc("draw_new_round", { room, drawer: me.name, dur: st.time, custom, only_custom: st.onlyCustom });
-  if (error || !data) return;
+  if (error || !data) { choiceShown = null; setTimeout(() => { if (S.phase === "choosing" && S.drawer === myId) offerWords(); }, 1500); return; }
   const pick = async w => {
+    if (picking) return; picking = true;
     $d("#drawChoose").innerHTML = "";
     const r = await sb.rpc("draw_pick", { rid: data.id, w });
     if (r.data) { myWord = w; send("picked", { drawer: myId, roundId: data.id, mask: r.data.mask, ends_at: r.data.ends_at });
       if (localHost) hostPicked({ drawer: myId, roundId: data.id, mask: r.data.mask, ends_at: r.data.ends_at }); }
+    picking = false;
   };
   $d("#drawChoose").innerHTML = `<div class="dc-title">Choose a word</div>` +
     data.choices.map(w => `<button class="btn" data-w="${esc(w)}">${esc(w)}</button>`).join("");
@@ -286,6 +290,10 @@ function renderPlayers() {
   }).join("");
   $d("#drawStart").hidden = !(localHost && (S.phase === "lobby" || S.phase === "end"));
 }
+setInterval(() => {  // safety net: my turn to choose but no words on screen -> show them again
+  if (!ch || S.phase !== "choosing" || S.drawer !== myId || picking) return;
+  if (!$d("#drawChoose").querySelector("button") && Date.now() - offeredAt > 3000) { choiceShown = null; offerWords(); }
+}, 1000);
 setInterval(() => {
   if (!ch) return;
   const left = S.until ? Math.max(0, Math.ceil((S.until - Date.now()) / 1000)) : "";
