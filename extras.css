@@ -76,3 +76,8 @@
 .upload .gb input[type=file] { padding: 8px; }
 .msg { font-size: 14px; } .msg.ok { color: var(--green); } .msg.err { color: var(--red); }
 .counter small { display: block; font-size: 14px; color: #d8c8b8; margin-top: 4px; }
+.memhead { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.memhead .lead { margin: 0; flex: 1 1 260px; }
+.addmem { background: var(--purple); font-size: 16px; padding: 11px 18px; }
+.upload.flash .gb { animation: flash 1.2s 2; }
+@keyframes flash { 50% { box-shadow: 0 0 0 4px var(--purple), 4px 6px 0 rgba(60,45,30,.12); } }

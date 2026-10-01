@@ -285,7 +285,12 @@ async function compress(file) {  // shrink to max 1600px and re-encode as WebP (
   if (!blob || blob.type !== "image/webp") blob = await new Promise(r => c.toBlob(r, "image/jpeg", .85));
   return blob;
 }
-if (CFG.uploads === false) $("#uploadBox").hidden = true;
+if (CFG.uploads === false) { $("#uploadBox").hidden = true; $("#addMemBtn").hidden = true; }
+$("#addMemBtn").onclick = () => {  // jump to the form at the bottom and highlight it
+  const box = $("#uploadBox"); box.scrollIntoView({ behavior: "smooth", block: "center" });
+  box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash");
+  setTimeout(() => $("#upTitle").focus({ preventScroll: true }), 600);
+};
 $("#upForm").onsubmit = async e => {
   e.preventDefault();
   const out = $("#upOut"), file = $("#upFile").files[0], title = $("#upTitle").value.trim().slice(0, 80), who = $("#upWho").value.trim().slice(0, 40);
