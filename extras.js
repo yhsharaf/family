@@ -300,7 +300,7 @@ const OUCH = ["ow!", "why me 😭", "gm to you too", "BONK", "*squeak*", "rude!"
 const bonkPending = {}, bonkCounts = {};
 function showBonks() {
   let top = null, tv = 0;
-  document.querySelectorAll("#founderGrid .card, #coreGrid .card").forEach(c => {
+  document.querySelectorAll("#founderGrid .card, #coreGrid .card, #earlyGrid .card").forEach(c => {
     const n = bonkCounts[c.title] || 0;
     let b = c.querySelector(".bonks"); if (!b) { b = document.createElement("span"); b.className = "bonks"; c.appendChild(b); }
     b.textContent = n ? `🔨 ${n.toLocaleString()}` : ""; c.classList.remove("mostbonked");
@@ -367,6 +367,7 @@ function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer b
 }
 $("#founderGrid").addEventListener("click", onBonk);
 $("#coreGrid").addEventListener("click", onBonk);
+$("#earlyGrid").addEventListener("click", onBonk);
 
 // ---------- Whack-a-Founder
 const arc = $("#arcade"), holes = $("#holes");

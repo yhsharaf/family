@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="extras.css?v=30">
+<link rel="stylesheet" href="extras.css?v=31">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -238,6 +238,9 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
   <h2 style="margin-top:34px"><span class="word" style="background:#6e9a4a">Core</span><span class="word" style="background:var(--gold);--r:2deg">Family</span></h2>
   <p class="lead">The first members, from before the records began.</p>
   <div class="grid" id="coreGrid"></div>
+  <h2 style="margin-top:34px"><span class="word" style="background:var(--blue)">Members</span></h2>
+  <p class="lead">Joined after the Henesys gathering, before the records began (join date unknown).</p>
+  <div class="grid" id="earlyGrid"></div>
 </section>
 
 <section id="members">
@@ -326,7 +329,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
-<script src="data.js?v=39"></script>
+<script src="data.js?v=40"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -349,9 +352,10 @@ addEventListener("hashchange", show);
 // ---------- home
 $("#letters").innerHTML = [..."FAMILY"].map((c, i) =>
   `<span style="background:var(${PAL[i]});--r:${rot(i + 2)};animation-delay:${i * .12}s">${c}</span>`).join("");
-const founders = D.founders.filter(f => f.founder).sort((a, b) => b.main - a.main), core = D.founders.filter(f => !f.founder);
+const founders = D.founders.filter(f => f.founder).sort((a, b) => b.main - a.main),
+  core = D.founders.filter(f => !f.founder && !f.member), early = D.founders.filter(f => f.member);
 const TRAITOR_ORDER = ["VirusIvan", "Sensuous", "Dandadan888", "IOO7I"];  // order on the posters and the stew shelf
-const traitors = [...D.founders, ...D.members].filter(f => f.traitor)
+const traitors = D.founders.filter(f => f.traitor)
   .sort((a, b) => (TRAITOR_ORDER.indexOf(a.name) + 1 || 99) - (TRAITOR_ORDER.indexOf(b.name) + 1 || 99));
 const newest = D.members[D.members.length - 1];
 const inFamily = D.members.filter(m => m.now === "Family").length;
@@ -377,10 +381,11 @@ const founderCard = (f, i) => `
     ${f.traitor ? '<span class="badge"><img class="px" src="media/skull.png" style="width:24px" alt="traitor"></span>' : ""}
     <div class="pic">${f.sprite ? `<img class="px cut" src="${f.sprite}" alt="" loading="lazy">` : '<span class="nopic">?</span>'}</div>
     <div class="nm" style="color:var(--gold)">${esc(f.name)}</div>
-    <div class="sub">${f.main ? "👑 Main Founder" : f.founder ? "Founder" : f.traitor ? "Core Family · traitor" : f.grave ? "Core Family · grave" : "Core Family"}</div>
+    <div class="sub">${f.main ? "👑 Main Founder" : f.founder ? "Founder" : f.member ? (f.traitor ? "Member · traitor" : "Member · joined ?") : f.traitor ? "Core Family · traitor" : f.grave ? "Core Family · grave" : "Core Family"}</div>
   </div>`;
 $("#founderGrid").innerHTML = founders.map(founderCard).join("");
 $("#coreGrid").innerHTML = core.map((f, i) => founderCard(f, i + 3)).join("");
+$("#earlyGrid").innerHTML = early.map((f, i) => founderCard(f, i + 1)).join("");
 
 // ---------- members
 let filter = "all";
@@ -398,7 +403,7 @@ function renderMembers() {
     (filter === "all" || (filter === "elsewhere" ? !D.guilds.includes(m.now) : m.now === filter))
   ).map(m => `
     <div class="card" data-n="${m.n}">
-      <span class="num">#${m.n}</span>${m.traitor ? '<span class="badge"><img class="px" src="media/skull.png" style="width:22px" alt="traitor"></span>' : ""}
+      <span class="num">#${m.n}</span>
       <div class="pic">${m.sprite ? `<img class="px cut" src="${m.sprite}" alt="" loading="lazy">` : '<span style="font-size:40px">❔</span>'}</div>
       <div class="nm" style="color:${gcol(m.now)}">${esc(m.name)}</div>
       <div class="sub">joined ${fmt(m.date)}${m.early ? "*" : ""}</div>
@@ -448,7 +453,7 @@ $("#tree").innerHTML = `<div style="position:relative"><div class="trunk"></div>
   <div class="ground"></div>
   <div class="roots"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${rootPaths}</svg>
     <h3>🌱 The Roots</h3><p>The ${founders.length} Founders and the ${core.length} Core Family, from before the records began. Everything above grew from them.</p>
-    <div class="leaves">${[...founders, ...core].map(f => leaf(f, f.main ? "main" : "")).join("")}</div></div>`;
+    <div class="leaves">${[...founders, ...core, ...early].map(f => leaf(f, f.main ? "main" : "")).join("")}</div></div>`;
 // leaves pop in as you scroll down to them
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
   { rootMargin: "0px 0px -40px 0px" });
@@ -534,6 +539,6 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="extras.js?v=30"></script>
+<script src="extras.js?v=31"></script>
 </body>
 </html>
