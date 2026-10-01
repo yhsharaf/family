@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Guild</title>
+<link rel="icon" href="media/crown.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="extras.css?v=15">
+<style>
+:root {
+  --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
+  --red: #d65c54; --blue: #4682be; --gold: #cd961e; --green: #6eaa64; --purple: #aa64b4; --teal: #3ca0a0;
+  --wood: #966a3e; --leaf: #78af5f;
+  --g-Family: #46a05a; --g-Famlly: #4678c8; --g-FamiIy: #d79628; --g-FamlIy: #be50aa; --g-Folks: #28969f;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; color: var(--ink); font-family: Ubuntu, system-ui, sans-serif; font-weight: 500;
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse at 15% 20%, rgba(230,170,60,.18), transparent 45%),
+    radial-gradient(ellipse at 85% 70%, rgba(214,92,84,.12), transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(110,170,100,.14), transparent 55%);
+  background-attachment: fixed;
+}
+img.px { image-rendering: pixelated; }
+a { color: inherit; }
+
+/* paper cut-outs */
+.word { display: inline-block; color: #fcfaf4; padding: .12em .45em; margin: .1em; font-weight: 700;
+        box-shadow: 4px 6px 0 rgba(60,45,30,.25); transform: rotate(var(--r, -2deg)); }
+.cut { filter: drop-shadow(2px 0 0 #fcfaf4) drop-shadow(-2px 0 0 #fcfaf4) drop-shadow(0 2px 0 #fcfaf4)
+               drop-shadow(0 -2px 0 #fcfaf4) drop-shadow(3px 5px 3px rgba(60,45,30,.35)); }
+.tag { display: inline-block; background: var(--card); border: 1px solid var(--edge); border-radius: 8px;
+       padding: 2px 8px; font-size: 13px; box-shadow: 2px 3px 0 rgba(60,45,30,.15); }
+
+/* nav */
+nav { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      padding: 10px 12px; background: rgba(243,236,222,.92); backdrop-filter: blur(4px); border-bottom: 2px solid var(--edge); }
+nav a { text-decoration: none; padding: 6px 12px; font-weight: 700; color: #fcfaf4; transform: rotate(var(--r));
+        box-shadow: 3px 4px 0 rgba(60,45,30,.25); transition: transform .15s; }
+nav a:hover, nav a.on { transform: rotate(0) scale(1.08); }
+nav a.on { outline: 3px solid var(--ink); }
+nav img { height: 34px; margin-right: 6px; align-self: center; }
+
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; }
+section { display: none; animation: pop .35s ease-out; }
+section.on { display: block; }
+@keyframes pop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+h2 { font-size: clamp(30px, 5vw, 46px); margin: 10px 0 18px; }
+p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
+
+/* home */
+.hero { text-align: center; padding: 20px 0 10px; }
+.hero .crown { width: 128px; animation: bob 1.1s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-8px) rotate(2deg); } }
+.letters { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px; margin-top: -6px; }
+.letters span { font-size: clamp(34px, 12vw, 120px); width: 1.15em; text-align: center; color: #fcfaf4; font-weight: 700;
+                box-shadow: 5px 7px 0 rgba(60,45,30,.25); transform: rotate(var(--r)); animation: drop .6s backwards; }
+@keyframes drop { from { transform: translateY(-120px) rotate(20deg); opacity: 0; } }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 28px 0; }
+.stat { background: var(--card); border: 1px solid var(--edge); border-radius: 14px; padding: 14px; text-align: center;
+        box-shadow: 4px 6px 0 rgba(60,45,30,.12); }
+.stat b { display: block; font-size: 38px; }
+.stat span { color: var(--muted); font-size: 14px; }
+.yt { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; box-shadow: 6px 9px 0 rgba(60,45,30,.2); background: #000; }
+.yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.lyrics { columns: 2 280px; column-gap: 32px; background: var(--card); padding: 22px 26px; border-radius: 14px;
+          border: 1px solid var(--edge); box-shadow: 4px 6px 0 rgba(60,45,30,.12); line-height: 1.55; }
+.lyrics h4 { margin: 12px 0 2px; color: var(--red); break-after: avoid; }
+.lyrics p { margin: 0 0 6px; break-inside: avoid; }
+
+/* people grids */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 14px; }
+.card { position: relative; background: var(--card); border: 1px solid var(--edge); border-radius: 14px; padding: 10px 6px 12px;
+        text-align: center; box-shadow: 3px 5px 0 rgba(60,45,30,.12); cursor: pointer; transition: transform .15s; }
+.card:hover { transform: translateY(-4px) rotate(-1deg); }
+.card .pic { height: 118px; display: flex; align-items: flex-end; justify-content: center; }
+.card .pic img { max-width: 116px; max-height: 116px; }
+.card .nm { font-weight: 700; margin-top: 6px; word-break: break-all; }
+.card .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.card .num { position: absolute; top: 6px; left: 8px; font-size: 11px; color: var(--muted); }
+.badge { position: absolute; top: 6px; right: 6px; font-size: 18px; }
+.card.main { grid-column: span 2; border: 3px solid var(--gold); background: #fff8e4; }
+.card.main .pic { height: 190px; } .card.main .pic img { transform: scale(1.8); transform-origin: 50% 100%; }
+.card.grave img { opacity: .8; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+.toolbar input { flex: 1 1 220px; font: inherit; padding: 10px 14px; border-radius: 12px; border: 2px solid var(--edge); background: var(--card); }
+.chip { border: 2px solid var(--edge); background: var(--card); border-radius: 20px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+.chip.on { border-color: var(--ink); background: var(--ink); color: #fcfaf4; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+/* modal */
+.modal { position: fixed; inset: 0; background: rgba(45,40,50,.55); display: none; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal.on { display: flex; }
+.sheet { background: var(--card); border-radius: 18px; max-width: 460px; width: 100%; padding: 22px; position: relative;
+         box-shadow: 8px 12px 0 rgba(60,45,30,.3); animation: pop .25s; max-height: 90vh; overflow: auto; }
+.sheet .x { position: absolute; top: 10px; right: 14px; border: 0; background: none; font-size: 26px; cursor: pointer; color: var(--muted); }
+.sheet .big { text-align: center; } .sheet .big img { height: 160px; }
+.hist { list-style: none; padding: 0; margin: 14px 0 0; border-left: 3px solid var(--edge); }
+.hist li { position: relative; padding: 4px 0 10px 18px; }
+.hist li::before { content: ""; position: absolute; left: -8px; top: 8px; width: 13px; height: 13px; border-radius: 50%; background: var(--c, var(--muted)); }
+.hist .d { color: var(--muted); font-size: 13px; }
+
+/* family tree: newest at the top, scroll down through the months to the roots (the Founders) */
+.treehint { text-align: center; color: var(--muted); margin: -4px 0 14px; animation: bob 1.4s infinite ease-in-out; }
+.tree { position: relative; padding-top: 10px; }
+.tree .top { text-align: center; position: relative; z-index: 2; }
+.tree .top img { width: 84px; }
+.trunk { position: absolute; left: 50%; top: 70px; bottom: 0; width: 96px; margin-left: -48px; z-index: 0;
+         background: linear-gradient(90deg, #6e4a2a, #a8794a 45%, #8a5f36 70%, #6e4a2a);
+         clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%); }
+.branch { position: relative; width: 50%; padding: 44px 0; z-index: 1; }
+.branch.L { margin-right: 50%; padding-right: 80px; padding-left: 22px; }
+.branch.R { margin-left: 50%; padding-left: 80px; padding-right: 22px; }
+.branch.wide { width: auto; margin: 0; padding: 44px 30px; }
+.branch.wide .limb { display: none; }
+.branch.wide .leaves { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+.limb { position: absolute; top: 46%; height: 18px; width: 120px; background: linear-gradient(#a8794a, #7a5230); border-radius: 9px; z-index: -1; }
+.branch.L .limb { right: -10px; transform: rotate(14deg); transform-origin: right center; }
+.branch.R .limb { left: -10px; transform: rotate(-14deg); transform-origin: left center; }
+.canopy { position: relative; z-index: 0; isolation: isolate; padding: 50px 24px 26px; border-radius: 60px; background: #82b866;
+          filter: drop-shadow(6px 10px 0 rgba(60,90,45,.35)); }
+/* leafy, bumpy edge: a ring of circles just outside the box, so every face and name stays inside the green */
+.canopy::before { content: ""; position: absolute; inset: -22px; z-index: -1; border-radius: 82px;
+                  background: radial-gradient(circle, #82b866 64%, transparent 66%) 0 0 / 46px 46px; }
+.canopy::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 60px; pointer-events: none;
+                 background: radial-gradient(circle at 25% 20%, rgba(255,255,255,.18), transparent 40%),
+                             radial-gradient(circle at 80% 85%, rgba(40,80,30,.18), transparent 45%); }
+.canopy .sign { position: absolute; top: -30px; z-index: 2; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+.canopy .count { text-align: center; color: #fcfaf4; font-size: 13px; margin-top: -24px; margin-bottom: 8px; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.leaves { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px 4px; }
+.leaf { text-align: center; cursor: pointer; opacity: 0; transform: scale(.4) rotate(-10deg); transition: transform .45s cubic-bezier(.3,1.6,.5,1), opacity .3s; }
+.leaf.in { opacity: 1; transform: none; }
+.leaf:hover img { transform: scale(1.25) rotate(-4deg); }
+.leaf .pic { height: 64px; display: flex; align-items: flex-end; justify-content: center; }
+.leaf img { max-height: 64px; max-width: 84px; transition: transform .15s; }
+.leaf .nm { display: inline-block; margin-top: 2px; font-size: 11px; background: var(--card); border-radius: 6px; padding: 1px 5px;
+            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 1px 2px 0 rgba(0,0,0,.15); }
+.canopy .note { color: #fcfaf4; font-size: 13px; text-align: center; margin: 10px 0 0; text-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.ground { position: relative; height: 34px; margin-top: -2px; background: linear-gradient(#78af5f, #5f9a4c); border-radius: 18px 18px 0 0; z-index: 1; }
+.roots { position: relative; background: linear-gradient(#6b4a2f, #4a3220 60%, #3a2618); color: #f3ecde; padding: 30px 16px 40px; border-radius: 0 0 22px 22px; overflow: hidden; }
+.roots svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: .55; }
+.roots h3 { position: relative; text-align: center; font-size: 30px; margin: 4px 0 4px; }
+.roots p { position: relative; text-align: center; color: #d8c8b0; margin: 0 0 18px; }
+.roots .leaves { position: relative; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.roots .leaf .nm { color: var(--gold); }
+.roots .leaf.main { grid-column: 1 / -1; }
+.roots .leaf.main .pic { height: 120px; } .roots .leaf.main img { max-height: none; transform: scale(1.9); transform-origin: 50% 100%; }
+.roots .leaf.main .nm { font-size: 15px; }
+@media (max-width: 700px) {
+  .trunk { left: 26px; width: 40px; margin-left: -20px; }
+  .branch.L, .branch.R { width: auto; margin: 0 0 0 52px; padding: 40px 18px 40px 22px; }
+  .branch.L .limb, .branch.R .limb { left: -40px; right: auto; width: 60px; transform: rotate(-10deg); transform-origin: left center; }
+}
+/* memories */
+.album { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 26px; }
+.photo { background: #fcfaf4; padding: 12px 12px 14px; box-shadow: 6px 9px 0 rgba(60,45,30,.2); transform: rotate(var(--r)); cursor: zoom-in;
+         position: relative; transition: transform .2s; }
+.photo:hover { transform: rotate(0) scale(1.02); }
+.photo::before { content: ""; position: absolute; top: -12px; left: 50%; width: 90px; height: 26px; margin-left: -45px;
+                 background: rgba(230,200,120,.75); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.photo img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: contain; background: #2d2832; }
+.photo .t { font-weight: 700; margin-top: 10px; } .photo .n { color: var(--muted); font-size: 14px; }
+.photo.first { grid-column: 1 / -1; }
+.photo.first img { aspect-ratio: auto; object-fit: contain; }
+.photo.first .t { font-size: 22px; }
+.sheet.wide { max-width: min(1400px, 96vw); padding: 14px; } .sheet.wide img { width: 100%; display: block; }
+
+/* traitors */
+.traitors { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cpath d='M6 58 L22 42' stroke='%233a2614' stroke-width='9' stroke-linecap='round'/%3E%3Cpath d='M6 58 L22 42' stroke='%23966a3e' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M22 42 C40 26 30 14 44 8 C54 4 60 10 56 18' fill='none' stroke='%232d2016' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M56 18 l4 3' stroke='%23d65c54' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") 6 58, crosshair; }
+.traitors.on { display: block; }
+.dungeon { background: linear-gradient(#3a1f22, #24151a); color: #f3ecde; border-radius: 20px; padding: 26px 18px 34px; position: relative; overflow: hidden; user-select: none; }
+.dungeon h2 { text-align: center; }
+.dungeon p.lead { color: #d8c8b8; margin: 0 auto; text-align: center; }
+.posters { display: flex; flex-wrap: wrap; justify-content: center; gap: 36px; margin: 30px 0 10px; }
+.poster { width: 280px; background: #ecd6a8; color: #6e3c1e; border: 6px solid #966e3c; padding: 16px 14px 18px; text-align: center;
+          box-shadow: 10px 14px 0 rgba(0,0,0,.35); transform: rotate(var(--r)); position: relative; transition: transform .1s; }
+.poster::before { content: ""; position: absolute; top: -12px; left: 50%; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: #c83c32; box-shadow: 0 3px 0 rgba(0,0,0,.3); }
+.poster h3 { font-size: 54px; margin: 0; letter-spacing: 1px; }
+.poster .face { height: 190px; display: flex; align-items: flex-end; justify-content: center; border-top: 3px solid #966e3c; margin-top: 6px; }
+.poster .face img { transform: scale(1.8); transform-origin: 50% 100%; margin-bottom: 4px; }
+.poster .who { font-size: 30px; color: #a0281e; font-weight: 700; margin-top: 8px; }
+.poster .why { font-size: 16px; } .poster .reward { font-size: 20px; font-weight: 700; margin-top: 4px; }
+.poster.hit { animation: hit .35s; }
+@keyframes hit { 20% { transform: rotate(calc(var(--r) - 9deg)) translateX(-12px) scale(.96); } 55% { transform: rotate(calc(var(--r) + 6deg)) translateX(8px); } }
+.welt { position: absolute; pointer-events: none; height: 6px; border-radius: 4px; background: #e0473a; box-shadow: 0 0 8px #ff6a4a; animation: welt 1.1s forwards; }
+@keyframes welt { from { opacity: 1; } to { opacity: 0; } }
+.crack { position: fixed; pointer-events: none; z-index: 60; font-weight: 700; font-size: 34px; color: #ffcc4a; text-shadow: 3px 3px 0 #6e1e14; animation: crack .6s forwards; }
+@keyframes crack { from { transform: scale(.4) rotate(-12deg); opacity: 1; } to { transform: scale(1.4) rotate(6deg) translateY(-30px); opacity: 0; } }
+.lash { position: fixed; pointer-events: none; z-index: 59; width: 160px; height: 90px; animation: lash .25s ease-out forwards; transform-origin: 0% 100%; }
+@keyframes lash { from { transform: rotate(-70deg) scaleX(.3); opacity: 1; } 60% { transform: rotate(8deg) scaleX(1.05); } to { transform: rotate(0); opacity: 0; } }
+.counter { text-align: center; font-size: 20px; margin-top: 18px; }
+.counter b { font-size: 34px; color: #ffcc4a; }
+.dungeon .skull { position: absolute; width: 60px; image-rendering: pixelated; animation: float 2.4s infinite ease-in-out; }
+footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px; }
+</style>
+</head>
+<body>
+<nav id="nav">
+  <img class="px" src="media/crown.png" alt="">
+  <a href="#home" style="--r:-2deg;background:var(--red)">Home</a>
+  <a href="#founders" style="--r:2deg;background:var(--gold)">Founders</a>
+  <a href="#members" style="--r:-1deg;background:var(--blue)">Members</a>
+  <a href="#timeline" style="--r:2deg;background:var(--green)">Family Tree</a>
+  <a href="#memories" style="--r:-2deg;background:#5a64a0">Memories</a>
+  <a href="#guestbook" style="--r:2deg;background:var(--purple)">Guestbook</a>
+</nav>
+
+<main>
+<section id="home">
+  <div class="hero">
+    <img class="px crown cut" src="media/crown.png" alt="Family crown">
+    <div class="letters" id="letters"></div>
+    <p><span class="word" style="background:#5a5064">a guild history</span> <span class="word" style="background:#968c7d;--r:2deg">Aquila · 2026</span></p>
+  </div>
+  <div class="stats" id="stats"></div>
+  <h2><span class="word" style="background:var(--red)">The</span><span class="word" style="background:var(--blue);--r:2deg">Video</span></h2>
+  <div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/6TK1D5l1Abo" title="FAMILY - a guild history"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe></div>
+  <p style="text-align:center"><a class="word" style="background:#c4302b;text-decoration:none" href="https://youtu.be/6TK1D5l1Abo" target="_blank" rel="noopener">▶ Watch on YouTube</a></p>
+  <h2 style="margin-top:34px"><span class="word" style="background:var(--green)">Our</span><span class="word" style="background:var(--gold);--r:2deg">Song</span></h2>
+  <div class="lyrics" id="lyrics"></div>
+</section>
+
+<section id="founders">
+  <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#c86e3c;--r:2deg">Founders</span></h2>
+  <p class="lead">The first members, from before the records began. Rain raised the banner; everyone else fell in line.</p>
+  <div class="grid" id="founderGrid"></div>
+</section>
+
+<section id="members">
+  <h2><span class="word" style="background:var(--blue)">Every</span><span class="word" style="background:var(--red);--r:2deg">Member</span></h2>
+  <p class="lead">Everyone who has been in Family, Famlly, FamiIy, FamlIy or Folks, in order of the first time they joined. Name colour = the guild they're in now. Tap someone to see their history.</p>
+  <div class="toolbar">
+    <input id="q" placeholder="Search a name…" autocomplete="off">
+    <div id="chips"></div>
+  </div>
+  <div class="grid" id="memberGrid"></div>
+</section>
+
+<section id="timeline">
+  <h2><span class="word" style="background:var(--green)">Family</span><span class="word" style="background:var(--wood);--r:2deg">Tree</span></h2>
+  <p class="lead">The newest members are at the top. Scroll down through the months, branch by branch, all the way to the roots: the Founders.</p>
+  <div class="treetools"><input id="findme" list="names" placeholder="Find yourself in the tree…" autocomplete="off">
+    <button class="btn" id="findBtn">🔍 Find me</button><button class="btn" id="shakeBtn" style="background:var(--green)">🌳 Shake the tree</button></div>
+  <div class="treehint">↓ scroll down to the roots ↓</div>
+  <div class="tree" id="tree"></div>
+</section>
+
+<section id="memories">
+  <h2><span class="word" style="background:#5a64a0">Our</span><span class="word" style="background:var(--purple);--r:2deg">Memories</span></h2>
+  <p class="lead">Screenshots from the early days. Tap a photo to see it big.</p>
+  <div class="album" id="album"></div>
+  <div class="upload" id="uploadBox">
+    <h2><span class="word" style="background:var(--purple)">Add a</span><span class="word" style="background:#5a64a0;--r:2deg">memory</span></h2>
+    <form class="gb" id="upForm">
+      <input type="file" id="upFile" accept="image/*">
+      <div class="row"><input id="upTitle" maxlength="80" placeholder="Title, e.g. First Zakum clear"><input id="upWho" list="names" maxlength="40" placeholder="Your name (optional)"></div>
+      <div class="row"><button class="btn" type="submit">📤 Send</button><span class="msg" id="upOut">Photos are shrunk automatically and only show up after an admin approves them.</span></div>
+    </form>
+  </div>
+</section>
+
+<section id="guestbook">
+  <h2><span class="word" style="background:var(--purple)">Guest</span><span class="word" style="background:var(--gold);--r:2deg">book</span></h2>
+  <p class="lead">Leave a message for the family. Pick your character name and your sprite shows up next to it.</p>
+  <form class="gb" id="gbForm">
+    <div class="row"><input id="gbName" list="names" maxlength="40" placeholder="Your character name" autocomplete="off"></div>
+    <textarea id="gbMsg" maxlength="280" placeholder="gm fam…"></textarea>
+    <div class="row"><button class="btn" type="submit">✍️ Post</button><span class="msg" id="gbOut"></span></div>
+  </form>
+  <p class="soon" id="gbSoon" hidden>The guestbook opens once the site is connected to its database (see README.md).</p>
+  <div class="notes" id="gbList"></div>
+</section>
+
+<section id="shame-7ca7553d" class="traitors">
+  <div class="dungeon" id="dungeon">
+    <h2><span class="word" style="background:#8c2a24">Hall</span><span class="word" style="background:#5a1e1a;--r:2deg">of</span><span class="word" style="background:#8c2a24">Shame</span></h2>
+    <p class="lead">Two of them turned, two of them ran. Your cursor is a whip — click to deliver justice.</p>
+    <div class="posters" id="posters"></div>
+    <div class="counter">Whips from you: <b id="whips">0</b> <small>Whips from the whole guild: <b id="gwhips">…</b></small></div>
+  </div>
+  <div class="stew">
+    <h2><span class="word" style="background:#c86e3c">Traitor</span><span class="word" style="background:#6e9a4a;--r:2deg">Stew</span></h2>
+    <p class="lead" id="stewHint">Drag Sensuous and VirusIvan into the pot.</p>
+    <div class="kitchen" id="kitchen"><div class="shelf"></div>
+      <div class="potwrap" id="potwrap"><div class="ladle" id="ladle"></div><div class="stewtop"></div><div class="potbody">STEW</div>
+        <div class="fire" id="fire"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+    <div class="doneness"><div class="bar"><b id="heatbar"></b></div><span id="heatlabel">raw</span></div>
+    <button class="btn" id="stirBtn" style="background:#c86e3c">🥄 Stir</button> <button class="btn" id="resetStew" style="background:#5a5064">↺ Reset</button>
+    <div class="counter" style="font-size:16px">Stews you cooked: <b id="mystews" style="font-size:22px">0</b> · whole guild: <b id="gstews" style="font-size:22px">…</b></div>
+  </div>
+</section>
+</main>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<datalist id="names"></datalist>
+<footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
+
+<script src="data.js?v=18"></script>
+<script>
+const D = window.FAMILY;
+const $ = s => document.querySelector(s);
+const PAL = ["--red", "--blue", "--gold", "--green", "--purple", "--teal"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmt = d => { const [y, m, dd] = d.split("-"); return `${MONTHS[+m - 1]} ${+dd}, ${y}`; };
+const gcol = g => D.guilds.includes(g) ? `var(--g-${g})` : "var(--muted)";
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const rot = i => ((i * 37) % 7 - 3) + "deg";
+
+// ---------- routing
+function show() {
+  const id = (location.hash || "#home").slice(1);
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === id));
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + id));
+  window.scrollTo(0, 0);
+}
+addEventListener("hashchange", show);
+
+// ---------- home
+$("#letters").innerHTML = [..."FAMILY"].map((c, i) =>
+  `<span style="background:var(${PAL[i]});--r:${rot(i + 2)};animation-delay:${i * .12}s">${c}</span>`).join("");
+const traitors = D.founders.filter(f => f.traitor);
+const newest = D.members[D.members.length - 1];
+const inFamily = D.members.filter(m => m.now === "Family").length;
+$("#stats").innerHTML = [
+  [D.founders.length, "Founders"], [D.members.length, "members on record"], [inFamily, "in Family right now"],
+  [D.guilds.length, "sister guilds"], [D.memories.length, "memories saved"], [traitors.length, "traitors (cooked)"],
+  [esc(newest.name), "newest member · " + fmt(newest.date)],
+].map(([b, s]) => `<div class="stat"><b style="${String(b).length > 5 ? "font-size:24px;padding:8px 0" : ""}">${b}</b><span>${s}</span></div>`).join("");
+const LYR = [["Intro", "Aquila night, the guild chat's glowing / \"gm\" from Rain, and the family's growing"],
+  ["Verse", "Started with a handful, names from long ago / Founders in the screenshots, the ones who ran the show / Rain raised the banner, we all fell in line / Boss runs at 3 a.m., everybody online"],
+  ["Pre-Chorus", "One by one they joined us, March into May / Famlly, FamiIy, Folks, we're one and the same"],
+  ["Chorus", "p(family)'s going up, up, up / Every name on the wall, fill the cup / Doesn't matter which tag you're in / Once you're Family, you're family, my friend"],
+  ["Breakdown", "Some logged off and never came back / Little tombstones on the map / Gone, but never logged out / We still say your names out loud"],
+  ["Build", "But two of them turned, two of them ran / Sold out the banner, broke the plan / So what do we do? What do we do?"],
+  ["Drop", "We cook the traitors! Stir the pot! / Two in the stew and we give it all we got / Zero regrets, turn the fire up high / Family forever, traitors say goodbye"],
+  ["Final", "p(family)'s going up, up, up / Every name on the wall, fill the cup / Every name, one family / gg"]];
+$("#lyrics").innerHTML = LYR.map(([h, t]) => `<h4>${h}</h4><p>${t.split(" / ").join("<br>")}</p>`).join("");
+
+// ---------- founders
+$("#founderGrid").innerHTML = D.founders.map((f, i) => `
+  <div class="card ${f.main ? "main" : ""} ${f.grave ? "grave" : ""}" style="--r:${rot(i)}" title="${esc(f.name)}">
+    ${f.grave ? '<span class="badge" title="grave">🪦</span>' : ""}
+    ${f.traitor ? '<span class="badge"><img class="px" src="media/skull.png" style="width:24px" alt="traitor"></span>' : ""}
+    <div class="pic"><img class="px cut" src="${f.sprite}" alt="" loading="lazy"></div>
+    <div class="nm" style="color:var(--gold)">${esc(f.name)}</div>
+    <div class="sub">${f.main ? "👑 Main Founder" : f.traitor ? "Founder · traitor" : f.grave ? "Founder · grave" : "Founder"}</div>
+  </div>`).join("");
+
+// ---------- members
+let filter = "all";
+const chips = ["all", ...D.guilds, "elsewhere"];
+$("#chips").innerHTML = chips.map(c =>
+  `<button class="chip ${c === "all" ? "on" : ""}" data-c="${c}">${c === "all" ? "Everyone" : c === "elsewhere" ? "Left the guilds" :
+    `<span class="dot" style="background:${gcol(c)}"></span>${c}`}</button>`).join(" ");
+$("#chips").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; filter = b.dataset.c;
+  document.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b)); renderMembers(); };
+$("#q").oninput = renderMembers;
+function renderMembers() {
+  const q = $("#q").value.trim().toLowerCase();
+  $("#memberGrid").innerHTML = D.members.filter(m =>
+    (!q || m.name.toLowerCase().includes(q)) &&
+    (filter === "all" || (filter === "elsewhere" ? !D.guilds.includes(m.now) : m.now === filter))
+  ).map(m => `
+    <div class="card" data-n="${m.n}">
+      <span class="num">#${m.n}</span>
+      <div class="pic">${m.sprite ? `<img class="px cut" src="${m.sprite}" alt="" loading="lazy">` : '<span style="font-size:40px">❔</span>'}</div>
+      <div class="nm" style="color:${gcol(m.now)}">${esc(m.name)}</div>
+      <div class="sub">joined ${fmt(m.date)}${m.early ? "*" : ""}</div>
+    </div>`).join("") || '<p class="lead">Nobody with that name… yet.</p>';
+}
+renderMembers();
+document.addEventListener("click", e => {
+  const c = e.target.closest("[data-n]"); if (!c) return;
+  const m = D.members.find(x => x.n === +c.dataset.n);
+  const words = { joined: "joined", left: "left", already_in: "was already in" };
+  $("#sheet").className = "sheet";
+  $("#sheet").innerHTML = `<button class="x" aria-label="close">×</button>
+    <div class="big">${m.sprite ? `<img class="px cut" src="${m.sprite}" alt="">` : ""}
+      <h2 style="margin:6px 0 0;color:${gcol(m.now)}">${esc(m.name)}</h2>
+      <div class="tag">#${m.n} to join</div> <div class="tag">now: ${D.guilds.includes(m.now) ? m.now : "outside the guilds"}</div></div>
+    <ul class="hist">${m.early && m.moves.length && m.moves[0].action !== "joined" ? `<li style="--c:${gcol(m.joined)}"><div class="d">${fmt(m.date)}*</div>already in <b style="color:${gcol(m.joined)}">${m.joined}</b> when records began</li>` : ""}${m.moves.length ? m.moves.map(v => `<li style="--c:${gcol(v.guild)}"><div class="d">${fmt(v.date)}</div>
+      ${words[v.action] || v.action} <b style="color:${gcol(v.guild)}">${v.guild}</b></li>`).join("")
+      : `<li><div class="d">${fmt(m.date)}${m.early ? "*" : ""}</div>first seen in <b>${m.joined}</b></li>`}</ul>
+    ${m.early ? '<p class="sub" style="color:var(--muted);font-size:13px">* already in the guild when records began, so they joined even earlier.</p>' : ""}`;
+  $("#modal").classList.add("on");
+});
+$("#modal").onclick = e => { if (e.target.id === "modal" || e.target.closest(".x")) $("#modal").classList.remove("on"); };
+addEventListener("keydown", e => { if (e.key === "Escape") $("#modal").classList.remove("on"); });
+
+// ---------- family tree: canopy (newest) at the top, roots (Founders) at the bottom
+const byMonth = {};
+D.members.forEach(m => (byMonth[m.date.slice(0, 7)] ??= []).push(m));
+const NOTES = { "2026-03": "Records begin on Mar 3. The busiest month ever: day-one energy.",
+  "2026-09": `The newest branch. ${esc(newest.name)} joined on ${fmt(newest.date)}.` };
+const leaf = (p, extra = "") => `<div class="leaf ${extra}" ${p.n ? `data-n="${p.n}"` : ""} title="${esc(p.name)}">
+  <div class="pic">${p.sprite ? `<img class="px cut" src="${p.sprite}" alt="" loading="lazy">` : ""}</div><span class="nm">${esc(p.name)}</span></div>`;
+const keys = Object.keys(byMonth).sort().reverse();
+const rootPaths = Array.from({ length: 14 }, (_, i) => {
+  const x = 50 + (i - 6.5) * 7.5, c = 50 + (i - 6.5) * 3;
+  return `<path d="M50 0 C${c} 25 ${x} 40 ${x + (i % 2 ? 4 : -4)} 100" stroke="#2a1a10" stroke-width="${1.6 - Math.abs(i - 6.5) * .08}" fill="none" vector-effect="non-scaling-stroke" style="stroke-width:${8 - Math.abs(i - 6.5) * .8}px"/>`;
+}).join("");
+$("#tree").innerHTML = `<div style="position:relative"><div class="trunk"></div>
+  <div class="top"><img class="px cut" src="media/crown.png" alt=""></div>` +
+  keys.map((k, i) => {
+    const [y, mo] = k.split("-"); const ppl = byMonth[k];
+    return `<div class="branch ${ppl.length > 40 ? "wide" : i % 2 ? "R" : "L"}"><div class="limb"></div><div class="canopy">
+      <span class="word sign" style="background:var(${PAL[(keys.length - 1 - i) % 6]})">${MONTHS[+mo - 1]} ${y}</span>
+      <div class="count">${ppl.length} joined</div>
+      <div class="leaves">${ppl.map(m => leaf(m)).join("")}</div>
+      ${NOTES[k] ? `<p class="note">${NOTES[k]}</p>` : ""}</div></div>`;
+  }).join("") + `</div>
+  <div class="ground"></div>
+  <div class="roots"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${rootPaths}</svg>
+    <h3>🌱 The Roots</h3><p>The ${D.founders.length} Founders, from before the records began. Everything above grew from them.</p>
+    <div class="leaves">${D.founders.map(f => leaf(f, f.main ? "main" : "")).join("")}</div></div>`;
+// leaves pop in as you scroll down to them
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
+  { rootMargin: "0px 0px -40px 0px" });
+document.querySelectorAll("#tree .leaf").forEach((l, i) => { l.style.transitionDelay = (i % 12) * 30 + "ms"; io.observe(l); });
+
+// ---------- memories (photo album): just the picture's name, each word capitalised
+const titleCase = t => t.replace(/(^|\s)(\S)/g, (_, sp, c) => sp + c.toUpperCase());
+$("#album").innerHTML = D.memories.map((m, i) => `<figure class="photo ${i ? "" : "first"}" style="--r:${i ? rot(i) : "-.6deg"};margin:0" data-src="${m.src}">
+  <img src="${m.src}" alt="${esc(m.title)}" loading="lazy"><div class="t">${esc(titleCase(m.title))}</div></figure>`).join("");
+$("#album").onclick = e => { const f = e.target.closest(".photo"); if (!f) return;
+  $("#sheet").className = "sheet wide"; $("#sheet").innerHTML = `<button class="x" aria-label="close" style="color:#fff;text-shadow:0 0 4px #000">×</button><img src="${f.dataset.src}" alt="">`;
+  $("#modal").classList.add("on"); };
+
+// ---------- traitors: whip cursor + synthesized crack (Web Audio, no sound files)
+$("#posters").innerHTML = traitors.map((t, i) => `<div class="poster" style="--r:${i ? 3 : -3}deg">
+  <h3>WANTED</h3><div class="face"><img class="px" src="${t.sprite}" alt=""></div>
+  <div class="who">${esc(t.name)}</div><div class="why">for: betraying the guild</div><div class="reward">reward: 1 meso</div></div>`).join("");
+const dun = $("#dungeon");
+[[4, 20], [88, 30], [8, 70], [86, 78]].forEach(([x, y], i) => {
+  const s = document.createElement("img"); s.src = "media/skull.png"; s.className = "skull";
+  s.style.left = x + "%"; s.style.top = y + "%"; s.style.animationDelay = -i * .6 + "s"; dun.appendChild(s);
+});
+let AC = null, whips = 0;
+try { whips = +localStorage.getItem("family_whips") || 0; } catch (e) {}
+$("#whips").textContent = whips;
+function crack() {
+  AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+  const t = AC.currentTime, sr = AC.sampleRate;
+  const buf = AC.createBuffer(1, sr * .4, sr), ch = buf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+  // whoosh: band-passed noise sweeping up
+  const w = AC.createBufferSource(); w.buffer = buf;
+  const bp = AC.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1.2;
+  bp.frequency.setValueAtTime(300, t); bp.frequency.exponentialRampToValueAtTime(3500, t + .13);
+  const wg = AC.createGain(); wg.gain.setValueAtTime(0, t); wg.gain.linearRampToValueAtTime(.35, t + .08); wg.gain.exponentialRampToValueAtTime(.001, t + .15);
+  w.connect(bp).connect(wg).connect(AC.destination); w.start(t); w.stop(t + .16);
+  // crack: very short bright noise burst + click
+  const c = AC.createBufferSource(); c.buffer = buf;
+  const hp = AC.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 1800;
+  const cg = AC.createGain(); cg.gain.setValueAtTime(1.4, t + .13); cg.gain.exponentialRampToValueAtTime(.001, t + .2);
+  c.connect(hp).connect(cg).connect(AC.destination); c.start(t + .13, .1); c.stop(t + .22);
+  const o = AC.createOscillator(); o.type = "square"; o.frequency.setValueAtTime(2400, t + .13); o.frequency.exponentialRampToValueAtTime(600, t + .16);
+  const og = AC.createGain(); og.gain.setValueAtTime(.4, t + .13); og.gain.exponentialRampToValueAtTime(.001, t + .17);
+  o.connect(og).connect(AC.destination); o.start(t + .13); o.stop(t + .18);
+  // tail: tiny echo
+  const e = AC.createBufferSource(); e.buffer = buf; const eg = AC.createGain(); const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1200;
+  eg.gain.setValueAtTime(.18, t + .2); eg.gain.exponentialRampToValueAtTime(.001, t + .38);
+  e.connect(lp).connect(eg).connect(AC.destination); e.start(t + .2, .2); e.stop(t + .39);
+}
+const LASH = "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'><path d='M4 86 C40 60 70 80 100 40 C120 14 140 20 156 6' fill='none' stroke='#2d2016' stroke-width='5' stroke-linecap='round'/><path d='M150 4 l8 8 M146 10 l12 0' stroke='#ffcc4a' stroke-width='3' stroke-linecap='round'/></svg>`);
+const SAYS = ["CRACK!", "WHAP!", "TSSK!", "ow!", "SNAP!", "traitor!"];
+dun.addEventListener("pointerdown", e => {
+  crack();
+  const l = document.createElement("img"); l.src = LASH; l.className = "lash";
+  l.style.left = (e.clientX - 150) + "px"; l.style.top = (e.clientY - 10) + "px"; document.body.appendChild(l); setTimeout(() => l.remove(), 300);
+  const k = document.createElement("div"); k.className = "crack"; k.textContent = SAYS[Math.floor(Math.random() * SAYS.length)];
+  k.style.left = (e.clientX + 6) + "px"; k.style.top = (e.clientY - 40) + "px"; document.body.appendChild(k); setTimeout(() => k.remove(), 650);
+  const p = e.target.closest(".poster");
+  if (p) {
+    p.classList.remove("hit"); void p.offsetWidth; p.classList.add("hit");
+    const r = p.getBoundingClientRect(), wv = document.createElement("div"); wv.className = "welt";
+    wv.style.left = (e.clientX - r.left - 50) + "px"; wv.style.top = (e.clientY - r.top) + "px"; wv.style.width = "100px";
+    wv.style.transform = `rotate(${Math.random() * 60 - 30}deg)`; p.appendChild(wv); setTimeout(() => wv.remove(), 1100);
+    whips++; $("#whips").textContent = whips;
+    try { localStorage.setItem("family_whips", whips); } catch (err) {}
+  }
+});
+show();
+</script>
+<script src="config.js?v=2"></script>
+<script src="extras.js?v=19"></script>
+</body>
+</html>

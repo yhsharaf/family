@@ -1,0 +1,311 @@
+// Interactive extras for the Family site: traitor stew, find-me / shake on the tree,
+// and the shared features (guestbook, guild-wide counters, photo votes, moderated photo uploads) backed by Supabase.
+// Uses the globals from index.html's main script: D, $, esc, fmt, gcol, rot, crack, AC.
+(() => {
+const CFG = window.FAMILY_CONFIG || {};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const people = [...D.founders.map(f => ({ ...f, founder: true })), ...D.members];
+const byName = Object.fromEntries(people.map(p => [p.name.toLowerCase(), p]));
+const BAD = /\b(fuck|shit|bitch|cunt|nigg|fag|retard|whore|slut|dick|pussy|kys)\w*/i;  // simple filter; the DB is the real gate
+$("#names").innerHTML = people.map(p => `<option value="${esc(p.name)}">`).join("");
+
+// ======================================================== shared backend (optional)
+let sb = null;
+const ready = (async () => {
+  if (!CFG.supabaseUrl || !CFG.supabaseKey) return null;
+  await new Promise((res, rej) => { const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
+  return sb;
+})().catch(() => null);
+let device = store.get("family_device");
+if (!device) { device = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)); store.set("family_device", device); }
+
+// ---------- guild-wide counters (whips, stews)
+const pending = { whips: 0, stews: 0 };
+async function loadCounters() {
+  if (!(await ready)) { $("#gwhips").textContent = "soon"; $("#gstews").textContent = "soon"; return; }
+  const { data } = await sb.from("counters").select("name,value");
+  (data || []).forEach(r => { const el = $(r.name === "whips" ? "#gwhips" : "#gstews"); if (el) el.textContent = Number(r.value).toLocaleString(); });
+}
+async function flush() {
+  if (!(await ready)) return;
+  for (const k of ["whips", "stews"]) {
+    while (pending[k] > 0) {
+      const n = Math.min(50, pending[k]); pending[k] -= n;
+      const { data, error } = await sb.rpc("add_count", { k, n });
+      if (error) { pending[k] += n; return; }
+      const el = $(k === "whips" ? "#gwhips" : "#gstews"); if (el && data != null) el.textContent = Number(data).toLocaleString();
+    }
+  }
+}
+setInterval(flush, 2500);
+setInterval(loadCounters, 30000);
+loadCounters();
+$("#dungeon").addEventListener("pointerdown", e => { if (e.target.closest(".poster")) pending.whips++; });
+
+function route() { if (location.hash === "#guestbook") loadGuestbook(); }
+addEventListener("hashchange", route);
+
+// ======================================================== 4. traitor stew (the whip stays above it)
+const kitchen = $("#kitchen"), pot = $("#potwrap");
+let heat = 0, served = false;
+const LABELS = [[0, "raw 🥩"], [20, "rare"], [45, "medium"], [70, "well done"], [90, "almost charred 🔥"], [100, "COOKED 💀"]];
+function setHeat(h) {
+  heat = Math.max(0, Math.min(100, h));
+  $("#heatbar").style.width = heat + "%";
+  $("#heatlabel").textContent = LABELS.filter(l => heat >= l[0]).pop()[1];
+  $("#fire").style.setProperty("--heat", heat);
+  if (heat >= 100 && !served) serve();
+}
+function placeShelf() {
+  kitchen.querySelectorAll(".tr").forEach(t => t.remove());
+  traitors.forEach((t, i) => {
+    const d = document.createElement("div"); d.className = "tr";
+    d.innerHTML = `<img src="${t.sprite}" alt=""><br><span class="nm">${esc(t.name)}</span>`;
+    const narrow = kitchen.clientWidth < 500;  // phones: stack them on the shelf, clear of the pot
+    d.style.left = (narrow ? 0 : i * 70) + "px"; d.style.top = (narrow ? i * 118 : 40 + i * 10) + "px"; d.dataset.home = i;
+    kitchen.appendChild(d); dragify(d);
+  });
+}
+function inPot() { return kitchen.querySelectorAll(".tr.inpot").length; }
+function dragify(el) {
+  let ox = 0, oy = 0;
+  el.addEventListener("pointerdown", e => {
+    if (el.classList.contains("inpot")) return;
+    e.stopPropagation(); try { el.setPointerCapture(e.pointerId); } catch (err) {} el.classList.add("dragging");
+    const r = el.getBoundingClientRect(); ox = e.clientX - r.left; oy = e.clientY - r.top;
+  });
+  el.addEventListener("pointermove", e => {
+    if (!el.classList.contains("dragging")) return;
+    const k = kitchen.getBoundingClientRect();
+    el.style.left = (e.clientX - k.left - ox) + "px"; el.style.top = (e.clientY - k.top - oy) + "px";
+  });
+  el.addEventListener("pointerup", e => {
+    if (!el.classList.contains("dragging")) return;
+    el.classList.remove("dragging");
+    const p = pot.getBoundingClientRect(), r = el.getBoundingClientRect(), k = kitchen.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    if (cx > p.left && cx < p.right && cy > p.top - 80 && cy < p.bottom) {  // dropped on the pot: in it goes
+      el.classList.add("inpot");
+      const slot = inPot() - 1;
+      el.style.left = (p.left - k.left + p.width / 2 - 115 + slot * 110) + "px";
+      el.style.top = (p.top - k.top + 76 - .78 * el.querySelector("img").offsetHeight) + "px";  // head and shoulders above the stew
+      splash(); if (inPot() === traitors.length) $("#stewHint").textContent = "Now stir! Drag in circles over the pot, or tap 🥄 Stir.";
+    }
+  });
+}
+function blip(f = 300 + Math.random() * 500, len = .08, vol = .25) {
+  try {
+    window.AC = window.AC || new (window.AudioContext || window.webkitAudioContext)();
+    const ac = window.AC, t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.8, t + len);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + len);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + len + .02);
+  } catch (e) {}
+}
+function splash() { for (let i = 0; i < 6; i++) setTimeout(() => blip(200 + i * 60, .1, .3), i * 40); bubbles(5); }
+function bubbles(n) {
+  const p = pot.getBoundingClientRect(), k = kitchen.getBoundingClientRect();
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement("div"); b.className = "bubble";
+    b.style.left = (p.left - k.left + 30 + Math.random() * (p.width - 60)) + "px"; b.style.top = (p.top - k.top + 40) + "px";
+    kitchen.appendChild(b); setTimeout(() => b.remove(), 1000);
+  }
+}
+function stir(amount) {
+  if (served) return;
+  if (inPot() < traitors.length) { $("#stewHint").textContent = "Put both traitors in the pot first!"; return; }
+  setHeat(heat + amount); bubbles(2); blip();
+}
+let stirring = false, lastAng = null, acc = 0;
+pot.addEventListener("pointerdown", e => { stirring = true; lastAng = null; try { pot.setPointerCapture(e.pointerId); } catch (err) {} });
+pot.addEventListener("pointermove", e => {
+  if (!stirring) return;
+  const r = pot.getBoundingClientRect(), a = Math.atan2(e.clientY - (r.top + 60), e.clientX - (r.left + r.width / 2));
+  $("#ladle").style.setProperty("--a", (a * 180 / Math.PI + 90) + "deg");
+  if (lastAng != null) { let d = a - lastAng; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; acc += Math.abs(d); }
+  lastAng = a;
+  if (acc > 1.2) { acc = 0; stir(3); }
+});
+["pointerup", "pointercancel"].forEach(t => pot.addEventListener(t, () => { stirring = false; }));
+$("#stirBtn").onclick = () => { $("#ladle").style.setProperty("--a", (Math.random() * 80 - 40) + "deg"); stir(4); };
+function serve() {
+  served = true;
+  for (let i = 0; i < 10; i++) setTimeout(() => blip(500 + i * 90, .12, .3), i * 60);
+  const s = document.createElement("div"); s.className = "served"; s.textContent = "🍲 Traitor stew is served! gg"; kitchen.appendChild(s);
+  pending.stews++;
+  let mine = +store.get("family_stews") || 0; store.set("family_stews", ++mine); $("#mystews").textContent = mine;
+  setTimeout(resetStew, 4000);
+}
+function resetStew() {
+  served = false; kitchen.querySelectorAll(".served").forEach(s => s.remove()); setHeat(0); placeShelf();
+  $("#stewHint").textContent = "Drag Sensuous and VirusIvan into the pot.";
+}
+$("#resetStew").onclick = resetStew;
+$("#mystews").textContent = +store.get("family_stews") || 0;
+placeShelf(); setHeat(0);
+
+// ======================================================== 5. family tree: find me + shake
+function findMe() {
+  const q = $("#findme").value.trim().toLowerCase(); if (!q) return;
+  const leaf = [...document.querySelectorAll("#tree .leaf")].find(l => (l.title || "").toLowerCase() === q)
+    || [...document.querySelectorAll("#tree .leaf")].find(l => (l.title || "").toLowerCase().includes(q));
+  if (!leaf) { $("#findme").value = ""; $("#findme").placeholder = "Not found, try another name"; return; }
+  leaf.classList.add("in"); leaf.scrollIntoView({ behavior: "smooth", block: "center" });
+  leaf.classList.remove("glow"); void leaf.offsetWidth; leaf.classList.add("glow");
+  setTimeout(() => leaf.classList.remove("glow"), 4200);
+}
+$("#findBtn").onclick = findMe;
+$("#findme").addEventListener("keydown", e => { if (e.key === "Enter") findMe(); });
+let lastShake = 0;
+function shakeTree() {
+  if (Date.now() - lastShake < 1500) return; lastShake = Date.now();
+  const t = $("#tree"); t.classList.remove("shake"); void t.offsetWidth; t.classList.add("shake");
+  for (let i = 0; i < 40; i++) {
+    const f = document.createElement("div"); f.className = "falling";
+    f.style.left = Math.random() * 100 + "vw"; f.style.setProperty("--dx", (Math.random() * 200 - 100) + "px");
+    f.style.animationDuration = (2.5 + Math.random() * 2.5) + "s"; f.style.animationDelay = Math.random() * .8 + "s";
+    f.style.background = ["#78af5f", "#9ccc7c", "#5f9a4c", "#c8a040"][i % 4];
+    document.body.appendChild(f); setTimeout(() => f.remove(), 6000);
+  }
+  if (navigator.vibrate) navigator.vibrate(120);
+}
+let motionOn = false;
+function listenShake() {
+  if (motionOn) return; motionOn = true;
+  let lx = 0, ly = 0, lz = 0;
+  addEventListener("devicemotion", e => {
+    const a = e.accelerationIncludingGravity; if (!a || location.hash !== "#timeline") return;
+    const d = Math.abs(a.x - lx) + Math.abs(a.y - ly) + Math.abs(a.z - lz); lx = a.x; ly = a.y; lz = a.z;
+    if (d > 28) shakeTree();
+  });
+}
+$("#shakeBtn").onclick = async () => {
+  shakeTree();
+  try {  // iPhones ask for permission once; after that you can shake the phone itself
+    if (typeof DeviceMotionEvent !== "undefined" && DeviceMotionEvent.requestPermission) {
+      if (await DeviceMotionEvent.requestPermission() === "granted") listenShake();
+    } else listenShake();
+  } catch (e) {}
+};
+
+// ======================================================== 7. guestbook
+let gbLoaded = 0;
+async function loadGuestbook(force) {
+  if (!force && Date.now() - gbLoaded < 20000) return; gbLoaded = Date.now();
+  if (!(await ready)) { $("#gbList").innerHTML = ""; $("#gbSoon").hidden = false; return; }
+  $("#gbSoon").hidden = true;
+  const { data, error } = await sb.from("guestbook").select("id,name,message,created_at").order("created_at", { ascending: false }).limit(150);
+  if (error) { $("#gbList").innerHTML = `<p class="msg err">Couldn't load the guestbook.</p>`; return; }
+  $("#gbList").innerHTML = (data || []).map((g, i) => { const p = byName[g.name.toLowerCase()];
+    return `<div class="note-card" style="--r:${rot(i)}">${p && p.sprite ? `<img src="${p.sprite}" alt="">` : ""}<b>${esc(g.name)}</b><p>${esc(g.message)}</p>
+      <time>${new Date(g.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div>`; }).join("")
+    || '<p class="lead">No messages yet. Be the first!</p>';
+}
+$("#gbForm").onsubmit = async e => {
+  e.preventDefault();
+  const name = $("#gbName").value.trim().slice(0, 40), message = $("#gbMsg").value.trim().slice(0, 280), out = $("#gbOut");
+  if (!name || !message) { out.className = "msg err"; out.textContent = "Write your name and a message."; return; }
+  if (BAD.test(name + " " + message)) { out.className = "msg err"; out.textContent = "Keep it family friendly 🙂"; return; }
+  const lastPost = +store.get("family_gb_last") || 0;
+  if (Date.now() - lastPost < 60000) { out.className = "msg err"; out.textContent = "Slow down, one message a minute."; return; }
+  if (!(await ready)) { out.className = "msg err"; out.textContent = "The guestbook isn't connected yet."; return; }
+  const { error } = await sb.from("guestbook").insert({ name, message });
+  if (error) { out.className = "msg err"; out.textContent = "Couldn't post, try again later."; return; }
+  store.set("family_gb_last", Date.now()); store.set("family_me", name);
+  $("#gbMsg").value = ""; out.className = "msg ok"; out.textContent = "Posted! (If messages need approval, it shows once an admin approves it.)";
+  loadGuestbook(true);
+};
+$("#gbName").value = store.get("family_me") || "";
+
+// ======================================================== 9. votes + 10. uploads on the Memories page
+let voted = {};  // photo -> "love" | "hate" (this device's reaction)
+try { voted = JSON.parse(store.get("family_reacts") || "{}"); } catch (e) {}
+async function loadVotes() {
+  document.querySelectorAll("#album .photo").forEach(f => {
+    if (f.querySelector(".reacts")) return;
+    const mine = voted[f.dataset.src];
+    f.insertAdjacentHTML("beforeend", `<div class="reacts" data-src="${f.dataset.src}">
+      <button class="vote hate ${mine === "hate" ? "on" : ""}" data-kind="hate" title="didn't like it"><i class="em">💀</i> <span>${mine === "hate" ? 1 : 0}</span></button>
+      <button class="vote ${mine === "love" ? "on" : ""}" data-kind="love" title="love it">❤️ <span>${mine === "love" ? 1 : 0}</span></button></div>`);
+  });
+  if (!(await ready)) return;
+  const { data } = await sb.from("memory_vote_counts").select("photo,love,hate");
+  const counts = Object.fromEntries((data || []).map(r => [r.photo, r]));
+  const best = { love: [null, 0], hate: [null, 0] };
+  document.querySelectorAll("#album .reacts").forEach(r => {
+    const c = counts[r.dataset.src] || { love: 0, hate: 0 };
+    for (const k of ["love", "hate"]) {
+      r.querySelector(`[data-kind="${k}"] span`).textContent = c[k];
+      if (c[k] > best[k][1]) best[k] = [r, c[k]];
+    }
+  });
+  // order by score (❤️ minus 💀), the Founders' Big Gathering stays pinned first; ties keep the original order
+  const album = $("#album"), figs = [...album.querySelectorAll(".photo")];
+  figs.forEach((f, i) => { if (f.dataset.i == null) f.dataset.i = i; });
+  const score = f => { const c = counts[f.dataset.src] || { love: 0, hate: 0 }; return c.love - c.hate; };
+  figs.filter(f => !f.classList.contains("first"))
+    .sort((a, b) => score(b) - score(a) || a.dataset.i - b.dataset.i)
+    .forEach(f => album.appendChild(f));
+  document.querySelectorAll("#album .loved").forEach(x => x.remove());
+  if (best.love[0]) best.love[0].closest(".photo").insertAdjacentHTML("beforeend", '<span class="loved">❤️ most loved</span>');
+  if (best.hate[0]) best.hate[0].closest(".photo").insertAdjacentHTML("beforeend", '<span class="loved hated">💀 most hated</span>');
+}
+$("#album").addEventListener("click", async e => {
+  const b = e.target.closest(".vote"); if (!b) return;
+  e.stopPropagation();  // don't open the photo
+  const r = b.closest(".reacts"), src = r.dataset.src, kind = b.dataset.kind;
+  if (voted[src]) return;  // one reaction per photo per device
+  voted[src] = kind; store.set("family_reacts", JSON.stringify(voted));
+  b.classList.add("on"); const s = b.querySelector("span"); s.textContent = +s.textContent + 1;
+  if (kind === "hate") { b.classList.add("boo"); blip(160, .25, .3); } else blip(700, .1, .2);
+  if (await ready) { await sb.from("memory_votes").insert({ photo: src, device, kind }); loadVotes(); }
+}, true);
+async function loadUploads() {
+  if (!(await ready)) return;
+  const { data } = await sb.from("memory_uploads").select("path,title,uploader").order("created_at");
+  const album = $("#album");
+  (data || []).forEach((u, i) => {
+    const src = sb.storage.from("memories").getPublicUrl(u.path).data.publicUrl;
+    if (album.querySelector(`[data-src="${CSS.escape(src)}"]`)) return;
+    album.insertAdjacentHTML("beforeend", `<figure class="photo" style="--r:${rot(i + 3)};margin:0" data-src="${src}"><img src="${src}" alt="" loading="lazy">
+      <div class="t">${esc(titleCase(u.title))}</div></figure>`);
+  });
+  loadVotes();
+}
+async function compress(file) {  // shrink to max 1600px and re-encode as WebP (falls back to JPEG), typically ~10x smaller
+  const img = await createImageBitmap(file);
+  const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  let blob = await new Promise(r => c.toBlob(r, "image/webp", .82));
+  if (!blob || blob.type !== "image/webp") blob = await new Promise(r => c.toBlob(r, "image/jpeg", .85));
+  return blob;
+}
+if (CFG.uploads === false) $("#uploadBox").hidden = true;
+$("#upForm").onsubmit = async e => {
+  e.preventDefault();
+  const out = $("#upOut"), file = $("#upFile").files[0], title = $("#upTitle").value.trim().slice(0, 80), who = $("#upWho").value.trim().slice(0, 40);
+  if (!file || !title) { out.className = "msg err"; out.textContent = "Pick a screenshot and give it a title."; return; }
+  if (!/^image\//.test(file.type)) { out.className = "msg err"; out.textContent = "Only images, please."; return; }
+  if (BAD.test(title + " " + who)) { out.className = "msg err"; out.textContent = "Keep it family friendly 🙂"; return; }
+  if (!(await ready)) { out.className = "msg err"; out.textContent = "Uploads aren't connected yet."; return; }
+  out.className = "msg"; out.textContent = "Shrinking and uploading…";
+  try {
+    const blob = await compress(file);
+    const path = `${device.slice(0, 8)}-${Date.now()}.${blob.type === "image/webp" ? "webp" : "jpg"}`;
+    const up = await sb.storage.from("memories").upload(path, blob, { contentType: blob.type });
+    if (up.error) throw up.error;
+    const ins = await sb.from("memory_uploads").insert({ path, title, uploader: who || null });
+    if (ins.error) throw ins.error;
+    out.className = "msg ok";
+    out.textContent = `Sent (${Math.round(blob.size / 1024)} KB)! It will appear here once an admin approves it.`;
+    $("#upForm").reset();
+  } catch (err) { out.className = "msg err"; out.textContent = "Upload failed, try a smaller image or later."; }
+};
+loadVotes(); loadUploads();
+route();
+})();
