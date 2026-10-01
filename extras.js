@@ -296,7 +296,7 @@ function squeak(pitch = 1) {
     o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .22);
   } catch (e) {}
 }
-const REVERSED = ["Joonie"];  // bonking these takes bonks AWAY (also enforced in the database)
+const REVERSED = ["Joonie"];  // bonking these takes 3 bonks AWAY (also enforced in the database)
 const OUCH = ["ow!", "why me 😭", "gm to you too", "BONK", "*squeak*", "rude!", "I founded this guild!", "x_x", "not the face!", "ok I deserved that"];
 const bonkPending = {}, bonkCounts = {};
 function showBonks() {
@@ -312,7 +312,7 @@ function showBonks() {
 async function loadBonks() {
   if (!(await ready)) return;
   const { data } = await sb.from("founder_bonks").select("founder,value");
-  (data || []).forEach(r => { bonkCounts[r.founder] = Math.max(0, Number(r.value) + (REVERSED.includes(r.founder) ? -1 : 1) * (bonkPending[r.founder] || 0)); });
+  (data || []).forEach(r => { bonkCounts[r.founder] = Math.max(0, Number(r.value) + (REVERSED.includes(r.founder) ? -3 : 1) * (bonkPending[r.founder] || 0)); });
   showBonks();
 }
 async function flushBonks() {
@@ -365,7 +365,7 @@ function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer b
   const say = document.createElement("div"); say.className = "ouch"; say.textContent = OUCH[Math.floor(Math.random() * OUCH.length)];
   c.appendChild(say); setTimeout(() => say.remove(), 900);
   const name = c.title; bonkPending[name] = (bonkPending[name] || 0) + 1;  // the database decides +1 or -1
-  bonkCounts[name] = Math.max(0, (bonkCounts[name] || 0) + (REVERSED.includes(name) ? -1 : 1)); showBonks();
+  bonkCounts[name] = Math.max(0, (bonkCounts[name] || 0) + (REVERSED.includes(name) ? -3 : 1)); showBonks();
 }
 $("#founderGrid").addEventListener("click", onBonk);
 $("#coreGrid").addEventListener("click", onBonk);
