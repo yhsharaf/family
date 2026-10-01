@@ -441,8 +441,7 @@ addEventListener("keydown", e => { if (e.key === "Escape") $("#modal").classList
 // ---------- family tree: canopy (newest) at the top, roots (Founders) at the bottom
 const byMonth = {};
 D.members.forEach(m => (byMonth[m.date.slice(0, 7)] ??= []).push(m));
-const NOTES = { "2026-03": "Records begin on Mar 3. The busiest month ever: day-one energy.",
-  "2026-09": `The newest branch. ${esc(newest.name)} joined on ${fmt(newest.date)}.` };
+const NOTES = { "2026-03": "Records begin on Mar 3. The busiest month ever: day-one energy." };
 const leaf = (p, extra = "") => `<div class="leaf ${extra}" ${p.n ? `data-n="${p.n}"` : ""} title="${esc(p.name)}">
   <div class="pic">${p.sprite ? `<img class="px cut" src="${p.sprite}" alt="" loading="lazy">` : ""}</div><span class="nm">${esc(p.name)}</span></div>`;
 const keys = Object.keys(byMonth).sort().reverse();
