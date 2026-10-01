@@ -7,6 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="draw.css?v=2">
 <link rel="stylesheet" href="extras.css?v=34">
 <style>
 :root {
@@ -210,6 +211,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
   <a href="#timeline" style="--r:2deg;background:var(--green)">Family Tree</a>
   <a href="#memories" style="--r:-2deg;background:#5a64a0">Memories</a>
   <a href="#guestbook" style="--r:2deg;background:var(--purple)">Guestbook</a>
+  <a href="#draw" style="--r:-2deg;background:var(--teal)">Draw & Guess</a>
 </nav>
 
 <div class="smega" id="smega" hidden><span class="tag">📣</span><div class="track"><span id="smegaText"></span></div><button id="smegaX" aria-label="hide">×</button></div>
@@ -273,6 +275,42 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
       <div class="row"><button class="btn" type="submit">📤 Send</button><span class="msg" id="upOut">Photos are shrunk automatically and only show up after an admin approves them.</span></div>
     </form>
   </div>
+</section>
+
+<section id="draw">
+  <h2><span class="word" style="background:var(--teal)">Draw</span><span class="word" style="background:var(--red);--r:2deg">& Guess</span></h2>
+  <div id="drawLobby" class="dlobby">
+    <p class="lead">Pick your character, join a room, and take turns drawing while everyone guesses. Fast correct guesses score more points!</p>
+    <div class="gb">
+      <div class="row"><div class="dprev" id="drawPrev"></div><input id="drawName" list="drawWho" placeholder="Your character" autocomplete="off"></div>
+      <div class="row"><span id="drawRoomLbl"></span></div>
+      <div class="row"><button class="btn" id="drawJoin" style="background:var(--teal)">▶ Play</button>
+        <button class="btn" id="drawPrivate" style="background:#5a5064">🔒 Create private room</button><span class="msg err" id="drawJoinMsg"></span></div>
+    </div>
+    <datalist id="drawWho"></datalist>
+  </div>
+  <div id="drawGame" class="dgame" hidden>
+    <div class="dbar"><span id="drawTimer"></span><span id="drawRound"></span><span id="drawWord" class="dword"></span>
+      <span><button class="btn" id="drawStart" hidden style="background:var(--green)">Start</button> <button class="btn" id="drawLeave" style="background:#5a5064">Leave</button></span></div>
+    <div class="dmain">
+      <div class="dplayers" id="drawPlayers"></div>
+      <div class="dcanvas">
+        <canvas id="drawCanvas" width="800" height="600"></canvas>
+        <div class="doverlay" id="drawOverlay" hidden></div>
+        <div class="dchoose" id="drawChoose" hidden></div>
+      </div>
+      <div class="dchat"><div class="dlog" id="drawLog"></div>
+        <form id="drawChat"><input id="drawMsg" maxlength="100" placeholder="Type your guess here…" autocomplete="off"></form></div>
+    </div>
+    <div class="dtools" id="drawTools" hidden>
+      <div class="cols" id="drawColors"></div><div class="sizes" id="drawSizes"></div>
+      <button class="btn tl" data-tool="brush" title="brush">🖌️</button><button class="btn tl" data-tool="fill" title="fill">🪣</button>
+      <button class="btn tl" data-tool="eraser" title="eraser">🧽</button><button class="btn tl" id="drawUndo" title="undo">↶</button>
+      <button class="btn tl" id="drawClear" title="clear">🗑️</button>
+    </div>
+  </div>
+  <h2 style="margin-top:30px"><span class="word" style="background:var(--gold)">Artist</span><span class="word" style="background:#5a64a0;--r:2deg">Hall of Fame</span></h2>
+  <ol class="dboard" id="drawBoard"></ol>
 </section>
 
 <section id="guestbook">
@@ -548,6 +586,7 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
+<script src="draw.js?v=1"></script>
 <script src="extras.js?v=34"></script>
 </body>
 </html>
