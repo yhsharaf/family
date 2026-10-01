@@ -344,7 +344,9 @@ addEventListener("hashchange", show);
 // ---------- home
 $("#letters").innerHTML = [..."FAMILY"].map((c, i) =>
   `<span style="background:var(${PAL[i]});--r:${rot(i + 2)};animation-delay:${i * .12}s">${c}</span>`).join("");
-const traitors = D.founders.filter(f => f.traitor);
+const TRAITOR_ORDER = ["VirusIvan", "Sensuous", "Dandadan888", "IOO7I"];  // order on the posters and the stew shelf
+const traitors = D.founders.filter(f => f.traitor)
+  .sort((a, b) => (TRAITOR_ORDER.indexOf(a.name) + 1 || 99) - (TRAITOR_ORDER.indexOf(b.name) + 1 || 99));
 const newest = D.members[D.members.length - 1];
 const inFamily = D.members.filter(m => m.now === "Family").length;
 $("#stats").innerHTML = [
