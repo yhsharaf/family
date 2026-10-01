@@ -622,13 +622,22 @@ $("#upForm").onsubmit = async e => {
   out.className = "msg"; out.textContent = "Shrinking and uploading…";
   try {
     const blob = await compress(file);
-    const path = `${device.slice(0, 8)}-${Date.now()}.${blob.type === "image/webp" ? "webp" : "jpg"}`;
-    const up = await sb.storage.from("memories").upload(path, blob, { contentType: blob.type });
+    // 2 uploads per person per day: the database hands out a ticket (the file name) only while you have one left
+    const { data: tk, error: te } = await sb.rpc("upload_ticket", { device, ext: blob.type === "image/webp" ? "webp" : "jpg" });
+    if (te) throw te;
+    if (tk.r === "wait") {
+      const t = new Date(tk.until), hrs = Math.max(1, Math.ceil((t - Date.now()) / 3600000));
+      out.className = "msg err"; out.textContent = `You've used your 2 uploads for today. Try again in about ${hrs} hour${hrs > 1 ? "s" : ""}.`; return;
+    }
+    const up = await sb.storage.from("memories").upload(tk.path, blob, { contentType: blob.type });
     if (up.error) throw up.error;
-    const ins = await sb.from("memory_uploads").insert({ path, title, uploader: who || null });
-    if (ins.error) throw ins.error;
+    const { data: res, error: ie } = await sb.rpc("submit_upload", { p: tk.path, title, uploader: who || null });
+    if (ie) throw ie;
+    if (res.r === "bad") { out.className = "msg err"; out.textContent = "Keep it family friendly 🙂"; return; }
+    if (res.r !== "ok") throw new Error(res.r);
     out.className = "msg ok";
-    out.textContent = `Sent (${Math.round(blob.size / 1024)} KB)! It will appear here once an admin approves it.`;
+    out.textContent = `Sent (${Math.round(blob.size / 1024)} KB)! It will appear here once an admin approves it. ` +
+      (tk.left > 0 ? "You can upload 1 more today." : "That was your last upload for today.");
     $("#upForm").reset();
   } catch (err) { out.className = "msg err"; out.textContent = "Upload failed, try a smaller image or later."; }
 };
