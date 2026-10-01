@@ -376,7 +376,7 @@ holes.addEventListener("pointerdown", e => {
   if (pts < 0) { blip(140, .35, .35); if (navigator.vibrate) navigator.vibrate(200); } else squeak(pts > 1 ? .7 : 1);
   const f = document.createElement("div"); f.className = "pts " + (pts < 0 ? "neg" : ""); f.textContent = (pts > 0 ? "+" : "") + pts;
   h.appendChild(f); setTimeout(() => f.remove(), 700);
-  setTimeout(() => h.classList.remove("up"), 180);
+  setTimeout(() => h.classList.remove("up"), 320);  // short black flash, then sink back down
 });
 $("#arcStart").onclick = () => {
   stopGame(); $("#arcMenu").hidden = true;

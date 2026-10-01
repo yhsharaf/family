@@ -144,7 +144,8 @@
 .hole .mole { position: absolute; left: 0; right: 0; bottom: 12px; height: 100px; display: flex; align-items: flex-end; justify-content: center;
               transform: translateY(105%); transition: transform .12s ease-out; z-index: 1; }
 .hole.up .mole { transform: translateY(0); }
-.hole.hit .mole { transform: translateY(10%) scaleY(.75); filter: brightness(1.4); }
+.hole.hit .mole { transform: translateY(10%) scaleY(.8); filter: brightness(0); opacity: .55; }  /* bonked: black silhouette, ignore it */
+.hole.hit .mk { display: none; }
 .mole img { max-height: 96px; max-width: 100%; image-rendering: pixelated; pointer-events: none; }
 .mole .mk { position: absolute; top: 0; right: 14%; font-size: 22px; }
 .pts { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); font-weight: 700; font-size: 26px; color: #7dff8a; z-index: 3;
