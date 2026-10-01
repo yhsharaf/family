@@ -10,14 +10,13 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { ret
 const BAD = /\b(fuck|shit|bitch|cunt|nigg|fag|retard|whore|slut|dick|pussy|kys)\w*/i;
 const MAX_PLAYERS = 20, CHOOSE_SECS = 15, REVEAL_SECS = 6;
 let settings = { rounds: 3, time: 80, words: "", onlyCustom: false };  // host-chosen room settings
-const COLORS = ["#000000", "#ffffff", "#7f7f7f", "#c1c1c1", "#ef130b", "#ff7100", "#ffe400", "#00cc00", "#00b2ff", "#231fd3",
-                "#a300ba", "#d37caa", "#a0522d", "#592f2a", "#ecbcb4", "#2e7d32"];
+const COLORS = ["#ffffff", "#c1c1c1", "#ef130b", "#ff7100", "#ffe400", "#00cc00", "#00ff91", "#00b2ff", "#231fd3", "#a300ba", "#df69a7", "#ffac8e", "#a0522d",
+                "#000000", "#505050", "#740b07", "#c23800", "#e8a200", "#004619", "#00785d", "#00569e", "#0e0865", "#550069", "#873554", "#cc774d", "#63300d"];
 const SIZES = [4, 10, 22, 40];
 
 // everyone in the guild can play: Founders page people + all members, with their sprites
 const roster = [...D.founders, ...D.members].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);
 const spriteOf = n => (roster.find(p => p.name === n) || {}).sprite;
-$d("#drawWho").innerHTML = roster.map(p => `<option value="${esc(p.name)}">`).join("");
 
 let sb = null, ch = null, me = null, room = "public", joinedAt = 0;
 const myId = Math.random().toString(36).slice(2, 10);
@@ -27,11 +26,46 @@ let ops = [], curStroke = null, sendBuf = [];
 let localHost = false, hostTimer = null, choiceShown = null, lastHintAt = 0;
 
 // ------------------------------------------------------------------ join screen
+const guildOf = n => roster.find(p => p.name.toLowerCase() === n.trim().toLowerCase());
 function showPick() {
-  const n = $d("#drawName").value.trim(), s = spriteOf(n);
-  $d("#drawPrev").innerHTML = s ? `<img src="${s}" alt="">` : (n ? "❔" : "");
+  const n = $d("#drawName").value.trim(), g = guildOf(n);
+  $d("#drawPrev").innerHTML = g && g.sprite ? `<img src="${g.sprite}" alt="">` : `<span>${n ? "👤" : "🙂"}</span>`;
+  $d("#drawWarn").hidden = !n || !!g;
 }
-$d("#drawName").oninput = showPick;
+// name suggestions while typing (iPhones don't show <datalist> well, so this is our own dropdown)
+let suggIdx = -1;
+function suggest() {
+  const q = $d("#drawName").value.trim().toLowerCase(), box = $d("#drawSugg");
+  if (!q) { box.hidden = true; return; }
+  const hits = roster.filter(p => p.name.toLowerCase().includes(q))
+    .sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || a.name.length - b.name.length).slice(0, 8);
+  if (!hits.length || (hits.length === 1 && hits[0].name.toLowerCase() === q)) { box.hidden = true; return; }
+  suggIdx = -1;
+  box.innerHTML = hits.map(p => `<button type="button" data-n="${esc(p.name)}">${p.sprite ? `<img src="${p.sprite}" alt="">` : "<span style='width:34px'>👤</span>"}
+    ${esc(p.name)}<small>${p.founder ? "Founder" : p.n ? "Member" : "Core Family"}</small></button>`).join("");
+  box.hidden = false;
+}
+$d("#drawSugg").addEventListener("pointerdown", e => {  // pointerdown so it fires before the input loses focus
+  const b = e.target.closest("button"); if (!b) return; e.preventDefault();
+  $d("#drawName").value = b.dataset.n; $d("#drawSugg").hidden = true; showPick();
+});
+$d("#drawName").addEventListener("input", () => { showPick(); suggest(); });
+$d("#drawName").addEventListener("blur", () => setTimeout(() => $d("#drawSugg").hidden = true, 150));
+$d("#drawName").addEventListener("keydown", e => {
+  const items = [...$d("#drawSugg").querySelectorAll("button")];
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { if (!items.length) return; e.preventDefault();
+    suggIdx = (suggIdx + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length; items.forEach((b, i) => b.classList.toggle("on", i === suggIdx)); }
+  if (e.key === "Enter") { e.preventDefault();
+    if (suggIdx >= 0 && items[suggIdx]) { $d("#drawName").value = items[suggIdx].dataset.n; $d("#drawSugg").hidden = true; showPick(); }
+    else $d("#drawJoin").click(); }
+});
+const withSprite = roster.filter(p => p.sprite);
+function cycle(d) {  // ◀ ▶ arrows step through the guild like skribbl's avatar picker
+  const i = withSprite.findIndex(p => p.name === $d("#drawName").value.trim());
+  const p = withSprite[(i + d + withSprite.length) % withSprite.length]; $d("#drawName").value = p.name; showPick();
+}
+$d("#drawPrevChar").onclick = () => cycle(-1);
+$d("#drawNextChar").onclick = () => cycle(1);
 $d("#drawName").value = store.get("family_me") || "";
 showPick();
 function roomFromHash() { const m = location.hash.match(/^#draw\/([A-Z0-9]{4,8})$/); return m ? m[1] : null; }
@@ -48,22 +82,25 @@ addEventListener("hashchange", () => {
 });
 function updateRoomLabel() {
   const r = roomFromHash();
-  $d("#drawRoomLbl").innerHTML = r ? `Private room <b>${r}</b> · share this page's link to invite friends` : "Public room";
+  $d("#drawRoomLbl").innerHTML = r ? `🔒 Private room <b>${r}</b>` : "";
+  $d("#drawInvite").value = location.href.split("?")[0].replace(/#.*/, "") + (r ? "#draw/" + r : "#draw");
 }
 updateRoomLabel();
 if (location.hash.startsWith("#draw/")) setTimeout(() => window.dispatchEvent(new HashChangeEvent("hashchange")), 0);
 
 $d("#drawJoin").onclick = async () => {
-  const n = $d("#drawName").value.trim();
-  const p = roster.find(x => x.name.toLowerCase() === n.toLowerCase());
-  if (!p) { $d("#drawJoinMsg").textContent = "Pick your character from the list."; return; }
+  const n = $d("#drawName").value.trim().slice(0, 20);
+  if (n.length < 2) { $d("#drawJoinMsg").textContent = "Type a name first."; return; }
+  if (BAD.test(n)) { $d("#drawJoinMsg").textContent = "Pick a family friendly name 🙂"; return; }
+  $d("#drawJoinMsg").textContent = "";
+  const p = guildOf(n) || { name: n, sprite: null, guest: true };
   if (!CFG.supabaseUrl) { $d("#drawJoinMsg").textContent = "The game needs the database connection."; return; }
   if (!window.supabase) {
     await new Promise((res, rej) => { const s = document.createElement("script");
       s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
   }
   sb = sb || window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
-  me = { name: p.name, sprite: p.sprite || null }; store.set("family_me", p.name);
+  me = { name: p.name, sprite: p.sprite || null, guest: !!p.guest }; if (!p.guest) store.set("family_me", p.name);
   room = roomFromHash() || "public"; joinedAt = Date.now();
   connect();
 };
@@ -92,15 +129,17 @@ function connect() {
   ch.subscribe(async st => {
     if (st !== "SUBSCRIBED") return;
     await ch.track({ name: me.name, sprite: me.sprite, joined: joinedAt });
-    $d("#drawLobby").hidden = true; $d("#drawGame").hidden = false;
-    sys(`You joined as ${me.name}.`);
+    $d("#drawLobby").hidden = true; $d("#drawGame").hidden = false; $d("#draw").classList.add("playing"); document.body.classList.add("sk-playing");
+    window.scrollTo(0, 0);
+    sys(`You joined as ${esc(me.name)}.`);
+    if (me.guest) sys("You're playing as a guest: your points won't be saved to the Hall of Fame.", "close");
     setTimeout(() => ch.send({ type: "broadcast", event: "sync?", payload: {} }), 800);
   });
 }
 function leave() {
   if (hostTimer) clearInterval(hostTimer); hostTimer = null; localHost = false;
   if (ch) { ch.untrack(); sb.removeChannel(ch); ch = null; }
-  $d("#drawLobby").hidden = false; $d("#drawGame").hidden = true; S = { phase: "lobby" }; ops = []; redraw();
+  $d("#drawLobby").hidden = false; $d("#drawGame").hidden = true; $d("#draw").classList.remove("playing"); document.body.classList.remove("sk-playing"); S = { phase: "lobby" }; ops = []; redraw();
 }
 $d("#drawLeave").onclick = () => { leave(); };
 function hostId() {
@@ -209,11 +248,17 @@ function render() {
   $d("#drawRound").textContent = S.round ? `Round ${Math.min(S.round, R)} of ${R}` : "";
   $d("#drawSettings").hidden = !(localHost && (S.phase === "lobby" || S.phase === "end"));
   if (S.kicked && S.kicked.includes(me.name) && ch) { leave(); $d("#drawJoinMsg").textContent = "You were kicked from the room by the host."; return; }
-  $d("#drawWord").innerHTML = drawing ? (S.drawer === myId ? `<b>${esc(myWord || "")}</b>` : esc(S.mask || "")) :
-    S.phase === "reveal" ? `<b>${esc(S.word || "")}</b>` : "";
+  const letters = m => (m || "").split(" ").filter(c => c === "_" || /[a-z0-9]/.test(c)).length;
+  $d("#drawWordLbl").textContent = drawing ? (S.drawer === myId ? "DRAW THIS" : "GUESS THIS") : S.phase === "reveal" ? "THE WORD WAS" : "WAITING";
+  const tiles = m => { const parts = (m || "").split(" "); let out = "", prevSpace = false;
+    // the mask is "_ _ x _" with single spaces between letters; a real space in the word shows up as an empty part
+    for (const c of parts) { if (c === "") { out += '<span class="sp"></span>'; continue; } out += `<span class="ltr">${c === "_" ? "" : esc(c)}</span>`; }
+    return out + `<span class="cnt">${letters(m)}</span>`; };
+  $d("#drawWord").innerHTML = drawing ? (S.drawer === myId ? `<span class="plain">${esc(myWord || "")}</span>` : tiles(S.mask)) :
+    S.phase === "reveal" ? `<span class="plain">${esc(S.word || "")}</span>` : "";
   const ov = $d("#drawOverlay");
   let html = "";
-  if (S.phase === "lobby") html = localHost ? `<p>Waiting for players… press <b>Start</b> when everyone is here.</p>` : `<p>Waiting for the host to start…</p>`;
+  if (S.phase === "lobby") html = localHost ? "" : `<p>Waiting for the host to start the game…</p>`;
   else if (S.phase === "choosing") html = S.drawer === myId ? "" : `<p>${esc(S.names[S.drawer] || "?")} is choosing a word…</p>`;
   else if (S.phase === "reveal") html = `<p>The word was</p><div class="dw-big">${esc(S.word || "?")}</div>`;
   else if (S.phase === "end") {
@@ -224,6 +269,7 @@ function render() {
   ov.innerHTML = html; ov.hidden = !html;
   if (!iDraw) $d("#drawChoose").innerHTML = "";
   if (S.phase !== "choosing" || S.drawer !== myId) $d("#drawChoose").hidden = true; else $d("#drawChoose").hidden = false;
+  $d("#drawSettings").hidden = !(localHost && (S.phase === "lobby" || S.phase === "end"));
   renderPlayers();
 }
 function renderPlayers() {
@@ -232,9 +278,10 @@ function renderPlayers() {
   $d("#drawPlayers").innerHTML = ids.map((id, i) => {
     const p = players[id], sc = (S.scores || {})[id] || 0, g = (S.guessed || []).includes(id);
     return `<div class="dp ${g ? "got" : ""} ${id === myId ? "me" : ""}"><span class="rk">#${i + 1}</span>
-      ${p.sprite ? `<img src="${p.sprite}" alt="">` : "<span class='np'>?</span>"}
-      <div class="dn"><b>${esc(p.name)}${id === myId ? " (you)" : ""}</b><span>${sc} pts</span></div>
-      ${S.drawer === id && S.phase !== "lobby" ? "<span class='pen'>✏️</span>" : ""}${id === host ? "<span class='crown' title='host'>👑</span>" : ""}${localHost && id !== myId ? `<button class="kick" data-id="${id}" title="kick">✖</button>` : ""}</div>`;
+      <div class="dn"><b>${esc(p.name)}${id === myId ? " (You)" : ""}</b><span>${sc} points</span></div>
+      <div class="av">${p.sprite ? `<img src="${p.sprite}" alt="">` : "<span class='np'>👤</span>"}
+        ${S.drawer === id && S.phase !== "lobby" ? "<span class='pen'>✏️</span>" : ""}${id === host ? "<span class='crown' title='host'>👑</span>" : ""}</div>
+      ${localHost && id !== myId ? `<button class="kick" data-id="${id}" title="kick">✖</button>` : ""}</div>`;
   }).join("");
   $d("#drawStart").hidden = !(localHost && (S.phase === "lobby" || S.phase === "end"));
 }
@@ -244,6 +291,10 @@ setInterval(() => {
   $d("#drawTimer").textContent = (S.phase === "drawing" || S.phase === "choosing") ? `⏱ ${left}` : "";
 }, 250);
 
+$d("#drawCopy").onclick = () => {
+  const i = $d("#drawInvite"); i.select(); try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand("copy"); }
+  $d("#drawCopy").textContent = "Copied!"; setTimeout(() => $d("#drawCopy").textContent = "Copy", 1200);
+};
 $d("#drawPlayers").addEventListener("click", e => {
   const b = e.target.closest(".kick"); if (!b || !localHost) return;
   const p = players[b.dataset.id]; if (!p || !confirm(`Kick ${p.name} from the room?`)) return;
@@ -273,9 +324,13 @@ function onGuessed(m) {
   }
   sys(`✅ <b>${esc(m.name)}</b> guessed the word! (+${m.pts})`, "ok");
 }
-$d("#drawChat").onsubmit = async e => {
-  e.preventDefault();
+$d("#drawMsg").addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); sendChat(); } });
+$d("#drawChat").addEventListener("submit", e => { e.preventDefault(); sendChat(); });
+let sending = false;
+async function sendChat() {
+  if (sending) return;
   const inp = $d("#drawMsg"), text = inp.value.trim().slice(0, 100); if (!text || !ch) return;
+  sending = true; setTimeout(() => sending = false, 250);
   inp.value = "";
   if (BAD.test(text)) { sys("Keep it family friendly 🙂"); return; }
   if (S.phase === "drawing" && S.drawer !== myId && !(S.guessed || []).includes(myId) && S.roundId) {
@@ -291,7 +346,7 @@ $d("#drawChat").onsubmit = async e => {
   }
   const m = { name: me.name, text, secret: S.phase === "drawing" && canSeeSecret() };
   send("chat", m); onChat(m);
-};
+}
 function blipD(f) {
   try { const ac = window.getAC && window.getAC(); if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
     o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + .12); g.gain.setValueAtTime(.25, t);
@@ -302,7 +357,7 @@ function blipD(f) {
 const cv = $d("#drawCanvas"), cx = cv.getContext("2d"), CW = cv.width, CH = cv.height;
 let tool = "brush", color = "#000000", size = SIZES[1];
 $d("#drawColors").innerHTML = COLORS.map(c => `<button class="col" style="background:${c}" data-c="${c}"></button>`).join("");
-$d("#drawSizes").innerHTML = SIZES.map(s => `<button class="sz" data-s="${s}"><i style="width:${Math.min(28, s)}px;height:${Math.min(28, s)}px"></i></button>`).join("");
+$d("#drawSizes").innerHTML = SIZES.map(s => `<button class="sz" data-s="${s}"><i style="width:${Math.min(30, s * .7 + 4)}px;height:${Math.min(30, s * .7 + 4)}px"></i></button>`).join("");
 $d("#drawColors").onclick = e => { const b = e.target.closest(".col"); if (!b) return; color = b.dataset.c; if (tool === "eraser") tool = "brush"; markTools(); };
 $d("#drawSizes").onclick = e => { const b = e.target.closest(".sz"); if (!b) return; size = +b.dataset.s; markTools(); };
 document.querySelectorAll("#drawTools [data-tool]").forEach(b => b.onclick = () => { tool = b.dataset.tool; markTools(); });
@@ -312,6 +367,7 @@ function markTools() {
   document.querySelectorAll("#drawColors .col").forEach(b => b.classList.toggle("on", b.dataset.c === color && tool !== "eraser"));
   document.querySelectorAll("#drawSizes .sz").forEach(b => b.classList.toggle("on", +b.dataset.s === size));
   document.querySelectorAll("#drawTools [data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === tool));
+  document.querySelectorAll("#drawSizes .sz i").forEach(i => i.style.background = tool === "eraser" ? "#999" : color === "#ffffff" ? "#ddd" : color);
   $d("#drawCur").style.background = tool === "eraser" ? "repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0/12px 12px" : color;
 }
 markTools();

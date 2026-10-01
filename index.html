@@ -7,7 +7,7 @@
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="draw.css?v=4">
+<link rel="stylesheet" href="draw.css?v=8">
 <link rel="stylesheet" href="extras.css?v=34">
 <style>
 :root {
@@ -277,50 +277,75 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
   </div>
 </section>
 
-<section id="draw">
-  <h2><span class="word" style="background:var(--teal)">Draw</span><span class="word" style="background:var(--red);--r:2deg">& Guess</span></h2>
-  <div id="drawLobby" class="dlobby">
-    <p class="lead">Pick your character, join a room, and take turns drawing while everyone guesses. Fast correct guesses score more points!</p>
-    <div class="gb">
-      <div class="row"><div class="dprev" id="drawPrev"></div><input id="drawName" list="drawWho" placeholder="Your character" autocomplete="off"></div>
-      <div class="row"><span id="drawRoomLbl"></span></div>
-      <div class="row"><button class="btn" id="drawJoin" style="background:var(--teal)">▶ Play</button>
-        <button class="btn" id="drawPrivate" style="background:#5a5064">🔒 Create private room</button><span class="msg err" id="drawJoinMsg"></span></div>
-    </div>
-    <datalist id="drawWho"></datalist>
+<section id="draw" class="sk">
+  <div class="sk-logo" aria-label="Family Draw!">
+    <span style="--c:#ff3b30">F</span><span style="--c:#ff9500">a</span><span style="--c:#ffcc00">m</span><span style="--c:#34c759">i</span><span style="--c:#00c7be">l</span><span style="--c:#30b0ff">y</span>
+    <span class="gap"></span>
+    <span style="--c:#5856d6">D</span><span style="--c:#af52de">r</span><span style="--c:#ff2d55">a</span><span style="--c:#ff3b30">w</span><span style="--c:#ffcc00">!</span>
   </div>
-  <div id="drawGame" class="dgame" hidden>
-    <div class="dbar"><span id="drawTimer"></span><span id="drawRound"></span><span id="drawWord" class="dword"></span>
-      <span><button class="btn" id="drawStart" hidden style="background:var(--green)">Start</button> <button class="btn" id="drawLeave" style="background:#5a5064">Leave</button></span></div>
-    <div class="dsettings gb" id="drawSettings" hidden>
-      <b>Room settings</b> <span class="msg">(host only)</span>
-      <div class="row"><label>Rounds <select id="dsRounds"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select></label>
-        <label>Draw time <select id="dsTime"><option value="30">30s</option><option value="45">45s</option><option value="60">60s</option><option value="80" selected>80s</option><option value="100">100s</option><option value="120">120s</option><option value="150">150s</option><option value="180">180s</option></select></label></div>
-      <textarea id="dsWords" maxlength="3000" placeholder="Custom words, separated by commas (e.g. zakum, pink bean, henesys)"></textarea>
-      <label class="mega"><input type="checkbox" id="dsOnly"> Use only my custom words (needs at least 3)</label>
-    </div>
-    <div class="dmain">
-      <div class="dplayers" id="drawPlayers"></div>
-      <div class="dcanvas">
-        <canvas id="drawCanvas" width="800" height="600"></canvas>
-        <div class="doverlay" id="drawOverlay" hidden></div>
-        <div class="dchoose" id="drawChoose" hidden></div>
+  <div id="drawLobby" class="sk-home">
+    <div class="sk-panel">
+      <div class="sk-name"><input id="drawName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go">
+        <div class="sk-sugg" id="drawSugg" hidden></div></div>
+      <div class="sk-warn" id="drawWarn" hidden>⚠️ This isn't a guild name, so you can play as a guest but your points won't be saved to the Hall of Fame.</div>
+      <div class="sk-avatar">
+        <button class="sk-arrow" id="drawPrevChar" aria-label="previous character">◀</button>
+        <div class="sk-face" id="drawPrev"></div>
+        <button class="sk-arrow" id="drawNextChar" aria-label="next character">▶</button>
       </div>
-      <div class="dchat"><div class="dlog" id="drawLog"></div>
-        <form id="drawChat"><input id="drawMsg" maxlength="100" placeholder="Type your guess here…" autocomplete="off"></form></div>
+      <div class="sk-room" id="drawRoomLbl"></div>
+      <button class="sk-btn sk-play" id="drawJoin">Play!</button>
+      <button class="sk-btn sk-private" id="drawPrivate">Create Private Room</button>
+      <div class="sk-err" id="drawJoinMsg"></div>
     </div>
-    <div class="dtools" id="drawTools" hidden>
-      <div class="grp"><small>Color</small><div class="row2"><span class="cur" id="drawCur"></span><div class="cols" id="drawColors"></div></div></div>
-      <div class="grp"><small>Size</small><div class="sizes" id="drawSizes"></div></div>
-      <div class="grp"><small>Tool</small><div class="row2">
-        <button class="btn tl" data-tool="brush" title="Brush">🖌️</button><button class="btn tl" data-tool="fill" title="Fill bucket">🪣</button>
-        <button class="btn tl" data-tool="eraser" title="Eraser">🧽</button></div></div>
-      <div class="grp"><small>Edit</small><div class="row2">
-        <button class="btn tl" id="drawUndo" title="Undo last line">↶</button><button class="btn tl" id="drawClear" title="Clear everything">🗑️</button></div></div>
+    <div class="sk-panel sk-about">
+      <h3>How to play</h3>
+      <ol><li>When it's your turn, choose a word and draw it.</li><li>Everyone else types their guesses in the chat.</li>
+        <li>The faster you guess, the more points you get. The drawer gets points too!</li></ol>
     </div>
   </div>
-  <h2 style="margin-top:30px"><span class="word" style="background:var(--gold)">Artist</span><span class="word" style="background:#5a64a0;--r:2deg">Hall of Fame</span></h2>
-  <ol class="dboard" id="drawBoard"></ol>
+  <div id="drawGame" class="sk-game" hidden>
+    <div class="sk-top">
+      <div class="sk-clock"><span id="drawTimer"></span></div>
+      <div class="sk-round" id="drawRound"></div>
+      <div class="sk-word"><small id="drawWordLbl"></small><span id="drawWord"></span></div>
+      <button class="sk-small" id="drawLeave">Leave</button>
+    </div>
+    <div class="sk-players" id="drawPlayers"></div>
+    <div class="sk-board">
+      <canvas id="drawCanvas" width="800" height="600"></canvas>
+      <div class="doverlay" id="drawOverlay" hidden></div>
+      <div class="dchoose" id="drawChoose" hidden></div>
+      <div class="sk-settings" id="drawSettings" hidden>
+        <div class="sk-set"><label>🔁 Rounds</label><select id="dsRounds"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select></div>
+        <div class="sk-set"><label>⏱ Drawtime</label><select id="dsTime"><option value="30">30</option><option value="45">45</option><option value="60">60</option><option value="80" selected>80</option><option value="100">100</option><option value="120">120</option><option value="150">150</option><option value="180">180</option></select></div>
+        <div class="sk-set sk-col"><label>✏️ Custom words</label>
+          <textarea id="dsWords" maxlength="3000" placeholder="Minimum of 3 words. Separated by a comma, e.g. zakum, pink bean, henesys"></textarea>
+          <label class="sk-check"><input type="checkbox" id="dsOnly"> Use custom words only</label></div>
+        <div class="sk-invite"><input id="drawInvite" readonly><button class="sk-small" id="drawCopy">Copy</button></div>
+        <button class="sk-btn sk-play" id="drawStart">Start!</button>
+      </div>
+    </div>
+    <div class="sk-chat">
+      <div class="dlog" id="drawLog"></div>
+      <form id="drawChat" action="#" autocomplete="off"><input id="drawMsg" maxlength="100" placeholder="Type your guess here..." autocomplete="off"
+        autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send"><button type="submit" id="drawSend">Send</button></form>
+    </div>
+    <div class="sk-tools" id="drawTools" hidden>
+      <span class="cur" id="drawCur"></span>
+      <div class="cols" id="drawColors"></div>
+      <div class="sizes" id="drawSizes"></div>
+      <div class="tls">
+        <button class="tl" data-tool="brush" title="Brush">🖌️</button><button class="tl" data-tool="fill" title="Fill">🪣</button>
+        <button class="tl" data-tool="eraser" title="Eraser">🧽</button><button class="tl" id="drawUndo" title="Undo">↶</button>
+        <button class="tl" id="drawClear" title="Clear">🗑️</button>
+      </div>
+    </div>
+  </div>
+  <div class="sk-panel sk-fame">
+    <h3>🏆 Artist Hall of Fame</h3>
+    <ol class="dboard" id="drawBoard"></ol>
+  </div>
 </section>
 
 <section id="guestbook">
@@ -596,7 +621,7 @@ dun.addEventListener("pointerdown", e => {
 show();
 </script>
 <script src="config.js?v=2"></script>
-<script src="draw.js?v=3"></script>
+<script src="draw.js?v=6"></script>
 <script src="extras.js?v=34"></script>
 </body>
 </html>
