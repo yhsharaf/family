@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="draw.css?v=11">
+<link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="extras.css?v=39">
 <style>
 :root {
@@ -212,6 +213,7 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
   <a href="#memories" style="--r:-2deg;background:#5a64a0">Memories</a>
   <a href="#guestbook" style="--r:2deg;background:var(--purple)">Guestbook</a>
   <a href="#draw" style="--r:-2deg;background:var(--teal)">Draw & Guess</a>
+  <a href="#ww" style="--r:2deg;background:#3b3561">Werewolf</a>
 </nav>
 
 <div class="smega" id="smega" hidden><span class="tag">📣</span><div class="track"><span id="smegaText"></span></div><button id="smegaX" aria-label="hide">×</button></div>
@@ -341,6 +343,49 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px
   <div class="sk-panel sk-fame">
     <h3>🏆 Artist Hall of Fame</h3>
     <ol class="dboard" id="drawBoard"></ol>
+  </div>
+</section>
+<section id="ww" class="ww">
+  <h2 class="ww-h"><span class="word" style="background:#3b3561">Were</span><span class="word" style="background:var(--red);--r:2deg">wolf</span></h2>
+  <div id="wwLobby" class="sk-home">
+    <div class="sk-panel">
+      <div class="sk-name"><input id="wwName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go">
+        <div class="sk-sugg" id="wwSugg" hidden></div></div>
+      <div class="sk-warn" id="wwWarn" hidden>⚠️ This isn't a guild name, so you can play as a guest but your wins won't be saved to the Hall of Fame.</div>
+      <div class="sk-avatar"><div class="sk-face" id="wwFace"></div></div>
+      <div class="sk-room" id="wwRoomLbl"></div>
+      <button class="sk-btn ww-play" id="wwJoin">Play!</button>
+      <button class="sk-btn sk-private" id="wwPrivate">Create Private Room</button>
+      <div class="sk-err" id="wwErr"></div>
+    </div>
+    <div class="sk-panel ww-about">
+      <h3>How to play</h3>
+      <p>Werewolves are hiding in the village. Every <b>night</b> they secretly eat someone. Every <b>day</b> the village talks and votes to lynch
+        whoever they think is a wolf. Villagers win when every wolf is gone; wolves win when they match the villagers. 5 to 20 players.</p>
+      <div class="ww-roles" id="wwRoles"></div>
+    </div>
+  </div>
+  <div id="wwGame" class="ww-game" hidden>
+    <div class="ww-top"><div class="ww-clock" id="wwClock"></div><div class="ww-phase" id="wwPhase"></div><button class="sk-small" id="wwLeave">Leave</button></div>
+    <div class="ww-side">
+      <div class="ww-me" id="wwMe" hidden></div>
+      <div class="ww-prompt" id="wwPrompt"></div>
+      <div class="ww-players" id="wwPlayers"></div>
+      <div class="ww-lobbybar" id="wwLobbyBar" hidden>
+        <div class="sk-invite"><input id="wwInvite" readonly><button class="sk-small" id="wwCopy">Copy</button></div>
+        <button class="sk-btn ww-play" id="wwStart" hidden>Start!</button>
+      </div>
+    </div>
+    <div class="ww-chat">
+      <div class="ww-tabs" id="wwTabs"></div>
+      <form id="wwChat" action="#" autocomplete="off"><input id="wwMsg" maxlength="160" placeholder="Type a message…" autocomplete="off"
+        autocapitalize="sentences" spellcheck="false" enterkeyhint="send"><button type="submit">Send</button></form>
+      <div class="dlog ww-log" id="wwLog"></div>
+    </div>
+  </div>
+  <div class="sk-panel ww-fame">
+    <h3>🏆 Werewolf Hall of Fame</h3>
+    <ol class="dboard" id="wwBoard"></ol>
   </div>
 </section>
 
@@ -618,6 +663,7 @@ show();
 </script>
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=9"></script>
+<script src="ww.js?v=2"></script>
 <script src="extras.js?v=39"></script>
 </body>
 </html>

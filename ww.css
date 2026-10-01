@@ -1,0 +1,98 @@
+/* ---------- Werewolf (Family paper style; the game board goes dark at night) */
+.ww { font-family: Ubuntu, system-ui, sans-serif; }
+.ww-h { margin: 10px 0 14px; }
+.ww .sk-panel h3 { margin: 0 0 8px; }
+.ww-play { background: #3b3561; font-size: 26px; } .ww-play:hover { background: #2c2749; }
+.ww-play:disabled { opacity: .45; cursor: default; }
+.ww-about p { margin: 0 0 10px; line-height: 1.5; }
+.ww-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.wwr { display: grid; grid-template-columns: 30px 1fr; column-gap: 6px; align-items: center; background: #fff; border: 1px solid var(--edge);
+  border-radius: 10px; padding: 6px 8px; }
+.wwr span { grid-row: span 2; font-size: 24px; text-align: center; }
+.wwr small { color: var(--muted); font-size: 12px; line-height: 1.3; }
+.ww-fame { margin: 18px 0 0; }
+
+.ww-game { display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: "top top" "side chat"; gap: 8px;
+  background: #e9dfc9; border-radius: 18px; padding: 8px; box-shadow: 6px 9px 0 rgba(60,45,30,.18); transition: background .8s; }
+.ww-game[hidden] { display: none; }
+.ww.night .ww-game { background: #2b2d4a; }
+.ww-top { grid-area: top; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--edge); border-radius: 12px; padding: 6px 10px; }
+.ww-phase { flex: 1; font-weight: 800; font-size: 18px; }
+.ww-clock { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; border: 3px solid var(--ink); display: flex; align-items: center;
+  justify-content: center; font-weight: 900; background: #fff; }
+.ww-clock:empty { visibility: hidden; }
+.ww-clock.hurry { color: var(--red); border-color: var(--red); animation: pop .5s infinite alternate; }
+.ww-side { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ww-me { display: flex; gap: 10px; align-items: center; background: var(--card); border: 2px solid var(--gold); border-radius: 12px; padding: 8px 10px; }
+.ww-me[hidden] { display: none; }
+.ww-me .e { font-size: 36px; }
+.ww-me small { display: block; color: var(--muted); font-size: 13px; }
+.ww-me .x { margin-top: 4px; font-size: 13px; background: #fff3d6; border-radius: 8px; padding: 4px 8px; }
+.ww-prompt { background: var(--card); border: 1px dashed var(--edge); border-radius: 12px; padding: 8px 10px; font-weight: 700; text-align: center; }
+.ww-prompt:empty { display: none; }
+.ww-prompt .sk-small { margin-left: 6px; }
+.ww-prompt .ww-play { width: 100%; }
+.ww-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; align-content: start; }
+.wwp { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; border-radius: 12px;
+  background: var(--card); border: 2px solid var(--edge); font: inherit; color: var(--ink); cursor: default; touch-action: manipulation; min-width: 0; }
+.wwp .av { position: relative; height: 62px; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.wwp .av img { max-height: 62px; max-width: 80px; image-rendering: pixelated; }
+.wwp .np { font-size: 34px; }
+.wwp b { font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wwp small { font-size: 11px; color: var(--muted); min-height: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wwp.me { border-color: var(--blue); }
+.wwp.can { cursor: pointer; border-color: var(--gold); box-shadow: 2px 3px 0 rgba(60,45,30,.18); }
+.wwp.can:hover { transform: translateY(-2px); }
+.wwp.can:active { transform: translateY(1px); }
+.wwp.sel { background: #ffe8a3; border-color: var(--red); }
+.wwp.mate { background: #f6dede; }
+.wwp.off { opacity: .6; }
+.wwp.dead { background: #ddd6c8; }
+.wwp.dead .av img { filter: brightness(0); opacity: .75; }
+.wwp .rip { position: absolute; top: 0; right: 6px; font-size: 18px; }
+.wwp .crown { position: absolute; top: -4px; left: 4px; font-size: 18px; }
+.wwp .cnt { position: absolute; top: 0; left: 4px; background: var(--red); color: #fff; font-weight: 800; font-size: 12px; border-radius: 10px; padding: 1px 7px; }
+.wwp .cnt.bite { left: auto; right: 4px; background: #5a2a2a; }
+.wwp .kick { position: absolute; top: 2px; right: 4px; color: var(--red); font-weight: 900; cursor: pointer; padding: 0 4px; }
+.ww.night .wwp { background: #3d4066; border-color: #55588a; color: #e9e6f5; }
+.ww.night .wwp small { color: #b6b4d1; }
+.ww.night .wwp.can { border-color: #ffcc4a; }
+.ww.night .wwp.sel { background: #6b3a52; border-color: #ff8a80; }
+.ww.night .wwp.mate { background: #5a3346; }
+.ww.night .wwp.dead { background: #2f3150; }
+.ww.night .ww-prompt { background: #3d4066; color: #f0eefc; border-color: #55588a; }
+.ww-lobbybar { display: flex; flex-direction: column; gap: 8px; background: var(--card); border: 1px solid var(--edge); border-radius: 12px; padding: 10px; }
+.ww-lobbybar[hidden] { display: none; }
+.ww-lobbybar .sk-invite { display: flex; gap: 6px; } .ww-lobbybar .sk-invite input { flex: 1; min-width: 0; border: 2px solid var(--edge); border-radius: 10px; padding: 6px 8px; font: inherit; }
+.ww-chat { grid-area: chat; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; min-height: 420px; max-height: 76vh; }
+.ww-tabs { display: flex; } .ww-tabs:empty { display: none; }
+.ww-tabs button { flex: 1; border: 0; border-bottom: 2px solid var(--edge); background: #f6f0e2; padding: 7px 4px; font: 700 13px Ubuntu, sans-serif; cursor: pointer; color: var(--ink); }
+.ww-tabs button.on { background: #fff; border-bottom-color: var(--red); }
+.ww-tabs i { font-style: normal; background: var(--red); color: #fff; border-radius: 9px; padding: 0 6px; font-size: 11px; }
+#wwChat { display: flex; gap: 6px; padding: 6px; border-bottom: 1px solid var(--edge); }
+#wwMsg { flex: 1; min-width: 0; font: 16px Ubuntu, sans-serif; padding: 8px 10px; border: 2px solid var(--edge); border-radius: 10px; }
+#wwMsg:disabled { background: #eee; }
+#wwChat button { border: 0; background: #3b3561; color: #fff; font: 700 15px Ubuntu, sans-serif; border-radius: 10px; padding: 0 14px; cursor: pointer; }
+.ww-log { min-height: 0; }
+.ww-log .msg.story { font-weight: 700; } .ww-log .msg.bad { color: var(--red); } .ww-log .msg.ok { color: #2e8b3a; } .ww-log .msg.info { color: #4a4398; }
+.ww-log .msg.close { color: #b07d00; } .ww-log .msg.pack { color: #8a2a2a; } .ww-log .msg.ghost { color: #6a6a8a; font-style: italic; }
+.ww-log .msg:nth-child(even) { background: #f6f0e2; }
+.ww-log .msg:first-child { animation: pop .2s; }
+
+/* phones: one screen, no nav, players on top and the chat filling the rest */
+@media (max-width: 900px) {
+  body.ww-playing nav, body.ww-playing footer { display: none; }
+  body.ww-playing main { padding: 0; }
+  .ww.playing { padding: 4px; }
+  .ww.playing .ww-h, .ww.playing .ww-fame { display: none; }
+  .ww-game { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "top" "side" "chat";
+    height: calc(100dvh - 8px); padding: 4px; gap: 4px; border-radius: 12px; }
+  .ww-side { gap: 4px; max-height: 58dvh; overflow: auto; }
+  .ww-top { padding: 4px 8px; } .ww-phase { font-size: 16px; } .ww-clock { width: 36px; height: 36px; flex-basis: 36px; font-size: 14px; }
+  .ww-me { padding: 5px 8px; } .ww-me .e { font-size: 28px; } .ww-me small { font-size: 12px; }
+  .ww-prompt { padding: 6px 8px; font-size: 14px; }
+  .ww-players { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 4px; }
+  .wwp { padding: 3px 2px; } .wwp .av { height: 46px; } .wwp .av img { max-height: 46px; max-width: 60px; } .wwp b { font-size: 11px; } .wwp small { font-size: 10px; }
+  .ww-chat { min-height: 0; max-height: none; }
+  .ww-lobbybar .ww-play { font-size: 22px; padding: 8px; }
+}
