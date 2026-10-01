@@ -8,7 +8,7 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { ret
                 set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 const people = [...D.founders.map(f => ({ ...f, founder: true })), ...D.members];
 const byName = Object.fromEntries(people.map(p => [p.name.toLowerCase(), p]));
-const BAD = /\b(fuck|shit|bitch|cunt|nigg|fag|retard|whore|slut|dick|pussy|kys)\w*/i;  // simple filter; the DB is the real gate
+const BAD = /(p+\W*e+\W*n+\W*[i1!]+\W*[s5$]+|peen|\b(fuck|shit|bitch|cunt|nigg|fag|retard|whore|slut|dick|d1ck|cock|pussy|kys|porn|sex))/i;  // simple filter; the DB is the real gate
 $("#names").innerHTML = people.map(p => `<option value="${esc(p.name)}">`).join("");
 
 // ======================================================== shared backend (optional)
@@ -259,15 +259,8 @@ $("#gbForm").onsubmit = async e => {
   const lastPost = +store.get("family_gb_last") || 0;
   if (Date.now() - lastPost < 60000) { out.className = "msg err"; out.textContent = "Slow down, one message a minute."; return; }
   if (!(await ready)) { out.className = "msg err"; out.textContent = "The guestbook isn't connected yet."; return; }
-  const { error } = await sb.from("guestbook").insert({ name: MOBNAME[myMob], message, mob: myMob, megaphone });
-  if (error) {
-    out.className = "msg err";
-    out.textContent = /cooling/.test(error.message) ? "📣 Someone just used the megaphone, try again in a few minutes (or untick it)." : "Couldn't post, try again later.";
-    return;
-  }
-  store.set("family_gb_last", Date.now());
-  $("#gbMsg").value = ""; $("#gbMega").checked = false; out.className = "msg ok"; out.textContent = megaphone ? "📣 Shouted to the whole site!" : "Posted!";
-  loadGuestbook(true); if (megaphone) checkMegaphone();
+  out.className = "msg"; out.textContent = "";
+  openQuiz({ title: "guestbook", post: { message, mob: myMob, megaphone } });  // Professor CrtlAltDel's quiz first
 };
 
 // ---------- megaphone banner on every page: the latest shout from the last 5 minutes
@@ -355,7 +348,8 @@ const PROF_NO = ["Wrong! Go back to class 📚", "Professor CrtlAltDel is disapp
 let quizCard = null, quizId = null, quizBusy = false;
 async function openQuiz(card) {
   quizCard = card; quizId = null;
-  $("#quizWho").textContent = card.title; $("#quizQ").textContent = "…"; $("#quizMsg").textContent = ""; $("#quizMsg").className = "qmsg";
+  $("#quizSub").innerHTML = card.post ? "Solve this to post your message ✍️" : `Solve this to bonk <b>${esc(card.title)}</b>`;
+  $("#quizQ").textContent = "…"; $("#quizMsg").textContent = ""; $("#quizMsg").className = "qmsg";
   $("#quizIn").value = ""; $("#quiz").hidden = false;
   if (!(await ready)) { $("#quizQ").textContent = "offline"; return; }
   const { data, error } = await sb.rpc("get_quiz");
@@ -376,9 +370,28 @@ $("#quizForm").onsubmit = async ev => {
   if (!quizId || quizBusy || !quizCard) return;
   const ans = parseInt($("#quizIn").value, 10); if (isNaN(ans)) return;
   quizBusy = true;
+  const msg = $("#quizMsg");
+  if (quizCard.post) {  // guestbook: the database checks the answer AND posts the note in one go
+    const p = quizCard.post, out = $("#gbOut");
+    const { data: res } = await sb.rpc("post_guestbook", { qid: quizId, ans, message: p.message, mob: p.mob, megaphone: p.megaphone });
+    quizBusy = false;
+    const r = res && res.r;
+    if (r === "wrong" || !r) {
+      msg.className = "qmsg no"; msg.textContent = PROF_NO[Math.floor(Math.random() * PROF_NO.length)];
+      blip(140, .3, .3); $("#quizBox").classList.remove("shakeq"); void $("#quizBox").offsetWidth; $("#quizBox").classList.add("shakeq");
+      const again = quizCard; setTimeout(() => { if (quizCard === again) openQuiz(again); }, 1100); return;
+    }
+    closeQuiz();
+    const said = { ok: p.megaphone ? "📣 Shouted to the whole site!" : "Posted! Professor CrtlAltDel approves 🎓",
+      bad: "Keep it family friendly 🙂", busy: "The guestbook is busy, try again in a minute.",
+      cooling: "📣 Someone just used the megaphone, try again in a few minutes (or untick it).", length: "Message is too long." };
+    out.className = r === "ok" ? "msg ok" : "msg err"; out.textContent = said[r] || "Couldn't post, try again later.";
+    if (r === "ok") { store.set("family_gb_last", Date.now()); $("#gbMsg").value = ""; $("#gbMega").checked = false;
+      loadGuestbook(true); if (p.megaphone) checkMegaphone(); }
+    return;
+  }
   const { data } = await sb.rpc("answer_quiz", { qid: quizId, ans, f: quizCard.title });
   quizBusy = false;
-  const msg = $("#quizMsg");
   if (data != null && data >= 0) {
     msg.className = "qmsg ok"; msg.textContent = PROF_OK[Math.floor(Math.random() * PROF_OK.length)];
     const c = quizCard; bonkCounts[c.title] = Number(data); showBonks();
