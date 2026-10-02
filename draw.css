@@ -233,6 +233,5 @@
 }
 @media (max-width: 900px) { #draw.sk.playing .sk-h { display: none; } }
 /* the 4th choice: a MapleStory Idle word */
-.dchoose .btn.special { background: linear-gradient(#ffe8a3, #ffcc4a); border-color: #ffcc4a; color: #5a3a00; position: relative; padding-top: 18px; }
-.dchoose .btn.special small { position: absolute; top: 2px; left: 0; right: 0; font-size: 11px; letter-spacing: 1px; text-align: center; }
+.dchoose .btn.special { background: linear-gradient(#ffe8a3, #ffcc4a); border-color: #ffcc4a; color: #5a3a00; }
 .dchoose .btn.special:hover { background: #ffcc4a; color: #3a2a00; }
