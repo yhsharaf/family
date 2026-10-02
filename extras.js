@@ -380,6 +380,8 @@ function caughtBot(c) {
   setTimeout(() => { if (performance.now() > botUntil) botStrikes = Math.max(0, botStrikes - 1); }, 20000);
 }
 // ---------- Professor CrtlAltDel's math quiz: every bonk needs a correct answer (checked by the database)
+// his picture is looked up by name: sprite file numbers change whenever the member list is rebuilt
+{ const cad = [...D.members, ...D.founders].find(p => p.name === "CrtlAltDel"); if (cad && cad.sprite) $("#profPic").src = cad.sprite; }
 const PROF_OK = ["Correct! Bonk approved ✅", "Smart AND violent 🔨", "A+ bonk", "The Professor is proud 🎓"];
 const PROF_NO = ["Wrong! Go back to class 📚", "Professor CrtlAltDel is disappointed 😤", "Nope. Did you use a calculator? 🧮"];
 let quizCard = null, quizId = null, quizBusy = false;
