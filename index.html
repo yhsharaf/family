@@ -249,8 +249,6 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <div class="grid" id="founderGrid"></div>
   <h2 style="margin-top:34px"><span class="word" style="background:#6e9a4a">Core</span><span class="word" style="background:var(--gold);--r:2deg">Family</span></h2>
   <div class="grid" id="coreGrid"></div>
-  <h2 style="margin-top:34px"><span class="word" style="background:var(--blue)">Members</span></h2>
-  <div class="grid" id="earlyGrid"></div>
 </section>
 
 <section id="members">
@@ -467,7 +465,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
-<script src="data.js?v=46"></script>
+<script src="data.js?v=47"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -492,7 +490,7 @@ $("#letters").innerHTML = [..."FAMILY"].map((c, i) =>
   `<span style="background:var(${PAL[i]});--r:${rot(i + 2)};animation-delay:${i * .12}s">${c}</span>`).join("");
 const FOUNDER_ORDER = ["Rain", "Enavin", "Onnox"];
 const founders = D.founders.filter(f => f.founder).sort((a, b) => b.main - a.main || FOUNDER_ORDER.indexOf(a.name) - FOUNDER_ORDER.indexOf(b.name)),
-  core = D.founders.filter(f => !f.founder && !f.member), early = D.founders.filter(f => f.member);
+  core = D.founders.filter(f => !f.founder && !f.member);  // f.member = moved to the Members list (kept here for traitor posters)
 const TRAITOR_ORDER = ["VirusIvan", "Sensuous", "Dandadan888", "IOO7I"];  // order on the posters and the stew shelf
 const traitors = D.founders.filter(f => f.traitor)
   .sort((a, b) => (TRAITOR_ORDER.indexOf(a.name) + 1 || 99) - (TRAITOR_ORDER.indexOf(b.name) + 1 || 99));
@@ -526,7 +524,6 @@ const founderCard = (f, i) => `
   </div>`;
 $("#founderGrid").innerHTML = founders.map(founderCard).join("");
 $("#coreGrid").innerHTML = core.map((f, i) => founderCard(f, i + 3)).join("");
-$("#earlyGrid").innerHTML = early.map((f, i) => founderCard(f, i + 1)).join("");
 
 // ---------- members
 let filter = "all";
@@ -592,7 +589,7 @@ $("#tree").innerHTML = `<div style="position:relative"><div class="trunk"></div>
   <div class="ground"></div>
   <div class="roots"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${rootPaths}</svg>
     <h3>🌱 The Roots</h3><p>The ${founders.length} Founders and the ${core.length} Core Family, from before the records began. Everything above grew from them.</p>
-    <div class="leaves">${[...founders, ...core, ...early].map(f => leaf(f, f.main ? "main" : "")).join("")}</div></div>`;
+    <div class="leaves">${[...founders, ...core].map(f => leaf(f, f.main ? "main" : "")).join("")}</div></div>`;
 // leaves pop in as you scroll down to them
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
   { rootMargin: "0px 0px -40px 0px" });
@@ -695,6 +692,6 @@ show();
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
-<script src="extras.js?v=41"></script>
+<script src="extras.js?v=42"></script>
 </body>
 </html>

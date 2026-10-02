@@ -330,7 +330,7 @@ const OUCH = ["ow!", "why me 😭", "gm to you too", "BONK", "*squeak*", "rude!"
 const bonkCounts = {};
 function showBonks() {
   let top = null, tv = 0;
-  document.querySelectorAll("#founderGrid .card, #coreGrid .card, #earlyGrid .card").forEach(c => {
+  document.querySelectorAll("#founderGrid .card, #coreGrid .card").forEach(c => {
     const n = bonkCounts[c.title] || 0;
     let b = c.querySelector(".bonks"); if (!b) { b = document.createElement("span"); b.className = "bonks"; c.appendChild(b); }
     b.textContent = n ? `🔨 ${n.toLocaleString()}` : ""; c.classList.remove("mostbonked");
@@ -471,7 +471,6 @@ function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer b
 }
 $("#founderGrid").addEventListener("click", onBonk);
 $("#coreGrid").addEventListener("click", onBonk);
-$("#earlyGrid").addEventListener("click", onBonk);
 
 // ---------- Whack-a-Founder
 const arc = $("#arcade"), holes = $("#holes");
@@ -486,7 +485,7 @@ function fx(cls, html, x, y, ms) {  // a short-lived effect at a point inside th
 }
 let game = null, best = +store.get("family_whack_best") || 0;
 $("#arcBest").textContent = best;
-const regular = D.founders.filter(f => !f.main && !f.traitor && f.sprite), rain = D.founders.find(f => f.main);
+const regular = D.founders.filter(f => !f.main && !f.traitor && !f.member && f.sprite), rain = D.founders.find(f => f.main);
 function openArcade() { arc.hidden = false; document.body.style.overflow = "hidden"; menu(); loadBoard(); }
 function closeArcade() { stopGame(); arc.hidden = true; document.body.style.overflow = ""; }
 $("#playWhack").onclick = openArcade; $("#arcX").onclick = closeArcade;
