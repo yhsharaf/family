@@ -248,8 +248,11 @@ async function offerWords() {
       if (localHost) hostPicked({ drawer: myId, roundId: data.id, mask: r.data.mask, ends_at: r.data.ends_at }); }
     picking = false;
   };
+  // 3 normal words + 1 MapleStory Idle word (data.special), shown so the drawer knows what it is; same points as the others
   $d("#drawChoose").innerHTML = `<div class="dc-title">Choose a word</div>` +
-    data.choices.map(w => `<button class="btn" data-w="${esc(w)}">${esc(w)}</button>`).join("");
+    data.choices.map(w => w === data.special
+      ? `<button class="btn special" data-w="${esc(w)}"><small>⭐ Special</small>${esc(w)}</button>`
+      : `<button class="btn" data-w="${esc(w)}">${esc(w)}</button>`).join("");
   $d("#drawChoose").querySelectorAll("button").forEach(b => b.onclick = () => pick(b.dataset.w));
   setTimeout(() => { if ($d("#drawChoose").innerHTML && S.phase === "choosing" && S.drawer === myId) pick(data.choices[0]); }, CHOOSE_SECS * 1000);
 }
