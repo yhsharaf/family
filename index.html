@@ -170,6 +170,8 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .photo .t { font-weight: 700; margin-top: 10px; } .photo .n { color: var(--muted); font-size: 14px; }
 .photo.first { grid-column: 1 / -1; }
 .memsort { margin: -6px 0 18px; }
+.photo.voted-away { display: none; }
+.memdone { text-align: center; }
 .photo .newtag { position: absolute; top: 6px; right: 6px; z-index: 2; background: var(--red); color: #fff; font-weight: 800; font-size: 12px;
   letter-spacing: 1px; padding: 3px 9px; border-radius: 8px; box-shadow: 2px 3px 0 rgba(60,45,30,.25); transform: rotate(6deg); }
 .photo.first img { aspect-ratio: auto; object-fit: contain; }
@@ -277,7 +279,8 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <h2><span class="word" style="background:#5a64a0">Our</span><span class="word" style="background:var(--purple);--r:2deg">Memories</span></h2>
   <div class="memhead"><p class="lead">Screenshots from the early days. Tap a photo to see it big.</p>
     <button class="btn addmem" id="addMemBtn" type="button">📤 Add a memory</button></div>
-  <div class="chips memsort" id="memSort"><button class="chip" data-s="new">🆕 Newest</button><button class="chip" data-s="loved">❤️ Most loved</button><button class="chip" data-s="hated">💀 Most hated</button></div>
+  <div class="chips memsort" id="memSort"><button class="chip" data-s="new">🆕 Newest</button><button class="chip" data-s="loved">❤️ Most loved</button><button class="chip" data-s="hated">💀 Most hated</button><button class="chip" data-s="unvoted">🗳️ Not voted yet</button></div>
+  <p class="lead memdone" id="memDone" hidden>You've reacted to every memory 🎉 New ones will show up here.</p>
   <div class="album" id="album"></div>
   <div class="upload" id="uploadBox">
     <h2><span class="word" style="background:var(--purple)">Add a</span><span class="word" style="background:#5a64a0;--r:2deg">memory</span></h2>
@@ -696,6 +699,6 @@ show();
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
-<script src="extras.js?v=43"></script>
+<script src="extras.js?v=44"></script>
 </body>
 </html>

@@ -618,6 +618,9 @@ function sortAlbum() {
     ? figs.slice().sort((a, b) => hates(b) - hates(a) || score(a) - score(b) || a.dataset.i - b.dataset.i)
     : figs.slice().sort((a, b) => (+b.dataset.added || 0) - (+a.dataset.added || 0) || b.dataset.i - a.dataset.i);
   order.filter(Boolean).forEach(f => album.appendChild(f));
+  // 🗳️ Not voted yet: newest first, only photos this device hasn't reacted to
+  figs.forEach(f => f.classList.toggle("voted-away", memSort === "unvoted" && !!voted[f.dataset.src]));
+  $("#memDone").hidden = !(memSort === "unvoted" && figs.length && figs.every(f => voted[f.dataset.src]));
   if (gathering) gathering.classList.toggle("first", memSort === "loved");  // big banner only where it's pinned
   // NEW ribbon on anything added in the last 7 days, except the launch-day batch (the site went live with those)
   const launch = Math.min(...D.memories.map(m => Date.parse(m.added) || Infinity));
@@ -641,6 +644,7 @@ $("#album").addEventListener("click", async e => {
   voted[src] = kind; store.set("family_reacts", JSON.stringify(voted));
   b.classList.add("on"); const s = b.querySelector("span"); s.textContent = +s.textContent + 1;
   if (kind === "hate") { b.classList.add("boo"); blip(160, .25, .3); } else blip(700, .1, .2);
+  if (memSort === "unvoted") setTimeout(sortAlbum, 700);  // let the tap register, then move on to the next photo
   if (await ready) { await sb.from("memory_votes").insert({ photo: src, device, kind }); loadVotes(); }
 }, true);
 async function loadUploads() {
