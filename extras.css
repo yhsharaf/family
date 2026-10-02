@@ -207,10 +207,10 @@
   text-shadow: 2px 2px 0 #a02cff; pointer-events: none; }
 .combo.go { animation: comboPop .3s ease-out; }
 @keyframes comboPop { from { transform: scale(1.6); } to { transform: scale(1); } }
-.count { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; pointer-events: none;
+.arc-count { position: absolute; inset: 0; z-index: 8; display: flex; align-items: center; justify-content: center; pointer-events: none;
   font: 900 86px Ubuntu, Arial Black, sans-serif; color: #ffe066; -webkit-text-stroke: 3px #5a2600; text-shadow: 4px 6px 0 rgba(0,0,0,.35); }
-.count:empty { display: none; }
-.count.go { animation: countPop .6s ease-out; }
+.arc-count:empty { display: none; }
+.arc-count.go { animation: countPop .6s ease-out; }
 @keyframes countPop { from { transform: scale(2.2); opacity: 0; } 35% { transform: scale(1); opacity: 1; } }
 .field.quake { animation: quake .35s; }
 @keyframes quake { 20% { transform: translate(-7px, 3px) rotate(-1deg); } 40% { transform: translate(6px, -3px) rotate(1deg); }
@@ -231,7 +231,7 @@
 .board li span { display: inline-block; width: 70px; letter-spacing: 3px; } .board li b { color: #7dff8a; }
 @media (max-width: 500px) { .hole { height: 104px; } .hole .mole { height: 90px; } .mole img { max-height: 70px; } .arcmenu h3 { font-size: 24px; }
   .field { padding: 30px 4px 8px; } .hole .back { bottom: 12px; height: 24px; } .hole .front { height: 26px; } .hole .pit { bottom: 24px; }
-  .dmg { font-size: 28px; } .dmg.crit { font-size: 32px; } .count { font-size: 70px; } }
+  .dmg { font-size: 28px; } .dmg.crit { font-size: 32px; } .arc-count { font-size: 70px; } }
 
 .poster .tw { margin-top: 6px; font-size: 15px; color: #8c2a24; } .poster .tw b { font-size: 20px; }
 @media (max-width: 700px) { .tr img { max-height: 70px; } .tr { width: 90px; } }
