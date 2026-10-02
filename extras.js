@@ -598,17 +598,41 @@ async function loadVotes() {
       if (c[k] > best[k][1]) best[k] = [r, c[k]];
     }
   });
-  // order by score (❤️ minus 💀), the Founders' Big Gathering stays pinned first; ties keep the original order
-  const album = $("#album"), figs = [...album.querySelectorAll(".photo")];
-  figs.forEach((f, i) => { if (f.dataset.i == null) f.dataset.i = i; });
-  const score = f => { const c = counts[f.dataset.src] || { love: 0, hate: 0 }; return c.love - c.hate; };
-  figs.filter(f => !f.classList.contains("first"))
-    .sort((a, b) => score(b) - score(a) || a.dataset.i - b.dataset.i)
-    .forEach(f => album.appendChild(f));
+  lastCounts = counts; sortAlbum();
   document.querySelectorAll("#album .loved").forEach(x => x.remove());
   if (best.love[0]) best.love[0].closest(".photo").insertAdjacentHTML("beforeend", '<span class="loved">❤️ most loved</span>');
   if (best.hate[0]) best.hate[0].closest(".photo").insertAdjacentHTML("beforeend", '<span class="loved hated">💀 most hated</span>');
 }
+// album order: 🆕 Newest (default) or ❤️ Most loved (score = ❤️ minus 💀, the Founders' gathering pinned first)
+let lastCounts = {}, memSort = store.get("family_mem_sort") || "new";
+const WEEK = 7 * 24 * 3600 * 1000;
+function sortAlbum() {
+  const album = $("#album"), figs = [...album.querySelectorAll(".photo")];
+  figs.forEach((f, i) => { if (f.dataset.i == null) f.dataset.i = 1000 + i; });
+  const gathering = figs.find(f => f.dataset.i == 0);
+  const score = f => { const c = lastCounts[f.dataset.src] || { love: 0, hate: 0 }; return c.love - c.hate; };
+  const hates = f => (lastCounts[f.dataset.src] || { hate: 0 }).hate;
+  const order = memSort === "loved"
+    ? [gathering, ...figs.filter(f => f !== gathering).sort((a, b) => score(b) - score(a) || a.dataset.i - b.dataset.i)]
+    : memSort === "hated"   // most 💀 first; ties: lowest score first
+    ? figs.slice().sort((a, b) => hates(b) - hates(a) || score(a) - score(b) || a.dataset.i - b.dataset.i)
+    : figs.slice().sort((a, b) => (+b.dataset.added || 0) - (+a.dataset.added || 0) || b.dataset.i - a.dataset.i);
+  order.filter(Boolean).forEach(f => album.appendChild(f));
+  if (gathering) gathering.classList.toggle("first", memSort === "loved");  // big banner only where it's pinned
+  // NEW ribbon on anything added in the last 7 days, except the launch-day batch (the site went live with those)
+  const launch = Math.min(...D.memories.map(m => Date.parse(m.added) || Infinity));
+  figs.forEach(f => {
+    const DAY = 24 * 3600 * 1000, t = +f.dataset.added || 0, fresh = Date.now() - t < WEEK && t >= (Math.floor(launch / DAY) + 1) * DAY;
+    const tag = f.querySelector(".newtag");
+    if (fresh && !tag) f.insertAdjacentHTML("afterbegin", '<span class="newtag">NEW</span>'); else if (!fresh && tag) tag.remove();
+  });
+  document.querySelectorAll("#memSort .chip").forEach(b => b.classList.toggle("on", b.dataset.s === memSort));
+}
+$("#memSort").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  memSort = b.dataset.s; store.set("family_mem_sort", memSort); sortAlbum();
+});
+sortAlbum();
 $("#album").addEventListener("click", async e => {
   const b = e.target.closest(".vote"); if (!b) return;
   e.stopPropagation();  // don't open the photo
@@ -621,12 +645,12 @@ $("#album").addEventListener("click", async e => {
 }, true);
 async function loadUploads() {
   if (!(await ready)) return;
-  const { data } = await sb.from("memory_uploads").select("path,title,uploader").order("created_at");
+  const { data } = await sb.from("memory_uploads").select("path,title,uploader,created_at").order("created_at");
   const album = $("#album");
   (data || []).forEach((u, i) => {
     const src = sb.storage.from("memories").getPublicUrl(u.path).data.publicUrl;
     if (album.querySelector(`[data-src="${CSS.escape(src)}"]`)) return;
-    album.insertAdjacentHTML("beforeend", `<figure class="photo" style="--r:${rot(i + 3)};margin:0" data-src="${src}"><img src="${src}" alt="" loading="lazy">
+    album.insertAdjacentHTML("beforeend", `<figure class="photo" style="--r:${rot(i + 3)};margin:0" data-src="${src}" data-added="${Date.parse(u.created_at) || 0}"><img src="${src}" alt="" loading="lazy">
       <div class="t">${esc(titleCase(u.title))}</div></figure>`);
   });
   loadVotes();

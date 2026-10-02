@@ -169,6 +169,9 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .photo img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: contain; background: #2d2832; }
 .photo .t { font-weight: 700; margin-top: 10px; } .photo .n { color: var(--muted); font-size: 14px; }
 .photo.first { grid-column: 1 / -1; }
+.memsort { margin: -6px 0 18px; }
+.photo .newtag { position: absolute; top: 6px; right: 6px; z-index: 2; background: var(--red); color: #fff; font-weight: 800; font-size: 12px;
+  letter-spacing: 1px; padding: 3px 9px; border-radius: 8px; box-shadow: 2px 3px 0 rgba(60,45,30,.25); transform: rotate(6deg); }
 .photo.first img { aspect-ratio: auto; object-fit: contain; }
 .photo.first .t { font-size: 22px; }
 .sheet.wide { max-width: min(1400px, 96vw); padding: 14px; } .sheet.wide img { width: 100%; display: block; }
@@ -274,6 +277,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <h2><span class="word" style="background:#5a64a0">Our</span><span class="word" style="background:var(--purple);--r:2deg">Memories</span></h2>
   <div class="memhead"><p class="lead">Screenshots from the early days. Tap a photo to see it big.</p>
     <button class="btn addmem" id="addMemBtn" type="button">📤 Add a memory</button></div>
+  <div class="chips memsort" id="memSort"><button class="chip" data-s="new">🆕 Newest</button><button class="chip" data-s="loved">❤️ Most loved</button><button class="chip" data-s="hated">💀 Most hated</button></div>
   <div class="album" id="album"></div>
   <div class="upload" id="uploadBox">
     <h2><span class="word" style="background:var(--purple)">Add a</span><span class="word" style="background:#5a64a0;--r:2deg">memory</span></h2>
@@ -465,7 +469,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
-<script src="data.js?v=47"></script>
+<script src="data.js?v=48"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -597,7 +601,7 @@ document.querySelectorAll("#tree .leaf").forEach((l, i) => { l.style.transitionD
 
 // ---------- memories (photo album): just the picture's name, each word capitalised
 const titleCase = t => t.replace(/(^|\s)(\S)/g, (_, sp, c) => sp + c.toUpperCase());
-$("#album").innerHTML = D.memories.map((m, i) => `<figure class="photo ${i ? "" : "first"}" style="--r:${i ? rot(i) : "-.6deg"};margin:0" data-src="${m.src}">
+$("#album").innerHTML = D.memories.map((m, i) => `<figure class="photo ${i ? "" : "first"}" style="--r:${i ? rot(i) : "-.6deg"};margin:0" data-src="${m.src}" data-added="${Date.parse(m.added) || 0}" data-i="${i}">
   <img src="${m.src}" alt="${esc(m.title)}" loading="lazy"><div class="t">${esc(titleCase(m.title))}</div></figure>`).join("");
 $("#album").onclick = e => { const f = e.target.closest(".photo"); if (!f) return;
   $("#sheet").className = "sheet wide"; $("#sheet").innerHTML = `<button class="x" aria-label="close" style="color:#fff;text-shadow:0 0 4px #000">×</button><img src="${f.dataset.src}" alt="">`;
@@ -692,6 +696,6 @@ show();
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
-<script src="extras.js?v=42"></script>
+<script src="extras.js?v=43"></script>
 </body>
 </html>
