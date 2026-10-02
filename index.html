@@ -467,7 +467,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <datalist id="names"></datalist>
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
-<script src="data.js?v=42"></script>
+<script src="data.js?v=43"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -490,7 +490,8 @@ addEventListener("hashchange", show);
 // ---------- home
 $("#letters").innerHTML = [..."FAMILY"].map((c, i) =>
   `<span style="background:var(${PAL[i]});--r:${rot(i + 2)};animation-delay:${i * .12}s">${c}</span>`).join("");
-const founders = D.founders.filter(f => f.founder).sort((a, b) => b.main - a.main),
+const FOUNDER_ORDER = ["Rain", "Enavin", "Onnox"];
+const founders = D.founders.filter(f => f.founder).sort((a, b) => b.main - a.main || FOUNDER_ORDER.indexOf(a.name) - FOUNDER_ORDER.indexOf(b.name)),
   core = D.founders.filter(f => !f.founder && !f.member), early = D.founders.filter(f => f.member);
 const TRAITOR_ORDER = ["VirusIvan", "Sensuous", "Dandadan888", "IOO7I"];  // order on the posters and the stew shelf
 const traitors = D.founders.filter(f => f.traitor)
