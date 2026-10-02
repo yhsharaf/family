@@ -10,7 +10,7 @@ insert into draw_words_special values ('orange mushroom'),('zombie mushroom'),('
 
 -- each round offers 3 normal words + 1 special (MapleStory Idle) word; the special one is returned separately so the
 -- page can mark it. Custom words from the room settings join the normal pool ("only custom" = custom words, no special).
-create or replace function draw_new_round(room text, drawer text, dur integer, custom text[], only_custom boolean) returns json
+create or replace function draw_new_round(room text, drawer text, dur integer default 80, custom text[] default null, only_custom boolean default false) returns json
 language plpgsql security definer set search_path = public as $$
 declare rid uuid; ch text[]; sp text; cw text[];
 begin
