@@ -44,35 +44,17 @@
 #bdClock:empty { visibility: hidden; }
 #bdClock.hurry { color: var(--red); border-color: var(--red); animation: pop .5s infinite alternate; }
 
-.bd-arena { --z: 2; --gh: 170px; --gl: 72px; position: relative; height: 380px; overflow: hidden; border-radius: 14px; border: 3px solid #3b2f22;
-  background: linear-gradient(#6fb8ea, #bfe6fb 62%, #e8f7ff); transition: background 1s; }
+.bd-arena { --z: 2; --gl: 96px; position: relative; height: 380px; overflow: hidden; border-radius: 14px; border: 3px solid #3b2f22;
+  background: #6fb8ea url(media/duel/bg_henesys.webp) center bottom / cover no-repeat; }
 .bd-arena.sd::after { content: ""; position: absolute; inset: 0; background: rgba(255, 90, 20, .2); pointer-events: none; z-index: 1; }
-/* maps: sky + ground strip (maplestory.io map renders) */
-.bd-arena.m-elnath { background: linear-gradient(#9fbfe0, #dcebfa 60%, #f4f9ff); }
-.bd-arena.m-elnath .bd-ground { background-image: url(media/duel/ground_elnath.webp); }
-.bd-arena.m-zakum { background: linear-gradient(#2a0707, #6e1a10 55%, #b2401f); }
-.bd-arena.m-zakum .bd-ground { background-image: url(media/duel/ground_zakum.webp); }
-.bd-arena.m-zakum .bd-cloud { background: #5a2a22; opacity: .5; } .bd-arena.m-zakum .bd-cloud::before, .bd-arena.m-zakum .bd-cloud::after { background: #5a2a22; }
-.bd-arena.m-ludi { background: linear-gradient(#0d1f5c, #1f3f8f 55%, #3d64b8); }
-.bd-arena.m-ludi .bd-ground { background-image: url(media/duel/ground_ludi.webp); }
-.bd-arena.m-ludi .bd-cloud { opacity: .95; }
-.bd-arena.m-sleepy { background: linear-gradient(#141f2e, #22384a 55%, #35564c); }
-.bd-arena.m-sleepy .bd-ground { background-image: url(media/duel/ground_sleepy.webp); }
-.bd-arena.m-sleepy .bd-cloud { opacity: .18; }
-.bd-deco { display: none; position: absolute; left: 50%; bottom: calc(var(--gl) - 2px); transform: translateX(-50%); z-index: 1; pointer-events: none;
-  background: center bottom / contain no-repeat; image-rendering: pixelated; }
-.bd-arena.m-sleepy .bd-deco { display: block; width: 300px; height: 237px; background-image: url(media/duel/sleepy_house.webp); }
+/* maps: the real background art (Map.wz back layers) + one platform from the same map */
+.bd-arena.m-elnath { background-color: #b9bfe0; background-image: url(media/duel/bg_elnath.webp); }
+.bd-arena.m-zakum  { background-color: #3a0a06; background-image: url(media/duel/bg_zakum.webp); }
+.bd-arena.m-ludi   { background-color: #3651d0; background-image: url(media/duel/bg_ludi.webp); }
+.bd-arena.m-sleepy { background-color: #1c1a12; background-image: url(media/duel/bg_sleepy.webp); }
+.bd-plat { position: absolute; left: 50%; transform: translateX(-50%); z-index: 1; pointer-events: none; max-width: none; }
 .bd-arena.m-zakum .bd-tag, .bd-arena.m-ludi .bd-tag, .bd-arena.m-sleepy .bd-tag { background: rgba(0,0,0,.6); }
-.bd-arena.m-zakum .bd-mp b, .bd-arena.m-ludi .bd-mp b, .bd-arena.m-sleepy .bd-mp b, .bd-arena.m-zakum .bd-buffs, .bd-arena.m-ludi .bd-buffs, .bd-arena.m-sleepy .bd-buffs { color: #e8eeff; }
-.bd-ground { position: absolute; left: 0; right: 0; bottom: 0; height: var(--gh); background: url(media/duel/ground.webp) center bottom / auto 100% repeat-x;
-  image-rendering: pixelated; }
-.bd-cloud { position: absolute; width: 120px; height: 34px; background: #fff; border-radius: 40px; opacity: .9; animation: bdcloud 60s linear infinite; }
-.bd-cloud::before, .bd-cloud::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
-.bd-cloud::before { width: 54px; height: 54px; left: 18px; top: -26px; } .bd-cloud::after { width: 40px; height: 40px; left: 60px; top: -16px; }
-.bd-cloud.c1 { top: 40px; left: -140px; } .bd-cloud.c2 { top: 92px; left: -140px; transform: scale(.7); animation-duration: 85s; animation-delay: -40s; }
-.bd-cloud.c3 { top: 20px; left: -140px; transform: scale(.5); animation-duration: 110s; animation-delay: -75s; }
-@keyframes bdcloud { to { left: 110%; } }
-
+.bd-arena .bd-mp b, .bd-arena .bd-buffs { color: #fff; text-shadow: 0 1px 2px #000; }
 .bd-f { position: absolute; bottom: var(--gl); left: 27%; width: 0; height: 0; z-index: 2; }
 .bd-f.bd-r { left: 73%; }
 .bd-f[hidden] { display: none; }
@@ -191,7 +173,7 @@
   .bd-top { padding: 4px 8px; } .bd-phase { font-size: 14px; } #bdClock { width: 36px; height: 36px; flex-basis: 36px; font-size: 14px; }
 }
 @media (max-width: 560px) {
-  .bd-arena { --z: 1.55; --gh: 128px; --gl: 54px; height: 300px; }
+  .bd-arena { --z: 1.55; --gl: 74px; height: 300px; }
   .bd-f { left: 25%; } .bd-f.bd-r { left: 75%; }
   .bd-bars { width: 92px; }
   .bd-move { padding: 5px 1px; } .bd-move .ic { width: 40px; height: 40px; } .bd-move .ic img { width: 32px; height: 32px; }
@@ -235,5 +217,4 @@
 @media (max-width: 560px) {
   .bd-moves { grid-template-columns: repeat(3, 1fr); }
   .bd-classes { gap: 3px; } .bd-class b { font-size: 10px; } .bd-class img { width: 28px; height: 28px; }
-  .bd-arena.m-sleepy .bd-deco { width: 220px; height: 174px; }
-}
+  }

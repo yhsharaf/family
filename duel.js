@@ -35,11 +35,12 @@ const CLASSES = {
   pirate:   { name: "Pirate",   e: "🏴‍☠️", skill: "coin",     passive: "Survives one K.O. with 1 HP" },
 };
 const MAPS = {
-  henesys: { name: "Henesys",       rule: "Normal rules" },
-  elnath:  { name: "El Nath",       rule: "Dodge is free" },
-  zakum:   { name: "Zakum's Altar", rule: "Every hit does +1" },
-  ludi:    { name: "Ludibrium",     rule: "8-second turns" },
-  sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 25–40 for both, nobody can see it" },
+  // plat: the platform picture (w×h), the row its walkable top is at, and how much of the arena width it spans
+  henesys: { name: "Henesys",       rule: "Normal rules",      plat: { w: 900, h: 234, top: 140, frac: .86 } },
+  elnath:  { name: "El Nath",       rule: "Dodge is free",     plat: { w: 900, h: 541, top: 2, frac: .7 } },
+  zakum:   { name: "Zakum's Altar", rule: "Every hit does +1", plat: { w: 850, h: 154, top: 8, frac: .8 } },
+  ludi:    { name: "Ludibrium",     rule: "8-second turns",    plat: { w: 900, h: 150, top: 0, frac: .74 } },
+  sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 25–40 for both, nobody can see it", plat: { w: 900, h: 167, top: 6, frac: .78 } },
 };
 const cost = (m, cls, map) => m === "dodge" ? (map === "elnath" || cls === "thief" ? 0 : 1) : (MOVES[m] || {}).cost || 0;
 const realMove = (m, cls) => m === "skill" ? CLASSES[cls].skill : m;
@@ -443,6 +444,7 @@ function render() {
   fighter($b("#bdF1"), L); fighter($b("#bdF2"), R);
   const sd = st.turn >= 10 && s !== "wait";
   $b("#bdArena").className = "bd-arena m-" + (st.map || "henesys") + (sd ? " sd" : "");
+  placePlat();
   $b("#bdPhase").innerHTML = s === "wait" ? (room === "public" ? "🔍 Looking for an opponent…" : "⏳ Waiting for your friend…")
     : s === "over" ? "🏁 Duel over" : `Turn ${Math.min(st.turn, 20)}/20 · <span class="bd-map" title="${esc((MAPS[st.map] || MAPS.henesys).rule)}">${esc((MAPS[st.map] || MAPS.henesys).name)}</span>${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
   $b("#bdStake").innerHTML = s === "wait" ? "" : st.practice ? "🎯 Practice" : `${st.stake > 1 ? "🔥" : "🏆"} ${st.stake} pt${st.stake > 1 ? "s" : ""}`;
@@ -478,6 +480,15 @@ function render() {
   } else if (lastBanner && lastBanner.includes("data-a")) { lastBanner = ""; $b("#bdBanner").className = "bd-banner"; }
   if (s === "over") showResult();
 }
+// stand the map's platform under the fighters: its walkable top lines up with the feet line (--gl)
+function placePlat() {
+  const ar = $b("#bdArena"), img = $b("#bdPlat"), mp = MAPS[(st && st.map) || "henesys"] || MAPS.henesys, p = mp.plat;
+  const src = `${M}plat_${(st && MAPS[st.map]) ? st.map : "henesys"}.webp`;
+  if (img.dataset.src !== src) { img.src = src; img.dataset.src = src; }
+  const w = ar.clientWidth * p.frac, h = w * p.h / p.w, gl = parseFloat(getComputedStyle(ar).getPropertyValue("--gl")) || 96;
+  img.style.width = w + "px"; img.style.bottom = (gl - (h - p.top * w / p.w)) + "px";
+}
+addEventListener("resize", () => st && placePlat());
 function showResult() {
   if (!$b("#bdResult").hidden || animating()) return;   // the reveal calls render again when it's done
   const me = st.me, w = st.winner, L = side();
