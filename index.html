@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
+<link rel="stylesheet" href="duel.css?v=1">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -209,7 +210,7 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px; }
 /* no grey tap flash or accidental text selection when tapping buttons and game pieces (typing boxes stay normal) */
 html { -webkit-tap-highlight-color: transparent; }
-button, a, nav, .btn, .wwp, .dp, .leaf, .card, .poster, .chip, .sk-tools, .sk-players, .ww-players, .ww-top, .sk-top, label, select {
+button, a, nav, .btn, .wwp, .dp, .leaf, .card, .poster, .chip, .sk-tools, .sk-players, .ww-players, .ww-top, .sk-top, .bd-arena, .bd-top, label, select {
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 .nopaste { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%); z-index: 99999;
@@ -229,6 +230,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <a href="#guestbook" style="--r:2deg;background:var(--purple)">Guestbook</a>
   <a href="#draw" style="--r:-2deg;background:var(--teal)">Draw & Guess</a>
   <a href="#ww" style="--r:2deg;background:#3b3561">Werewolf</a>
+  <a href="#duel" style="--r:-2deg;background:#c0612b">Bonk Duel</a>
 </nav>
 
 <div class="smega" id="smega" hidden><span class="tag">📣</span><div class="track"><span id="smegaText"></span></div><button id="smegaX" aria-label="hide">×</button></div>
@@ -401,6 +403,54 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <div class="sk-panel ww-fame">
     <h3>🏆 Werewolf Hall of Fame</h3>
     <ol class="dboard" id="wwBoard"></ol>
+  </div>
+</section>
+
+<section id="duel" class="bd">
+  <h2 class="bd-h"><span class="word" style="background:#c0612b">Bonk</span><span class="word" style="background:var(--blue);--r:2deg">Duel</span></h2>
+  <div id="bdLobby" class="sk-home">
+    <div class="sk-panel">
+      <div class="sk-name"><input id="bdName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go">
+        <div class="sk-sugg" id="bdSugg" hidden></div></div>
+      <div class="sk-warn" id="bdWarn" hidden>⚠️ This isn't a guild name, so you can duel as a guest but your wins won't be saved to the Hall of Fame.</div>
+      <div class="sk-avatar"><div class="sk-face" id="bdFace"></div></div>
+      <div class="sk-room" id="bdRoomLbl"></div>
+      <button class="sk-btn bd-play" id="bdFind">Find a Duel!</button>
+      <button class="sk-btn sk-private" id="bdPrivate">Challenge a Friend</button>
+      <div class="sk-err" id="bdErr"></div>
+      <div class="bd-bots"><b>🍄 Practice against a monster</b><div id="bdBots"></div></div>
+    </div>
+    <div class="sk-panel bd-about">
+      <h3>How to play</h3>
+      <p>You both pick a move <b>in secret</b>, then both are revealed at once. Read your opponent! First to knock out the other's
+        <b>10 HP</b> wins. Moves cost <b>MP</b> (you get +1 every turn, max 5). From turn 9 it's <b>sudden death</b>: every hit does +1.</p>
+      <div class="bd-help" id="bdHelp"></div>
+      <p>🔥 <b>Double Bonk:</b> once per duel you can double the points at stake. Your opponent accepts, or runs away and loses.</p>
+      <h3>👀 Live duels</h3>
+      <div id="bdLive"></div>
+    </div>
+  </div>
+  <div id="bdGame" class="bd-game" hidden>
+    <div class="bd-top"><div id="bdClock"></div><div class="bd-phase" id="bdPhase"></div><span class="bd-stake" id="bdStake"></span><button class="sk-small" id="bdLeave">Leave</button></div>
+    <div class="bd-arena" id="bdArena">
+      <div class="bd-cloud c1"></div><div class="bd-cloud c2"></div><div class="bd-cloud c3"></div>
+      <div class="bd-ground"></div>
+      <div class="bd-f bd-l" id="bdF1"><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div></div><div class="bd-think" hidden></div></div>
+      <div class="bd-f bd-r" id="bdF2"><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div></div><div class="bd-think" hidden></div></div>
+      <div class="bd-banner" id="bdBanner"></div>
+    </div>
+    <div class="bd-say" id="bdSay"></div>
+    <div class="bd-result" id="bdResult" hidden></div>
+    <div class="bd-panel" id="bdPanel">
+      <div class="bd-moves" id="bdMoves"></div>
+      <div class="bd-extra"><button type="button" class="bd-double" id="bdDouble" hidden></button><div class="bd-taunts" id="bdTaunts"></div></div>
+    </div>
+  </div>
+  <div class="sk-panel bd-fame">
+    <h3>🏆 Bonk Duel Hall of Fame</h3>
+    <ol class="dboard" id="bdBoard"></ol>
   </div>
 </section>
 
@@ -702,6 +752,7 @@ show();
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
+<script src="duel.js?v=1"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>
