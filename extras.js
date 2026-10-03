@@ -249,7 +249,7 @@ const MOBNAME = Object.fromEntries([...MOBS, ...RETIRED]);
 // moving monsters (walk animation GIFs); the still PNGs stay for any monster without one (Spotty Mushroom, retired ones)
 const ANIM = new Set(["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom", "zombie_mushroom", "slime", "jr_necki", "snail",
   "blue_snail", "red_snail", "pig", "ribbon_pig", "ratz", "stump", "octopus", "pepe", "lupin", "ligator", "evil_eye", "hector", "wraith", "yeti", "jr_balrog"]);
-const mobImg = k => !MOBNAME[k] ? "media/mobs/orange_mushroom.png" : ANIM.has(k) ? `media/mobs/anim/${k}.gif` : `media/mobs/${k}.png`;
+const mobImg = k => !MOBNAME[k] ? "media/mobs/orange_mushroom.png" : ANIM.has(k) ? `media/mobs/anim/${k}.gif?v=3` : `media/mobs/${k}.png`;
 const PICKABLE = Object.fromEntries(MOBS);
 let myMob = PICKABLE[store.get("family_mob")] ? store.get("family_mob") : MOBS[Math.floor(Math.random() * MOBS.length)][0];
 $("#mobPick").innerHTML = MOBS.map(([k, n]) => `<button type="button" class="mob" data-k="${k}" title="${n}"><img src="${mobImg(k)}" alt="${n}"></button>`).join("");
