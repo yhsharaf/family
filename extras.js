@@ -238,12 +238,16 @@ $("#shakeBtn").onclick = async () => {
 // ======================================================== 7. guestbook: monster avatars, Fame, megaphone
 const MOBS = [["orange_mushroom", "Orange Mushroom"], ["green_mushroom", "Green Mushroom"], ["blue_mushroom", "Blue Mushroom"],
   ["horny_mushroom", "Horny Mushroom"], ["zombie_mushroom", "Zombie Mushroom"], ["spotty_mushroom", "Spotty Mushroom"],
-  ["slime", "Slime"], ["king_slime", "King Slime"], ["pig", "Pig"], ["ribbon_pig", "Ribbon Pig"], ["fire_boar", "Fire Boar"],
+  ["slime", "Slime"], ["pig", "Pig"], ["ribbon_pig", "Ribbon Pig"],
   ["snail", "Snail"], ["blue_snail", "Blue Snail"], ["red_snail", "Red Snail"], ["stump", "Stump"], ["lupin", "Lupin"],
-  ["jr_balrog", "Jr. Balrog"]];
-const MOBNAME = Object.fromEntries(MOBS);
+  ["jr_balrog", "Jr. Balrog"], ["ligator", "Ligator"], ["octopus", "Octopus"], ["pepe", "Pepe"], ["hector", "Hector"],
+  ["evil_eye", "Evil Eye"], ["wraith", "Wraith"], ["yeti", "Yeti"], ["ratz", "Ratz"], ["jr_necki", "Jr. Necki"]];
+// no longer pickable, but old notes written as them keep their monster
+const RETIRED = [["king_slime", "King Slime"], ["fire_boar", "Fire Boar"]];
+const MOBNAME = Object.fromEntries([...MOBS, ...RETIRED]);
 const mobImg = k => `media/mobs/${MOBNAME[k] ? k : "orange_mushroom"}.png`;
-let myMob = MOBNAME[store.get("family_mob")] ? store.get("family_mob") : MOBS[Math.floor(Math.random() * MOBS.length)][0];
+const PICKABLE = Object.fromEntries(MOBS);
+let myMob = PICKABLE[store.get("family_mob")] ? store.get("family_mob") : MOBS[Math.floor(Math.random() * MOBS.length)][0];
 $("#mobPick").innerHTML = MOBS.map(([k, n]) => `<button type="button" class="mob" data-k="${k}" title="${n}"><img src="${mobImg(k)}" alt="${n}"></button>`).join("");
 function pickMob(k) {
   myMob = k; store.set("family_mob", k); $("#mobName").textContent = MOBNAME[k];
