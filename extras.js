@@ -236,13 +236,12 @@ $("#shakeBtn").onclick = async () => {
 };
 
 // ======================================================== 7. guestbook: monster avatars, Fame, megaphone
-const MOBS = [  // grouped, 3 rows of 8 (4 rows of 6 on phones): mushrooms & small fry, critters, big monsters
-  ["orange_mushroom", "Orange Mushroom"], ["green_mushroom", "Green Mushroom"], ["blue_mushroom", "Blue Mushroom"], ["horny_mushroom", "Horny Mushroom"],
-  ["tortie", "Tortie"], ["zombie_mushroom", "Zombie Mushroom"], ["slime", "Slime"], ["jr_necki", "Jr. Necki"],
-  ["snail", "Snail"], ["blue_snail", "Blue Snail"], ["red_snail", "Red Snail"], ["pig", "Pig"],
-  ["ribbon_pig", "Ribbon Pig"], ["ratz", "Ratz"], ["stump", "Stump"], ["octopus", "Octopus"],
-  ["pepe", "Pepe"], ["lupin", "Lupin"], ["ligator", "Ligator"], ["evil_eye", "Evil Eye"],
-  ["hector", "Hector"], ["wraith", "Wraith"], ["yeti", "Yeti"], ["jr_balrog", "Jr. Balrog"]];
+const MOBS = [  // small to big, by family: 4 rows of 6 on phones (3 rows of 8 on computers)
+  ["orange_mushroom", "Orange Mushroom"], ["green_mushroom", "Green Mushroom"], ["blue_mushroom", "Blue Mushroom"],
+  ["horny_mushroom", "Horny Mushroom"], ["zombie_mushroom", "Zombie Mushroom"], ["slime", "Slime"],
+  ["snail", "Snail"], ["blue_snail", "Blue Snail"], ["red_snail", "Red Snail"], ["tortie", "Tortie"], ["jr_necki", "Jr. Necki"], ["ratz", "Ratz"],
+  ["pig", "Pig"], ["ribbon_pig", "Ribbon Pig"], ["stump", "Stump"], ["octopus", "Octopus"], ["ligator", "Ligator"], ["lupin", "Lupin"],
+  ["pepe", "Pepe"], ["evil_eye", "Evil Eye"], ["hector", "Hector"], ["wraith", "Wraith"], ["yeti", "Yeti"], ["jr_balrog", "Jr. Balrog"]];
 // no longer pickable, but old notes written as them keep their monster
 const RETIRED = [["king_slime", "King Slime"], ["fire_boar", "Fire Boar"], ["spotty_mushroom", "Spotty Mushroom"]];
 const MOBNAME = Object.fromEntries([...MOBS, ...RETIRED]);
