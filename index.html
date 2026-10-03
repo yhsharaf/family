@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
-<link rel="stylesheet" href="duel.css?v=5">
+<link rel="stylesheet" href="duel.css?v=7">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -414,6 +414,8 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
         <div class="sk-sugg" id="bdSugg" hidden></div></div>
       <div class="sk-warn" id="bdWarn" hidden>⚠️ This isn't a guild name, so you can duel as a guest but your wins won't be saved to the Hall of Fame.</div>
       <div class="sk-avatar"><div class="sk-face" id="bdFace"></div></div>
+      <div class="bd-pick-h">Pick your class</div>
+      <div class="bd-classes" id="bdClasses"></div>
       <div class="sk-room" id="bdRoomLbl"></div>
       <button class="sk-btn bd-play" id="bdFind">Find a Duel!</button>
       <button class="sk-btn sk-private" id="bdPrivate">Challenge a Friend</button>
@@ -423,8 +425,12 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="sk-panel bd-about">
       <h3>How to play</h3>
       <p>You both pick a move <b>in secret</b>, then both are revealed at once. Read your opponent! First to knock out the other's
-        <b>10 HP</b> wins. Moves cost <b>MP</b> (you get +1 every turn, max 5). From turn 9 it's <b>sudden death</b>: every hit does +1.</p>
+        <b>20 HP</b> wins. Moves cost <b>MP</b> (you get +1 every turn, max 5). From turn 10 it's <b>sudden death</b>: every hit does +1.
+        Your <b>class</b> gives you a 6th move and a passive.</p>
       <div class="bd-help" id="bdHelp"></div>
+      <p>🎯 <b>Critical tap:</b> when your hit lands, a ring shrinks over the enemy. Tap the arena when it lines up for +1 damage!</p>
+      <h3>🗺️ Maps (random each duel)</h3>
+      <div class="bd-maps" id="bdMaps"></div>
       <p>🔥 <b>Double Bonk:</b> once per duel you can double the points at stake. Your opponent accepts, or runs away and loses.</p>
       <h3>👀 Live duels</h3>
       <div id="bdLive"></div>
@@ -435,10 +441,11 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="bd-arena" id="bdArena">
       <div class="bd-cloud c1"></div><div class="bd-cloud c2"></div><div class="bd-cloud c3"></div>
       <div class="bd-ground"></div>
+      <div class="bd-deco"></div>
       <div class="bd-f bd-l" id="bdF1"><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
-        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div></div><div class="bd-think" hidden></div></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div><div class="bd-buffs"></div></div><div class="bd-think" hidden></div></div>
       <div class="bd-f bd-r" id="bdF2"><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
-        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div></div><div class="bd-think" hidden></div></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div><div class="bd-buffs"></div></div><div class="bd-think" hidden></div></div>
       <div class="bd-banner" id="bdBanner"></div>
     </div>
     <div class="bd-say" id="bdSay"></div>
@@ -752,7 +759,7 @@ show();
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
-<script src="duel.js?v=4"></script>
+<script src="duel.js?v=6"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

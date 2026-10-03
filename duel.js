@@ -19,10 +19,35 @@ const MOVES = {
   charge: { name: "Elixir",     icon: "elixir.png",      cost: 0, desc: "+2 MP, but you take +1 damage this turn." },
 };
 const ORDER = ["bonk", "heavy", "shield", "dodge", "charge"];
+// class skills (the 6th move) and classes: each has a passive and a skill
+Object.assign(MOVES, {
+  rage:     { name: "Rage",       icon: "sk_rage.png",       cost: 1, desc: "Blocks a Bonk, and your next hit does +2." },
+  teleport: { name: "Teleport",   icon: "sk_teleport.png",   cost: 2, desc: "Nothing can hit you this turn." },
+  arrow:    { name: "Arrow Rain", icon: "sk_arrowrain.png",  cost: 2, desc: "2 damage that can't be blocked or dodged." },
+  steal:    { name: "Steal",      icon: "sk_steal.png",      cost: 1, desc: "1 damage. If they drink an Elixir, you get their +2 MP." },
+  coin:     { name: "Lucky Shot", icon: "sk_doubleshot.png", cost: 2, desc: "Coin flip: 5 damage, or nothing." },
+});
+const CLASSES = {
+  warrior:  { name: "Warrior",  e: "🗡️", skill: "rage",     passive: "24 HP instead of 20" },
+  magician: { name: "Magician", e: "🔮", skill: "teleport", passive: "Starts with 4 MP, holds up to 6" },
+  bowman:   { name: "Bowman",   e: "🏹", skill: "arrow",    passive: "Bigger critical-tap window" },
+  thief:    { name: "Thief",    e: "🗝️", skill: "steal",    passive: "Dodge is free" },
+  pirate:   { name: "Pirate",   e: "🏴‍☠️", skill: "coin",     passive: "Survives one K.O. with 1 HP" },
+};
+const MAPS = {
+  henesys: { name: "Henesys",       rule: "Normal rules" },
+  elnath:  { name: "El Nath",       rule: "Dodge is free" },
+  zakum:   { name: "Zakum's Altar", rule: "Every hit does +1" },
+  ludi:    { name: "Ludibrium",     rule: "8-second turns" },
+  sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 25–40 for both, nobody can see it" },
+};
+const cost = (m, cls, map) => m === "dodge" ? (map === "elnath" || cls === "thief" ? 0 : 1) : (MOVES[m] || {}).cost || 0;
+const realMove = (m, cls) => m === "skill" ? CLASSES[cls].skill : m;
+let myClass = CLASSES[store.get("family_bd_class")] ? store.get("family_bd_class") : "warrior";
 const BOTS = {
-  orange_mushroom: { name: "Orange Mushroom", lvl: "Easy",   say: ["*squish*", "Mush mush! 🍄", "Bonk me if you can 🍄", "*boing boing*"] },
-  zombie_mushroom: { name: "Zombie Mushroom", lvl: "Medium", say: ["Braaains… 🧟", "*groan*", "I'm already dead, you can't hurt me", "Mush… rot…"] },
-  jr_balrog:       { name: "Jr. Balrog",      lvl: "Hard",   say: ["Grrr! 🔥", "Puny Mapler…", "I can read you 😈", "🔥🔥🔥"] },
+  orange_mushroom: { name: "Orange Mushroom", lvl: "Easy",   cls: "bowman",   say: ["*squish*", "Mush mush! 🍄", "Bonk me if you can 🍄", "*boing boing*"] },
+  zombie_mushroom: { name: "Zombie Mushroom", lvl: "Medium", cls: "thief", say: ["Braaains… 🧟", "*groan*", "I'm already dead, you can't hurt me", "Mush… rot…"] },
+  jr_balrog:       { name: "Jr. Balrog",      lvl: "Hard",   cls: "warrior",   say: ["Grrr! 🔥", "Puny Mapler…", "I can read you 😈", "🔥🔥🔥"] },
 };
 const TAUNTS = ["Bonk incoming! 🔨", "Is that all? 😏", "Ouch 😭", "I see you 👀", "Hehe 😈", "Nooo! 😱", "Mesos pls 💰", "GG 🤝"];
 // effect strips (frames side by side, origin = where the effect is anchored)
@@ -34,6 +59,11 @@ const FX = {
   guard:    { src: "guard.webp",   w: 87,  h: 90,  n: 12, ox: 52,  oy: 87,  ms: 1000 },
   buff:     { src: "buff.webp",    w: 119, h: 113, n: 8,  ox: 68,  oy: 101, ms: 640 },
   levelup:  { src: "levelup.webp", w: 301, h: 362, n: 21, ox: 148, oy: 345, ms: 1890 },
+  rage:     { src: "rage.webp",     w: 108, h: 123, n: 13, ox: 63,  oy: 123, ms: 1300 },
+  arrows:   { src: "arrowrain.webp", w: 129, h: 197, n: 12, ox: 94, oy: 158, ms: 780 },
+  arrowhit: { src: "arrowhit.png",  w: 101, h: 133, n: 3,  ox: 40,  oy: 110, ms: 360 },
+  steal:    { src: "steal.png",     w: 95,  h: 64,  n: 4,  ox: 23,  oy: 65,  ms: 460 },
+  shot:     { src: "shothit.png",   w: 100, h: 52,  n: 4,  ox: 57,  oy: 30,  ms: 240 },
 };
 const DIG = { red: ["nored1.png", 37, 39], cri: ["nocri1.png", 43, 48], blue: ["noblue1.png", 37, 39], violet: ["noviolet1.png", 37, 39] };
 document.head.insertAdjacentHTML("beforeend", "<style>" + Object.entries(FX).map(([k, f]) =>
@@ -49,6 +79,17 @@ let shownTurn = -1, animUntil = 0, disp = null, bot = null, room = "public", liv
 // ------------------------------------------------------------------ lobby
 $b("#bdHelp").innerHTML = ORDER.map(k => { const m = MOVES[k];
   return `<div class="bdh"><img src="${M + m.icon}" alt=""><b>${m.name}</b><i>${m.cost ? m.cost + " MP" : "Free"}</i><small>${m.desc}</small></div>`; }).join("");
+function drawClasses() {
+  $b("#bdClasses").innerHTML = Object.entries(CLASSES).map(([k, c]) => { const sk = MOVES[c.skill];
+    return `<button type="button" class="bd-class ${k === myClass ? "on" : ""}" data-c="${k}"><img src="${M + sk.icon}" alt="">
+      <b>${c.e} ${c.name}</b><small><i>${sk.name}</i> (${sk.cost} MP): ${sk.desc}<br>✨ ${c.passive}</small></button>`; }).join("");
+}
+drawClasses();
+$b("#bdClasses").addEventListener("click", e => {
+  const b = e.target.closest(".bd-class"); if (!b) return;
+  myClass = b.dataset.c; store.set("family_bd_class", myClass); drawClasses(); sound("blip");
+});
+$b("#bdMaps").innerHTML = Object.values(MAPS).map(m => `<span><b>${m.name}</b> ${m.rule}</span>`).join("");
 $b("#bdBots").innerHTML = Object.entries(BOTS).map(([k, b]) =>
   `<button type="button" class="bd-bot" data-k="${k}"><img src="media/mobs/anim/${k}.gif?v=3" alt=""><b>${b.name}</b><small>${b.lvl}</small></button>`).join("");
 
@@ -130,7 +171,7 @@ const tokKey = () => "bd_tok:" + (roomFromHash() || "public");
 async function join(name, tok) {
   if (!(await client())) { $b("#bdErr").textContent = "Online duels need the database connection. Try a practice monster!"; return; }
   room = roomFromHash() || "public";
-  const { data, error } = await sb.rpc("bd_join", { p_room: room, p_name: name || "", p_tok: tok || null });
+  const { data, error } = await sb.rpc("bd_join", { p_room: room, p_name: name || "", p_tok: tok || null, p_class: myClass });
   if (error || !data) { $b("#bdErr").textContent = /slow down/.test(error && error.message) ? "Too many tries, wait a minute 🙂" : "Couldn't connect, try again."; return; }
   if (data.r === "running" && data.game) { if (name) watch(data.game); return data.r; }
   const why = { name: "Type a name first.", taken: "That name is already waiting for a duel. Pick another name!",
@@ -163,7 +204,7 @@ async function loadLive() {
   if (!(await client())) return;
   const { data } = await sb.rpc("bd_live");
   $b("#bdLive").innerHTML = (data || []).length ? data.map(d => `<button type="button" class="bd-live" data-g="${d.id}">
-      <img src="${spriteOf(d.p1)}" alt=""><span><b>${esc(d.p1)}</b> ${d.hp1}❤️ <i>vs</i> <b>${esc(d.p2)}</b> ${d.hp2}❤️<small>turn ${d.turn}${d.stake > 1 ? ` · 🔥 ×${d.stake}` : ""}</small></span>
+      <img src="${spriteOf(d.p1)}" alt=""><span><b>${esc(d.p1)}</b> ${d.map === "sleepy" ? "?" : d.hp1}❤️ <i>vs</i> <b>${esc(d.p2)}</b> ${d.map === "sleepy" ? "?" : d.hp2}❤️<small>turn ${d.turn} · ${esc((MAPS[d.map] || MAPS.henesys).name)}${d.stake > 1 ? ` · 🔥 ×${d.stake}` : ""}</small></span>
       <img class="r" src="${spriteOf(d.p2)}" alt="">👀</button>`).join("")
     : `<p class="bd-none">Nobody is dueling right now. Be the first!</p>`;
 }
@@ -222,7 +263,11 @@ function onState(data) {
     if (shownTurn < 0 && prev == null && st.reveal <= 0) shownTurn = st.last.turn;  // joined mid-duel: don't replay old turns
     else { shownTurn = st.last.turn; reveal(st.last, prev); }
   } else if (st.last == null) shownTurn = 0;
-  if (prev && prev.status === "wait" && st.status === "pick") { sound("start"); banner("Ready… FIGHT! 🔨", 2000); }
+  if ((prev && prev.status === "wait" && st.status === "pick") || (!prev && st.status === "pick" && st.turn === 1 && st.reveal > 2)) { sound("start"); introBanner(); }
+  // the other player's critical tap shows up a moment later
+  if (st.last && prev && prev.last && prev.last.turn === st.last.turn) [1, 2].forEach(s => {
+    if (st.last["c" + s] && !prev.last["c" + s] && s !== st.me) critShow(3 - s);
+  });
   if (prev && prev.status !== "double" && st.status === "double") { sound("double");
     banner(`🔥 ${esc(st["p" + st.dbl_by])} wants to DOUBLE BONK!`, 2500); }
   if (prev && prev.stake !== st.stake && st.stake > prev.stake) banner(`🔥 Stakes doubled: ${st.stake} points!`, 2000);
@@ -231,36 +276,62 @@ function onState(data) {
 const animating = () => Date.now() < animUntil;
 
 // ------------------------------------------------------------------ practice monsters (same rules, run locally)
-const hit = (a, b) => a === "bonk" && b !== "shield" ? 2 : a === "heavy" && b !== "dodge" ? 4 : 0;
-function resolveTurn(s) {
-  const m1 = s.pick1 || "zzz", m2 = s.pick2 || "zzz", sd = s.turn >= 9;
-  let x1 = hit(m2, m1), x2 = hit(m1, m2);
+// damage move a does to someone who picked b (heads = Lucky Shot coin) -- same as bd_hit in supabase_duel_v16.sql
+const hit = (a, b, heads) => b === "teleport" ? 0 : a === "bonk" ? (b === "shield" || b === "rage" ? 0 : 2)
+  : a === "heavy" ? (b === "dodge" ? 0 : 4) : a === "arrow" ? 2 : a === "coin" ? (heads ? 5 : 0)
+  : a === "steal" ? (b === "shield" || b === "rage" ? 0 : 1) : 0;
+// one turn of a duel: s holds hp/en/class/map/rage/lucky; returns the round result (doesn't change s)
+function clash(s, m1, m2, h1, h2) {
+  const sd = s.turn >= 10;
+  let x1 = hit(m2, m1, h2), x2 = hit(m1, m2, h1), r1 = s.rage1, r2 = s.rage2, l1 = false, l2 = false;
   if (m1 === "dodge" && m2 === "heavy") x2 += 3;
   if (m2 === "dodge" && m1 === "heavy") x1 += 3;
   if (x1 > 0 && (m1 === "charge" || m1 === "zzz")) x1++;
   if (x2 > 0 && (m2 === "charge" || m2 === "zzz")) x2++;
+  if (x2 > 0 && r1) { x2 += 2; r1 = false; }
+  if (x1 > 0 && r2) { x1 += 2; r2 = false; }
+  if (m1 === "rage") r1 = true; if (m2 === "rage") r2 = true;
   if (sd && x1 > 0) x1++; if (sd && x2 > 0) x2++;
-  const cost = m => (MOVES[m] || {}).cost || 0, regen = sd ? 2 : 1;
-  const e1 = s.en1 - cost(m1) + (m1 === "charge" ? 2 : 0) + (m1 === "shield" && m2 === "bonk" ? 1 : 0) + regen;
-  const e2 = s.en2 - cost(m2) + (m2 === "charge" ? 2 : 0) + (m2 === "shield" && m1 === "bonk" ? 1 : 0) + regen;
-  s.last = { turn: s.turn, m1, m2, d1: x1, d2: x2, sd };
-  s.hp1 = Math.max(0, s.hp1 - x1); s.hp2 = Math.max(0, s.hp2 - x2);
-  s.en1 = Math.min(5, Math.max(0, e1)); s.en2 = Math.min(5, Math.max(0, e2));
+  if (s.map === "zakum" && x1 > 0) x1++; if (s.map === "zakum" && x2 > 0) x2++;
+  if (s.class1 === "pirate" && !s.lucky1 && x1 > 0 && s.hp1 - x1 <= 0) { x1 = s.hp1 - 1; l1 = true; }
+  if (s.class2 === "pirate" && !s.lucky2 && x2 > 0 && s.hp2 - x2 <= 0) { x2 = s.hp2 - 1; l2 = true; }
+  const regen = sd ? 2 : 1;
+  const e1 = s.en1 - cost(m1, s.class1, s.map) + regen + (m1 === "charge" && m2 !== "steal" ? 2 : 0) + (m2 === "charge" && m1 === "steal" ? 2 : 0)
+    + (m1 === "shield" && (m2 === "bonk" || m2 === "steal") ? 1 : 0);
+  const e2 = s.en2 - cost(m2, s.class2, s.map) + regen + (m2 === "charge" && m1 !== "steal" ? 2 : 0) + (m1 === "charge" && m2 === "steal" ? 2 : 0)
+    + (m2 === "shield" && (m1 === "bonk" || m1 === "steal") ? 1 : 0);
+  return { x1, x2, r1, r2, l1, l2, sd, e1: Math.min(s.enmax1, Math.max(0, e1)), e2: Math.min(s.enmax2, Math.max(0, e2)) };
+}
+function resolveTurn(s) {
+  const m1 = realMove(s.pick1 || "zzz", s.class1), m2 = realMove(s.pick2 || "zzz", s.class2);
+  const h1 = m1 === "coin" && Math.random() < .5, h2 = m2 === "coin" && Math.random() < .5;
+  const r = clash(s, m1, m2, h1, h2);
+  s.last = { turn: s.turn, m1, m2, d1: r.x1, d2: r.x2, sd: r.sd, h1, h2, l1: r.l1, l2: r.l2 };
+  s.hp1 = Math.max(0, s.hp1 - r.x1); s.hp2 = Math.max(0, s.hp2 - r.x2); s.en1 = r.e1; s.en2 = r.e2;
+  s.rage1 = r.r1; s.rage2 = r.r2; s.lucky1 = s.lucky1 || r.l1; s.lucky2 = s.lucky2 || r.l2;
   s.afk1 = m1 === "zzz" ? s.afk1 + 1 : 0; s.afk2 = m2 === "zzz" ? s.afk2 + 1 : 0;
   s.pick1 = s.pick2 = null; s.picked1 = s.picked2 = false; s.mine = null; s.turn++;
+  checkEnd(s);
+}
+function checkEnd(s) {
   const end = (w, why) => { s.status = "over"; s.winner = w; s.why = why; };
   if (s.hp1 === 0 || s.hp2 === 0) end(s.hp1 === s.hp2 ? 0 : s.hp1 > s.hp2 ? 1 : 2, s.hp1 === s.hp2 ? "draw" : "ko");
   else if (s.afk1 >= 3) end(2, "afk");
-  else if (s.turn > 15) end(s.hp1 === s.hp2 ? 0 : s.hp1 > s.hp2 ? 1 : 2, "time");
+  else if (s.turn > 20) end(s.hp1 === s.hp2 ? 0 : s.hp1 > s.hp2 ? 1 : 2, "time");
 }
 function startBot(kind, name) {
   showGame();
   bot = { kind, hist: [], timer: null };
-  st = { r: "ok", me: 1, status: "pick", turn: 1, p1: name, p2: BOTS[kind].name, hp1: 10, hp2: 10, en1: 3, en2: 3, afk1: 0, afk2: 0,
+  const c1 = myClass, c2 = BOTS[kind].cls, map = MAPS[new URLSearchParams(location.search).get("bdmap")] ? new URLSearchParams(location.search).get("bdmap") : Object.keys(MAPS)[Math.floor(Math.random() * 5)], secs = map === "ludi" ? 8 : 15;
+  const secret = 25 + Math.floor(Math.random() * 16);   // Sleepywood: same hidden HP for both
+  const hp = c => map === "sleepy" ? secret : c === "warrior" ? 24 : 20, en = c => c === "magician" ? 4 : 3, enmax = c => c === "magician" ? 6 : 5;
+  st = { r: "ok", me: 1, status: "pick", turn: 1, p1: name, p2: BOTS[kind].name, class1: c1, class2: c2, map, secs,
+         hp1: hp(c1), hp2: hp(c2), hpmax1: hp(c1), hpmax2: hp(c2), en1: en(c1), en2: en(c2), enmax1: enmax(c1), enmax2: enmax(c2),
+         rage1: false, rage2: false, lucky1: false, lucky2: false, afk1: 0, afk2: 0,
          picked1: false, picked2: false, mine: null, pick1: null, pick2: null, stake: 1, dbl1: true, dbl2: true, last: null,
-         left: 19, reveal: 4, on1: true, on2: true, practice: true };
-  leftAt = Date.now(); disp = { hp1: 10, hp2: 10, en1: 3, en2: 3 }; shownTurn = 0;
-  sound("start"); banner("Ready… FIGHT! 🔨", 2000); render(); botThink();
+         left: 5 + secs, reveal: 5, on1: true, on2: true, practice: true };
+  leftAt = Date.now(); disp = { hp1: st.hp1, hp2: st.hp2, en1: st.en1, en2: st.en2 }; shownTurn = 0;
+  sound("start"); introBanner(); render(); botThink();
   setTimeout(() => bot && bubble(2, BOTS[kind].say[0]), 1200);
 }
 function botThink() {
@@ -269,25 +340,25 @@ function botThink() {
   bot.timer = setTimeout(() => { if (!bot || st.status !== "pick") return; st.pick2 = botMove(); st.picked2 = true; render(); if (st.picked1) botResolve(); }, wait);
 }
 function botMove() {
-  const can = ORDER.filter(m => MOVES[m].cost <= st.en2);
+  const all = [...ORDER, "skill"], movesFor = (cls, en) => all.filter(m => cost(realMove(m, cls), cls, st.map) <= en);
+  const can = movesFor(st.class2, st.en2);
   const pick = w => { const ks = Object.keys(w).filter(k => can.includes(k) && w[k] > 0); let r = Math.random() * ks.reduce((a, k) => a + w[k], 0);
     for (const k of ks) if ((r -= w[k]) <= 0) return k; return ks[0] || "shield"; };
   const h = bot.hist;
-  if (bot.kind === "orange_mushroom") return pick({ bonk: 3, heavy: 2, shield: 2, dodge: 1, charge: 2 });
+  if (bot.kind === "orange_mushroom") return pick({ bonk: 3, heavy: 2, shield: 2, dodge: 1, charge: 2, skill: 1 });
+  if (bot.kind === "zombie_mushroom" && Math.random() < .45) return pick({ bonk: 3, heavy: 2, shield: 2, dodge: 1, charge: 2, skill: 2 });
+  if (bot.kind === "jr_balrog" && Math.random() < .12) return pick({ bonk: 2, heavy: 2, shield: 1, dodge: 1, charge: 1, skill: 1 });
   // what will the player do? count their past moves (the Jr. Balrog also looks at what they did after their last move)
-  const pc = ORDER.filter(m => MOVES[m].cost <= st.en1), freq = {};
+  const pc = movesFor(st.class1, st.en1), freq = {};
   pc.forEach(m => freq[m] = 1);
   h.forEach((m, i) => { if (freq[m] != null) freq[m] += bot.kind === "jr_balrog" && i > 0 && h[i - 1] === h[h.length - 1] ? 3 : 1; });
-  if (bot.kind === "zombie_mushroom" && Math.random() < .45) return pick({ bonk: 3, heavy: 2, shield: 2, dodge: 1, charge: 2 });
-  if (bot.kind === "jr_balrog" && Math.random() < .12) return pick({ bonk: 2, heavy: 2, shield: 1, dodge: 1, charge: 1 });
-  const tot = Object.values(freq).reduce((a, b) => a + b, 0), sd = st.turn >= 9;
-  const val = b => pc.reduce((a, p) => {   // expected (damage dealt − damage taken) + a little for MP
-    let dealt = hit(b, p) + (p === "dodge" && b === "heavy" ? 0 : 0), taken = hit(p, b);
-    if (b === "dodge" && p === "heavy") dealt += 3; if (p === "dodge" && b === "heavy") taken += 3;
-    if (taken > 0 && b === "charge") taken++; if (dealt > 0 && p === "charge") dealt++;
-    if (sd) { if (dealt) dealt++; if (taken) taken++; }
-    const mp = (b === "charge" ? 2 : 0) + (b === "shield" && p === "bonk" ? 1 : 0) - MOVES[b].cost;
-    return a + freq[p] / tot * (dealt - taken * (st.hp2 <= 4 ? 1.4 : 1) + mp * .35 + (dealt >= st.hp1 ? 5 : 0));
+  const tot = Object.values(freq).reduce((a, b) => a + b, 0);
+  const val = b => pc.reduce((acc, p) => {   // expected (damage dealt − damage taken) + a little for MP, coin flips averaged
+    const m1 = realMove(p, st.class1), m2 = realMove(b, st.class2);
+    const flips = [[false, false], [false, true], [true, false], [true, true]].filter(([a1, a2]) => (m1 === "coin" || !a1) && (m2 === "coin" || !a2));
+    const v = flips.reduce((t, [a1, a2]) => { const r = clash(st, m1, m2, a1, a2);
+      return t + r.x1 - r.x2 * (st.hp2 <= 6 ? 1.4 : 1) + (r.e2 - st.en2) * .35 + (r.x1 >= st.hp1 ? 6 : 0) + (r.r2 && !st.rage2 ? .8 : 0); }, 0) / flips.length;
+    return acc + freq[p] / tot * v;
   }, 0);
   const scored = can.map(b => [b, val(b)]).sort((a, b) => b[1] - a[1]);
   return Math.random() < .8 || scored.length < 2 ? scored[0][0] : scored[1][0];
@@ -296,7 +367,7 @@ function botResolve() {
   bot.hist.push(st.pick1 || "zzz");
   const before = { ...st };
   resolveTurn(st);
-  st.left = 19; st.reveal = 4; leftAt = Date.now();
+  st.left = 4 + st.secs; st.reveal = 4; leftAt = Date.now();
   shownTurn = st.last.turn; reveal(st.last, before);
   if (st.status === "pick") { botThink(); if (Math.random() < .3) setTimeout(() => bot && bubble(2, BOTS[bot.kind].say[Math.floor(Math.random() * 4)]), 2600); }
   render();
@@ -350,10 +421,14 @@ function fighter(el, s) {
   const img = el.querySelector(".bd-sp");
   if (!el.dataset.n || el.dataset.n !== name) { img.src = src; el.dataset.n = name; el.dataset.src = src; el.classList.remove("bd-ko"); }
   el.classList.toggle("bd-mob", !!isBot); el.classList.toggle("bd-boss", !!isBot && bot.kind === "jr_balrog");
-  el.querySelector(".bd-tag").textContent = name;
-  el.querySelector(".bd-hp i").style.width = (hp * 10) + "%";
-  el.querySelector(".bd-hp b").textContent = `HP ${hp}/10`;
-  el.querySelector(".bd-mp").innerHTML = Array.from({ length: 5 }, (_, i) => `<i class="${i < en ? "on" : ""}"></i>`).join("") + `<b>MP ${en}</b>`;
+  const cls = CLASSES[st["class" + s]] || CLASSES.warrior, hpmax = st["hpmax" + s] || 20, enmax = st["enmax" + s] || 5;
+  el.querySelector(".bd-tag").textContent = `${cls.e} ${name}`;
+  const hidden = st.map === "sleepy" && st.status !== "over";   // Sleepywood: nobody knows anybody's HP
+  el.querySelector(".bd-hp").classList.toggle("secret", !!hidden);
+  el.querySelector(".bd-hp i").style.width = hidden ? "100%" : (hp / hpmax * 100) + "%";
+  el.querySelector(".bd-hp b").textContent = hidden ? "HP ???" : `HP ${hp}/${hpmax}`;
+  el.querySelector(".bd-mp").innerHTML = Array.from({ length: enmax }, (_, i) => `<i class="${i < en ? "on" : ""}"></i>`).join("") + `<b>MP ${en}</b>`;
+  el.querySelector(".bd-buffs").textContent = (st["rage" + s] ? "🔥 Rage " : "") + (cls === CLASSES.pirate && !st["lucky" + s] ? "🍀" : "");
   const think = el.querySelector(".bd-think");
   const picking = st.status === "pick" && !inReveal();
   const ready = st["picked" + s] || (st.me === s && st.mine);
@@ -366,16 +441,17 @@ function render() {
   if (!st) return;
   const L = side(), R = 3 - L, s = st.status, me = st.me;
   fighter($b("#bdF1"), L); fighter($b("#bdF2"), R);
-  const sd = st.turn >= 9 && s !== "wait";
-  $b("#bdArena").classList.toggle("sd", sd);
+  const sd = st.turn >= 10 && s !== "wait";
+  $b("#bdArena").className = "bd-arena m-" + (st.map || "henesys") + (sd ? " sd" : "");
   $b("#bdPhase").innerHTML = s === "wait" ? (room === "public" ? "🔍 Looking for an opponent…" : "⏳ Waiting for your friend…")
-    : s === "over" ? "🏁 Duel over" : `Turn ${Math.min(st.turn, 15)}/15${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
+    : s === "over" ? "🏁 Duel over" : `Turn ${Math.min(st.turn, 20)}/20 · <span class="bd-map" title="${esc((MAPS[st.map] || MAPS.henesys).rule)}">${esc((MAPS[st.map] || MAPS.henesys).name)}</span>${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
   $b("#bdStake").innerHTML = s === "wait" ? "" : st.practice ? "🎯 Practice" : `${st.stake > 1 ? "🔥" : "🏆"} ${st.stake} pt${st.stake > 1 ? "s" : ""}`;
   // moves
   const myEn = me ? st["en" + me] : 0, canPick = me && s === "pick" && !inReveal();
-  $b("#bdMoves").innerHTML = ORDER.map(k => { const m = MOVES[k];
-    return `<button type="button" class="bd-move ${st.mine === k ? "sel" : ""}" data-m="${k}" ${canPick && m.cost <= myEn ? "" : "disabled"}>
-      <span class="ic"><img src="${M + m.icon}" alt=""></span><b>${m.name}</b><i>${m.cost ? m.cost + " MP" : "Free"}</i></button>`; }).join("");
+  const myCls = me ? st["class" + me] : "warrior";
+  $b("#bdMoves").innerHTML = [...ORDER, "skill"].map(k => { const real = realMove(k, myCls), m = MOVES[real], c = cost(real, myCls, st.map);
+    return `<button type="button" class="bd-move ${k === "skill" ? "skill" : ""} ${st.mine === k ? "sel" : ""}" data-m="${k}" ${canPick && c <= myEn ? "" : "disabled"}>
+      <span class="ic"><img src="${M + m.icon}" alt=""></span><b>${m.name}</b><i>${c ? c + " MP" : "Free"}</i></button>`; }).join("");
   $b("#bdPanel").hidden = !me || s === "over" || s === "wait";
   const dblUsed = me ? st["dbl" + me] : true;
   $b("#bdDouble").hidden = !!bot || !me || dblUsed || s !== "pick" || st.stake >= 4 || st.practice;
@@ -387,7 +463,7 @@ function render() {
     : `Send this link to your friend: <span class="bd-inv"><input id="bdInvite" readonly value="${esc(location.href.split("#")[0] + "#duel/" + room)}"><button class="sk-small" id="bdCopy">Copy</button></span>`;
   else if (s === "pick" && !inReveal()) {
     if (!me) say = "👀 You're watching. Both players are choosing in secret…";
-    else if (st.mine) say = `✅ You picked <b>${MOVES[st.mine].name}</b>. ${st["picked" + (3 - me)] ? "Revealing…" : "Waiting for your opponent… (tap another to change)"}`;
+    else if (st.mine) say = `✅ You picked <b>${MOVES[realMove(st.mine, st["class" + me])].name}</b>. ${st["picked" + (3 - me)] ? "Revealing…" : "Waiting for your opponent… (tap another to change)"}`;
     else say = "Pick your move! Your opponent can't see it until you both reveal 🤫";
   } else if (s === "double") {
     say = me && st.dbl_by !== me ? "🔥 Accept the Double Bonk, or run away? (no answer = accepted)"
@@ -429,61 +505,121 @@ $b("#bdSay").addEventListener("click", e => {
 });
 
 // ------------------------------------------------------------------ the reveal show
+const ATTACKS = ["bonk", "heavy", "arrow", "steal", "coin"];
 function reveal(l, prev) {
   const L = side(), F = { [L]: $b("#bdF1"), [3 - L]: $b("#bdF2") };
-  const names = { 1: st.p1, 2: st.p2 }, m = { 1: l.m1, 2: l.m2 }, d = { 1: l.d1, 2: l.d2 };
+  const names = { 1: st.p1, 2: st.p2 }, m = { 1: l.m1, 2: l.m2 }, d = { 1: l.d1, 2: l.d2 }, heads = { 1: l.h1, 2: l.h2 };
   animUntil = Date.now() + 3300;
   if (prev) disp = { hp1: prev.hp1, hp2: prev.hp2, en1: prev.en1, en2: prev.en2 };
   render();
   // 1. the cards flip up over both heads
   [1, 2].forEach(s => {
     const mv = MOVES[m[s]], c = document.createElement("div");
-    c.className = "bd-card"; c.innerHTML = mv ? `<img src="${M + mv.icon}" alt=""><b>${mv.name}</b>` : "<span>💤</span><b>Zzz…</b>";
+    c.className = "bd-card" + (CLASSES[st["class" + s]] && CLASSES[st["class" + s]].skill === m[s] ? " sk" : "");
+    c.innerHTML = mv ? `<img src="${M + mv.icon}" alt=""><b>${mv.name}</b>` : "<span>💤</span><b>Zzz…</b>";
     F[s].appendChild(c); setTimeout(() => c.remove(), 3000);
   });
   sound("flip");
-  if (l.sd && l.turn === 9) banner("⚡ SUDDEN DEATH! Every hit +1, MP ×2", 2200);
+  if (l.sd && l.turn === 10) banner("⚡ SUDDEN DEATH! Every hit +1, MP ×2", 2200);
   // 2. the action
   setTimeout(() => {
     [1, 2].forEach(s => {
       const o = 3 - s, me = F[s], them = F[o];
-      if (m[s] === "bonk" || m[s] === "heavy") me.classList.add("bd-lunge");
-      if (m[s] === "charge") { fx(me, "buff"); num(me, "+2", "blue", "MP"); }
+      if (m[s] === "bonk" || m[s] === "heavy" || m[s] === "steal") me.classList.add("bd-lunge");
+      if (m[s] === "charge") { fx(me, "buff"); if (m[o] !== "steal") num(me, "+2", "blue", "MP"); }
       if (m[s] === "shield") fx(me, "guard");
       if (m[s] === "dodge") fx(me, "smoke");
+      if (m[s] === "rage") fx(me, "rage");
+      if (m[s] === "teleport") { fx(me, "smoke"); me.classList.add("bd-tele"); setTimeout(() => me.classList.remove("bd-tele"), 1300); }
+      if (m[s] === "arrow") fx(them, "arrows");
+      if (m[s] === "coin") { me.classList.add("bd-lunge"); bubble(s, heads[s] ? "🪙 Heads!" : "🪙 Tails…"); }
+      if (m[s] === "steal" && m[o] === "charge") num(me, "+2", "blue", "MP");
       if (m[s] === "zzz") bubble(s, "💤 Zzz…");
       setTimeout(() => me.classList.remove("bd-lunge"), 450);
-      void them;
     });
-    sound(l.m1 === "heavy" || l.m2 === "heavy" ? "heavy" : l.m1 === "bonk" || l.m2 === "bonk" ? "bonk" : l.m1 === "shield" || l.m2 === "shield" ? "clang" : "whoosh");
+    sound(l.m1 === "heavy" || l.m2 === "heavy" || l.m1 === "coin" || l.m2 === "coin" ? "heavy" : ATTACKS.includes(l.m1) || ATTACKS.includes(l.m2) ? "bonk"
+      : l.m1 === "shield" || l.m2 === "shield" ? "clang" : "whoosh");
   }, 800);
   // 3. impacts
   setTimeout(() => {
     [1, 2].forEach(s => {
       const o = 3 - s, me = F[s];
-      const big = m[o] === "heavy" && d[s] > 0 && !(m[s] === "dodge");
+      const big = (m[o] === "heavy" && m[s] !== "dodge") || m[o] === "coin";
       if (d[s] > 0) {
-        fx(me, big ? "star" : m[s] === "dodge" ? "slash" : "burst");
+        fx(me, m[o] === "arrow" ? "arrowhit" : m[o] === "coin" ? "shot" : m[o] === "steal" ? "steal" : big ? "star" : m[s] === "dodge" ? "slash" : "burst");
         num(me, String(d[s]), big ? "cri" : (st.me && s === st.me ? "violet" : "red"));
         me.classList.add("bd-ouch"); setTimeout(() => me.classList.remove("bd-ouch"), 500);
         if (bot && s === 2) { const img = me.querySelector(".bd-sp"); img.src = `${M + bot.kind}_hit1.gif`; setTimeout(() => { if (bot && st.status !== "over") img.src = me.dataset.src; }, 600); }
-      } else if ((m[o] === "bonk" && m[s] === "shield")) { num(me, "Guard", "word"); }
-      else if (m[o] === "heavy" && m[s] === "dodge") num(me, "MISS", "miss");
+      } else if ((m[o] === "bonk" || m[o] === "steal") && (m[s] === "shield" || m[s] === "rage")) num(me, "Guard", "word");
+      else if ((m[o] === "heavy" && m[s] === "dodge") || (ATTACKS.includes(m[o]) && m[s] === "teleport") || (m[o] === "coin" && !heads[o])) num(me, "MISS", "miss");
+      if (l["l" + s]) setTimeout(() => bubble(s, "🍀 Lucky! Hanging on with 1 HP"), 300);
     });
     disp = { hp1: st.hp1, hp2: st.hp2, en1: st.en1, en2: st.en2 };
-    if (st.status === "over") disp = { hp1: st.hp1, hp2: st.hp2, en1: st.en1, en2: st.en2 };
     render();
+    critRing(l, F);
   }, 1150);
   $b("#bdSay").innerHTML = "";
   setTimeout(() => { $b("#bdSay").innerHTML = story(l, names); }, 1150);
   setTimeout(() => { animUntil = 0; if (st.status === "over" && bot && st.winner === 1) { const img = F[2].querySelector(".bd-sp"); img.src = `${M + bot.kind}_die1.gif`; }
     render(); }, 3300);
 }
+// critical tap: after your hit lands, a ring shrinks over the enemy; tap when it lines up for +1 damage
+function critRing(l, F) {
+  const me = st.me; if (!me) return;
+  const o = 3 - me, mine = l["m" + me];
+  const landed = l["d" + o] > 0 && (ATTACKS.includes(mine) || (mine === "dodge" && l["m" + o] === "heavy"));
+  if (bot) botCrit(l);
+  if (!landed || st.status === "over") return;
+  const el = F[o], ring = document.createElement("div"); ring.className = "bd-ring"; ring.innerHTML = "<i></i><b></b>";
+  el.appendChild(ring);
+  const t0 = performance.now(), dur = 1000, wide = st["class" + me] === "bowman";
+  const lo = wide ? .5 : .58, hi = wide ? .84 : .76;          // the part of the shrink that counts as "on target" (lines up at .67)
+  let done = false;
+  const stop = () => { done = true; $b("#bdArena").removeEventListener("pointerdown", tap); };
+  const tap = e => {
+    if (done) return; stop(); e.preventDefault();
+    const p = (performance.now() - t0) / dur, good = p >= lo && p <= hi;
+    ring.classList.add(good ? "hit" : "miss"); setTimeout(() => ring.remove(), 350);
+    if (!good) { num(el, p < lo ? "Too early" : "Too late", "word"); return; }
+    sound("crit");
+    if (bot) { st["hp" + o] = Math.max(0, st["hp" + o] - 1); st.last["c" + me] = true; critShow(o); checkEndAfterCrit(); }
+    else { critShow(o); sb.rpc("bd_crit", { p_game: sess.game, p_tok: sess.token, p_turn: l.turn }).then(() => { poke(); polling = false; poll(); }); }
+  };
+  $b("#bdArena").addEventListener("pointerdown", tap);
+  setTimeout(() => { if (!done) { stop(); ring.remove(); } }, dur + 150);
+}
+function critShow(victim) {   // the +1 critical number on whoever got crit
+  const L = side(), el = victim === L ? $b("#bdF1") : $b("#bdF2");
+  setTimeout(() => num(el, "1", "cri"), 60);
+  if (disp) disp["hp" + victim] = bot ? st["hp" + victim] : Math.max(0, disp["hp" + victim] - 1);
+  render();
+}
+function botCrit(l) {   // monsters sometimes nail the timing too
+  const landed = l.d1 > 0 && (ATTACKS.includes(l.m2) || (l.m2 === "dodge" && l.m1 === "heavy"));
+  const chance = { orange_mushroom: .25, zombie_mushroom: .4, jr_balrog: .6 }[bot.kind];
+  if (!landed || st.status === "over" || Math.random() > chance) return;
+  setTimeout(() => { if (!bot || st.status === "over") return; st.hp1 = Math.max(0, st.hp1 - 1); st.last.c2 = true; sound("crit"); critShow(1); checkEndAfterCrit(); }, 800);
+}
+function checkEndAfterCrit() {
+  if (st.hp1 === 0 || st.hp2 === 0) { st.status = "over"; st.winner = st.hp1 === st.hp2 ? 0 : st.hp1 > st.hp2 ? 1 : 2; st.why = "ko"; clearTimeout(bot.timer); render(); }
+}
 function story(l, N) {
   const { m1, m2 } = l;
   const pair = (a, b) => m1 === a && m2 === b ? [1, 2] : m1 === b && m2 === a ? [2, 1] : null;
   const n = s => `<b>${esc(N[s])}</b>`;
   let p;
+  if ((p = pair("arrow", "teleport") || pair("bonk", "teleport") || pair("heavy", "teleport") || pair("steal", "teleport") || pair("coin", "teleport")))
+    return `${n(p[1])} teleported away ✨ ${n(p[0])} hit thin air`;
+  if (m1 === m2 && m1 === "coin") return `Pirate standoff! 🪙 ${n(1)} ${l.h1 ? "hit" : "missed"}, ${n(2)} ${l.h2 ? "hit" : "missed"}`;
+  if (m1 === m2 && m1 === "arrow") return "Arrows everywhere! 🏹🏹 Both got turned into pincushions";
+  if (m1 === m2 && m1 === "rage") return "Both are FURIOUS 🔥🔥 The next hits are going to hurt";
+  if (m1 === m2 && m1 === "teleport") return "Both teleported… and landed in each other's spot ✨";
+  if (m1 === m2 && m1 === "steal") return "Two thieves robbing each other 🗝️";
+  if ((p = pair("steal", "charge"))) return `${n(p[0])} STOLE the Elixir right out of ${n(p[1])}'s hands 🗝️🧪`;
+  if (m1 === "coin" || m2 === "coin") { const c = m1 === "coin" ? 1 : 2;
+    return l["h" + c] ? `🪙 Heads! ${n(c)}'s Lucky Shot blasted ${n(3 - c)} 💥` : `🪙 Tails… ${n(c)}'s Lucky Shot went wide 🙈`; }
+  if ((p = pair("arrow", "shield") || pair("arrow", "dodge") || pair("arrow", "rage"))) return `${n(p[1])} can't block arrows! 🏹 They rain down anyway`;
+  if ((p = pair("bonk", "rage"))) return `${n(p[1])} shrugged off the bonk and got ANGRY 🔥 (next hit +2)`;
   if (m1 === m2) return { bonk: "Double bonk! Both heads are ringing 🔔", heavy: "HEAVY vs HEAVY! The whole map shook 🌋",
     shield: "Two shields. Riveting stuff. 😴", dodge: "Both dodged… nothing. Lovely dance though 💃",
     charge: "Both chugged an Elixir and stared at each other ☕", zzz: "Both fell asleep… 💤" }[m1];
@@ -494,12 +630,13 @@ function story(l, N) {
   if ((p = pair("heavy", "bonk"))) return `Trade! ${n(p[0])} landed a Heavy, ${n(p[1])} a cheeky bonk 🔨`;
   if ((p = pair("bonk", "charge") || pair("heavy", "charge"))) return `${n(p[1])} was busy drinking an Elixir and got bonked extra hard 🧪`;
   if ((p = pair("bonk", "zzz") || pair("heavy", "zzz"))) return `${n(p[1])} fell asleep 💤 and woke up with a bump on the head`;
-  const verb = { shield: "hid behind a shield 🛡️", dodge: "dodged at nothing 💨", charge: "drank an Elixir 🧪", zzz: "fell asleep 💤" };
+  const verb = { shield: "hid behind a shield 🛡️", dodge: "dodged at nothing 💨", charge: "drank an Elixir 🧪", zzz: "fell asleep 💤",
+    rage: "powered up with Rage 🔥", teleport: "teleported around ✨", arrow: "fired Arrow Rain 🏹", steal: "tried to Steal 🗝️", bonk: "bonked 🔨", heavy: "swung a Heavy Bonk 🔨" };
   return `${n(1)} ${verb[m1] || "swung"} · ${n(2)} ${verb[m2] || "swung"}`;
 }
 function fx(el, k, unscaled) {
   const f = FX[k], d = document.createElement("div");
-  d.className = "bd-fx" + (unscaled ? " bd-big" : "") + (["guard", "buff", "smoke"].includes(k) ? " bd-feet" : "");
+  d.className = "bd-fx" + (unscaled ? " bd-big" : "") + (["guard", "buff", "smoke", "rage", "arrows", "steal"].includes(k) ? " bd-feet" : "");
   d.style.cssText = `width:${f.w}px;height:${f.h}px;margin-left:${-f.ox}px;margin-top:${-f.oy}px;background-image:url(${M + f.src});
     animation:bdfx-${k} ${f.ms}ms steps(${f.n}) forwards`;
   (unscaled ? el : el.querySelector(".bd-body")).appendChild(d);
@@ -526,6 +663,11 @@ function bubble(s, text) {
   el.querySelectorAll(".bd-bubble").forEach(x => x.remove());
   const b = document.createElement("div"); b.className = "bd-bubble"; b.textContent = text;
   el.appendChild(b); setTimeout(() => b.remove(), 2600);
+}
+function introBanner() {
+  const mp = MAPS[st.map] || MAPS.henesys, c1 = CLASSES[st.class1], c2 = CLASSES[st.class2];
+  banner(`🗺️ ${mp.name}: ${mp.rule}!<br><small>${c1 ? c1.e + " " + esc(st.p1) : ""} vs ${c2 ? c2.e + " " + esc(st.p2) : ""}</small>`, 3200);
+  setTimeout(() => st && st.turn === 1 && st.status === "pick" && banner("Ready… FIGHT! 🔨", 1500), 3300);
 }
 let bannerT = null;
 function banner(html, ms, sticky) {
@@ -574,6 +716,7 @@ function sound(kind) {
     else if (kind === "win") [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, i * .11, .22, "triangle", .15));
     else if (kind === "lose") [392, 370, 349, 262].forEach((f, i) => tone(f, i * .28, .35, "sawtooth", .07));
     else if (kind === "thud") tone(120, 0, .4, "square", .15, 50);
+    else if (kind === "crit") { tone(880, 0, .08, "square", .12); tone(1320, .06, .18, "square", .12); noise(0, .15, 2500, .25); }
     else tone(660, 0, .1, "sine", .12, 990);
   } catch (e) {}
 }
