@@ -41,7 +41,7 @@ document.head.insertAdjacentHTML("beforeend", "<style>" + Object.entries(FX).map
 
 const roster = [...D.founders, ...D.members].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);
 const guildOf = n => roster.find(p => p.name.toLowerCase() === n.trim().toLowerCase());
-const spriteOf = n => (roster.find(p => p.name === n) || {}).sprite || M + "guest.png";
+const spriteOf = n => (roster.find(p => p.name === n) || {}).sprite || M + "guest.png?v=2";
 
 let sb = null, ch = null, sess = null, st = null, leftAt = 0, polling = false, pollT = null, tickT = null;
 let shownTurn = -1, animUntil = 0, disp = null, bot = null, room = "public", liveT = null, lastBanner = "";
@@ -54,7 +54,7 @@ $b("#bdBots").innerHTML = Object.entries(BOTS).map(([k, b]) =>
 
 function showFace() {
   const n = $b("#bdName").value.trim(), g = guildOf(n);
-  $b("#bdFace").innerHTML = g && g.sprite ? `<img src="${g.sprite}" alt="">` : `<img src="${M}guest.png" alt="">`;
+  $b("#bdFace").innerHTML = g && g.sprite ? `<img src="${g.sprite}" alt="">` : `<img src="${M}guest.png?v=2" alt="">`;
   $b("#bdWarn").hidden = !n || !!g;
 }
 let suggIdx = -1;

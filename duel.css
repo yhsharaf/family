@@ -62,7 +62,8 @@
 .bd-body { position: absolute; bottom: 0; left: -45px; width: 90px; height: 100px; transform: scale(var(--z)); transform-origin: 50% 100%; }
 .bd-f .bd-sp { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-width: 90px; max-height: 100px; image-rendering: pixelated;
   transition: opacity .6s, filter .6s; }
-.bd-f.bd-l .bd-sp { transform: translateX(-50%) scaleX(-1); }      /* face each other */
+.bd-f.bd-r .bd-sp { transform: translateX(-50%) scaleX(-1); }      /* character pictures face right: mirror the right one so they face each other */
+.bd-f.bd-r.bd-mob .bd-sp { transform: translateX(-50%); }           /* monsters already face left */
 .bd-f.bd-mob .bd-sp { max-height: 70px; }
 .bd-f.bd-boss .bd-body { transform: scale(calc(var(--z) * .62)); } .bd-f.bd-boss .bd-sp { max-width: 190px; max-height: 175px; }
 .bd-f.bd-lunge .bd-body { animation: bdlunge .45s ease-out; }
