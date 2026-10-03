@@ -246,7 +246,10 @@ const MOBS = [  // grouped, 3 rows of 8 (4 rows of 6 on phones): mushrooms & sma
 // no longer pickable, but old notes written as them keep their monster
 const RETIRED = [["king_slime", "King Slime"], ["fire_boar", "Fire Boar"]];
 const MOBNAME = Object.fromEntries([...MOBS, ...RETIRED]);
-const mobImg = k => `media/mobs/${MOBNAME[k] ? k : "orange_mushroom"}.png`;
+// moving monsters (walk animation GIFs); the still PNGs stay for any monster without one (Spotty Mushroom, retired ones)
+const ANIM = new Set(["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom", "zombie_mushroom", "slime", "jr_necki", "snail",
+  "blue_snail", "red_snail", "pig", "ribbon_pig", "ratz", "stump", "octopus", "pepe", "lupin", "ligator", "evil_eye", "hector", "wraith", "yeti", "jr_balrog"]);
+const mobImg = k => !MOBNAME[k] ? "media/mobs/orange_mushroom.png" : ANIM.has(k) ? `media/mobs/anim/${k}.gif` : `media/mobs/${k}.png`;
 const PICKABLE = Object.fromEntries(MOBS);
 let myMob = PICKABLE[store.get("family_mob")] ? store.get("family_mob") : MOBS[Math.floor(Math.random() * MOBS.length)][0];
 $("#mobPick").innerHTML = MOBS.map(([k, n]) => `<button type="button" class="mob" data-k="${k}" title="${n}"><img src="${mobImg(k)}" alt="${n}"></button>`).join("");
