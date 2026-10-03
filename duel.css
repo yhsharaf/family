@@ -49,7 +49,7 @@
 .bd-arena.sd::after { content: ""; position: absolute; inset: 0; background: rgba(255, 90, 20, .2); pointer-events: none; z-index: 1; }
 /* maps: the real background art (Map.wz back layers) + one platform from the same map */
 .bd-arena.m-elnath { background-color: #b9bfe0; background-image: url(media/duel/bg_elnath.webp); }
-.bd-arena.m-zakum  { background-color: #3a0a06; background-image: url(media/duel/bg_zakum.webp?v=2); }
+.bd-arena.m-zakum  { background-color: #3a0a06; background-image: url(media/duel/bg_zakum.webp?v=3); }
 .bd-arena.m-ludi   { background-color: #3651d0; background-image: url(media/duel/bg_ludi.webp); }
 .bd-arena.m-sleepy { background-color: #1c1a12; background-image: url(media/duel/bg_sleepy.webp); }
 .bd-plat { position: absolute; left: 50%; transform: translateX(-50%); z-index: 1; pointer-events: none; max-width: none; }
