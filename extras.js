@@ -238,16 +238,16 @@ $("#shakeBtn").onclick = async () => {
 // ======================================================== 7. guestbook: monster avatars, Fame, megaphone
 const MOBS = [  // grouped, 3 rows of 8 (4 rows of 6 on phones): mushrooms & small fry, critters, big monsters
   ["orange_mushroom", "Orange Mushroom"], ["green_mushroom", "Green Mushroom"], ["blue_mushroom", "Blue Mushroom"], ["horny_mushroom", "Horny Mushroom"],
-  ["spotty_mushroom", "Spotty Mushroom"], ["zombie_mushroom", "Zombie Mushroom"], ["slime", "Slime"], ["jr_necki", "Jr. Necki"],
+  ["tortie", "Tortie"], ["zombie_mushroom", "Zombie Mushroom"], ["slime", "Slime"], ["jr_necki", "Jr. Necki"],
   ["snail", "Snail"], ["blue_snail", "Blue Snail"], ["red_snail", "Red Snail"], ["pig", "Pig"],
   ["ribbon_pig", "Ribbon Pig"], ["ratz", "Ratz"], ["stump", "Stump"], ["octopus", "Octopus"],
   ["pepe", "Pepe"], ["lupin", "Lupin"], ["ligator", "Ligator"], ["evil_eye", "Evil Eye"],
   ["hector", "Hector"], ["wraith", "Wraith"], ["yeti", "Yeti"], ["jr_balrog", "Jr. Balrog"]];
 // no longer pickable, but old notes written as them keep their monster
-const RETIRED = [["king_slime", "King Slime"], ["fire_boar", "Fire Boar"]];
+const RETIRED = [["king_slime", "King Slime"], ["fire_boar", "Fire Boar"], ["spotty_mushroom", "Spotty Mushroom"]];
 const MOBNAME = Object.fromEntries([...MOBS, ...RETIRED]);
-// moving monsters (walk animation GIFs); the still PNGs stay for any monster without one (Spotty Mushroom, retired ones)
-const ANIM = new Set(["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom", "zombie_mushroom", "slime", "jr_necki", "snail",
+// moving monsters (walk animation GIFs); the still PNGs stay for any monster without one (retired ones)
+const ANIM = new Set(["tortie", "orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom", "zombie_mushroom", "slime", "jr_necki", "snail",
   "blue_snail", "red_snail", "pig", "ribbon_pig", "ratz", "stump", "octopus", "pepe", "lupin", "ligator", "evil_eye", "hector", "wraith", "yeti", "jr_balrog"]);
 const mobImg = k => !MOBNAME[k] ? "media/mobs/orange_mushroom.png" : ANIM.has(k) ? `media/mobs/anim/${k}.gif?v=3` : `media/mobs/${k}.png`;
 const PICKABLE = Object.fromEntries(MOBS);
