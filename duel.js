@@ -36,7 +36,7 @@ const CLASSES = {
 };
 const MAPS = {
   // plat: the platform picture (w×h), the row its walkable top is at, and how much of the arena width it spans
-  henesys: { name: "Henesys",       rule: "Normal rules",      plat: { w: 900, h: 338, top: 140, frac: .86 } },
+  henesys: { name: "Henesys",       rule: "Normal rules",      plat: { w: 900, h: 482, top: 140, frac: .86 } },
   elnath:  { name: "El Nath",       rule: "Dodge is free",     plat: { w: 900, h: 541, top: 2, frac: .7 } },
   zakum:   { name: "Zakum's Altar", rule: "Every hit does +1", plat: { w: 850, h: 154, top: 8, frac: .8 } },
   ludi:    { name: "Ludibrium",     rule: "8-second turns",    plat: { w: 900, h: 388, top: 0, frac: .74 } },
@@ -483,7 +483,7 @@ function render() {
 // stand the map's platform under the fighters: its walkable top lines up with the feet line (--gl)
 function placePlat() {
   const ar = $b("#bdArena"), img = $b("#bdPlat"), mp = MAPS[(st && st.map) || "henesys"] || MAPS.henesys, p = mp.plat;
-  const src = `${M}plat_${(st && MAPS[st.map]) ? st.map : "henesys"}.webp?v=3`;
+  const src = `${M}plat_${(st && MAPS[st.map]) ? st.map : "henesys"}.webp?v=4`;
   if (img.dataset.src !== src) { img.src = src; img.dataset.src = src; }
   const w = ar.clientWidth * p.frac, h = w * p.h / p.w, gl = parseFloat(getComputedStyle(ar).getPropertyValue("--gl")) || 96;
   img.style.width = w + "px"; img.style.bottom = (gl - (h - p.top * w / p.w)) + "px";
