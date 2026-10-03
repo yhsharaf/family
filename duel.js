@@ -41,6 +41,8 @@ document.head.insertAdjacentHTML("beforeend", "<style>" + Object.entries(FX).map
 
 const roster = [...D.founders, ...D.members].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);
 const guildOf = n => roster.find(p => p.name.toLowerCase() === n.trim().toLowerCase());
+// pictures that are turned the other way from everyone else's: the arena mirrors them the opposite way
+const TURNED = new Set(["CrtlAltDel"]);
 const spriteOf = n => (roster.find(p => p.name === n) || {}).sprite || M + "guest.png?v=2";
 
 let sb = null, ch = null, sess = null, st = null, leftAt = 0, polling = false, pollT = null, tickT = null;
@@ -349,7 +351,7 @@ function fighter(el, s) {
   const src = isBot ? `media/mobs/anim/${bot.kind}.gif?v=3` : spriteOf(name);
   const img = el.querySelector(".bd-sp");
   if (!el.dataset.n || el.dataset.n !== name) { img.src = src; el.dataset.n = name; el.dataset.src = src; el.classList.remove("bd-ko"); }
-  el.classList.toggle("bd-mob", !!isBot); el.classList.toggle("bd-boss", !!isBot && bot.kind === "jr_balrog");
+  el.classList.toggle("bd-turned", !isBot && TURNED.has(name)); el.classList.toggle("bd-mob", !!isBot); el.classList.toggle("bd-boss", !!isBot && bot.kind === "jr_balrog");
   el.querySelector(".bd-tag").textContent = name;
   el.querySelector(".bd-hp i").style.width = (hp * 10) + "%";
   el.querySelector(".bd-hp b").textContent = `HP ${hp}/10`;
