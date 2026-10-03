@@ -128,7 +128,10 @@
   border: 3px solid #3b2f22; border-radius: 14px; padding: 10px; box-shadow: 4px 6px 0 rgba(0,0,0,.25); }
 .bd-ans { display: flex; gap: 8px; margin-top: 8px; } .bd-ans .sk-btn { flex: 1; font-size: 17px; padding: 8px; }
 
-.bd-say { min-height: 40px; background: var(--card); border: 1px dashed var(--edge); border-radius: 12px; padding: 9px 10px; font-weight: 600; text-align: center; }
+.bd-say { height: 58px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--card);
+  border: 1px dashed var(--edge); border-radius: 12px; padding: 4px 10px; font-weight: 600; text-align: center; line-height: 1.3; }
+.bd-say > span { display: block; max-height: 100%; }
+.bd-say.free { height: auto; min-height: 58px; }
 .bd-inv { display: flex; gap: 6px; width: 100%; margin-top: 6px; } .bd-inv input { flex: 1; min-width: 0; border: 2px solid var(--edge); border-radius: 10px; padding: 6px 8px; font: inherit; }
 .bd-panel { display: flex; flex-direction: column; gap: 6px; }
 .bd-panel[hidden] { display: none; }
@@ -145,7 +148,7 @@
 .bd-move.sel { background: #ffe8a3; border-color: var(--red); }
 .bd-move:disabled { opacity: .45; cursor: default; box-shadow: none; }
 .bd-move.sel:disabled { opacity: 1; }
-.bd-extra { display: flex; gap: 6px; align-items: center; }
+.bd-extra { display: flex; gap: 6px; align-items: center; min-height: 46px; }
 .bd-double { flex: 0 0 auto; border: 0; border-radius: 12px; background: linear-gradient(#ffcf4a, #e08a12); color: #4a2600; font: 800 15px Ubuntu, sans-serif;
   padding: 8px 12px; cursor: pointer; box-shadow: 2px 3px 0 rgba(60,45,30,.25); }
 .bd-double small { display: block; font-size: 11px; font-weight: 700; }
@@ -178,7 +181,7 @@
   .bd-bars { width: 92px; }
   .bd-move { padding: 5px 1px; } .bd-move .ic { width: 40px; height: 40px; } .bd-move .ic img { width: 32px; height: 32px; }
   .bd-move b { font-size: 11px; } .bd-move i { font-size: 10px; }
-  .bd-say { font-size: 14px; padding: 6px 8px; }
+  .bd-say { font-size: 13px; padding: 3px 8px; height: 50px; } .bd-say.free { min-height: 50px; }
   .bd-banner { font-size: 20px; }
 }
 

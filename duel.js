@@ -471,7 +471,8 @@ function render() {
     say = me && st.dbl_by !== me ? "🔥 Accept the Double Bonk, or run away? (no answer = accepted)"
         : me ? "⏳ Waiting for their answer… will they chicken out? 🐔" : "🔥 Double Bonk offered…";
   }
-  if (say && !animating()) $b("#bdSay").innerHTML = say;
+  $b("#bdSay").classList.toggle("free", s === "wait");   // the invite link needs more room; otherwise the line keeps one fixed size
+  if (say && !animating()) $b("#bdSay").innerHTML = `<span>${say}</span>`;
   // double bonk question
   if (s === "double" && me && st.dbl_by !== me) {
     const html = `🔥 <b>${esc(st["p" + st.dbl_by])}</b> wants to DOUBLE the stakes to <b>${st.stake * 2} points</b>!
@@ -569,8 +570,8 @@ function reveal(l, prev) {
     render();
     critRing(l, F);
   }, 1150);
-  $b("#bdSay").innerHTML = "";
-  setTimeout(() => { $b("#bdSay").innerHTML = story(l, names); }, 1150);
+  $b("#bdSay").innerHTML = "<span></span>";
+  setTimeout(() => { $b("#bdSay").innerHTML = `<span>${story(l, names)}</span>`; }, 1150);
   setTimeout(() => { animUntil = 0; if (st.status === "over" && bot && st.winner === 1) { const img = F[2].querySelector(".bd-sp"); img.src = `${M + bot.kind}_die1.gif`; }
     render(); }, 3300);
 }
