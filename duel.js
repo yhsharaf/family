@@ -22,17 +22,17 @@ const ORDER = ["bonk", "heavy", "shield", "dodge", "charge"];
 // class skills (the 6th move) and classes: each has a passive and a skill
 Object.assign(MOVES, {
   rage:     { name: "Rage",       icon: "sk_rage.png",       cost: 1, desc: "Blocks a Bonk, and your next hit does +2." },
-  teleport: { name: "Teleport",   icon: "sk_teleport.png",   cost: 2, desc: "Nothing can hit you this turn." },
-  arrow:    { name: "Arrow Rain", icon: "sk_arrowrain.png",  cost: 2, desc: "2 damage that can't be blocked or dodged." },
-  steal:    { name: "Steal",      icon: "sk_steal.png",      cost: 1, desc: "1 damage. If they drink an Elixir, you get their +2 MP." },
-  coin:     { name: "Lucky Shot", icon: "sk_doubleshot.png", cost: 2, desc: "Coin flip: 5 damage, or nothing." },
+  teleport: { name: "Teleport",   icon: "sk_teleport.png",   cost: 1, desc: "Nothing can hit you this turn, and you get the 1 MP back." },
+  arrow:    { name: "Arrow Rain", icon: "sk_arrowrain.png",  cost: 2, desc: "3 damage that can't be blocked or dodged." },
+  steal:    { name: "Steal",      icon: "sk_steal.png",      cost: 1, desc: "2 damage. If they drink an Elixir, you get their +2 MP." },
+  coin:     { name: "Lucky Shot", icon: "sk_doubleshot.png", cost: 2, desc: "Coin flip: 4 damage, or nothing. A Shield blocks it." },
 });
 const CLASSES = {
-  warrior:  { name: "Warrior",  e: "🗡️", skill: "rage",     passive: "24 HP instead of 20" },
+  warrior:  { name: "Warrior",  e: "🗡️", skill: "rage",     passive: "22 HP instead of 20" },
   magician: { name: "Magician", e: "🔮", skill: "teleport", passive: "Starts with 4 MP, holds up to 6" },
   bowman:   { name: "Bowman",   e: "🏹", skill: "arrow",    passive: "Bigger critical-tap window" },
   thief:    { name: "Thief",    e: "🗝️", skill: "steal",    passive: "Dodge is free" },
-  pirate:   { name: "Pirate",   e: "🏴‍☠️", skill: "coin",     passive: "Survives one K.O. with 1 HP" },
+  pirate:   { name: "Pirate",   e: "🏴‍☠️", skill: "coin",     passive: "21 HP instead of 20" },
 };
 const MAPS = {
   // plat: the platform picture (w×h), the row its walkable top is at, and how much of the arena width it spans
@@ -279,8 +279,8 @@ const animating = () => Date.now() < animUntil;
 // ------------------------------------------------------------------ practice monsters (same rules, run locally)
 // damage move a does to someone who picked b (heads = Lucky Shot coin) -- same as bd_hit in supabase_duel_v16.sql
 const hit = (a, b, heads) => b === "teleport" ? 0 : a === "bonk" ? (b === "shield" || b === "rage" ? 0 : 2)
-  : a === "heavy" ? (b === "dodge" ? 0 : 4) : a === "arrow" ? 2 : a === "coin" ? (heads ? 5 : 0)
-  : a === "steal" ? (b === "shield" || b === "rage" ? 0 : 1) : 0;
+  : a === "heavy" ? (b === "dodge" ? 0 : 4) : a === "arrow" ? 3 : a === "coin" ? (b === "shield" ? 0 : heads ? 4 : 0)
+  : a === "steal" ? (b === "shield" || b === "rage" ? 0 : 2) : 0;
 // one turn of a duel: s holds hp/en/class/map/rage/lucky; returns the round result (doesn't change s)
 function clash(s, m1, m2, h1, h2) {
   const sd = s.turn >= 10;
@@ -294,13 +294,11 @@ function clash(s, m1, m2, h1, h2) {
   if (m1 === "rage") r1 = true; if (m2 === "rage") r2 = true;
   if (sd && x1 > 0) x1++; if (sd && x2 > 0) x2++;
   if (s.map === "zakum" && x1 > 0) x1++; if (s.map === "zakum" && x2 > 0) x2++;
-  if (s.class1 === "pirate" && !s.lucky1 && x1 > 0 && s.hp1 - x1 <= 0) { x1 = s.hp1 - 1; l1 = true; }
-  if (s.class2 === "pirate" && !s.lucky2 && x2 > 0 && s.hp2 - x2 <= 0) { x2 = s.hp2 - 1; l2 = true; }
   const regen = sd ? 2 : 1;
   const e1 = s.en1 - cost(m1, s.class1, s.map) + regen + (m1 === "charge" && m2 !== "steal" ? 2 : 0) + (m2 === "charge" && m1 === "steal" ? 2 : 0)
-    + (m1 === "shield" && (m2 === "bonk" || m2 === "steal") ? 1 : 0);
+    + (m1 === "shield" && (m2 === "bonk" || m2 === "steal") ? 1 : 0) + (m1 === "teleport" ? 1 : 0);
   const e2 = s.en2 - cost(m2, s.class2, s.map) + regen + (m2 === "charge" && m1 !== "steal" ? 2 : 0) + (m1 === "charge" && m2 === "steal" ? 2 : 0)
-    + (m2 === "shield" && (m1 === "bonk" || m1 === "steal") ? 1 : 0);
+    + (m2 === "shield" && (m1 === "bonk" || m1 === "steal") ? 1 : 0) + (m2 === "teleport" ? 1 : 0);
   return { x1, x2, r1, r2, l1, l2, sd, e1: Math.min(s.enmax1, Math.max(0, e1)), e2: Math.min(s.enmax2, Math.max(0, e2)) };
 }
 function resolveTurn(s) {
@@ -325,7 +323,7 @@ function startBot(kind, name) {
   bot = { kind, hist: [], timer: null };
   const c1 = myClass, c2 = BOTS[kind].cls, map = MAPS[new URLSearchParams(location.search).get("bdmap")] ? new URLSearchParams(location.search).get("bdmap") : Object.keys(MAPS)[Math.floor(Math.random() * 5)], secs = map === "ludi" ? 8 : 15;
   const secret = 25 + Math.floor(Math.random() * 16);   // Sleepywood: same hidden HP for both
-  const hp = c => map === "sleepy" ? secret : c === "warrior" ? 24 : 20, en = c => c === "magician" ? 4 : 3, enmax = c => c === "magician" ? 6 : 5;
+  const hp = c => map === "sleepy" ? secret : c === "warrior" ? 22 : c === "pirate" ? 21 : 20, en = c => c === "magician" ? 4 : 3, enmax = c => c === "magician" ? 6 : 5;
   st = { r: "ok", me: 1, status: "pick", turn: 1, p1: name, p2: BOTS[kind].name, class1: c1, class2: c2, map, secs,
          hp1: hp(c1), hp2: hp(c2), hpmax1: hp(c1), hpmax2: hp(c2), en1: en(c1), en2: en(c2), enmax1: enmax(c1), enmax2: enmax(c2),
          rage1: false, rage2: false, lucky1: false, lucky2: false, afk1: 0, afk2: 0,
@@ -429,7 +427,7 @@ function fighter(el, s) {
   el.querySelector(".bd-hp i").style.width = hidden ? "100%" : (hp / hpmax * 100) + "%";
   el.querySelector(".bd-hp b").textContent = hidden ? "HP ???" : `HP ${hp}/${hpmax}`;
   el.querySelector(".bd-mp").innerHTML = Array.from({ length: enmax }, (_, i) => `<i class="${i < en ? "on" : ""}"></i>`).join("") + `<b>MP ${en}</b>`;
-  el.querySelector(".bd-buffs").textContent = (st["rage" + s] ? "🔥 Rage " : "") + (cls === CLASSES.pirate && !st["lucky" + s] ? "🍀" : "");
+  el.querySelector(".bd-buffs").textContent = st["rage" + s] ? "🔥 Rage" : "";
   const think = el.querySelector(".bd-think");
   const picking = st.status === "pick" && !inReveal();
   const ready = st["picked" + s] || (st.me === s && st.mine);
@@ -562,8 +560,9 @@ function reveal(l, prev) {
         num(me, String(d[s]), big ? "cri" : (st.me && s === st.me ? "violet" : "red"));
         me.classList.add("bd-ouch"); setTimeout(() => me.classList.remove("bd-ouch"), 500);
         if (bot && s === 2) { const img = me.querySelector(".bd-sp"); img.src = `${M + bot.kind}_hit1.gif`; setTimeout(() => { if (bot && st.status !== "over") img.src = me.dataset.src; }, 600); }
-      } else if ((m[o] === "bonk" || m[o] === "steal") && (m[s] === "shield" || m[s] === "rage")) num(me, "Guard", "word");
+      } else if (((m[o] === "bonk" || m[o] === "steal") && (m[s] === "shield" || m[s] === "rage")) || (m[o] === "coin" && m[s] === "shield")) num(me, "Guard", "word");
       else if ((m[o] === "heavy" && m[s] === "dodge") || (ATTACKS.includes(m[o]) && m[s] === "teleport") || (m[o] === "coin" && !heads[o])) num(me, "MISS", "miss");
+      if (m[s] === "teleport") num(me, "+1", "blue", "MP");
       if (l["l" + s]) setTimeout(() => bubble(s, "🍀 Lucky! Hanging on with 1 HP"), 300);
     });
     disp = { hp1: st.hp1, hp2: st.hp2, en1: st.en1, en2: st.en2 };
@@ -628,6 +627,7 @@ function story(l, N) {
   if (m1 === m2 && m1 === "teleport") return "Both teleported… and landed in each other's spot ✨";
   if (m1 === m2 && m1 === "steal") return "Two thieves robbing each other 🗝️";
   if ((p = pair("steal", "charge"))) return `${n(p[0])} STOLE the Elixir right out of ${n(p[1])}'s hands 🗝️🧪`;
+  if ((p = pair("coin", "shield"))) return `🪙 ${n(p[1])}'s shield blocked the Lucky Shot 🛡️`;
   if (m1 === "coin" || m2 === "coin") { const c = m1 === "coin" ? 1 : 2;
     return l["h" + c] ? `🪙 Heads! ${n(c)}'s Lucky Shot blasted ${n(3 - c)} 💥` : `🪙 Tails… ${n(c)}'s Lucky Shot went wide 🙈`; }
   if ((p = pair("arrow", "shield") || pair("arrow", "dodge") || pair("arrow", "rage"))) return `${n(p[1])} can't block arrows! 🏹 They rain down anyway`;
