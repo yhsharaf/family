@@ -236,12 +236,13 @@ $("#shakeBtn").onclick = async () => {
 };
 
 // ======================================================== 7. guestbook: monster avatars, Fame, megaphone
-const MOBS = [["orange_mushroom", "Orange Mushroom"], ["green_mushroom", "Green Mushroom"], ["blue_mushroom", "Blue Mushroom"],
-  ["horny_mushroom", "Horny Mushroom"], ["zombie_mushroom", "Zombie Mushroom"], ["spotty_mushroom", "Spotty Mushroom"],
-  ["slime", "Slime"], ["pig", "Pig"], ["ribbon_pig", "Ribbon Pig"],
-  ["snail", "Snail"], ["blue_snail", "Blue Snail"], ["red_snail", "Red Snail"], ["stump", "Stump"], ["lupin", "Lupin"],
-  ["jr_balrog", "Jr. Balrog"], ["ligator", "Ligator"], ["octopus", "Octopus"], ["pepe", "Pepe"], ["hector", "Hector"],
-  ["evil_eye", "Evil Eye"], ["wraith", "Wraith"], ["yeti", "Yeti"], ["ratz", "Ratz"], ["jr_necki", "Jr. Necki"]];
+const MOBS = [  // grouped, 3 rows of 8 (4 rows of 6 on phones): mushrooms & small fry, critters, big monsters
+  ["orange_mushroom", "Orange Mushroom"], ["green_mushroom", "Green Mushroom"], ["blue_mushroom", "Blue Mushroom"], ["horny_mushroom", "Horny Mushroom"],
+  ["spotty_mushroom", "Spotty Mushroom"], ["zombie_mushroom", "Zombie Mushroom"], ["slime", "Slime"], ["jr_necki", "Jr. Necki"],
+  ["snail", "Snail"], ["blue_snail", "Blue Snail"], ["red_snail", "Red Snail"], ["pig", "Pig"],
+  ["ribbon_pig", "Ribbon Pig"], ["ratz", "Ratz"], ["stump", "Stump"], ["octopus", "Octopus"],
+  ["pepe", "Pepe"], ["lupin", "Lupin"], ["ligator", "Ligator"], ["evil_eye", "Evil Eye"],
+  ["hector", "Hector"], ["wraith", "Wraith"], ["yeti", "Yeti"], ["jr_balrog", "Jr. Balrog"]];
 // no longer pickable, but old notes written as them keep their monster
 const RETIRED = [["king_slime", "King Slime"], ["fire_boar", "Fire Boar"]];
 const MOBNAME = Object.fromEntries([...MOBS, ...RETIRED]);
@@ -264,16 +265,32 @@ async function loadGuestbook(force) {
   if (!(await ready)) { $("#gbList").innerHTML = ""; $("#gbSoon").hidden = false; return; }
   $("#gbSoon").hidden = true;
   const { data, error } = await sb.from("guestbook_board").select("id,message,created_at,mob,megaphone,fame")
-    .order("fame", { ascending: false }).order("created_at", { ascending: false }).limit(150);
+    .order("created_at", { ascending: false }).limit(150);
   if (error) { $("#gbList").innerHTML = `<p class="msg err">Couldn't load the guestbook.</p>`; return; }
-  $("#gbList").innerHTML = (data || []).filter(g => g.fame > -8).map((g, i) => {
+  gbData = data || []; gbRender();
+}
+// 🆕 New (default) · ⭐ Top · 💀 Worst · 🗳️ Not Voted
+let gbData = [], gbSort = store.get("family_gb_sort") || "new";
+function gbRender() {
+  const t = g => Date.parse(g.created_at);
+  let list = gbData.filter(g => g.fame > -8);
+  if (gbSort === "top") list = list.sort((a, b) => b.fame - a.fame || t(b) - t(a));
+  else if (gbSort === "worst") list = list.sort((a, b) => a.fame - b.fame || t(b) - t(a));
+  else { list = list.sort((a, b) => t(b) - t(a)); if (gbSort === "unvoted") list = list.filter(g => !fameMine[g.id]); }
+  document.querySelectorAll("#gbSort .chip").forEach(b => b.classList.toggle("on", b.dataset.s === gbSort));
+  const empty = gbSort === "unvoted" && gbData.length ? "You've given Fame to every note 🎉" : "No messages yet. Be the first monster!";
+  $("#gbList").innerHTML = list.map((g, i) => {
     const mine = fameMine[g.id];
     return `<div class="note-card ${g.fame <= -3 ? "faded" : ""} ${g.megaphone ? "shout" : ""}" style="--r:${rot(i)}" data-id="${g.id}">
       <img src="${mobImg(g.mob)}" alt=""><b>a mysterious ${esc(MOBNAME[g.mob] || "monster")}${g.megaphone ? " 📣" : ""}</b><p>${esc(g.message)}</p>
       <div class="foot"><time>${new Date(g.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</time>
         <span class="fame"><button class="${mine === -1 ? "on" : ""}" data-d="-1" title="-Fame">⬇️</button><b>${g.fame > 0 ? "+" : ""}${g.fame}</b><button class="${mine === 1 ? "on" : ""}" data-d="1" title="+Fame">⬆️</button></span></div></div>`;
-  }).join("") || '<p class="lead">No messages yet. Be the first monster!</p>';
+  }).join("") || `<p class="lead">${empty}</p>`;
 }
+$("#gbSort").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  gbSort = b.dataset.s; store.set("family_gb_sort", gbSort); gbRender();
+});
 $("#gbList").addEventListener("click", async e => {
   const b = e.target.closest(".fame button"); if (!b) return;
   const card = b.closest(".note-card"), id = +card.dataset.id, d = +b.dataset.d;
@@ -281,11 +298,16 @@ $("#gbList").addEventListener("click", async e => {
   fameMine[id] = d; store.set("family_fame", JSON.stringify(fameMine));
   const v = card.querySelector(".fame b"); const n = parseInt(v.textContent) + d; v.textContent = (n > 0 ? "+" : "") + n; b.classList.add("on");
   blip(d > 0 ? 880 : 200, .12, .25);
+  const g = gbData.find(x => x.id === id); if (g) g.fame += d;
+  if (gbSort === "unvoted") setTimeout(gbRender, 700);  // let the tap register, then show the next note
   if (await ready) { await sb.from("guestbook_fame").insert({ note_id: id, device, delta: d }); }
 });
+// tweet-sized notes: live counter, red near the limit
+function gbCount() { const n = $("#gbMsg").value.length; $("#gbCount").textContent = `${n}/140`; $("#gbCount").classList.toggle("near", n >= 120); }
+$("#gbMsg").addEventListener("input", gbCount); gbCount();
 $("#gbForm").onsubmit = async e => {
   e.preventDefault();
-  const message = $("#gbMsg").value.trim().slice(0, 280), megaphone = $("#gbMega").checked, out = $("#gbOut");
+  const message = $("#gbMsg").value.trim().slice(0, 140), megaphone = $("#gbMega").checked, out = $("#gbOut");
   if (!message) { out.className = "msg err"; out.textContent = "Write a message first."; return; }
   if (BAD.test(message)) { out.className = "msg err"; out.textContent = "Keep it family friendly 🙂"; return; }
   if ((+store.get("family_gb_next") || 0) > Date.now()) { out.className = "msg err"; out.textContent = "You can post once every 8 hours."; return; }

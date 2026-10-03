@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
-<link rel="stylesheet" href="extras.css?v=44">
+<link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -410,11 +410,12 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <form class="gb" id="gbForm">
     <div class="moblabel">Pick your monster: <b id="mobName">Orange Mushroom</b></div>
     <div class="mobs" id="mobPick"></div>
-    <textarea id="gbMsg" maxlength="280" placeholder="gm fam…"></textarea>
+    <textarea id="gbMsg" maxlength="140" placeholder="gm fam…"></textarea><div class="gbcount" id="gbCount">0/140</div>
     <label class="mega"><input type="checkbox" id="gbMega"> 📣 Megaphone: shout it across the top of the whole site</label>
     <div class="row"><button class="btn" type="submit">✍️ Post</button><span class="msg" id="gbOut"></span></div>
   </form>
   <p class="soon" id="gbSoon" hidden>The guestbook opens once the site is connected to its database (see README.md).</p>
+  <div class="chips memsort" id="gbSort"><button class="chip" data-s="new">🆕 New</button><button class="chip" data-s="top">⭐ Top</button><button class="chip" data-s="worst">💀 Worst</button><button class="chip" data-s="unvoted">🗳️ Not Voted</button></div>
   <div class="notes" id="gbList"></div>
 </section>
 
@@ -701,6 +702,6 @@ show();
 <script src="config.js?v=2"></script>
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
-<script src="extras.js?v=45"></script>
+<script src="extras.js?v=46"></script>
 </body>
 </html>
