@@ -231,10 +231,8 @@
 @keyframes bdarm { from { transform: translateY(14px) rotate(-4deg); } to { transform: translateY(-10px) rotate(4deg); } }
 .bd-arm.slam { animation: bdslam .45s .6s cubic-bezier(.6, 0, .9, .4) forwards; }
 @keyframes bdslam { to { transform: translate(-90px, 60px) rotate(-30deg); } }
-/* phones: the arena is narrow, so the arm hangs from the top, fingers pointing down at the target */
+/* phones: same idea, at the side edge on the target's side; drawn in front so the narrow arena doesn't hide it */
 @media (max-width: 560px) {
-  .bd-arm { width: 170px; top: -24px; bottom: auto; z-index: 3; }
-  .bd-arm.r { right: -18px; scale: 1 -1; } .bd-arm.l { left: -18px; scale: -1 -1; }
-  .bd-arm.slam { animation-name: bdslamtop; }
-  @keyframes bdslamtop { to { transform: translate(-30px, -110px) rotate(-10deg); } }
+  .bd-arm { width: 165px; bottom: calc(var(--gl) + 30px); z-index: 3; }
+  .bd-arm.r { right: -45px; } .bd-arm.l { left: -45px; }
 }
