@@ -215,9 +215,11 @@ function makeRivals() {
   });
   DROPS = []; SHOTS = []; ARMS = []; BOXES.forEach(b => b.t = 0);
 }
-function rollItem(rank) {
-  const t = rank <= 2 ? [["slime", 5], ["arrow", 3], ["elixir", 2], ["dizzy", 1]] : rank <= 5 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1], ["dizzy", 2], ["splat", 2]]
-    : [["triple", 4], ["arrow", 3], ["arm", 2], ["elixir", 2], ["dizzy", 2], ["splat", 3]];
+let bloopCD = 0, armCD = 0;   // Zakum's Arm: at most one every 20 seconds   // Dizzy/Splat: only one in the whole race every 14 seconds, so they stay special
+function rollItem(rank, rival) {
+  const b = bloopCD > 0 ? 0 : rival ? .25 : 1;   // rivals get them far less often than you
+  const t = (rank <= 2 ? [["slime", 5], ["arrow", 3], ["elixir", 2], ["dizzy", .5 * b]] : rank <= 5 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1], ["dizzy", 1 * b], ["splat", 1 * b]]
+    : [["triple", 4], ["arrow", 3], ["arm", armCD > 0 ? 0 : 1.5], ["elixir", 2], ["dizzy", 1 * b], ["splat", 1.5 * b]]).filter(x => x[1] > 0);
   let r = Math.random() * t.reduce((a, b) => a + b[1], 0);
   for (const [k, w] of t) { if ((r -= w) < 0) return k; }
   return "elixir";
@@ -234,16 +236,19 @@ function useItem(r) {
     SHOTS.push({ x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(420, r.v + 220), tgt: ahead || null, by: r, life: 3 });
   }
   if (it === "dizzy" || it === "splat") {   // like the Blooper: hits everyone ahead of whoever uses it
-    const p = progOf(r), hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0));
+    bloopCD = 14;
+    const p = progOf(r), from = r === K ? "" : ` from ${r.name}`;
+    const hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0) && !(o.bloopSafe > 0) && !(o.dizzy > 0) && !(o.ink > 0));
     for (const o of hitList) {
-      if (it === "dizzy") o.dizzy = 5; else o.ink = 4.5;
-      if (o === K) { if (it === "dizzy") { flash("😵 Dizzy! Left and right are swapped", 1400); dizzySound(); } else { makeInk(); flash("🐙 Splat!", 900); splatSound(); } }
+      if (it === "dizzy") o.dizzy = 4; else o.ink = 4;
+      o.bloopSafe = 12;   // 4s of effect + 8s safe afterwards
+      if (o === K) { if (it === "dizzy") { flash(`😵 Dizzy${from}! Left and right swapped`, 1500); dizzySound(); } else { makeInk(); flash(`🐙 Splat${from}!`, 1000); splatSound(); } }
     }
     if (r === K) flash(hitList.length ? `${it === "dizzy" ? "😵" : "🐙"} Hit ${hitList.length} racer${hitList.length > 1 ? "s" : ""} ahead!` : "Nobody ahead of you!", 1000);
   }
   if (it === "arm") {
     const leader = racers().filter(o => o !== r && !o.done).sort((a, b) => progOf(b) - progOf(a))[0];
-    if (leader) ARMS.push({ tgt: leader, t: 1.3 });
+    if (leader) { ARMS.push({ tgt: leader, t: 1.3 }); armCD = 20; }
   }
   if (r === K) itemSound();
 }
@@ -253,7 +258,7 @@ function rivalStep(r, dt, tt) {
   const near = nearest(r.x, r.y, r.idx); r.idx = near.i; const off = near.d > ROAD / 2 + CURB * .6, L = lat(r.x, r.y, r.idx);
   if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) r.boost = Math.max(r.boost, .8); } }
   const air = r.z > 0;
-  for (const key of ["spin", "inv", "squash", "boost", "itemT", "dizzy", "ink"]) if (r[key] > 0) r[key] -= dt;
+  for (const key of ["spin", "inv", "squash", "boost", "itemT", "dizzy", "ink", "bloopSafe", "noItem"]) if (r[key] > 0) r[key] -= dt;
   const lost = near.d > ROAD / 2 + 110 || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
   if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 76; r.laneT = 1.5 + Math.random() * 3; }
@@ -286,7 +291,7 @@ function rivalStep(r, dt, tt) {
     const p = progOf(r), others = racers().filter(o => o !== r);
     const behind = others.some(o => p - progOf(o) > 0 && p - progOf(o) < 30), ahead = others.some(o => progOf(o) - p > 0 && progOf(o) - p < 120);
     if (["elixir", "triple", "arm"].includes(r.item) || (["dizzy", "splat"].includes(r.item) && (ahead || progOf(K) > p || Math.random() < dt * .1)) || (r.item === "slime" && (behind || Math.random() < dt * .15)) || (r.item === "arrow" && (ahead || Math.random() < dt * .1))) {
-      useItem(r); r.itemT = .6;
+      useItem(r); r.itemT = .6; if (!r.item) r.noItem = 6 + Math.random() * 6;
     }
   }
   lapTick(r);
@@ -301,6 +306,7 @@ function lapTick(r) {   // 4 checkpoints in order, then the start line; true whe
 let finishers = 0;
 // everything that moves besides you: rivals, item boxes, slime drops, arrows, Zakum's arm, karts bumping
 function worldStep(dt, tt) {
+  if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt;
   for (const r of RIV) rivalStep(r, dt, tt);
   const all = racers();
   for (const b of BOXES) {
@@ -308,7 +314,7 @@ function worldStep(dt, tt) {
     for (const r of all) if (r.z < 22 && Math.hypot(r.x - b.x, r.y - b.y) < 15) {
       b.t = 2.5;
       if (r === K) { if (!K.item && K.roll <= 0) { K.roll = 1.1; K.pending = rollItem(rankOf(K)); boxSound(); } }
-      else if (!r.item) { r.item = rollItem(rankOf(r)); r.itemN = r.item === "triple" ? 3 : 0; r.itemT = .8 + Math.random() * 1.5; }
+      else if (!r.item && !(r.noItem > 0) && Math.random() < .6) { r.item = rollItem(rankOf(r), true); r.itemN = r.item === "triple" ? 3 : 0; r.itemT = 1.5 + Math.random() * 3; }
       break;
     }
   }
@@ -436,7 +442,7 @@ function step(dt) {
   if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
   else k.v += (k.v < top ? (k.v < 120 ? 210 : 120) : -260) * dt;
-  for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "dizzy", "ink"]) if (k[key] > 0) k[key] -= dt;
+  for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "dizzy", "ink", "bloopSafe"]) if (k[key] > 0) k[key] -= dt;
   // items from the boxes: the slot spins like a slot machine for a second, then it's yours to use
   if (k.roll > 0) { k.roll -= dt; if (k.roll <= 0) { k.item = k.pending; k.itemN = k.item === "triple" ? 3 : 0; flash(`${ITEM_NAME[k.item]}!`, 700); } }
   if (racing && inp.item && !k.prevItem && k.item && k.roll <= 0 && k.spin <= 0) useItem(k);
@@ -733,7 +739,7 @@ async function start() {
   window.getAC && window.getAC(); fullTries = 0; goLandscape();
   if (!TEX) { $k("#kLoad").hidden = false; await prepare(); $k("#kLoad").hidden = true; }
   IMG.me = await loadImg(spriteOf(me)); fit();
-  K = freshKart(); finishers = 0; makeRivals(); state = "wait"; B.music("henesys"); syncMusicBtn();
+  K = freshKart(); finishers = 0; bloopCD = 0; armCD = 0; makeRivals(); state = "wait"; B.music("henesys"); syncMusicBtn();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   await waitLandscape(); fit(); if (state !== "wait") return; state = "count";
   countAt = performance.now(); COINS.forEach(c => c.got = false);
