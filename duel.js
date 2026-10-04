@@ -432,11 +432,6 @@ $b("#bdMoves").addEventListener("click", async e => {
   if (data && data.r === "cd") banner("Teleport needs a turn to recharge ✨", 1400);
   poke(); polling = false; poll();
 });
-$b("#bdDouble").onclick = async () => {
-  if (!st || bot || !sess.token) return;
-  if (!confirm(`Double the stakes to ${st.stake * 2} points? Your opponent can accept, or run away and lose ${st.stake}.`)) return;
-  await sb.rpc("bd_double", { p_game: sess.game, p_tok: sess.token }); poke(); polling = false; poll();
-};
 $b("#bdBanner").addEventListener("click", async e => {
   const b = e.target.closest("[data-a]"); if (!b || !sess || !sess.token) return;
   await sb.rpc("bd_answer", { p_game: sess.game, p_tok: sess.token, p_accept: b.dataset.a === "yes" }); poke(); polling = false; poll();
@@ -497,7 +492,7 @@ function render() {
     : s === "over" ? "🏁 Duel over" : `Turn ${Math.min(st.turn, 20)}/20 · <span class="bd-map" title="${esc((MAPS[st.map] || MAPS.henesys).rule)}">${esc((MAPS[st.map] || MAPS.henesys).name)}</span>${
       st.map === "ludi" ? (st.turn % 4 === 0 ? " · <b class='clk'>⏰ MP FULL!</b>" : ` · ⏰ in ${4 - st.turn % 4}`)
       : st.map === "zakum" ? (st.arm ? " · <b class='sdt'>🖐️ ARM!</b>" : ` · 🖐️ in ${3 - st.turn % 3}`) : ""}${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
-  $b("#bdStake").innerHTML = s === "wait" ? "" : st.practice ? "🎯 Practice" : `${st.stake > 1 ? "🔥" : "🏆"} ${st.stake} pt${st.stake > 1 ? "s" : ""}`;
+  $b("#bdStake").innerHTML = s === "wait" ? "" : st.practice ? "🎯 Practice" : "";
   // moves
   const myEn = me ? st["en" + me] : 0, canPick = me && s === "pick" && !inReveal();
   const myCls = me ? st["class" + me] : "warrior";
@@ -506,10 +501,6 @@ function render() {
     return `<button type="button" class="bd-move ${k === "skill" ? "skill" : ""} ${st.mine === k ? "sel" : ""}" data-m="${k}" ${canPick && c <= myEn && !cd ? "" : "disabled"} ${cd ? 'title="Not two turns in a row"' : ""}>
       <span class="ic"><img src="${M + m.icon}" alt=""></span><b>${m.name}</b><i>${c ? c + " MP" : "Free"}</i></button>`; }).join("");
   $b("#bdPanel").hidden = !me || s === "over" || s === "wait";
-  const dblUsed = me ? st["dbl" + me] : true;
-  $b("#bdDouble").hidden = !!bot || !me || dblUsed || s !== "pick" || st.stake >= 4 || st.practice;
-  $b("#bdDouble").disabled = !canPick;
-  $b("#bdDouble").innerHTML = `🔥 Double Bonk! <small>${st.stake}→${st.stake * 2} pts</small>`;
   // prompt line under the arena
   let say = "";
   if (s === "wait") say = room === "public" ? "Waiting for someone to press <b>Find a Duel</b>… Tell the guild! 📣"
