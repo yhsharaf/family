@@ -214,7 +214,7 @@ function targetsFor(move) {
 }
 const canTarget = (move, slot) => targetsFor(move).includes(slot);
 function placePlat(map) {
-  const ar = $t("#btArena"), img = $t("#btPlat"), p = (MAPS[map] || MAPS.henesys).plat, src = `${M}plat_${MAPS[map] ? map : "henesys"}.webp?v=4`;
+  const ar = $t("#btArena"), img = $t("#btPlat"), p = (MAPS[map] || MAPS.henesys).plat, src = `${M}plat_${MAPS[map] ? map : "henesys"}.webp?v=6`;
   if (img.dataset.src !== src) { img.src = src; img.dataset.src = src; }
   const frac = Math.max(p.frac, .94), w = ar.clientWidth * frac, h = w * p.h / p.w, gl = parseFloat(getComputedStyle(ar).getPropertyValue("--gl")) || 96;
   img.style.width = w + "px"; img.style.bottom = (gl - (h - p.top * w / p.w)) + "px";

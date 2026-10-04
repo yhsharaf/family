@@ -536,7 +536,7 @@ function render() {
 // stand the map's platform under the fighters: its walkable top lines up with the feet line (--gl)
 function placePlat() {
   const ar = $b("#bdArena"), img = $b("#bdPlat"), mp = MAPS[(st && st.map) || "henesys"] || MAPS.henesys, p = mp.plat;
-  const src = `${M}plat_${(st && MAPS[st.map]) ? st.map : "henesys"}.webp?v=5`;
+  const src = `${M}plat_${(st && MAPS[st.map]) ? st.map : "henesys"}.webp?v=6`;
   if (img.dataset.src !== src) { img.src = src; img.dataset.src = src; }
   const w = ar.clientWidth * p.frac, h = w * p.h / p.w, gl = parseFloat(getComputedStyle(ar).getPropertyValue("--gl")) || 96;
   img.style.width = w + "px"; img.style.bottom = (gl - (h - p.top * w / p.w)) + "px";
