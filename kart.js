@@ -247,16 +247,9 @@ const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
 const BOXES = [];
 [[118, [-42, -14, 14, 42]], [425, [-40, -13, 13, 40]], [772, [-42, -14, 14, 42]]].forEach(([i, os]) => os.forEach(o => { const [x, y] = at(i, o); BOXES.push({ x, y, t: 0 }); }));
-function dizzyIcon() {   // a purple swirl with stars
-  const c = document.createElement("canvas"); c.width = c.height = 40; const g = c.getContext("2d");
-  g.fillStyle = "#7b3fb0"; g.beginPath(); g.arc(20, 20, 17, 0, 7); g.fill(); g.strokeStyle = "#fff"; g.lineWidth = 3; g.beginPath();
-  for (let t = 0; t < 14; t += .2) { const r = t * 1.05; g.lineTo(20 + Math.cos(t) * r, 20 + Math.sin(t) * r); } g.stroke();
-  g.fillStyle = "#ffd75e"; g.font = "bold 12px sans-serif"; g.fillText("★", 2, 11); g.fillText("★", 28, 38);
-  return c.toDataURL();
-}
 const ITEM_ICON = { elixir: "media/duel/elixir.png", triple: "media/duel/elixir.png", slime: "media/mobs/slime.png", arrow: "media/duel/sk_arrowrain.png", arm: "media/duel/zarm_stand.gif",
-  dizzy: dizzyIcon(), splat: "media/mobs/octopus.png" };
-const ITEM_NAME = { elixir: "Elixir", triple: "3 Elixirs", slime: "Slime drop", arrow: "Arrow", arm: "Zakum's Arm", dizzy: "Dizzy", splat: "Splat" };
+  thunder: "media/kart/thunder.png?v=2", splat: "media/mobs/octopus.png" };
+const ITEM_NAME = { elixir: "Elixir", triple: "3 Elixirs", slime: "Slime drop", arrow: "Arrow", arm: "Zakum's Arm", thunder: "Thunder", splat: "Splat" };
 let RIV = [], DROPS = [], SHOTS = [], ARMS = [];
 const progOf = r => (r.done ? 1e6 - r.finish : 0) + r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx);
 const racers = () => [K, ...RIV];
@@ -275,16 +268,17 @@ function makeRivals() {
   });
   DROPS = []; SHOTS = []; ARMS = []; BOXES.forEach(b => b.t = 0);
 }
-let bloopCD = 0, armCD = 0;   // Zakum's Arm: at most one every 20 seconds   // Dizzy/Splat: only one in the whole race every 14 seconds, so they stay special
+let bloopCD = 0, armCD = 0, thunderCD = 0, thunderFx = 0;   // Zakum's Arm: at most one every 20 seconds   // Dizzy/Splat: only one in the whole race every 14 seconds, so they stay special
 // items depend on how far behind the leader you are (like Mario Kart 8), not just your place: right behind the leader you get
 // defensive items, far back you get the catch-up ones. Zakum's Arm, Dizzy and Splat are locked for the first 30 seconds.
 function rollItem(r, rival) {
   const lead = racers().reduce((a, b) => progOf(b) > progOf(a) ? b : a), gap = (progOf(lead) - progOf(r)) / N;   // in laps
   const early = K.t < 30000, b = bloopCD > 0 || early ? 0 : rival ? .25 : 1, arm = armCD > 0 || early || ARMS.length ? 0 : 1;
+  const th = thunderCD > 0 || early ? 0 : rival ? .3 : 1;
   const t = (gap < .04 ? [["slime", 5], ["arrow", 3], ["elixir", 2]]
-    : gap < .12 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1], ["dizzy", .6 * b], ["splat", .6 * b]]
-    : gap < .25 ? [["triple", 3], ["arrow", 3], ["elixir", 2], ["dizzy", 1 * b], ["splat", 1 * b], ["arm", .8 * arm]]
-    : [["triple", 4], ["arrow", 2], ["arm", 2 * arm], ["dizzy", 1 * b], ["splat", 1.5 * b]]).filter(x => x[1] > 0);
+    : gap < .12 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1], ["splat", .6 * b]]
+    : gap < .25 ? [["triple", 3], ["arrow", 3], ["elixir", 2], ["splat", 1 * b], ["arm", .8 * arm], ["thunder", .5 * th]]
+    : [["triple", 4], ["arrow", 2], ["arm", 2 * arm], ["thunder", 1.2 * th], ["splat", 1.5 * b]]).filter(x => x[1] > 0);
   let x = Math.random() * t.reduce((a, c) => a + c[1], 0);
   for (const [k, w] of t) { if ((x -= w) < 0) return k; }
   return "elixir";
@@ -305,16 +299,26 @@ function useItem(r) {
     const p = progOf(r), ahead = racers().filter(o => o !== r && progOf(o) > p && progOf(o) - p < N * .5).sort((a, b) => progOf(a) - progOf(b))[0];
     SHOTS.push({ x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4 });
   }
-  if (it === "dizzy" || it === "splat") {   // like the Blooper: hits everyone ahead of whoever uses it
+  if (it === "splat") {   // like the Blooper: inks everyone ahead of whoever uses it
     bloopCD = 14;
     const p = progOf(r), from = r === K ? "" : ` from ${r.name}`;
-    const hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0) && !(o.bloopSafe > 0) && !(o.dizzy > 0) && !(o.ink > 0));
+    const hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0) && !(o.bloopSafe > 0) && !(o.ink > 0));
     for (const o of hitList) {
-      if (it === "dizzy") o.dizzy = 4; else o.ink = 4;
-      o.bloopSafe = 12;   // 4s of effect + 8s safe afterwards
-      if (o === K) { if (it === "dizzy") { flash(`😵 Dizzy${from}! Left and right swapped`, 1500); dizzySound(); } else { makeInk(); flash(`🐙 Splat${from}!`, 1000); splatSound(); } }
+      o.ink = 4; o.bloopSafe = 12;   // 4s of ink + 8s safe afterwards
+      if (o === K) { makeInk(); flash(`🐙 Splat${from}!`, 1000); splatSound(); }
     }
-    if (r === K) flash(hitList.length ? `${it === "dizzy" ? "😵" : "🐙"} Hit ${hitList.length} racer${hitList.length > 1 ? "s" : ""} ahead!` : "Nobody ahead of you!", 1000);
+    if (r === K) flash(hitList.length ? `🐙 Inked ${hitList.length} racer${hitList.length > 1 ? "s" : ""} ahead!` : "Nobody ahead of you!", 1000);
+  }
+  if (it === "thunder") {   // ⚡ like Mario Kart's Lightning: strikes every other racer; they spin, shrink and drop what they hold. Nothing blocks it.
+    thunderCD = 25; thunderFx = .35; thunderSound();
+    const from = r === K ? "" : ` from ${r.name}`;
+    for (const o of racers()) {
+      if (o === r || o.done || o.rescue > 0) continue;
+      if (o.holding || HOLDABLE(o.item)) { o.item = null; o.holding = false; }
+      o.small = 3.2; o.inv = 0; o.z = 0; o.vz = 0;
+      if (o === K) { spinOut(`⚡ Thunder${from}!`); K.shake = .3; } else hit(o);
+    }
+    if (r === K) flash("⚡ Thunder! Everyone else shrinks!", 1100);
   }
   if (it === "arm") {
     const leader = racers().filter(o => o !== r && !o.done).sort((a, b) => progOf(b) - progOf(a))[0];
@@ -329,7 +333,7 @@ function rivalStep(r, dt, tt) {
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
   if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) r.boost = Math.max(r.boost, .8); } }
   const air = r.z > 0;
-  for (const key of ["spin", "inv", "squash", "boost", "itemT", "dizzy", "ink", "bloopSafe", "noItem"]) if (r[key] > 0) r[key] -= dt;
+  for (const key of ["spin", "inv", "squash", "boost", "itemT", "small", "ink", "bloopSafe", "noItem"]) if (r[key] > 0) r[key] -= dt;
   const lost = near.d > near.half + 110 || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
   if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 76; r.laneT = 1.5 + Math.random() * 3; }
@@ -339,13 +343,12 @@ function rivalStep(r, dt, tt) {
   const onFork = r.useAlt && r.idx >= FORK_A - 4 && r.idx < FORK_B - 6;
   const [tx, ty] = onFork ? altAt((near.alt ? near.j : nearAlt(r.x, r.y).j) + 12, Math.max(-ALT_ROAD / 2 + 12, Math.min(ALT_ROAD / 2 - 12, r.lane * .7))) : at(r.idx + 14, r.lane);
   let d = Math.atan2(ty - r.y, tx - r.x) - r.a; d = Math.atan2(Math.sin(d), Math.cos(d));
-  if (r.dizzy > 0) d += Math.sin(tt * 4.5 + r.skill) * .9;   // wobbling about
   // inked rivals don't swerve (like Mario Kart 8): they're a little slower and slippery, so they turn late
   const turn = Math.max(-2.6, Math.min(2.6, d * 4)); r.steer += (Math.sign(turn) * Math.min(1, Math.abs(turn) / 2) - r.steer) * Math.min(1, dt * 8);
   if (r.spin <= 0) r.a += turn * dt * Math.min(1, r.v / 80) * (r.ink > 0 ? .5 : 1);
   const gap = (progOf(K) - progOf(r)) / N;   // + when you're ahead of them
   const band = 1 + Math.max(-.13, Math.min(DIFF().band, gap * .7));
-  const top = r.done ? 140 : (off && !air ? 110 : r.skill * DIFF().skill * band * (r.dizzy > 0 ? .85 : r.ink > 0 ? .95 : 1)) + (r.boost > 0 ? 90 : 0);
+  const top = r.done ? 140 : (off && !air ? 110 : r.skill * DIFF().skill * band * (r.small > 0 ? .72 : 1) * (r.ink > 0 ? .95 : 1)) + (r.boost > 0 ? 90 : 0);
   if (r.spin > 0) r.v *= Math.pow(.3, dt); else r.v += (r.v < top ? (r.v < 120 ? 190 : 110) : -220) * dt;
   r.x += Math.cos(r.a) * r.v * dt; r.y += Math.sin(r.a) * r.v * dt;
   const pad = air ? null : ground.pad;
@@ -363,7 +366,7 @@ function rivalStep(r, dt, tt) {
   if (r.item && r.itemT <= 0 && r.spin <= 0) {
     const p = progOf(r), others = racers().filter(o => o !== r);
     const behind = others.some(o => p - progOf(o) > 0 && p - progOf(o) < 30), ahead = others.some(o => progOf(o) - p > 0 && progOf(o) - p < 120);
-    if (["elixir", "triple", "arm"].includes(r.item) || (["dizzy", "splat"].includes(r.item) && (ahead || progOf(K) > p || Math.random() < dt * .1)) || (r.item === "slime" && (behind || Math.random() < dt * .15)) || (r.item === "arrow" && (ahead || Math.random() < dt * .1))) {
+    if (["elixir", "triple", "arm", "thunder"].includes(r.item) || (r.item === "splat" && (ahead || progOf(K) > p || Math.random() < dt * .1)) || (r.item === "slime" && (behind || Math.random() < dt * .15)) || (r.item === "arrow" && (ahead || Math.random() < dt * .1))) {
       useItem(r); r.itemT = .6; if (!r.item) r.noItem = 6 + Math.random() * 6; else r.holding = HOLDABLE(r.item);
     }
   }
@@ -379,7 +382,7 @@ function lapTick(r) {   // 4 checkpoints in order, then the start line; true whe
 let finishers = 0;
 // everything that moves besides you: rivals, item boxes, slime drops, arrows, Zakum's arm, karts bumping
 function worldStep(dt, tt) {
-  if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt;
+  if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt; if (thunderCD > 0) thunderCD -= dt;
   for (const r of RIV) rivalStep(r, dt, tt);
   const all = racers();
   for (const b of BOXES) {
@@ -419,6 +422,7 @@ function worldStep(dt, tt) {
     if (d > 0 && d < 15 && Math.abs(a.z - b.z) < 12) {
       const push = (15 - d) / 2, nx = dx / d, ny = dy / d; a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push;
       const fast = a.v > b.v ? a : b; fast.v *= .9;
+      if ((a.small > 0) !== (b.small > 0)) { const tiny = a.small > 0 ? a : b; hit(tiny, "👟 Flattened!"); tiny.squash = .8; }
       if (a === K || b === K) { K.shake = Math.max(K.shake, .1); if (K.bump <= 0) { bumpSound(); K.bump = .3; } }
     }
   }
@@ -484,7 +488,6 @@ function rescueStep(r, dt) {   // true while being rescued (no driving)
 }
 function step(dt) {
   const k = K, inp = input(), racing = state === "race", tt = performance.now() / 1000;
-  if (k.dizzy > 0) inp.steer = -inp.steer;   // 😵 left is right and right is left
   for (let i = COINFX.length - 1; i >= 0; i--) { const c = COINFX[i]; c.t -= dt; c.vy += 320 * dt; c.x += c.vx * dt; c.y += c.vy * dt; if (c.t <= 0) COINFX.splice(i, 1); }
   if (rescueStep(k, dt)) { if (racing) { k.t += dt * 1000; worldStep(dt, tt); } return; }
   const near = nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6; k.onAlt = near.alt;
@@ -517,11 +520,11 @@ function step(dt) {
   if (rocky) { k.shake = Math.max(k.shake, .12); if (Math.random() < dt * 9) k.hop = .1; }
   if (!air && !k.off && Math.abs(L) > near.half - 2 && k.v > 100) k.shake = Math.max(k.shake, .04);   // rumble on the curbs
   // speed: always accelerating (phone friendly), the brake slows / reverses; mesos raise the top speed a little
-  const top = (k.off && !air ? 105 : rocky && k.boost <= 0 ? 185 : 250 + k.mesos * 3) + (k.boost > 0 ? 90 : 0);
+  const top = ((k.off && !air ? 105 : rocky && k.boost <= 0 ? 185 : 250 + k.mesos * 3) + (k.boost > 0 ? 90 : 0)) * (k.small > 0 ? .72 : 1);
   if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
   else k.v += (k.v < top ? (k.v < 120 ? 210 : 120) : -260) * dt;
-  for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "dizzy", "ink", "bloopSafe"]) if (k[key] > 0) k[key] -= dt;
+  for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "small", "ink", "bloopSafe"]) if (k[key] > 0) k[key] -= dt;
   // items from the boxes: the slot spins like a slot machine for a second, then it's yours to use
   if (k.roll > 0) { k.roll -= dt; if (k.roll <= 0) { k.item = k.pending; k.itemN = k.item === "triple" ? 3 : 0; flash(`${ITEM_NAME[k.item]}!`, 700); } }
   // Slime drop and Arrow can be held behind you as a shield (keep the button pressed), and are used when you let go
@@ -662,6 +665,14 @@ function render() {
   }
   ctx.globalAlpha = 1;
   if (!kartDrawn) drawKart(k);
+  // ⚡ Thunder: a white flash and lightning bolts
+  if (thunderFx > 0) {
+    thunderFx -= 1 / 60;
+    ctx.fillStyle = `rgba(255,255,240,${Math.max(0, thunderFx) * 1.6})`; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "rgba(200,170,255,.95)"; ctx.lineWidth = 2.5;
+    for (let b = 0; b < 3; b++) { let x = W * (.2 + .3 * b) + (Math.random() - .5) * 30, y = 0; ctx.beginPath(); ctx.moveTo(x, y);
+      while (y < HOR + 30) { x += (Math.random() - .5) * 26; y += 10 + Math.random() * 10; ctx.lineTo(x, y); } ctx.stroke(); }
+  }
   // 🐙 ink on the screen, fading out at the end
   if (k.ink > 0 && INK.length) {
     ctx.globalAlpha = Math.min(1, k.ink / 1.3) * .94; ctx.fillStyle = "#0b0a12";
@@ -707,6 +718,7 @@ function drawKart(k) {
   if (k.rescue > 0) { const p = k.rescue > .7 ? (1.4 - k.rescue) / .7 : k.rescue / .7; lift = p * 40; ctx.globalAlpha = Math.max(0, 1 - p);
     ctx.font = "16px sans-serif"; ctx.textAlign = "center"; ctx.fillText("📜", x, y - 60 - lift); }
   ctx.save(); ctx.translate(x, y - lift); ctx.rotate(tilt);
+  if (k.small > 0) ctx.scale(.6, .6);   // shrunk by Thunder
   if (k.spin > 0) ctx.scale(Math.cos((.9 - k.spin) * Math.PI * 4), 1);      // spinning out
   if (k.squash > 0) ctx.scale(1.35, .45);                                   // flattened by the King Slime
   if (k.inv > 0 && k.spin <= 0 && Math.floor(performance.now() / 90) % 2) ctx.globalAlpha = .55;
@@ -742,7 +754,6 @@ function drawKart(k) {
   if (k.boost > 0) for (const sx of [-bw * .16, bw * .16]) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e"; ctx.beginPath();
     ctx.moveTo(sx - 3, -bh * .2); ctx.lineTo(sx + 3, -bh * .2); ctx.lineTo(sx, -bh * .2 + 6 + Math.random() * 6); ctx.fill(); }
   ctx.restore(); ctx.globalAlpha = 1;
-  if (k.dizzy > 0) dizzyStars(x, y - lift - w * .42 * .45 - H * .2 - 2, 9, t);
 }
 // a rival's kart: same shape as yours in their colour, their character picture sharp when close, their name above
 function drawRival(r, sx, gy, sc, fz) {
@@ -750,6 +761,7 @@ function drawRival(r, sx, gy, sc, fz) {
   ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(sx, gy + 1, w * .55, Math.max(1, 3 * sc / 2), 0, 0, 7); ctx.fill();
   if (r.rescue > 0) { const p = r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7; ctx.globalAlpha = Math.max(0, 1 - p); }
   ctx.save(); ctx.translate(sx, y); ctx.rotate(r.steer * .06);
+  if (r.small > 0) ctx.scale(.6, .6);
   if (r.spin > 0) ctx.scale(Math.cos((.9 - r.spin) * Math.PI * 4), 1);
   if (r.squash > 0) ctx.scale(1.35, .45);
   if (r.inv > 0 && r.spin <= 0 && Math.floor(t * 11) % 2) ctx.globalAlpha = .55;
@@ -768,7 +780,6 @@ function drawRival(r, sx, gy, sc, fz) {
   if (r.boost > 0) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e"; ctx.fillRect(-w * .1, -bh * .2, w * .2, bh * .4 + Math.random() * bh * .4); }
   if (r.holding && r.item) { const hi = r.item === "arrow" ? IMG.arrowIcon : IMG.slime; if (hi) { const hs = 9 * sc; ctx.drawImage(hi, -hs / 2, -hs * .3, hs, hs * hi.height / hi.width); } }
   ctx.restore(); ctx.globalAlpha = 1;
-  if (r.dizzy > 0) dizzyStars(sx, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc - 4, Math.max(4, 4 * sc), t);
   if (r.ink > 0 && fz < 500) { ctx.fillStyle = "rgba(10,10,18,.75)"; ctx.beginPath(); ctx.arc(sx + w * .1, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc * .7, w * .22, 0, 7); ctx.fill(); }
   if (fz < 420 && fz >= CAMD * .9) {
     ctx.font = `bold ${Math.max(5, Math.min(9, 7 * sc / 2))}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = 2; ctx.strokeStyle = "rgba(0,0,0,.7)";
@@ -783,10 +794,6 @@ function drawBox(sx, gy, sc, tt) {
   rr(-s2 / 2, -s2 / 2, s2, s2, s2 * .18); ctx.fill(); ctx.stroke();
   ctx.fillStyle = "#fff"; ctx.font = `900 ${Math.max(4, s2 * .7)}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", 0, s2 * .04);
   ctx.textBaseline = "alphabetic"; ctx.restore();
-}
-function dizzyStars(x, y, size, t) {   // 3 yellow stars circling above a dizzy driver
-  ctx.fillStyle = "#ffd75e"; ctx.strokeStyle = "#7a5200"; ctx.lineWidth = .6; ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = "center";
-  for (let i = 0; i < 3; i++) { const a = t * 5 + i * 2.1; ctx.strokeText("★", x + Math.cos(a) * size * 1.3, y + Math.sin(a) * size * .4); ctx.fillText("★", x + Math.cos(a) * size * 1.3, y + Math.sin(a) * size * .4); }
 }
 function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
@@ -844,7 +851,7 @@ async function start() {
   window.getAC && window.getAC(); fullTries = 0; goLandscape();
   if (!TEX) { $k("#kLoad").hidden = false; await prepare(); $k("#kLoad").hidden = true; }
   IMG.me = await loadImg(spriteOf(me)); fit();
-  K = freshKart(); finishers = 0; bloopCD = 0; armCD = 0; makeRivals(); state = "wait"; B.music("henesys"); syncMusicBtn();
+  K = freshKart(); finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; makeRivals(); state = "wait"; B.music("henesys"); syncMusicBtn();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   await waitLandscape(); fit(); if (state !== "wait") return; state = "count";
   countAt = performance.now(); COINS.forEach(c => c.got = false);
@@ -988,7 +995,7 @@ const spinSound = () => { for (let i = 0; i < 4; i++) setTimeout(() => tone(600 
 const slamSound = d => tone(90, .5, "square", Math.max(.03, .16 - d / 2500), 35);
 const boxSound = () => { for (let i = 0; i < 8; i++) setTimeout(() => tone(700 + (i % 3) * 180, .06, "square", .04), i * 120); };
 const scrollSound = () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, .14, "triangle", .07), i * 90)); };
-const dizzySound = () => { for (let i = 0; i < 6; i++) setTimeout(() => tone(i % 2 ? 520 : 390, .14, "sine", .07), i * 110); };
+const thunderSound = () => { tone(1800, .08, "sawtooth", .08, 200); setTimeout(() => tone(70, .7, "square", .1, 30), 60); };
 const splatSound = () => { tone(180, .25, "square", .09, 50); tone(90, .35, "sawtooth", .06, 40); };
 const blockSound = () => { tone(1500, .08, "square", .06); tone(900, .15, "triangle", .06); };
 const lapSound = () => { tone(660, .12, "square", .07); setTimeout(() => tone(990, .2, "square", .07), 110); };
