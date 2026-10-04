@@ -134,13 +134,8 @@ const PROPS = { tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflowe
 const MOBS = ["orange_mushroom", "green_mushroom", "blue_mushroom", "snail", "blue_snail", "slime", "pig"];
 const IMG = {};
 const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
-function coinImg() {   // a gold meso
-  const c = document.createElement("canvas"); c.width = c.height = 24; const g = c.getContext("2d");
-  g.fillStyle = "#8a5a00"; g.beginPath(); g.arc(12, 12, 11, 0, 7); g.fill();
-  g.fillStyle = "#f2b81c"; g.beginPath(); g.arc(12, 11, 10, 0, 7); g.fill();
-  g.fillStyle = "#ffe27a"; g.beginPath(); g.arc(12, 11, 7, 0, 7); g.fill();
-  g.fillStyle = "#b07800"; g.font = "bold 11px Ubuntu, sans-serif"; g.textAlign = "center"; g.fillText("M", 12, 15);
-  return c;
+function mesoFrames(strip) {   // the real gold meso from MapleStory (Item.wz 09000001), 4 spinning frames side by side
+  return [0, 1, 2, 3].map(i => { const c = document.createElement("canvas"); c.width = 26; c.height = 24; c.getContext("2d").drawImage(strip, -i * 26, 0); c.px = true; return c; });
 }
 let OBJS = [];
 function placeObjects() {
@@ -355,7 +350,7 @@ function spinOut(msg) {
   k.spin = .9; k.inv = 1.9; k.drift = 0; k.charge = 0; k.boost = 0; spinSound();
   const lose = Math.min(3, k.mesos); k.mesos -= lose;   // getting hit drops mesos, like coins in Mario Kart
   for (let i = 0; i < lose; i++) COINFX.push({ x: (Math.random() - .5) * 10, y: 0, vx: (Math.random() - .5) * 90, vy: -120 - Math.random() * 60, t: 1 });
-  flash(lose ? `${msg} −${lose} 🪙` : msg, 1000);
+  flash(lose ? `${msg} −${lose} mesos` : msg, 1000);
 }
 const COINFX = [];   // mesos flying out of your kart (screen space, relative to the kart)
 // 📜 Return Scroll: wrong way, lost far off the road or stuck for a few seconds -> lifted out and put back on the road facing forward
@@ -521,7 +516,7 @@ function render() {
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 1;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
   for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, 0);
-  for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.coin, .55, 6 + Math.sin(tt * 4 + c.x) * 2);
+  if (IMG.meso) for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, 6 + Math.sin(tt * 4 + c.x) * 2);
   for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG.pig, .45, 0, q.dir > 0); }
   const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0), kz = kingZ(kp); add(kx, ky, IMG.king_slime, .5, kz, false, kz > 0 ? 1 - kz / 170 : 0);
   vis.sort((a, b) => b.fz - a.fz);
@@ -563,7 +558,7 @@ function drawKart(k) {
       ctx.fillRect(sx, sy, 2, 2); }
   }
   if (k.off && k.v > 60) for (let i = 0; i < 4; i++) { ctx.fillStyle = "rgba(120,90,50,.6)"; ctx.fillRect(x + (Math.random() - .5) * w, y - Math.random() * 6, 3, 3); }
-  for (const c of COINFX) if (IMG.coin) { const cs = 9 * Math.abs(Math.cos(c.t * 12)) + 2; ctx.drawImage(IMG.coin, x + c.x - cs / 2, y - 30 + c.y, cs, 9); }
+  if (IMG.meso) for (const c of COINFX) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(IMG.meso[Math.floor(c.t * 16) % 4], x + c.x - 6.5, y - 30 + c.y, 13, 12); ctx.restore(); }
   let lift = 0;
   if (k.rescue > 0) { const p = k.rescue > .7 ? (1.4 - k.rescue) / .7 : k.rescue / .7; lift = p * 40; ctx.globalAlpha = Math.max(0, 1 - p);
     ctx.font = "16px sans-serif"; ctx.textAlign = "center"; ctx.fillText("📜", x, y - 60 - lift); }
@@ -650,7 +645,7 @@ function hud() {
   $k("#kBest").textContent = best && best.lap ? `Best ${fmt(best.lap)}` : "";
   $k("#kSpeed").textContent = state === "race" ? `${Math.max(0, Math.round(k.v * .5))} km/h` : "";
   $k("#kWrong").hidden = !(state === "race" && k.wrong > .6);
-  $k("#kBag").textContent = state === "menu" ? "" : `🪙 ${k.mesos}/10`;
+  const bag = state === "menu" ? "" : `${k.mesos}/10`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${bag}` : ""; }
   const icon = k.roll > 0 ? ITEM_ICON[Object.keys(ITEM_ICON)[Math.floor(performance.now() / 80) % 5]] : k.item ? ITEM_ICON[k.item] : "";
   const img = $k("#kItemBox img"); if (img.dataset.src !== icon) { img.dataset.src = icon; if (icon) img.src = icon; img.hidden = !icon; }
   $k("#kItemBox").classList.toggle("empty", !k.item && k.roll <= 0);
@@ -707,7 +702,8 @@ async function start() {
 }
 async function prepare() {
   paintTrack(); placeObjects();
-  sky = await loadImg(B.M + "bg_henesys.webp?v=9"); IMG.coin = coinImg();
+  sky = await loadImg(B.M + "bg_henesys.webp?v=9");
+  const mstrip = await loadImg("media/kart/meso.png?v=1"); IMG.meso = mstrip ? mesoFrames(mstrip) : null;
   [IMG.arrowIcon, IMG.arm] = await Promise.all([loadImg(B.M + "sk_arrowrain.png"), loadImg(B.M + "zarm_stand.gif")]);
   await Promise.all([...MOBS, "king_slime"].map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); if (IMG[m]) IMG[m].px = true; })
     .concat(Object.keys(PROPS).map(async k => { IMG[k] = await loadImg(`media/kart/${k}.webp?v=1`); }))

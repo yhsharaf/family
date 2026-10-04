@@ -114,3 +114,4 @@
 .kt-item span { font: 900 24px Ubuntu, sans-serif; color: rgba(255,255,255,.5); }
 .kt-item img:not([hidden]) + span { display: none; }
 .kt-item { border-color: #ffd75e; box-shadow: 0 0 0 2px #7a1418; }
+.kt-bag img { width: 18px; height: 18px; image-rendering: pixelated; vertical-align: -3px; margin-right: 3px; }
