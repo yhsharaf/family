@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
-<link rel="stylesheet" href="duel.css?v=30">
+<link rel="stylesheet" href="duel.css?v=31">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -419,6 +419,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="sk-room" id="bdRoomLbl"></div>
       <button class="sk-btn bd-play" id="bdFind">Find a Duel!</button>
       <button class="sk-btn sk-private" id="bdPrivate">Challenge a Friend</button>
+      <div class="bt-btns"><button class="sk-btn bt-find" id="btFind">👥 Find a 2v2</button><button class="sk-btn sk-private" id="btPrivate">👥 2v2 with Friends</button></div>
       <div class="sk-err" id="bdErr"></div>
       <div class="bd-bots"><b>🍄 Practice against a monster</b><div id="bdBots"></div></div>
     </div>
@@ -429,6 +430,9 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
         Your <b>class</b> gives you a 6th move and a passive.</p>
       <div class="bd-help" id="bdHelp"></div>
       <p>🎯 <b>Critical tap:</b> when your hit lands, a ring shrinks over the enemy. Tap the arena when it lines up for +1 damage!</p>
+      <p>👥 <b>2v2:</b> same moves, but every attack picks <b>which enemy</b> to hit, and Shield can cover <b>you or your teammate</b>.
+        Both teammates hitting the same enemy is a <b>COMBO</b> (+2). Once per team, a <b>Revive</b> (3 MP) brings a knocked-out teammate back with 5 HP.
+        Plan with the secret team signals 🤫</p>
       <h3>🗺️ Maps (random each duel)</h3>
       <div class="bd-maps" id="bdMaps"></div>
       <p>🔥 <b>Double Bonk:</b> once per duel you can double the points at stake. Your opponent accepts, or runs away and loses.</p>
@@ -452,6 +456,30 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="bd-panel" id="bdPanel">
       <div class="bd-moves" id="bdMoves"></div>
       <div class="bd-extra"><button type="button" class="bd-double" id="bdDouble" hidden></button><div class="bd-taunts" id="bdTaunts"></div></div>
+    </div>
+  </div>
+  <div id="btGame" class="bd-game bt-game" hidden>
+    <div class="bd-top"><div id="btClock"></div><div class="bd-phase" id="btPhase"></div><button class="sk-small bd-music" id="btMusic" title="Music on/off">🔇</button><button class="sk-small" id="btLeave">Leave</button></div>
+    <div class="bd-arena bt-arena" id="btArena">
+      <img class="bd-plat" id="btPlat" alt="">
+      <img class="bd-deco" src="media/duel/zakum_altar.webp?v=4" alt="">
+      <div class="bd-f" id="btF1" hidden><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div><div class="bd-buffs"></div></div><div class="bd-think" hidden></div></div>
+      <div class="bd-f" id="btF2" hidden><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div><div class="bd-buffs"></div></div><div class="bd-think" hidden></div></div>
+      <div class="bd-f" id="btF3" hidden><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div><div class="bd-buffs"></div></div><div class="bd-think" hidden></div></div>
+      <div class="bd-f" id="btF4" hidden><div class="bd-body"><img class="bd-sp" alt=""></div><div class="bd-tag"></div>
+        <div class="bd-bars"><div class="bd-hp"><i></i><b></b></div><div class="bd-mp"></div><div class="bd-buffs"></div></div><div class="bd-think" hidden></div></div>
+      <div class="bd-banner" id="btBanner"></div>
+    </div>
+    <div class="bt-lobby" id="btLobby" hidden></div>
+    <div class="bd-say" id="btSay"></div>
+    <div class="bd-result" id="btResult" hidden></div>
+    <div class="bd-panel" id="btPanel" hidden>
+      <div class="bt-targets" id="btTargets" hidden></div>
+      <div class="bd-moves" id="btMoves"></div>
+      <div class="bd-taunts bt-signals" id="btSignals"></div>
     </div>
   </div>
   <div class="sk-panel bd-fame">
@@ -777,7 +805,8 @@ show();
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
 <script src="duel-songs.js?v=1"></script>
-<script src="duel.js?v=25"></script>
+<script src="duel.js?v=26"></script>
+<script src="duel2.js?v=2"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

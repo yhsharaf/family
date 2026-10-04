@@ -39,10 +39,10 @@
 .bd-phase .sdt { color: #c0392b; } .bd-phase .clk { color: #2f6db5; }
 .bd-stake { font-weight: 800; font-size: 14px; background: #fff3d6; border: 1px solid #e8cf7a; border-radius: 10px; padding: 3px 8px; white-space: nowrap; }
 .bd-stake:empty { display: none; }
-#bdClock { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; border: 3px solid var(--ink); display: flex; align-items: center;
+#bdClock, #btClock { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; border: 3px solid var(--ink); display: flex; align-items: center;
   justify-content: center; font-weight: 900; background: #fff; }
-#bdClock:empty { visibility: hidden; }
-#bdClock.hurry { color: var(--red); border-color: var(--red); animation: pop .5s infinite alternate; }
+#bdClock:empty, #btClock:empty { visibility: hidden; }
+#bdClock.hurry, #btClock.hurry { color: var(--red); border-color: var(--red); animation: pop .5s infinite alternate; }
 
 .bd-arena { --z: 2; --gl: 96px; position: relative; height: 380px; overflow: hidden; border-radius: 14px; border: 3px solid #3b2f22;
   background: #6fb8ea url(media/duel/bg_henesys.webp) center bottom / cover no-repeat; }
@@ -178,7 +178,7 @@
   .bd.playing .bd-h, .bd.playing .bd-fame { display: none; }
   .bd-game { min-height: calc(100dvh - 8px); padding: 4px; gap: 5px; border-radius: 12px; }
   .bd.playing .bd-arena { flex: 1 1 auto; height: auto; min-height: 300px; max-height: 480px; }
-  .bd-top { padding: 4px 8px; } .bd-phase { font-size: 14px; } #bdClock { width: 36px; height: 36px; flex-basis: 36px; font-size: 14px; }
+  .bd-top { padding: 4px 8px; } .bd-phase { font-size: 14px; } #bdClock, #btClock { width: 36px; height: 36px; flex-basis: 36px; font-size: 14px; }
 }
 @media (max-width: 560px) {
   .bd-arena { --z: 1.55; --gl: 74px; height: 300px; }
@@ -260,3 +260,51 @@
   cursor: pointer; touch-action: manipulation; box-shadow: 2px 3px 0 rgba(60,45,30,.18); }
 .bd-quiz-keys button:active { transform: translateY(2px); background: #fff3d6; }
 .bd-quiz-x { align-self: center; }
+
+/* ---------------------------------------------------------------- 2v2 */
+.bt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bt-btns .sk-btn { font-size: 15px; padding-left: 6px; padding-right: 6px; }
+.bt-find { background: #3f7fd0; }
+.bt-arena { --z: 1.45; }
+.bt-arena .bd-bars { width: 86px; }
+.bt-arena .bd-tag { font-size: 11px; max-width: 110px; }
+.bt-arena .bd-f.bt-t1 .bd-tag { box-shadow: inset 0 -3px 0 #4f9cff; }
+.bt-arena .bd-f.bt-t2 .bd-tag { box-shadow: inset 0 -3px 0 #ff5a4f; }
+.bt-arena .bd-f.bt-me .bd-tag { background: #2a5aa8; }
+.bt-arena .bd-f.bt-can { cursor: pointer; }
+.bt-arena .bd-f.bt-can .bd-body::before { content: ""; position: absolute; left: 10%; right: 10%; bottom: -6px; height: 14px; border-radius: 50%;
+  background: radial-gradient(rgba(255, 220, 60, .9), rgba(255, 220, 60, 0) 70%); animation: pop .5s infinite alternate; }
+.bt-arena .bd-f.bt-can .bd-sp { filter: drop-shadow(0 0 3px #ffd84a) drop-shadow(0 0 2px #ffd84a); }
+.bt-arena .bd-f.bt-aim .bd-tag::after { content: " 🎯"; }
+.bt-arena .bd-card b { font-size: 11px; white-space: nowrap; }
+.bd-bubble.bt-sig { background: #e6f0ff; border-color: #2a5aa8; font-weight: 800; }
+.bt-targets { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; background: #fff8e0; border: 2px solid var(--gold); border-radius: 10px; padding: 5px 8px; }
+.bt-targets[hidden] { display: none; }
+.bt-targets span { font-weight: 800; font-size: 13px; }
+.bt-targets button { border: 2px solid #3b2f22; background: #fff; border-radius: 8px; padding: 6px 12px; font: 700 14px Ubuntu, sans-serif; cursor: pointer; touch-action: manipulation; }
+.bt-targets button:hover { background: #ffe8a3; }
+#btMoves { grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); }
+#btMoves .bd-move b { overflow-wrap: anywhere; }
+.bd-move.revive .ic { background: linear-gradient(#b8304a, #6a1426); border-color: #ff9fb0; }
+.bt-lobby { background: var(--card); border: 2px solid var(--edge); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.bt-lobby[hidden] { display: none; }
+.bt-teams { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+.bt-team { display: flex; flex-direction: column; gap: 5px; }
+.bt-team h4 { margin: 0; text-align: center; }
+.bt-vs { font-weight: 900; font-size: 20px; color: var(--red); }
+.bt-pl { display: flex; align-items: center; gap: 6px; background: #fff; border: 2px solid #4f9cff; border-radius: 10px; padding: 4px 6px; min-width: 0; }
+.bt-team.t2 .bt-pl { border-color: #ff5a4f; }
+.bt-pl img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.bt-team.t2 .bt-pl img { transform: scaleX(-1); }
+.bt-pl b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bt-pl small { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.bt-pl.empty { justify-content: center; color: var(--muted); border-style: dashed; height: 46px; }
+.bt-host { display: flex; gap: 6px; } .bt-host .sk-btn { flex: 1; }
+.bt-note { margin: 0; text-align: center; color: var(--muted); font-size: 13px; }
+@media (max-width: 560px) {
+  .bt-arena { --z: 1.05; }
+  .bt-arena .bd-bars { width: 70px; }
+  .bt-arena .bd-tag { font-size: 10px; max-width: 80px; padding: 1px 4px; }
+  .bt-arena .bd-card b { font-size: 10px; }
+  .bt-pl small { display: none; }
+}

@@ -862,21 +862,22 @@ function playStep(ac, out, delay, song, step, t, stepDur) {
       const [ci, add] = ly.pattern[k % ly.pattern.length]; note(ac, out, hz(song.root + oct + song.chords[bar][ci] + add), t, dur, ly.wave, ly.vol, opt); }
     else if (ly.type === "bass") { if (!(pos in ly.at)) continue; note(ac, out, hz(song.root + oct + song.roots[bar] + ly.at[pos]), t, dur, ly.wave, ly.vol, opt); }
     else if (ly.type === "chord") { if (!ly.at.includes(pos)) continue; song.chords[bar].forEach(c => note(ac, out, hz(song.root + oct + c), t, dur, ly.wave, ly.vol, opt)); }
-    else if (ly.type === "drum") { if (!ly.at.includes(pos)) continue; drum(ac, out, t, ly.kind, ly.vol * (ly.clock && st && st.turn % 4 === 3 ? 2 : 1)); }   // tick-tock louder right before the clock strikes
+    else if (ly.type === "drum") { if (!ly.at.includes(pos)) continue; drum(ac, out, t, ly.kind, ly.vol * (ly.clock && ((st && st.turn % 4 === 3) || window.__btTurn % 4 === 3) ? 2 : 1)); }   // tick-tock louder right before the clock strikes
     else if (ly.type === "rumble") { if (pos === 0) drum(ac, out, t, "rumble", ly.vol); }
   }
 }
-function startMusic() {
+let extMusic = null;   // the 2v2 screen asks for a map's song through BD.music(map)
+function startMusic(map) {
   stopMusic();
-  const ac = window.getAC && window.getAC(); if (!ac || !musicOn || !st) return;
-  const song = SONGS[st.map] || SONGS.henesys; if (!song) return;
+  const ac = window.getAC && window.getAC(); if (!ac || !musicOn || !map) return;
+  const song = SONGS[map] || SONGS.henesys; if (!song) return;
   const out = ac.createGain(); out.gain.value = 1.5; out.connect(ac.destination);
   let delay = null;
   if (song.echoMix) { delay = ac.createDelay(1); delay.delayTime.value = 60 / song.bpm * .75; const fb = ac.createGain(), mix = ac.createGain();
     fb.gain.value = .3; mix.gain.value = song.echoMix * 1.6; delay.connect(fb).connect(delay); delay.connect(mix).connect(out); }
   const stepDur = 60 / song.bpm / song.div; let step = 0, next = ac.currentTime + .1;
   const tick = () => { while (next < ac.currentTime + .25) { playStep(ac, out, delay, song, step, next, stepDur); step++; next += stepDur; } };
-  tick(); music = { timer: setInterval(tick, 80), out, map: st.map };
+  tick(); music = { timer: setInterval(tick, 80), out, map };
 }
 function stopMusic() {
   if (!music) return; clearInterval(music.timer);
@@ -884,12 +885,16 @@ function stopMusic() {
   music = null;
 }
 function syncMusic() {   // right song for the map, only while a duel is on screen
-  const want = musicOn && st && !$b("#bdGame").hidden && st.status !== "wait";
-  if (!want) { stopMusic(); } else if (!music || music.map !== st.map) startMusic();
-  $b("#bdMusic").textContent = musicOn ? "🔊" : "🔇";
+  const map = st && !$b("#bdGame").hidden && st.status !== "wait" ? st.map : extMusic;
+  if (!musicOn || !map) { stopMusic(); } else if (!music || music.map !== map) startMusic(map);
+  document.querySelectorAll("#bdMusic, #btMusic").forEach(b => b.textContent = musicOn ? "🔊" : "🔇");
 }
 $b("#bdMusic").onclick = () => { musicOn = !musicOn; store.set("family_bd_music", musicOn ? "1" : "0"); syncMusic(); };
 
+// shared with the 2v2 screen (duel2.js)
+window.BD = { MOVES, CLASSES, MAPS, ATTACKS, M, esc, store, cost, realMove, spriteOf, guildOf, client, askProf, sound, fx, num, tomb, myName,
+  getClass: () => myClass, music: map => { extMusic = map; syncMusic(); },
+  toggleMusic: () => { musicOn = !musicOn; store.set("family_bd_music", musicOn ? "1" : "0"); syncMusic(); }, loadBoard: () => loadBoard() };
 async function loadBoard() {
   if (!(await client())) return;
   const { data } = await sb.from("bd_scores").select("player,duels,wins,points").order("points", { ascending: false }).order("wins", { ascending: false }).limit(15);
