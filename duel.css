@@ -55,7 +55,7 @@
 .bd-plat { position: absolute; left: 50%; transform: translateX(-50%); z-index: 1; pointer-events: none; max-width: none; }
 /* Zakum's altar: huge, standing on the platform tile and reaching the top of the arena; centred on its stone face
    (the face sits at 48.4% of the picture's width, not 50%) */
-.bd-deco { display: none; position: absolute; left: 50%; transform: translateX(-48.4%); bottom: calc(var(--gl) - 4px);
+.bd-deco { display: none; position: absolute; left: 50%; transform: translateX(-45.5%); bottom: calc(var(--gl) - 4px);
   height: calc(100% - var(--gl) + 4px); width: auto; max-width: none; z-index: 1; pointer-events: none; }
 .bd-arena.m-zakum .bd-deco { display: block; }
 .bd-arena.m-zakum .bd-tag, .bd-arena.m-ludi .bd-tag, .bd-arena.m-sleepy .bd-tag { background: rgba(0,0,0,.6); }
