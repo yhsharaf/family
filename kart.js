@@ -36,6 +36,31 @@ function nearest(x, y, guess) {   // nearest track point, searching around the l
   return { i: best, d: Math.sqrt(bd) };
 }
 
+// Mario Kart style extras placed along the track (i = track point, o = sideways offset from the middle, + is the right side)
+const lat = (x, y, i) => { const a = tangent(i); return (x - PTS[i][0]) * -Math.sin(a) + (y - PTS[i][1]) * Math.cos(a); };
+const at = (i, o) => { i = ((Math.round(i) % N) + N) % N; const a = tangent(i); return [PTS[i][0] - Math.sin(a) * o, PTS[i][1] + Math.cos(a) * o]; };
+const PADS = [
+  { t: "boost", i: 36, len: 14, o: 0, w: 60 }, { t: "boost", i: 526, len: 14, o: -26, w: 50 }, { t: "boost", i: 680, len: 14, o: 28, w: 54 },
+  { t: "boost", i: 874, len: 14, o: -28, w: 54 },
+  { t: "ramp", i: 703, len: 9, o: 0, w: ROAD },
+  { t: "rock", i: 150, len: 40, o: 0, w: ROAD }, { t: "rock", i: 578, len: 30, o: 0, w: ROAD },
+  { t: "slime", i: 325, len: 8, o: -22, w: 44 }, { t: "slime", i: 455, len: 8, o: 26, w: 44 }, { t: "slime", i: 795, len: 8, o: -28, w: 44 },
+  { t: "slime", i: 958, len: 8, o: 22, w: 44 },
+];
+function padAt(idx, l) {
+  for (const p of PADS) { const di = (idx - p.i + N) % N; if (di <= p.len && Math.abs(l - p.o) < p.w / 2) return p; }
+  return null;
+}
+// mesos to collect (each one is a little more top speed, up to 10), pigs wandering across the road, and a stomping King Slime
+const COINS = [];
+[[60, 95, 5, () => 0], [400, 440, 6, () => -20], [520, 556, 6, () => 25], [648, 676, 5, () => -30], [850, 930, 8, j => (j & 1 ? 26 : -26)]]
+  .forEach(([a, b, st, o]) => { for (let i = a, j = 0; i <= b; i += st, j++) { const [x, y] = at(i, o(j)); COINS.push({ x, y, got: false }); } });
+const PIGS = [{ i: 262, ph: 0 }, { i: 470, ph: 2 }, { i: 845, ph: 4.2 }];
+const KING = { i: 905, T: 3 };
+const pigPos = (p, tt) => { const o = Math.sin(tt * 1.25 + p.ph) * (ROAD / 2 + 8), [x, y] = at(p.i, o); return { x, y, dir: Math.cos(tt * 1.25 + p.ph) }; };
+const kingPhase = tt => (tt % KING.T) / KING.T;   // 0-.45 up in the air, .45-.55 falling, .55 SLAM, then sitting on the road
+const kingZ = ph => ph < .45 ? 150 * Math.sin(Math.min(1, ph / .2) * Math.PI / 2) : ph < .55 ? 150 * (1 - (ph - .45) / .1) : 0;
+
 // the track picture: grass in stripes, flowers, red/white curbs, a dirt road and a chequered start line
 const tex = document.createElement("canvas"); tex.width = tex.height = WORLD;
 let TEX = null, mini = null;
@@ -56,6 +81,30 @@ function paintTrack() {
   for (let k = 0; k < 1800; k++) { const i = Math.floor(rnd() * N), [x, y] = PTS[i], a = rnd() * 6.28, r = rnd() * ROAD * .45;   // pebbles
     g.fillStyle = rnd() < .5 ? "#b78a55" : "#d4ab74"; g.fillRect(x + Math.cos(a) * r, y + Math.sin(a) * r, 4, 4); }
   path(); g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 3; g.setLineDash([22, 30]); g.stroke(); g.setLineDash([]);
+  // the extras: boost arrows, jump ramps, rocky patches and slime puddles
+  const atf = (i, o) => { const i0 = Math.floor(i), f = i - i0, p = at(i0, o), q = at(i0 + 1, o); return [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f]; };
+  const quad = (i, o1, o2, col) => { const a = atf(i, o1), b = atf(i, o2), c = atf(i + .6, o2), d = atf(i + .6, o1);
+    g.fillStyle = col; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.fill(); };
+  for (const p of PADS) {
+    if (p.t === "boost" || p.t === "ramp") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {
+      const o1 = p.o - p.w / 2 + p.w * c / 10, o2 = o1 + p.w / 10 + .5;
+      const chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;   // arrows pointing down the track
+      quad(p.i + j, o1, o2, p.t === "boost" ? (chev ? "#ff7a12" : "#ffd84a") : (j < .6 || j > p.len - .6 ? "#1e4f9a" : chev ? "#ffffff" : "#3d8de0"));
+    }
+    if (p.t === "rock") for (let k = 0; k < p.len * 9; k++) {
+      const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .95), z = 5 + rnd() * 7;
+      g.fillStyle = "#6f675c"; g.fillRect(x - z / 2 + 1.5, y - z / 2 + 1.5, z, z * .8); g.fillStyle = rnd() < .5 ? "#a39a8c" : "#8c8476"; g.fillRect(x - z / 2, y - z / 2, z, z * .8);
+      g.fillStyle = "#c9c0b0"; g.fillRect(x - z / 2 + 1, y - z / 2 + 1, z * .35, z * .25);
+    }
+    if (p.t === "slime") {
+      const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i);
+      g.save(); g.translate(x, y); g.rotate(a);
+      g.fillStyle = "#7c3fa0"; g.beginPath(); g.ellipse(0, 0, p.len * 2.6, p.w / 2, 0, 0, 7); g.fill();
+      g.fillStyle = "#b65cd6"; g.beginPath(); g.ellipse(-2, -2, p.len * 2.2, p.w / 2 - 5, 0, 0, 7); g.fill();
+      g.fillStyle = "#e3a6f5"; for (const [bx, by, br] of [[-6, -8, 4], [8, 4, 3], [2, -2, 2]]) { g.beginPath(); g.arc(bx, by, br, 0, 7); g.fill(); }
+      g.restore();
+    }
+  }
   // start line across the road at point 0
   const [sx, sy] = PTS[0], ta = tangent(0), nx = -Math.sin(ta), ny = Math.cos(ta), sq = 10;
   for (let r = 0; r < 2; r++) for (let c = -ROAD / 2; c < ROAD / 2; c += sq) {
@@ -80,6 +129,14 @@ function treeImg() {   // a chunky pixel tree drawn here (no picture to download
   const blob = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
   blob(30, 34, 26, "#2f7d32"); blob(18, 40, 16, "#2f7d32"); blob(42, 40, 16, "#2f7d32");
   blob(26, 28, 18, "#43a047"); blob(38, 32, 13, "#43a047"); blob(22, 22, 8, "#66bb6a");
+  return c;
+}
+function coinImg() {   // a gold meso
+  const c = document.createElement("canvas"); c.width = c.height = 24; const g = c.getContext("2d");
+  g.fillStyle = "#8a5a00"; g.beginPath(); g.arc(12, 12, 11, 0, 7); g.fill();
+  g.fillStyle = "#f2b81c"; g.beginPath(); g.arc(12, 11, 10, 0, 7); g.fill();
+  g.fillStyle = "#ffe27a"; g.beginPath(); g.arc(12, 11, 7, 0, 7); g.fill();
+  g.fillStyle = "#b07800"; g.font = "bold 11px Ubuntu, sans-serif"; g.textAlign = "center"; g.fillText("M", 12, 15);
   return c;
 }
 let OBJS = [];
@@ -121,37 +178,74 @@ const HAZE = [214, 236, 255];
 let sky = null;
 
 // ------------------------------------------------------------------ the race
-let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0 };
-let K = null, best = null;
+let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
+let K = null, best = null, countAt = 0;
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, PADS, PIGS, KING, at }) : null;
 function freshKart() {
   const i = (N - 10) % N, a = tangent(i);
   return { x: PTS[i][0], y: PTS[i][1], a, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
-    t: 0, lapStart: 0, laps: [], wrong: 0, prog: 0, off: false, bump: 0, parts: [] };
+    t: 0, lapStart: 0, laps: [], wrong: 0, prog: 0, off: false, bump: 0, z: 0, vz: 0, trick: false, flip: 0, spin: 0, inv: 0, squash: 0,
+    shake: 0, stall: 0, mesos: 0, items: 3, held: null, lastPad: null, prevDrift: false, prevItem: false, kingWas: 0 };
 }
 const fmt = ms => ms == null ? "--" : `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(Math.floor(ms % 1000)).padStart(3, "0")}`;
 const bestKey = () => "kart_best:henesys:" + me;
 
 function input() {
+  if (DEV && DEV.auto && K) {   // local testing only: aim at a point further along the track
+    const tg = PTS[(K.idx + 18) % N], want = Math.atan2(tg[1] - K.y, tg[0] - K.x);
+    let d = want - K.a; d = Math.atan2(Math.sin(d), Math.cos(d));
+    return { steer: d > .05 ? 1 : d < -.05 ? -1 : 0, drift: DEV.drift != null ? DEV.drift : false, brake: false, item: !!DEV.item };
+  }
   const l = keys.ArrowLeft || keys.a, r = keys.ArrowRight || keys.d;
-  return { steer: (r ? 1 : 0) - (l ? 1 : 0) || touch.x, drift: !!(keys[" "] || keys.Shift || touch.d), brake: !!(keys.ArrowDown || keys.s || touch.b) };
+  return { steer: (r ? 1 : 0) - (l ? 1 : 0) || touch.x, drift: !!(keys[" "] || keys.Shift || touch.d), brake: !!(keys.ArrowDown || keys.s || touch.b),
+    item: !!(keys.ArrowUp || keys.w || keys.e || touch.i) };
+}
+function spinOut(msg) {
+  const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0) return;
+  k.spin = .9; k.inv = 1.9; k.drift = 0; k.charge = 0; k.boost = 0; flash(msg, 900); spinSound();
 }
 function step(dt) {
-  const k = K, inp = input(), racing = state === "race";
-  k.steer += (inp.steer - k.steer) * Math.min(1, dt * 10);
+  const k = K, inp = input(), racing = state === "race", tt = performance.now() / 1000;
   const near = nearest(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > ROAD / 2 + CURB * .6;
-  // speed: always accelerating (phone friendly), the brake slows / reverses
-  const top = (k.off ? 105 : 250) + (k.boost > 0 ? 90 : 0);
-  if (!racing) k.v *= Math.pow(.2, dt);
+  const L = lat(k.x, k.y, k.idx);
+  // in the air (ramps): gravity, and a trick on the way up/down gives a boost when you land
+  if (k.z > 0 || k.vz > 0) {
+    k.vz -= 720 * dt; k.z += k.vz * dt;
+    if (k.z <= 0) { k.z = 0; k.vz = 0; k.hop = .14; if (k.trick) { k.boost = Math.max(k.boost, .9); flash("✨ Trick boost!", 700); boostSound(); } else bumpSound(); k.trick = false; }
+  }
+  const air = k.z > 0;
+  if (air && inp.drift && !k.prevDrift && !k.trick) { k.trick = true; k.flip = .4; hopSound(); }
+  k.prevDrift = inp.drift;
+  // countdown: hold Drift when the "2" shows for a rocket start (from the "3" is too early)
+  if (state === "count") { if (inp.drift) { if (k.held == null) k.held = performance.now() - countAt; } else k.held = null; }
+  k.steer += ((k.spin > 0 ? 0 : inp.steer) - k.steer) * Math.min(1, dt * 10);
+  // what's under the wheels
+  const pad = air ? null : padAt(k.idx, L);
+  if (pad && pad !== k.lastPad) {
+    if (pad.t === "boost") { k.boost = Math.max(k.boost, 1); padSound(); }
+    if (pad.t === "ramp" && k.v > 60) { k.vz = 160 + k.v * .22; k.z = .1; k.drift = 0; jumpSound(); if (!k.tricked) { k.tricked = true; flash("Tap Drift in the air! ✨", 900); } }
+    if (pad.t === "slime") spinOut("🫧 Slimed!");
+  }
+  k.lastPad = pad;
+  const rocky = pad && pad.t === "rock" && k.v > 60;
+  if (rocky) { k.shake = Math.max(k.shake, .12); if (Math.random() < dt * 9) k.hop = .1; }
+  if (!air && !k.off && Math.abs(L) > ROAD / 2 - 2 && k.v > 100) k.shake = Math.max(k.shake, .04);   // rumble on the curbs
+  // speed: always accelerating (phone friendly), the brake slows / reverses; mesos raise the top speed a little
+  const top = (k.off && !air ? 105 : rocky && k.boost <= 0 ? 185 : 250 + k.mesos * 3) + (k.boost > 0 ? 90 : 0);
+  if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
   else k.v += (k.v < top ? (k.v < 120 ? 210 : 120) : -260) * dt;
-  if (k.boost > 0) k.boost -= dt;
+  for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip"]) if (k[key] > 0) k[key] -= dt;
+  // the 3 Elixirs (like the time-trial mushrooms): a burst of speed whenever you want
+  if (racing && inp.item && !k.prevItem && k.items > 0 && k.spin <= 0) { k.items--; k.boost = Math.max(k.boost, 1.3); itemSound(); }
+  k.prevItem = inp.item;
   // drifting: hold drift while turning, the longer you hold the bigger the boost when you let go
-  if (racing && inp.drift && !k.drift && Math.abs(inp.steer) > .25 && k.v > 140) { k.drift = Math.sign(inp.steer); k.charge = 0; k.hop = .18; hopSound(); }
+  if (racing && !air && k.spin <= 0 && inp.drift && !k.drift && Math.abs(inp.steer) > .25 && k.v > 140) { k.drift = Math.sign(inp.steer); k.charge = 0; k.hop = .18; hopSound(); }
   if (k.drift && (!inp.drift || k.v < 90)) {
     if (k.charge > 1.6) { k.boost = 1.1; boostSound(); } else if (k.charge > .75) { k.boost = .6; boostSound(); }
     k.drift = 0; k.charge = 0;
   }
-  let turn = k.steer * 2.1 * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1);
+  let turn = k.steer * 2.1 * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? .5 : 1);
   if (k.drift) { turn = (k.drift * 1.55 + k.steer * .9) * Math.min(1, k.v / 110); if (!k.off) k.charge += dt * (1 + Math.abs(k.steer) * .4); }
   k.a += turn * dt;
   let mx = Math.cos(k.a) * k.v, my = Math.sin(k.a) * k.v;
@@ -160,11 +254,22 @@ function step(dt) {
   if (k.hop > 0) k.hop -= dt;
   // the map edge and roadside things push you back
   if (k.x < 20 || k.y < 20 || k.x > WORLD - 20 || k.y > WORLD - 20) { k.x = Math.min(WORLD - 20, Math.max(20, k.x)); k.y = Math.min(WORLD - 20, Math.max(20, k.y)); k.v *= .5; }
-  for (const o of OBJS) {
-    const dx = k.x - o.x, dy = k.y - o.y, d = Math.hypot(dx, dy);
-    if (d < o.r + 7 && d > 0) { k.x = o.x + dx / d * (o.r + 7); k.y = o.y + dy / d * (o.r + 7); if (k.bump <= 0) { k.v *= .35; k.bump = .4; bumpSound(); } k.drift = 0; }
-  }
+  const solid = (ox, oy, r) => {
+    const dx = k.x - ox, dy = k.y - oy, d = Math.hypot(dx, dy);
+    if (d < r + 7 && d > 0) { k.x = ox + dx / d * (r + 7); k.y = oy + dy / d * (r + 7); if (k.bump <= 0) { k.v *= .35; k.bump = .4; bumpSound(); k.shake = .15; } k.drift = 0; }
+  };
+  for (const o of OBJS) solid(o.x, o.y, o.r);
   if (k.bump > 0) k.bump -= dt;
+  // mesos, pigs and the King Slime
+  for (const c of COINS) if (!c.got && k.z < 26 && Math.hypot(k.x - c.x, k.y - c.y) < 16) { c.got = true; k.mesos = Math.min(10, k.mesos + 1); coinSound(); }
+  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && Math.hypot(k.x - q.x, k.y - q.y) < 17) spinOut("🐷 Oink!"); }
+  const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0), kd = Math.hypot(k.x - kx, k.y - ky);
+  if (k.kingWas < .55 && kp >= .55) {   // SLAM
+    if (kd < 300) { k.shake = Math.max(k.shake, kd < 120 ? .35 : .15); slamSound(kd); }
+    if (kd < 36 && !air && k.inv <= 0) { k.squash = 1.1; k.inv = 0; spinOut("💥 SQUASHED!"); k.v = 0; }
+  }
+  k.kingWas = kp;
+  if (kp >= .55) solid(kx, ky, 26);
   if (!racing) return;
   // laps: 4 checkpoints in order, then crossing the start line
   k.t += dt * 1000;
@@ -172,6 +277,7 @@ function step(dt) {
   if (cp === (k.cps + 1) % 4 && k.cps < 3) k.cps = cp;
   if (k.cps === 3 && k.prog > .9 && prog < .1) {
     k.laps.push(k.t - k.lapStart); k.lapStart = k.t; k.lap++; k.cps = 0; lapSound();
+    COINS.forEach(c => c.got = false);   // mesos come back every lap (the 10 max stays)
     if (k.lap >= LAPS) finish();
     else flash(k.lap === LAPS - 1 ? "🏁 FINAL LAP!" : `Lap ${k.lap + 1}`, 1300);
   }
@@ -210,22 +316,28 @@ function render() {
     }
   }
   ctx.putImageData(floor, 0, HOR);
-  // billboards, far to near
-  const vis = [];
-  for (const ob of OBJS) {
-    const rx = ob.x - cx, ry = ob.y - cy, fz = rx * ca + ry * sa;
-    if (fz < 8 || fz > 1400) continue;
-    const side = -rx * sa + ry * ca, sx = W / 2 + side * FOCAL / fz;
-    if (sx < -80 || sx > W + 80) continue;
-    vis.push({ ob, fz, sx });
-  }
+  // billboards, far to near: scenery, mesos, pigs and the King Slime (with a shadow when it's up in the air)
+  const tt = performance.now() / 1000, vis = [];
+  const add = (x, y, im, sc, z, flip, shadow) => {
+    const rx = x - cx, ry = y - cy, fz = rx * ca + ry * sa;
+    if (fz < 8 || fz > 1400 || !im) return;
+    const sx = W / 2 + (-rx * sa + ry * ca) * FOCAL / fz;
+    if (sx < -120 || sx > W + 120) return;
+    vis.push({ im, fz, sx, sc, z, flip, shadow });
+  };
+  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, 0);
+  for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.coin, .55, 6 + Math.sin(tt * 4 + c.x) * 2);
+  for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG.pig, .45, 0, q.dir > 0); }
+  const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0), kz = kingZ(kp); add(kx, ky, IMG.king_slime, .5, kz, false, kz > 0 ? 1 - kz / 170 : 0);
   vis.sort((a, b) => b.fz - a.fz);
-  for (const { ob, fz, sx } of vis) {
-    const im = IMG[ob.k]; if (!im) continue;
-    const sc = FOCAL / fz * ob.s, w = im.width * sc, h = im.height * sc, gy = HOR + CAMH * FOCAL / fz;
+  for (const v of vis) {
+    const { im, fz, sx, z, flip, shadow } = v, sc = FOCAL / fz * v.sc, w = im.width * sc, h = im.height * sc, gy = HOR + CAMH * FOCAL / fz;
     if (w < .6) continue;
     ctx.globalAlpha = fz > 1000 ? Math.max(0, (1400 - fz) / 400) : 1;
-    ctx.drawImage(im, sx - w / 2, gy - h, w, h);
+    if (shadow) { ctx.fillStyle = `rgba(0,0,0,${.15 + shadow * .3})`; ctx.beginPath(); ctx.ellipse(sx, gy, w * .45 * (.4 + shadow * .6), h * .08 + 1, 0, 0, 7); ctx.fill(); }
+    const top = gy - h - z * FOCAL / fz;
+    if (flip) { ctx.save(); ctx.translate(sx, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w / 2, top, w, h); ctx.restore(); }
+    else ctx.drawImage(im, sx - w / 2, top, w, h);
   }
   ctx.globalAlpha = 1;
   drawKart(k);
@@ -239,9 +351,10 @@ function render() {
 function drawKart(k) {
   const gy = HOR + CAMH * FOCAL / CAMD, sc = FOCAL / CAMD, x = W / 2 + k.steer * 4;
   const hop = k.hop > 0 ? Math.sin((k.hop / .18) * Math.PI) * 6 : 0, rumble = k.off && k.v > 40 ? (Math.random() - .5) * 2 : 0;
-  const y = gy - hop + rumble, tilt = (k.drift ? k.drift * .16 : 0) + k.steer * .06;
+  const y = gy - hop + rumble - k.z * sc * .45, tilt = (k.drift ? k.drift * .16 : 0) + k.steer * .06 + (k.flip > 0 ? (1 - k.flip / .4) * Math.PI * 2 : 0);
   const w = 18 * sc, t = performance.now() / 1000;
-  ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(x, gy + 2, w * .55, 4, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(x, gy + 2, w * .55 / (1 + k.z / 80), 4, 0, 0, 7); ctx.fill();
+  cv.style.transform = k.shake > 0 ? `translate(${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px, ${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px)` : "";
   // drift sparks and dust
   if (k.drift && k.charge > .2) {
     const col = k.charge > 1.6 ? ["#ff9a2e", "#ffd34d"] : k.charge > .75 ? ["#5ab4ff", "#c8ecff"] : ["#ffffff", "#dddddd"];
@@ -250,6 +363,9 @@ function drawKart(k) {
   }
   if (k.off && k.v > 60) for (let i = 0; i < 4; i++) { ctx.fillStyle = "rgba(120,90,50,.6)"; ctx.fillRect(x + (Math.random() - .5) * w, y - Math.random() * 6, 3, 3); }
   ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
+  if (k.spin > 0) ctx.scale(Math.cos((.9 - k.spin) * Math.PI * 4), 1);      // spinning out
+  if (k.squash > 0) ctx.scale(1.35, .45);                                   // flattened by the King Slime
+  if (k.inv > 0 && k.spin <= 0 && Math.floor(performance.now() / 90) % 2) ctx.globalAlpha = .55;
   const bw = w, bh = w * .42;
   // driver (their picture faces right; mirror it when turning left), sitting in the kart: the body hides their legs
   const sp = IMG.me;
@@ -269,7 +385,7 @@ function drawKart(k) {
   ctx.fillStyle = "#ffe08a"; ctx.font = `bold ${Math.round(bh * .34)}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.fillText("F", 0, -bh * .45);
   if (k.boost > 0) for (const sx of [-bw * .16, bw * .16]) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e"; ctx.beginPath();
     ctx.moveTo(sx - 3, -bh * .2); ctx.lineTo(sx + 3, -bh * .2); ctx.lineTo(sx, -bh * .2 + 6 + Math.random() * 6); ctx.fill(); }
-  ctx.restore();
+  ctx.restore(); ctx.globalAlpha = 1;
 }
 function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
@@ -281,6 +397,9 @@ function hud() {
   $k("#kBest").textContent = best && best.lap ? `Best lap ${fmt(best.lap)}` : "";
   $k("#kSpeed").textContent = state === "race" ? `${Math.max(0, Math.round(k.v * .5))} km/h` : "";
   $k("#kWrong").hidden = !(state === "race" && k.wrong > .6);
+  $k("#kBag").textContent = state === "menu" ? "" : `🪙 ${k.mesos}/10 · 🧪 ${k.items}`;
+  $k("#kItemN").textContent = k.items;
+  $k("#kPad [data-k=i]").disabled = !k.items;
 }
 let flashT = null;
 function flash(t, ms) { const f = $k("#kFlash"); f.textContent = t; f.className = "k-flash on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash", ms); }
@@ -317,13 +436,20 @@ async function start() {
   K = freshKart(); state = "wait"; B.music("henesys"); syncMusicBtn();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   await waitLandscape(); fit(); if (state !== "wait") return; state = "count";
+  countAt = performance.now(); COINS.forEach(c => c.got = false);
   for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) setTimeout(() => { if (state === "count") { flash(t, 900); beep(440); } }, d);
-  setTimeout(() => { if (state !== "count") return; state = "race"; flash("GO!", 900); beep(880); }, 3000);
+  setTimeout(() => {
+    if (state !== "count") return; state = "race"; beep(880);
+    const h = K.held;
+    if (h != null && h >= 950) { K.boost = 1.2; K.v = 160; flash("🚀 ROCKET START!", 1000); boostSound(); }
+    else if (h != null) { K.stall = .9; flash("💨 Too early!", 1000); bumpSound(); }
+    else flash("GO!", 900);
+  }, 3000);
 }
 async function prepare() {
   paintTrack(); placeObjects();
-  const [s, tr] = [await loadImg(B.M + "bg_henesys.webp?v=9"), treeImg()]; sky = s; IMG.tree = tr;
-  await Promise.all(MOBS.map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); }));
+  const [s, tr] = [await loadImg(B.M + "bg_henesys.webp?v=9"), treeImg()]; sky = s; IMG.tree = tr; IMG.coin = coinImg();
+  await Promise.all([...MOBS, "king_slime"].map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); }));
 }
 function finish() {
   state = "done"; const k = K, total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
@@ -378,10 +504,10 @@ syncMusicBtn();
 addEventListener("hashchange", () => { if (location.hash !== "#kart" && state !== "menu") quit(); });
 
 // keyboard + touch buttons
-const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Shift", "a", "d", "s"];
+const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Shift", "a", "d", "s", "w", "e"];
 addEventListener("keydown", e => { if (state === "menu" || !GAME_KEYS.includes(e.key)) return; keys[e.key] = true; e.preventDefault(); });
 addEventListener("keyup", e => { keys[e.key] = false; });
-addEventListener("blur", () => { keys = {}; touch = { x: 0, d: 0, b: 0 }; stickSet(0); });
+addEventListener("blur", () => { keys = {}; touch = { x: 0, d: 0, b: 0, i: 0 }; stickSet(0); });
 document.querySelectorAll("#kPad [data-k]").forEach(b => {
   const on = v => e => { e.preventDefault(); touch[b.dataset.k] = v; b.classList.toggle("on", !!v); };
   b.addEventListener("pointerdown", e => { try { b.setPointerCapture(e.pointerId); } catch (er) {} on(1)(e); });
@@ -434,5 +560,11 @@ const beep = f => tone(f, .25, "square", .09);
 const hopSound = () => tone(300, .12, "triangle", .08, 520);
 const boostSound = () => { tone(220, .35, "sawtooth", .07, 880); };
 const bumpSound = () => tone(140, .2, "square", .1, 60);
+const coinSound = () => { tone(1320, .07, "square", .05); setTimeout(() => tone(1760, .12, "square", .05), 60); };
+const padSound = () => tone(330, .3, "sawtooth", .06, 990);
+const jumpSound = () => tone(200, .3, "triangle", .1, 700);
+const itemSound = () => { tone(520, .1, "square", .06); setTimeout(() => tone(780, .25, "sawtooth", .06, 1200), 80); };
+const spinSound = () => { for (let i = 0; i < 4; i++) setTimeout(() => tone(600 - i * 90, .12, "square", .06, 300 - i * 50), i * 110); };
+const slamSound = d => tone(90, .5, "square", Math.max(.03, .16 - d / 2500), 35);
 const lapSound = () => { tone(660, .12, "square", .07); setTimeout(() => tone(990, .2, "square", .07), 110); };
 })();

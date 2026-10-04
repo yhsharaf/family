@@ -27,7 +27,7 @@
 .kt-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 360px); }
 .k-laps { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 8px; font: 700 14px ui-monospace, Menlo, Consolas, monospace; }
 .k-laps .b { color: #2e7d32; } .k-laps .b::after { content: " ⚡"; }
-.kt-pad { display: grid; grid-template-columns: 2fr .3fr 1fr 1.3fr; gap: 8px; }
+.kt-pad { display: grid; grid-template-columns: 2fr .2fr .9fr 1fr 1.3fr; gap: 8px; }
 .kt-pad button { height: 72px; border-radius: 16px; border: 3px solid #3b2f22; background: var(--card); font: 900 26px Ubuntu, sans-serif; color: var(--ink);
   box-shadow: 0 5px 0 #3b2f22; touch-action: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .kt-pad button.on { transform: translateY(4px); box-shadow: 0 1px 0 #3b2f22; background: #ffe8a3; }
@@ -59,7 +59,7 @@
   .kt.racing .bd-top { position: absolute; top: 4px; left: 6px; right: 6px; z-index: 3; padding: 2px 8px; background: rgba(252,250,244,.82); }
   .kt.racing .kt-screen { position: absolute; inset: 0; width: auto; margin: 0; border: 0; border-radius: 0; aspect-ratio: auto; }
   .kt.racing .kt-pad { position: absolute; left: 0; right: 0; bottom: 10px; z-index: 3; padding: 0 14px; margin: 0;
-    grid-template-columns: 170px 1fr 78px 100px; pointer-events: none; }
+    grid-template-columns: 170px 1fr 70px 78px 100px; pointer-events: none; }
   .kt.racing .kt-pad button, .kt.racing .kt-stick { pointer-events: auto; height: 66px; opacity: .88; }
   .kt.racing .kt-speed { left: 50%; transform: translateX(-50%); bottom: 12px; }
 }
@@ -73,3 +73,7 @@
   padding: 5px 12px; font-size: 14px; border-radius: 12px; pointer-events: none; animation: pop .6s infinite alternate; white-space: nowrap; }
 .kt-full[hidden] { display: none; }
 @media (max-width: 560px) { .kt-stick { height: 64px; } }
+.kt-bag { font-weight: 800; font-size: 14px; white-space: nowrap; }
+.kt-pad .itm { font-size: 24px; background: #fff1c9; position: relative; }
+.kt-pad .itm b { position: absolute; right: 6px; bottom: 4px; font-size: 14px; background: #2d2832; color: #fff; border-radius: 8px; padding: 0 5px; }
+.kt-pad button:disabled { opacity: .4; }
