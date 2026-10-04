@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=8">
+<link rel="stylesheet" href="kart.css?v=9">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -495,6 +495,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="sk-panel">
       <div class="sk-name"><input id="kName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go"></div>
       <div class="kt-track"><img src="media/duel/bg_henesys.webp?v=9" alt=""><div><b>🍄 Henesys Loop</b><small>8 racers · 3 laps</small></div></div>
+      <div class="kt-diff" id="kDiff"><span>Rivals:</span><button type="button" data-d="easy">🌱 Easy</button><button type="button" data-d="normal">🏁 Normal</button><button type="button" data-d="hard">🔥 Hard</button></div>
       <div class="kt-mine" id="kMine"></div>
       <button class="sk-btn bd-play" id="kGo">🏁 Start race!</button>
       <div class="sk-err" id="kErr"></div>
@@ -503,9 +504,10 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <h3>How to drive</h3>
       <p>Your kart speeds up by itself. Steer round the track, and stay on the road: the grass slows you right down.</p>
       <p>💨 <b>Drift:</b> hold <b>Drift</b> while you turn. Sparks turn <span style="color:#2f7fd0;font-weight:700">blue</span>, then <span style="color:#e07a12;font-weight:700">orange</span>.
-        Let go for a speed boost, and the longer you held it, the bigger the boost.</p>
-      <p>🏁 <b>Race 7 guild members</b> over 3 laps and finish 1st! 🚀 <b>Rocket start:</b> hold Drift when the <b>2</b> shows.</p>
-      <p>❓ <b>Item boxes</b> give you an item: 🧪 Elixir boost (3 if you're far behind) · 🫧 Slime drop behind you · 🏹 Arrow that chases the racer ahead ·
+        then <span style="color:#a64bd6;font-weight:700">purple</span>. Turn into the corner to charge faster. Let go for a boost: the longer you held it, the bigger it is.</p>
+      <p>🏁 <b>Race 7 guild members</b> over 3 laps and finish 1st! 🚀 <b>Rocket start:</b> hold Drift when the <b>2</b> shows.
+        💨 <b>Slipstream:</b> stay right behind a kart to get pulled past it. On the bottom straight the road <b>splits</b>: the main road has the King Slime, the market path is safe but longer.</p>
+      <p>❓ <b>Item boxes</b> give you an item (hold 🫧 Slime or 🏹 Arrow behind you as a shield: keep the item button pressed, let go to use it): 🧪 Elixir boost (3 if you're far behind) · 🫧 Slime drop behind you · 🏹 Arrow that chases the racer ahead ·
         🖐️ <b>Zakum's Arm</b> slams whoever is in 1st · 😵 <b>Dizzy</b> swaps left and right for everyone ahead of you ·
         🐙 <b>Splat</b> covers everyone ahead in octopus ink. The further back you are, the better your items.</p>
       <p>🟨 Boost arrows · 🟦 ramps (tap Drift in the air for a trick boost) · 🪙 mesos raise your top speed.
@@ -527,6 +529,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="kt-speed" id="kSpeed"></div>
       <div class="k-flash" id="kFlash"></div>
       <div class="kt-wrong" id="kWrong" hidden>↩️ WRONG WAY!</div>
+      <div class="kt-warn" id="kWarn" hidden></div>
       <div class="kt-load" id="kLoad" hidden>Building the track…</div>
       <div class="kt-full" id="kFull" hidden>👆 Tap the screen for fullscreen</div>
       <div class="kt-rotate" id="kRotate" hidden><span>📱↪️</span>Turn your phone sideways to race</div>
@@ -860,7 +863,7 @@ show();
 <script src="duel-songs.js?v=1"></script>
 <script src="duel.js?v=30"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=11"></script>
+<script src="kart.js?v=13"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

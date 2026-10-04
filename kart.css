@@ -115,3 +115,12 @@
 .kt-item img:not([hidden]) + span { display: none; }
 .kt-item { border-color: #ffd75e; box-shadow: 0 0 0 2px #7a1418; }
 .kt-bag img { width: 18px; height: 18px; image-rendering: pixelated; vertical-align: -3px; margin-right: 3px; }
+.kt-diff { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.kt-diff span { font-weight: 800; font-size: 13px; color: var(--muted); }
+.kt-diff button { border: 2px solid var(--edge); background: #fff; border-radius: 10px; padding: 6px 10px; font: 700 14px Ubuntu, sans-serif; cursor: pointer; color: var(--ink); }
+.kt-diff button.on { border-color: #c8232c; background: #fff1e6; box-shadow: 0 0 0 2px #e8b43a; }
+.k-diff { font-weight: 800; color: var(--muted) !important; margin-top: -2px !important; }
+.kt-warn { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 90%; top: 24%; z-index: 4; text-align: center;
+  background: rgba(200,35,44,.9); color: #fff; font: 900 15px Ubuntu, sans-serif; padding: 5px 12px; border-radius: 10px; border: 2px solid #ffd75e; animation: pop .35s infinite alternate; pointer-events: none; }
+.kt-warn.arm { font-size: 18px; background: rgba(90,10,20,.92); }
+.kt-warn[hidden] { display: none; }
