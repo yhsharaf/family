@@ -688,11 +688,29 @@ function getAC() {
   return AC;
 }
 window.getAC = getAC;
+// iPhones mute Web Audio when the ring/silent switch is on silent, unless a real <audio> element is playing.
+// So on the first tap we start a looping, silent audio clip: that puts the page in "media playback" mode (like a video)
+// and the game sounds and music are heard even with the switch on silent.
+let silentClip = null;
+function silentWavUrl() {
+  const sr = 8000, n = sr / 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, "data"); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+}
 function unlockAudio() {
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+  try {
+    if (!silentClip) { silentClip = document.createElement("audio"); silentClip.src = silentWavUrl(); silentClip.loop = true;
+      silentClip.setAttribute("playsinline", ""); silentClip.setAttribute("x-webkit-airplay", "deny"); silentClip.preload = "auto"; }
+    if (silentClip.paused) silentClip.play().catch(() => {});
+  } catch (e) {}
   const ac = getAC(); if (!ac) return;
   const b = ac.createBufferSource(); b.buffer = ac.createBuffer(1, 1, 22050); b.connect(ac.destination); b.start(0);
 }
+// coming back to the tab (iOS suspends audio in the background): wake it up again on the next tap
+document.addEventListener("visibilitychange", () => { if (!document.hidden && silentClip && silentClip.paused) silentClip.play().catch(() => {}); });
 ["touchend", "click", "keydown"].forEach(t => addEventListener(t, unlockAudio, { capture: true, passive: true }));
 try { whips = +localStorage.getItem("family_whips") || 0; } catch (e) {}
 $("#whips").textContent = whips;
@@ -759,7 +777,7 @@ show();
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
 <script src="duel-songs.js?v=1"></script>
-<script src="duel.js?v=22"></script>
+<script src="duel.js?v=23"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

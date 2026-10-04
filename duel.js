@@ -836,7 +836,7 @@ function startMusic() {
   stopMusic();
   const ac = window.getAC && window.getAC(); if (!ac || !musicOn || !st) return;
   const song = SONGS[st.map] || SONGS.henesys; if (!song) return;
-  const out = ac.createGain(); out.gain.value = .9; out.connect(ac.destination);
+  const out = ac.createGain(); out.gain.value = 1.5; out.connect(ac.destination);
   let delay = null;
   if (song.echoMix) { delay = ac.createDelay(1); delay.delayTime.value = 60 / song.bpm * .75; const fb = ac.createGain(), mix = ac.createGain();
     fb.gain.value = .3; mix.gain.value = song.echoMix * 1.6; delay.connect(fb).connect(delay); delay.connect(mix).connect(out); }
