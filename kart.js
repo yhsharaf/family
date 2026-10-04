@@ -363,7 +363,7 @@ function useItem(r) {
 // one computer racer: follows the road in its own lane, dodges slime puddles, keeps races close (rubber band), uses items
 function rivalStep(r, dt, tt) {
   if (rescueStep(r, dt)) return;
-  const near = nav(r.x, r.y, r.idx); r.idx = near.i; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
+  const near = nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
   if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) r.boost = Math.max(r.boost, .8); } }
   const air = r.z > 0;
@@ -399,7 +399,7 @@ function rivalStep(r, dt, tt) {
   if (r.kingWas < .55 && kp >= .55 && Math.hypot(r.x - kx, r.y - ky) < 36 && !air) { hit(r); r.squash = 1.1; r.v = 0; }
   r.kingWas = kp;
   // items: Elixirs and the Arm right away, a slime when someone is close behind, an arrow when someone is ahead
-  if (r.item && r.itemT <= 0 && r.spin <= 0) {
+  if (r.item && r.itemT <= 0 && r.spin <= 0 && !r.done) {
     const p = progOf(r), others = racers().filter(o => o !== r);
     const behind = others.some(o => p - progOf(o) > 0 && p - progOf(o) < 30), ahead = others.some(o => progOf(o) - p > 0 && progOf(o) - p < 120);
     if (["elixir", "triple", "arm", "thunder"].includes(r.item) || (r.item === "splat" && (ahead || progOf(K) > p || Math.random() < dt * .1)) || (r.item === "slime" && (behind || Math.random() < dt * .15)) || (r.item === "arrow" && (ahead || Math.random() < dt * .1))) {
@@ -418,12 +418,13 @@ function lapTick(r) {   // 4 checkpoints in order, then the start line; true whe
 let finishers = 0;
 // everything that moves besides you: rivals, item boxes, slime drops, arrows, Zakum's arm, karts bumping
 function worldStep(dt, tt) {
+  if (thunderFx > 0) thunderFx -= dt;
   if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt; if (thunderCD > 0) thunderCD -= dt;
   for (const r of RIV) rivalStep(r, dt, tt);
   const all = racers();
   for (const b of BOXES) {
     if (b.t > 0) { b.t -= dt; continue; }
-    for (const r of all) if (r.z < 22 && Math.hypot(r.x - b.x, r.y - b.y) < 15) {
+    for (const r of all) if (r.z < 22 && !r.done && Math.hypot(r.x - b.x, r.y - b.y) < 15) {
       b.t = 2.5;
       if (r === K) { if (!K.item && K.roll <= 0) { K.roll = 1.1; K.pending = rollItem(K); boxSound(); } }
       else if (!r.item && !(r.noItem > 0) && Math.random() < DIFF().pick) { r.item = rollItem(r, true); r.itemN = r.item === "triple" ? 3 : 0; r.itemT = 1.5 + Math.random() * 3; r.holding = HOLDABLE(r.item); }
@@ -451,7 +452,11 @@ function worldStep(dt, tt) {
   }
   for (let i = ARMS.length - 1; i >= 0; i--) {
     const a = ARMS[i]; a.t -= dt;
-    if (a.t <= 0) { hit(a.tgt, "🖐️ Zakum's Arm!"); a.tgt.squash = 1; if (a.tgt === K) { K.v = 0; K.shake = .4; } slamSound(0); ARMS.splice(i, 1); }
+    if (a.t <= 0) {
+      const was = a.tgt.spin; hit(a.tgt, "🖐️ Zakum's Arm!");
+      if (a.tgt.spin > 0 && !(was > 0)) { a.tgt.squash = 1; if (a.tgt === K) { K.v = 0; K.shake = .4; } }   // only if it landed (not mid-air / protected)
+      slamSound(0); ARMS.splice(i, 1);
+    }
   }
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {   // karts bump each other
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
@@ -510,14 +515,16 @@ function makeInk() {
 // 📜 Return Scroll: wrong way, lost far off the road or stuck for a few seconds -> lifted out and put back on the road facing forward
 function rescue(r) {
   if (r.rescue > 0) return;
-  r.rescue = 1.4; r.rescueAt = (r.idx - 4 + N) % N; r.drift = 0; r.charge = 0; r.boost = 0; r.spin = 0;
+  r.rescue = 1.4; r.rescueAt = (r.idx - 4 + N) % N; r.rescueAlt = r.onAlt ? Math.max(1, (r.altJ || 0) - 5) : null; r.drift = 0; r.charge = 0; r.boost = 0; r.spin = 0;
   if (r === K) { flash("📜 Return Scroll!", 1200); scrollSound(); }
 }
 function rescueStep(r, dt) {   // true while being rescued (no driving)
   if (!(r.rescue > 0)) return false;
   const before = r.rescue; r.rescue -= dt; r.v = 0;
   if (before > .7 && r.rescue <= .7) {   // halfway: move to the road
-    const [x, y] = at(r.rescueAt, 0); r.x = x; r.y = y; r.a = tangent(r.rescueAt); r.idx = r.rescueAt; r.z = 0; r.vz = 0;
+    if (r.rescueAlt != null) { const [x, y] = altAt(r.rescueAlt, 0); r.x = x; r.y = y; r.a = altTan(r.rescueAlt); r.idx = altIdx(r.rescueAlt); }
+    else { const [x, y] = at(r.rescueAt, 0); r.x = x; r.y = y; r.a = tangent(r.rescueAt); r.idx = r.rescueAt; }
+    r.z = 0; r.vz = 0;
     r.lostT = 0; r.wrong = 0;
   }
   if (r.rescue <= 0) { r.rescue = 0; r.inv = 1; }
@@ -527,7 +534,7 @@ function step(dt) {
   const k = K, inp = input(), racing = state === "race", tt = performance.now() / 1000;
   for (let i = COINFX.length - 1; i >= 0; i--) { const c = COINFX[i]; c.t -= dt; c.vy += 320 * dt; c.x += c.vx * dt; c.y += c.vy * dt; if (c.t <= 0) COINFX.splice(i, 1); }
   if (rescueStep(k, dt)) { if (racing) { k.t += dt * 1000; worldStep(dt, tt); } return; }
-  const near = nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6; k.onAlt = near.alt;
+  const near = nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6; k.onAlt = near.alt; k.altJ = near.j;
   if (racing) {
     const lost = near.d > near.half + 150 || (k.v < 25 && !inp.brake && k.spin <= 0 && k.stall <= 0 && k.squash <= 0);
     k.lostT = lost ? (k.lostT || 0) + dt : Math.max(0, (k.lostT || 0) - dt);
@@ -717,7 +724,6 @@ function render() {
   if (!kartDrawn) drawKart(k);
   // ⚡ Thunder: a white flash and lightning bolts
   if (thunderFx > 0) {
-    thunderFx -= 1 / 60;
     ctx.fillStyle = `rgba(255,255,240,${Math.max(0, thunderFx) * 1.6})`; ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = "rgba(200,170,255,.95)"; ctx.lineWidth = 2.5;
     for (let b = 0; b < 3; b++) { let x = W * (.2 + .3 * b) + (Math.random() - .5) * 30, y = 0; ctx.beginPath(); ctx.moveTo(x, y);
@@ -737,7 +743,7 @@ function render() {
   // minimap
   if (mini) {
     ctx.imageSmoothingEnabled = true;
-    const mx = W - 54, my = Math.round(H * .3), s = 50 / 128;
+    const side = TOUCH && !upright(), mx = side ? 4 : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
     ctx.globalAlpha = .85; ctx.drawImage(mini, mx, my, 50, 50); ctx.globalAlpha = 1;
     for (const sh of SHOTS) { ctx.fillStyle = sh.tgt === k ? "#ff2a2a" : "#ffe08a"; ctx.beginPath(); ctx.arc(mx + sh.x * 128 / WORLD * s, my + sh.y * 128 / WORLD * s, 2, 0, 7); ctx.fill(); }
     for (const r of RIV) { ctx.fillStyle = r.color; ctx.fillRect(mx + r.x * 128 / WORLD * s - 1.5, my + r.y * 128 / WORLD * s - 1.5, 3, 3); }
@@ -883,14 +889,16 @@ function leaveLandscape() {
   try { screen.orientation.unlock(); } catch (e) {}
   try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
 }
-const waitLandscape = () => new Promise(res => { const chk = () => { if (!upright()) { removeEventListener("resize", chk); res(); } }; addEventListener("resize", chk); chk(); });
+const waitLandscape = () => new Promise(res => { const my = raceId, chk = () => { if (!upright() || my !== raceId) { removeEventListener("resize", chk); res(); } }; addEventListener("resize", chk); chk(); });
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
   const rot = upright(); $k("#kRotate").hidden = !rot; $k("#kFull").hidden = !wantFull();
-  if (TEX) { if (!rot) step(dt); render(); hud(); engine(); }
+  if (TEX && K && state !== "loading") { if (!rot) step(dt); render(); hud(); engine(); }
   raf = requestAnimationFrame(loop);
 }
+let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
 async function start() {
+  const my = ++raceId, alive = () => my === raceId && state !== "menu";
   const n = $k("#kName").value.trim().slice(0, 20);
   if (n.length < 2) { $k("#kErr").textContent = "Type your character name first."; return; }
   $k("#kErr").textContent = "";
@@ -899,15 +907,16 @@ async function start() {
   $k("#kMenu").hidden = true; $k("#kResult").hidden = true; $k("#kGame").hidden = false;
   $k("#kart").classList.add("racing"); document.body.classList.add("bd-playing");
   window.getAC && window.getAC(); fullTries = 0; goLandscape();
+  state = "loading";
   if (!TEX) { $k("#kLoad").hidden = false; await prepare(); $k("#kLoad").hidden = true; }
-  IMG.me = await loadImg(spriteOf(me)); fit();
+  IMG.me = await loadImg(spriteOf(me)); if (!alive()) return; fit();
   K = freshKart(); finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; makeRivals(); state = "wait"; B.music("henesys"); syncMusicBtn();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
-  await waitLandscape(); fit(); if (state !== "wait") return; state = "count";
+  await waitLandscape(); if (!alive() || state !== "wait") return; fit(); state = "count";
   countAt = performance.now(); COINS.forEach(c => c.got = false);
-  for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) setTimeout(() => { if (state === "count") { flash(t, 900); beep(440); } }, d);
+  for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) setTimeout(() => { if (alive() && state === "count") { flash(t, 900); beep(440); } }, d);
   setTimeout(() => {
-    if (state !== "count") return; state = "race"; beep(880);
+    if (!alive() || state !== "count") return; state = "race"; beep(880);
     const h = K.held;
     if (h != null && h >= 950) { K.boost = 1.2; K.v = 160; flash("🚀 ROCKET START!", 1000); boostSound(); }
     else if (h != null) { K.stall = .9; flash("💨 Too early!", 1000); bumpSound(); }
@@ -929,8 +938,9 @@ function finish() {
   const newRace = !best || !best.race || total < best.race, newLap = !best || !best.lap || bl < best.lap;
   best = { race: newRace ? total : best.race, lap: newLap ? bl : best.lap }; store.set(bestKey(), JSON.stringify(best));
   B.sound(k.place <= 3 ? "win" : "lose"); flash(k.place === 1 ? "🏆 1st PLACE!" : "🏁 FINISH!", 1600);
-  const sent = guildOf(me) ? submit(k.laps) : Promise.resolve(null);
+  const sent = guildOf(me) ? submit(k.laps) : Promise.resolve(null), my = raceId;
   setTimeout(() => {
+    if (my !== raceId || state !== "done") return;
     const medal = ["", "🥇", "🥈", "🥉"][k.place] || "🏁", suffix = ["", "st", "nd", "rd"][k.place] || "th";
     $k("#kResult").innerHTML = `<h3>${medal} ${k.place}${suffix} place · ${fmt(total)}</h3><p class="k-diff">${DIFF().label}</p>
       <div class="k-laps">${k.laps.map((l, i) => `<span class="${l === bl ? "b" : ""}">Lap ${i + 1}: ${fmt(l)}</span>`).join("")}</div>
@@ -943,7 +953,7 @@ function finish() {
   }, 1400);
 }
 function quit() {
-  state = "menu"; leaveLandscape(); $k("#kRotate").hidden = true; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
+  raceId++; state = "menu"; leaveLandscape(); $k("#kRotate").hidden = true; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
   $k("#kGame").hidden = true; $k("#kMenu").hidden = false; $k("#kResult").hidden = true;
   $k("#kart").classList.remove("racing"); document.body.classList.remove("bd-playing"); showBest();
 }
@@ -983,7 +993,7 @@ addEventListener("hashchange", () => { if (location.hash !== "#kart" && state !=
 
 // keyboard + touch buttons
 const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Shift", "a", "d", "s", "w", "e"];
-addEventListener("keydown", e => { if (state === "menu" || !GAME_KEYS.includes(e.key)) return; keys[e.key] = true; e.preventDefault(); });
+addEventListener("keydown", e => { if (state === "menu" || $k("#kGame").hidden || !GAME_KEYS.includes(e.key)) return; keys[e.key] = true; e.preventDefault(); });
 addEventListener("keyup", e => { keys[e.key] = false; });
 addEventListener("blur", () => { keys = {}; touch = { x: 0, d: 0, b: 0, i: 0 }; stickSet(0); });
 document.querySelectorAll("#kPad [data-k]").forEach(b => {
@@ -1027,6 +1037,7 @@ function engine() {
   eng.o.frequency.setTargetAtTime(base, ac.currentTime, .05); eng.o2.frequency.setTargetAtTime(base * .5, ac.currentTime, .05);
   eng.g.gain.setTargetAtTime(state === "done" ? 0 : .025 + Math.min(.03, v / 8000), ac.currentTime, .1);
 }
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopEngine(); });
 function stopEngine() { if (eng) { try { eng.o.stop(); eng.o2.stop(); } catch (e) {} eng = null; } }
 function tone(f, dur, type = "square", vol = .08, f2) {
   const ac = window.getAC && window.getAC(); if (!ac) return;

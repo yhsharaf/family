@@ -16,7 +16,7 @@
 .kt-screen { position: relative; border-radius: 14px; overflow: hidden; border: 3px solid #3b2f22; background: #8fd0ff; aspect-ratio: 5 / 3; }
 #kCanvas, #kFx { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
 .kt-speed { position: absolute; left: 8px; bottom: 6px; font: 900 16px Ubuntu, sans-serif; color: #fff; text-shadow: 0 2px 0 #000, 0 0 4px #000; }
-.k-flash { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font: 900 54px Ubuntu, sans-serif; color: #ffe066;
+.k-flash { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font: 900 54px Ubuntu, sans-serif; color: #ffe066;
   -webkit-text-stroke: 3px #3b2f22; text-shadow: 0 5px 0 #3b2f22; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .2s; pointer-events: none; }
 .k-flash.on { opacity: 1; transform: scale(1); }
 .kt-wrong { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 14%; background: #d65c54; color: #fff; font-weight: 900; font-size: 18px;
@@ -52,7 +52,7 @@
   .kt.racing .kt-screen { position: absolute; inset: 0; width: auto; margin: 0; border: 0; border-radius: 0; aspect-ratio: auto; }
   .kt.racing .kt-speed { left: 50%; transform: translateX(-50%); bottom: 12px; }
 }
-.kt-full { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 16%; z-index: 4; background: rgba(45,40,50,.85); color: #fff; font-weight: 800;
+.kt-full { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 64%; z-index: 4; background: rgba(45,40,50,.85); color: #fff; font-weight: 800;
   padding: 5px 12px; font-size: 14px; border-radius: 12px; pointer-events: none; animation: pop .6s infinite alternate; white-space: nowrap; }
 .kt-full[hidden] { display: none; }
 .kt-bag { font-weight: 800; font-size: 14px; white-space: nowrap; }
@@ -122,5 +122,6 @@
 .k-diff { font-weight: 800; color: var(--muted) !important; margin-top: -2px !important; }
 .kt-warn { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 90%; top: 24%; z-index: 4; text-align: center;
   background: rgba(200,35,44,.9); color: #fff; font: 900 15px Ubuntu, sans-serif; padding: 5px 12px; border-radius: 10px; border: 2px solid #ffd75e; animation: pop .35s infinite alternate; pointer-events: none; }
+.kt-warn { top: 22%; }
 .kt-warn.arm { font-size: 18px; background: rgba(90,10,20,.92); }
 .kt-warn[hidden] { display: none; }
