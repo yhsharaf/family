@@ -172,10 +172,12 @@ function myName() {
   return n;
 }
 const tokKey = () => "bd_tok:" + (roomFromHash() || "public");
-async function join(name, tok) {
+async function join(name, tok, quiz) {
   if (!(await client())) { $b("#bdErr").textContent = "Online duels need the database connection. Try a practice monster!"; return; }
   room = roomFromHash() || "public";
-  const { data, error } = await sb.rpc("bd_join", { p_room: room, p_name: name || "", p_tok: tok || null, p_class: myClass });
+  const { data, error } = await sb.rpc("bd_join", { p_room: room, p_name: name || "", p_tok: tok || null, p_class: myClass,
+    p_quiz: quiz ? quiz.id : null, p_ans: quiz ? quiz.ans : null });
+  if (data && data.r === "quiz") return "quiz";
   if (error || !data) { $b("#bdErr").textContent = /slow down/.test(error && error.message) ? "Too many tries, wait a minute 🙂" : "Couldn't connect, try again."; return; }
   if (data.r === "running" && data.game) { if (name) watch(data.game); return data.r; }
   const why = { name: "Type a name first.", taken: "That name is already waiting for a duel. Pick another name!",
@@ -185,11 +187,43 @@ async function join(name, tok) {
   sess = { game: data.game, token: data.token, name: data.name }; store.set(tokKey(), JSON.stringify(sess));
   enter(); return "ok";
 }
+// Professor CrtlAltDel's quick sum before a new duel (a tiny anti-bot check; the database makes and checks the question)
+const profSprite = () => spriteOf("CrtlAltDel");
+function askProf(wrong) {
+  return new Promise(async resolve => {
+    if (!(await client())) return resolve(null);
+    const { data, error } = await sb.rpc("bd_quiz_new");
+    if (error || !data) { $b("#bdErr").textContent = /slow down/.test(error && error.message) ? "Too many tries, wait a minute 🙂" : "Couldn't connect, try again."; return resolve(null); }
+    let box = $b("#bdQuiz");
+    if (!box) { box = document.createElement("div"); box.id = "bdQuiz"; box.className = "bd-quiz"; document.body.appendChild(box); }
+    box.innerHTML = `<div class="bd-quiz-card ${wrong ? "shake" : ""}">
+        <div class="bd-quiz-prof"><img src="${profSprite()}" alt=""><div class="bd-quiz-say">${wrong ? "Hmm, not quite! Try this one:" : "Before you duel, a quick one!"}
+          <b>${data.a} + ${data.b} = ?</b></div></div>
+        <div class="bd-quiz-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" data-qn="${n}">${n}</button>`).join("")}</div>
+        <button type="button" class="sk-small bd-quiz-x">Cancel</button></div>`;
+    box.hidden = false;
+    box.onclick = e => {
+      e.stopPropagation();
+      const k = e.target.closest("[data-qn]");
+      if (k) { box.hidden = true; sound("blip"); resolve({ id: data.id, ans: +k.dataset.qn }); }
+      else if (e.target.closest(".bd-quiz-x")) { box.hidden = true; resolve(null); }
+    };
+  });
+}
+async function joinWithQuiz(n) {   // ask, then join; a wrong answer gets a new question
+  let wrong = false;
+  for (let tries = 0; tries < 5; tries++) {
+    const q = await askProf(wrong); if (!q) return;
+    const r = await join(n, null, q);
+    if (r !== "quiz") return r;
+    wrong = true;
+  }
+}
 $b("#bdFind").onclick = async () => {
   const n = myName(); if (!n) return;
   let saved = null; try { saved = JSON.parse(store.get(tokKey())); } catch (e) {}
-  if (saved && saved.name === n && (await join(n, saved.token)) === "ok") return;
-  await join(n, null);
+  if (saved && saved.name === n && (await join(n, saved.token)) === "ok") return;   // back to your running duel: no question
+  await joinWithQuiz(n);
 };
 async function tryResume() {  // came back after a refresh / closed tab: rejoin silently with the saved token
   if (sess || bot) return;
@@ -421,7 +455,7 @@ $b("#bdResult").addEventListener("click", async e => {
   if (b.dataset.a === "again") {
     if (bot) { const k = bot.kind, n = st.p1; startBot(k, n); return; }
     const n = sess && sess.name; store.del(tokKey()); exit();
-    if (n) await join(n, null);
+    if (n) await joinWithQuiz(n);
   }
 });
 

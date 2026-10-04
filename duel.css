@@ -243,3 +243,20 @@
 }
 
 .bd-music { padding: 6px 9px; font-size: 16px; }
+
+/* Professor CrtlAltDel's quick sum */
+.bd-quiz { position: fixed; inset: 0; z-index: 9000; background: rgba(30, 20, 10, .55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.bd-quiz[hidden] { display: none; }
+.bd-quiz-card { background: var(--card); border: 3px solid #3b2f22; border-radius: 16px; padding: 16px; width: min(360px, 100%); box-shadow: 6px 9px 0 rgba(0,0,0,.25);
+  display: flex; flex-direction: column; gap: 12px; animation: pop .25s; font-family: Ubuntu, system-ui, sans-serif; }
+.bd-quiz-card.shake { animation: bdshake .4s; }
+@keyframes bdshake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.bd-quiz-prof { display: flex; align-items: flex-end; gap: 10px; }
+.bd-quiz-prof img { height: 86px; image-rendering: pixelated; }
+.bd-quiz-say { flex: 1; background: #fff; border: 1px solid #555; border-radius: 10px; padding: 8px 10px; font-weight: 700; font-size: 14px; position: relative; }
+.bd-quiz-say b { display: block; font-size: 30px; color: #c0612b; margin-top: 4px; }
+.bd-quiz-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bd-quiz-keys button { font: 800 26px Ubuntu, sans-serif; padding: 12px 0; border-radius: 12px; border: 2px solid var(--edge); background: #fff; color: var(--ink);
+  cursor: pointer; touch-action: manipulation; box-shadow: 2px 3px 0 rgba(60,45,30,.18); }
+.bd-quiz-keys button:active { transform: translateY(2px); background: #fff3d6; }
+.bd-quiz-x { align-self: center; }
