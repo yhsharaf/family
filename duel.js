@@ -38,7 +38,7 @@ const MAPS = {
   // plat: the platform picture (w×h), the row its walkable top is at, and how much of the arena width it spans
   henesys: { name: "Henesys",       rule: "Normal rules",      plat: { w: 900, h: 482, top: 140, frac: .86 } },
   elnath:  { name: "El Nath",       rule: "Dodge is free",     plat: { w: 900, h: 541, top: 2, frac: .7 } },
-  zakum:   { name: "Zakum's Altar", rule: "Every 3rd turn Zakum's arm slams a player for 4: Shield, Dodge or Teleport!", plat: { w: 850, h: 400, top: 8, frac: .8 } },
+  zakum:   { name: "Zakum's Altar", rule: "Every 3rd turn Zakum's arm slams a player for 4: Shield, Dodge or Teleport!", plat: { w: 850, h: 400, top: 8, frac: 1.06 } },
   ludi:    { name: "Ludibrium",     rule: "The clock strikes every 4th turn: MP refills",    plat: { w: 900, h: 388, top: 0, frac: .74 } },
   sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 20–40 for both, nobody can see it", plat: { w: 900, h: 400, top: 6, frac: .78 } },
 };
