@@ -121,7 +121,7 @@ const HAZE = [214, 236, 255];
 let sky = null;
 
 // ------------------------------------------------------------------ the race
-let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { l: 0, r: 0, d: 0, b: 0 };
+let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0 };
 let K = null, best = null;
 function freshKart() {
   const i = (N - 10) % N, a = tangent(i);
@@ -132,8 +132,8 @@ const fmt = ms => ms == null ? "--" : `${Math.floor(ms / 60000)}:${String(Math.f
 const bestKey = () => "kart_best:henesys:" + me;
 
 function input() {
-  const l = keys.ArrowLeft || keys.a || touch.l, r = keys.ArrowRight || keys.d || touch.r;
-  return { steer: (r ? 1 : 0) - (l ? 1 : 0), drift: !!(keys[" "] || keys.Shift || touch.d), brake: !!(keys.ArrowDown || keys.s || touch.b) };
+  const l = keys.ArrowLeft || keys.a, r = keys.ArrowRight || keys.d;
+  return { steer: (r ? 1 : 0) - (l ? 1 : 0) || touch.x, drift: !!(keys[" "] || keys.Shift || touch.d), brake: !!(keys.ArrowDown || keys.s || touch.b) };
 }
 function step(dt) {
   const k = K, inp = input(), racing = state === "race";
@@ -146,7 +146,7 @@ function step(dt) {
   else k.v += (k.v < top ? (k.v < 120 ? 210 : 120) : -260) * dt;
   if (k.boost > 0) k.boost -= dt;
   // drifting: hold drift while turning, the longer you hold the bigger the boost when you let go
-  if (racing && inp.drift && !k.drift && Math.abs(inp.steer) > 0 && k.v > 140) { k.drift = Math.sign(inp.steer); k.charge = 0; k.hop = .18; hopSound(); }
+  if (racing && inp.drift && !k.drift && Math.abs(inp.steer) > .25 && k.v > 140) { k.drift = Math.sign(inp.steer); k.charge = 0; k.hop = .18; hopSound(); }
   if (k.drift && (!inp.drift || k.v < 90)) {
     if (k.charge > 1.6) { k.boost = 1.1; boostSound(); } else if (k.charge > .75) { k.boost = .6; boostSound(); }
     k.drift = 0; k.charge = 0;
@@ -299,7 +299,7 @@ function leaveLandscape() {
 const waitLandscape = () => new Promise(res => { const chk = () => { if (!upright()) { removeEventListener("resize", chk); res(); } }; addEventListener("resize", chk); chk(); });
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
-  const rot = upright(); $k("#kRotate").hidden = !rot;
+  const rot = upright(); $k("#kRotate").hidden = !rot; $k("#kFull").hidden = !wantFull();
   if (TEX) { if (!rot) step(dt); render(); hud(); engine(); }
   raf = requestAnimationFrame(loop);
 }
@@ -311,7 +311,7 @@ async function start() {
   try { best = JSON.parse(store.get(bestKey())) || null; } catch (e) { best = null; }
   $k("#kMenu").hidden = true; $k("#kResult").hidden = true; $k("#kGame").hidden = false;
   $k("#kart").classList.add("racing"); document.body.classList.add("bd-playing");
-  window.getAC && window.getAC(); goLandscape();
+  window.getAC && window.getAC(); fullTries = 0; goLandscape();
   if (!TEX) { $k("#kLoad").hidden = false; await prepare(); $k("#kLoad").hidden = true; }
   IMG.me = await loadImg(spriteOf(me)); fit();
   K = freshKart(); state = "wait"; B.music("henesys"); syncMusicBtn();
@@ -381,13 +381,34 @@ addEventListener("hashchange", () => { if (location.hash !== "#kart" && state !=
 const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Shift", "a", "d", "s"];
 addEventListener("keydown", e => { if (state === "menu" || !GAME_KEYS.includes(e.key)) return; keys[e.key] = true; e.preventDefault(); });
 addEventListener("keyup", e => { keys[e.key] = false; });
-addEventListener("blur", () => { keys = {}; touch = { l: 0, r: 0, d: 0, b: 0 }; });
+addEventListener("blur", () => { keys = {}; touch = { x: 0, d: 0, b: 0 }; stickSet(0); });
 document.querySelectorAll("#kPad [data-k]").forEach(b => {
   const on = v => e => { e.preventDefault(); touch[b.dataset.k] = v; b.classList.toggle("on", !!v); };
   b.addEventListener("pointerdown", e => { try { b.setPointerCapture(e.pointerId); } catch (er) {} on(1)(e); });
   ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, on(0)));
   b.addEventListener("contextmenu", e => e.preventDefault());
 });
+// steering joystick: slide your thumb left or right; the further you slide, the harder you turn
+const stick = $k("#kStick"), knob = stick.querySelector("i");
+let stickId = null, stickX0 = 0;
+function stickSet(v) { touch.x = Math.abs(v) < .12 ? 0 : v; knob.style.transform = `translateX(${v * stick.clientWidth * .32}px)`; }
+stick.addEventListener("pointerdown", e => {
+  e.preventDefault(); stickId = e.pointerId; try { stick.setPointerCapture(e.pointerId); } catch (er) {}
+  const r = stick.getBoundingClientRect(); stickX0 = r.left + r.width / 2; stick.classList.add("on"); stickMove(e);
+});
+function stickMove(e) {
+  if (e.pointerId !== stickId) return;
+  const v = (e.clientX - stickX0) / (stick.clientWidth * .32);
+  stickSet(Math.max(-1, Math.min(1, v)));
+}
+stick.addEventListener("pointermove", stickMove);
+const stickEnd = e => { if (e.pointerId !== stickId) return; stickId = null; stick.classList.remove("on"); stickSet(0); };
+["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => stick.addEventListener(ev, stickEnd));
+stick.addEventListener("contextmenu", e => e.preventDefault());
+// after turning the phone sideways, the first touch goes fullscreen (browsers only allow it right after a tap)
+let fullTries = 0;
+const wantFull = () => TOUCH && state !== "menu" && !upright() && !document.fullscreenElement && !!document.documentElement.requestFullscreen && fullTries < 3;
+["pointerup", "touchend"].forEach(ev => $k("#kGame").addEventListener(ev, () => { if (wantFull()) { fullTries++; goLandscape(); } }, true));
 
 // ------------------------------------------------------------------ sounds (made in the browser)
 let eng = null;

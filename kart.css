@@ -19,7 +19,7 @@
 .k-flash { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font: 900 54px Ubuntu, sans-serif; color: #ffe066;
   -webkit-text-stroke: 3px #3b2f22; text-shadow: 0 5px 0 #3b2f22; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .2s; pointer-events: none; }
 .k-flash.on { opacity: 1; transform: scale(1); }
-.kt-wrong { position: absolute; left: 50%; top: 14%; transform: translateX(-50%); background: #d65c54; color: #fff; font-weight: 900; font-size: 18px;
+.kt-wrong { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 14%; background: #d65c54; color: #fff; font-weight: 900; font-size: 18px;
   padding: 4px 12px; border-radius: 10px; border: 2px solid #fff; animation: pop .5s infinite alternate; }
 .kt-wrong[hidden] { display: none; }
 .kt-load { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; background: rgba(0,0,0,.4); }
@@ -27,7 +27,7 @@
 .kt-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 360px); }
 .k-laps { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 8px; font: 700 14px ui-monospace, Menlo, Consolas, monospace; }
 .k-laps .b { color: #2e7d32; } .k-laps .b::after { content: " ⚡"; }
-.kt-pad { display: grid; grid-template-columns: 1fr 1fr .3fr 1fr 1.3fr; gap: 8px; }
+.kt-pad { display: grid; grid-template-columns: 2fr .3fr 1fr 1.3fr; gap: 8px; }
 .kt-pad button { height: 72px; border-radius: 16px; border: 3px solid #3b2f22; background: var(--card); font: 900 26px Ubuntu, sans-serif; color: var(--ink);
   box-shadow: 0 5px 0 #3b2f22; touch-action: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .kt-pad button.on { transform: translateY(4px); box-shadow: 0 1px 0 #3b2f22; background: #ffe8a3; }
@@ -59,7 +59,17 @@
   .kt.racing .bd-top { position: absolute; top: 4px; left: 6px; right: 6px; z-index: 3; padding: 2px 8px; background: rgba(252,250,244,.82); }
   .kt.racing .kt-screen { position: absolute; inset: 0; width: auto; margin: 0; border: 0; border-radius: 0; aspect-ratio: auto; }
   .kt.racing .kt-pad { position: absolute; left: 0; right: 0; bottom: 10px; z-index: 3; padding: 0 14px; margin: 0;
-    grid-template-columns: 78px 78px 1fr 78px 100px; pointer-events: none; }
-  .kt.racing .kt-pad button { pointer-events: auto; height: 66px; opacity: .88; }
+    grid-template-columns: 170px 1fr 78px 100px; pointer-events: none; }
+  .kt.racing .kt-pad button, .kt.racing .kt-stick { pointer-events: auto; height: 66px; opacity: .88; }
   .kt.racing .kt-speed { left: 50%; transform: translateX(-50%); bottom: 12px; }
 }
+.kt-stick { position: relative; height: 72px; border-radius: 36px; border: 3px solid #3b2f22; background: var(--card); box-shadow: 0 5px 0 #3b2f22;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 14px; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.kt-stick b { font-size: 18px; color: #b3a892; pointer-events: none; }
+.kt-stick i { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 35% 30%, #7fd18c, #46a05a 60%, #2d6e3c); border: 3px solid #2d2832; box-shadow: 0 3px 0 rgba(0,0,0,.3); }
+.kt-stick.on { background: #fff5d8; }
+.kt-full { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 16%; z-index: 4; background: rgba(45,40,50,.85); color: #fff; font-weight: 800;
+  padding: 5px 12px; font-size: 14px; border-radius: 12px; pointer-events: none; animation: pop .6s infinite alternate; white-space: nowrap; }
+.kt-full[hidden] { display: none; }
+@media (max-width: 560px) { .kt-stick { height: 64px; } }

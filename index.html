@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=2">
+<link rel="stylesheet" href="kart.css?v=3">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -519,12 +519,12 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="k-flash" id="kFlash"></div>
       <div class="kt-wrong" id="kWrong" hidden>↩️ WRONG WAY!</div>
       <div class="kt-load" id="kLoad" hidden>Building the track…</div>
+      <div class="kt-full" id="kFull" hidden>👆 Tap the screen for fullscreen</div>
       <div class="kt-rotate" id="kRotate" hidden><span>📱↪️</span>Turn your phone sideways to race</div>
       <div class="bd-result kt-result" id="kResult" hidden></div>
     </div>
     <div class="kt-pad" id="kPad">
-      <button type="button" data-k="l" aria-label="Steer left">◀</button>
-      <button type="button" data-k="r" aria-label="Steer right">▶</button>
+      <div class="kt-stick" id="kStick" aria-label="Steering: slide left or right"><b>◀</b><i></i><b>▶</b></div>
       <span></span>
       <button type="button" data-k="b" class="brk" aria-label="Brake">Brake</button>
       <button type="button" data-k="d" class="drf" aria-label="Drift">💨 Drift</button>
@@ -851,7 +851,7 @@ show();
 <script src="duel-songs.js?v=1"></script>
 <script src="duel.js?v=30"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=2"></script>
+<script src="kart.js?v=3"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>
