@@ -38,7 +38,7 @@ const MAPS = {
   // plat: the platform picture (w×h), the row its walkable top is at, and how much of the arena width it spans
   henesys: { name: "Henesys",       rule: "Normal rules",      plat: { w: 900, h: 482, top: 140, frac: .86 } },
   elnath:  { name: "El Nath",       rule: "Dodge is free",     plat: { w: 900, h: 541, top: 2, frac: .7 } },
-  zakum:   { name: "Zakum's Altar", rule: "Every hit does +1", plat: { w: 850, h: 400, top: 8, frac: .8 } },
+  zakum:   { name: "Zakum's Altar", rule: "Every 3rd turn Zakum's arm slams a player for 4: Shield, Dodge or Teleport!", plat: { w: 850, h: 400, top: 8, frac: .8 } },
   ludi:    { name: "Ludibrium",     rule: "The clock strikes every 4th turn: MP refills",    plat: { w: 900, h: 388, top: 0, frac: .74 } },
   sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 20–40 for both, nobody can see it", plat: { w: 900, h: 400, top: 6, frac: .78 } },
 };
@@ -268,6 +268,7 @@ function onState(data) {
     else { shownTurn = st.last.turn; reveal(st.last, prev); }
   } else if (st.last == null) shownTurn = 0;
   if ((prev && prev.status === "wait" && st.status === "pick") || (!prev && st.status === "pick" && st.turn === 1 && st.reveal > 2)) { sound("start"); introBanner(); }
+  if (st.map === "zakum" && st.arm && st.status === "pick" && (!prev || prev.turn !== st.turn)) armWarning();
   // the other player's critical tap shows up a moment later
   if (st.last && prev && prev.last && prev.last.turn === st.last.turn) [1, 2].forEach(s => {
     if (st.last["c" + s] && !prev.last["c" + s] && s !== st.me) critShow(3 - s);
@@ -298,7 +299,9 @@ function clash(s, m1, m2, h1, h2) {
   if (x1 > 0 && r2) { x1 += 2; r2 = false; }
   if (m1 === "rage") r1 = true; if (m2 === "rage") r2 = true;
   if (sd && x1 > 0) x1++; if (sd && x2 > 0) x2++;
-  if (s.map === "zakum" && x1 > 0) x1++; if (s.map === "zakum" && x2 > 0) x2++;
+  // Zakum's Arm Slam: the aimed-at player takes 4 unless they Shield, Dodge or Teleport (same as bd_resolve)
+  const safe = m => m === "shield" || m === "dodge" || m === "teleport";
+  if (s.arm === 1 && !safe(m1)) x1 += 4; if (s.arm === 2 && !safe(m2)) x2 += 4;
   const regen = sd ? 2 : 1;
   const e1 = s.en1 - cost(m1, s.class1, s.map) + regen + (m1 === "charge" && m2 !== "steal" ? 2 : 0) + (m2 === "charge" && m1 === "steal" ? 2 : 0)
     + (m1 === "shield" && (m2 === "bonk" || m2 === "steal") ? 1 : 0);
@@ -310,12 +313,14 @@ function resolveTurn(s) {
   const m1 = realMove(s.pick1 || "zzz", s.class1), m2 = realMove(s.pick2 || "zzz", s.class2);
   const h1 = m1 === "coin" && Math.random() < .5, h2 = m2 === "coin" && Math.random() < .5;
   const r = clash(s, m1, m2, h1, h2);
-  s.last = { turn: s.turn, m1, m2, d1: r.x1, d2: r.x2, sd: r.sd, h1, h2, l1: r.l1, l2: r.l2 };
+  s.last = { turn: s.turn, m1, m2, d1: r.x1, d2: r.x2, sd: r.sd, h1, h2, l1: r.l1, l2: r.l2, arm: s.arm || 0 };
   s.hp1 = Math.max(0, s.hp1 - r.x1); s.hp2 = Math.max(0, s.hp2 - r.x2); s.en1 = r.e1; s.en2 = r.e2;
   s.rage1 = r.r1; s.rage2 = r.r2; s.lucky1 = s.lucky1 || r.l1; s.lucky2 = s.lucky2 || r.l2;
   s.afk1 = m1 === "zzz" ? s.afk1 + 1 : 0; s.afk2 = m2 === "zzz" ? s.afk2 + 1 : 0;
   s.pick1 = s.pick2 = null; s.picked1 = s.picked2 = false; s.mine = null; s.turn++;
   if (s.map === "ludi" && s.turn % 4 === 0) { s.en1 = s.enmax1; s.en2 = s.enmax2; }   // the clock strikes (same as bd_resolve)
+  s.arm = 0;
+  if (s.map === "zakum" && s.turn % 3 === 0) { s.arm = s.armnext; s.armnext = 3 - s.armnext; }   // the arm takes turns: A B A B or B A B A
   checkEnd(s);
 }
 function checkEnd(s) {
@@ -332,7 +337,7 @@ function startBot(kind, name) {
   const hp = c => map === "sleepy" ? secret : c === "warrior" ? 22 : c === "pirate" ? 21 : 20, en = c => c === "magician" ? 4 : 3, enmax = c => c === "magician" ? 6 : 5;
   st = { r: "ok", me: 1, status: "pick", turn: 1, p1: name, p2: BOTS[kind].name, class1: c1, class2: c2, map, secs,
          hp1: hp(c1), hp2: hp(c2), hpmax1: hp(c1), hpmax2: hp(c2), en1: en(c1), en2: en(c2), enmax1: enmax(c1), enmax2: enmax(c2),
-         rage1: false, rage2: false, lucky1: false, lucky2: false, afk1: 0, afk2: 0,
+         rage1: false, rage2: false, lucky1: false, lucky2: false, afk1: 0, afk2: 0, arm: 0, armnext: 1 + Math.floor(Math.random() * 2),
          picked1: false, picked2: false, mine: null, pick1: null, pick2: null, stake: 1, dbl1: true, dbl2: true, last: null,
          left: 5 + secs, reveal: 5, on1: true, on2: true, practice: true };
   leftAt = Date.now(); disp = { hp1: st.hp1, hp2: st.hp2, en1: st.en1, en2: st.en2 }; shownTurn = 0;
@@ -375,6 +380,7 @@ function botResolve() {
   resolveTurn(st);
   st.left = 4 + st.secs; st.reveal = 4; leftAt = Date.now();
   shownTurn = st.last.turn; reveal(st.last, before);
+  if (st.status === "pick" && st.arm) armWarning();
   if (st.status === "pick") { botThink(); if (Math.random() < .3) setTimeout(() => bot && bubble(2, BOTS[bot.kind].say[Math.floor(Math.random() * 4)]), 2600); }
   render();
 }
@@ -436,6 +442,10 @@ function fighter(el, s) {
   el.querySelector(".bd-hp b").textContent = hidden ? "HP ???" : `HP ${hp}/${hpmax}`;
   el.querySelector(".bd-mp").innerHTML = Array.from({ length: enmax }, (_, i) => `<i class="${i < en ? "on" : ""}"></i>`).join("") + `<b>MP ${en}</b>`;
   el.querySelector(".bd-buffs").textContent = st["rage" + s] ? "🔥 Rage" : "";
+  let arm = el.querySelector(".bd-arm");
+  const aimed = st.map === "zakum" && st.arm === s && st.status === "pick";
+  if (aimed && !arm) { arm = document.createElement("img"); arm.className = "bd-arm"; arm.src = M + "zarm_stand.gif"; arm.alt = ""; el.prepend(arm); }
+  if (!aimed && arm && !arm.classList.contains("slam")) arm.remove();
   const think = el.querySelector(".bd-think");
   const picking = st.status === "pick" && !inReveal();
   const ready = st["picked" + s] || (st.me === s && st.mine);
@@ -453,7 +463,8 @@ function render() {
   placePlat();
   $b("#bdPhase").innerHTML = s === "wait" ? (room === "public" ? "🔍 Looking for an opponent…" : "⏳ Waiting for your friend…")
     : s === "over" ? "🏁 Duel over" : `Turn ${Math.min(st.turn, 20)}/20 · <span class="bd-map" title="${esc((MAPS[st.map] || MAPS.henesys).rule)}">${esc((MAPS[st.map] || MAPS.henesys).name)}</span>${
-      st.map === "ludi" ? (st.turn % 4 === 0 ? " · <b class='clk'>⏰ MP FULL!</b>" : ` · ⏰ in ${4 - st.turn % 4}`) : ""}${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
+      st.map === "ludi" ? (st.turn % 4 === 0 ? " · <b class='clk'>⏰ MP FULL!</b>" : ` · ⏰ in ${4 - st.turn % 4}`)
+      : st.map === "zakum" ? (st.arm ? " · <b class='sdt'>🖐️ ARM!</b>" : ` · 🖐️ in ${3 - st.turn % 3}`) : ""}${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
   $b("#bdStake").innerHTML = s === "wait" ? "" : st.practice ? "🎯 Practice" : `${st.stake > 1 ? "🔥" : "🏆"} ${st.stake} pt${st.stake > 1 ? "s" : ""}`;
   // moves
   const myEn = me ? st["en" + me] : 0, canPick = me && s === "pick" && !inReveal();
@@ -578,6 +589,12 @@ function reveal(l, prev) {
     render();
     critRing(l, F);
   }, 1150);
+  if (l.arm) {   // the arm slams down on its target
+    const tgt = F[l.arm], arm = tgt.querySelector(".bd-arm");
+    if (arm) { arm.classList.add("slam"); setTimeout(() => arm.remove(), 1500); }
+    const safe = ["shield", "dodge", "teleport"].includes(m[l.arm]);
+    setTimeout(() => { sound(safe ? "clang" : "heavy"); bubble(l.arm, safe ? "Phew! Missed me 😅" : "OUCH! 🖐️💥"); }, 1250);
+  }
   $b("#bdSay").innerHTML = "<span></span>";
   setTimeout(() => { $b("#bdSay").innerHTML = `<span>${story(l, names)}</span>`; }, 1150);
   setTimeout(() => { animUntil = 0; if (st.status === "over" && bot && st.winner === 1) { const img = F[2].querySelector(".bd-sp"); img.src = `${M + bot.kind}_die1.gif`; }
@@ -628,6 +645,8 @@ function story(l, N) {
   const pair = (a, b) => m1 === a && m2 === b ? [1, 2] : m1 === b && m2 === a ? [2, 1] : null;
   const n = s => `<b>${esc(N[s])}</b>`;
   let p;
+  if (l.arm && !["shield", "dodge", "teleport"].includes(l["m" + l.arm])) return `🖐️ Zakum's arm SLAMMED ${n(l.arm)}! (+4) ${l["m" + (3 - l.arm)] === "charge" ? "Their opponent sipped an Elixir and watched 🧪" : ""}`;
+  if (l.arm) return `🖐️ ${n(l.arm)} saw the arm coming and got out of the way!`;
   if ((p = pair("arrow", "teleport") || pair("bonk", "teleport") || pair("heavy", "teleport") || pair("steal", "teleport") || pair("coin", "teleport")))
     return `${n(p[1])} teleported behind ${n(p[0])} ✨ and zapped them!`;
   if (m1 === m2 && m1 === "coin") return `Pirate standoff! 🪙 ${n(1)} ${l.h1 ? "hit" : "missed"}, ${n(2)} ${l.h2 ? "hit" : "missed"}`;
@@ -684,6 +703,10 @@ function bubble(s, text) {
   el.querySelectorAll(".bd-bubble").forEach(x => x.remove());
   const b = document.createElement("div"); b.className = "bd-bubble"; b.textContent = text;
   el.appendChild(b); setTimeout(() => b.remove(), 2600);
+}
+function armWarning() {
+  const who = st.me === st.arm ? "YOU" : esc(st["p" + st.arm]);
+  setTimeout(() => st && st.arm && banner(`🖐️ Zakum's arm is aiming at ${who}!<br><small>Shield, Dodge or Teleport, or take 4 damage</small>`, 2600), (st.reveal || 0) * 1000);
 }
 function introBanner() {
   const mp = MAPS[st.map] || MAPS.henesys, c1 = CLASSES[st.class1], c2 = CLASSES[st.class2];
