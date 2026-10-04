@@ -187,15 +187,152 @@ const OUT = 0xff2e7d32 >>> 0;   // beyond the map edge: dark forest (ABGR)
 const HAZE = [214, 236, 255];
 let sky = null;
 
+// ------------------------------------------------------------------ rivals and items
+// 7 computer racers (real guild members), rows of item boxes, and the MapleStory items: Elixir, 3 Elixirs, Slime drop, Arrow, Zakum's Arm
+const RIVAL_COLORS = ["#d65c54", "#4682be", "#cd961e", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];
+const BOXES = [];
+[[118, [-42, -14, 14, 42]], [425, [-40, -13, 13, 40]], [772, [-42, -14, 14, 42]]].forEach(([i, os]) => os.forEach(o => { const [x, y] = at(i, o); BOXES.push({ x, y, t: 0 }); }));
+const ITEM_ICON = { elixir: "media/duel/elixir.png", triple: "media/duel/elixir.png", slime: "media/mobs/slime.png", arrow: "media/duel/sk_arrowrain.png", arm: "media/duel/zarm_stand.gif" };
+const ITEM_NAME = { elixir: "Elixir", triple: "3 Elixirs", slime: "Slime drop", arrow: "Arrow", arm: "Zakum's Arm" };
+let RIV = [], DROPS = [], SHOTS = [], ARMS = [];
+const progOf = r => (r.done ? 1e6 - r.finish : 0) + r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx);
+const racers = () => [K, ...RIV];
+function rankOf(r) { const p = progOf(r); return 1 + racers().filter(o => o !== r && progOf(o) > p).length; }
+function gridSpot(slot) { const row = Math.floor(slot / 2), col = slot % 2, i = N - 6 - row * 9 - col * 3; return { i, o: col ? 24 : -24 }; }
+function makeRivals() {
+  const pool = [...(typeof D !== "undefined" ? [...D.founders, ...D.members] : [])].map(p => p.name).filter((n, i, a) => n && /^[A-Za-z0-9]{2,13}$/.test(n) && n !== me && a.indexOf(n) === i);
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const names = pool.slice(0, 7); while (names.length < 7) names.push(["Orange Mushroom", "Blue Snail", "Slime", "Pig", "Stump", "Green Mushroom", "Ribbon Pig"][names.length]);
+  const slots = [0, 1, 2, 3, 5, 6, 7];   // you start 5th on the grid
+  RIV = names.map((name, n) => {
+    const g = gridSpot(slots[n]), [x, y] = at(g.i, g.o), img = new Image(); img.src = spriteOf(name);
+    return { name, img, color: RIVAL_COLORS[n], x, y, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0,
+      lane: g.o, laneT: 1 + Math.random() * 2, skill: 228 + n * 3 + Math.random() * 10, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0,
+      item: null, itemN: 0, itemT: 0, lastPad: null, kingWas: 0 };
+  });
+  DROPS = []; SHOTS = []; ARMS = []; BOXES.forEach(b => b.t = 0);
+}
+function rollItem(rank) {
+  const t = rank <= 2 ? [["slime", 5], ["arrow", 3], ["elixir", 2]] : rank <= 5 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1]]
+    : [["triple", 4], ["arrow", 3], ["arm", 2], ["elixir", 2]];
+  let r = Math.random() * t.reduce((a, b) => a + b[1], 0);
+  for (const [k, w] of t) { if ((r -= w) < 0) return k; }
+  return "elixir";
+}
+function hit(r, msg) { if (r === K) spinOut(msg); else if (r.spin <= 0 && r.inv <= 0 && r.z <= 0) { r.spin = .9; r.inv = 1.6; r.boost = 0; } }
+function useItem(r) {
+  const it = r.item; if (!it) return;
+  if (it === "triple") { r.boost = Math.max(r.boost, 1.2); if (--r.itemN <= 0) r.item = null; }
+  else r.item = null;
+  if (it === "elixir") r.boost = Math.max(r.boost, 1.3);
+  if (it === "slime") DROPS.push({ x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5 });
+  if (it === "arrow") {
+    const p = progOf(r), ahead = racers().filter(o => o !== r && progOf(o) > p && progOf(o) - p < N * .5).sort((a, b) => progOf(a) - progOf(b))[0];
+    SHOTS.push({ x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(420, r.v + 220), tgt: ahead || null, by: r, life: 3 });
+  }
+  if (it === "arm") {
+    const leader = racers().filter(o => o !== r && !o.done).sort((a, b) => progOf(b) - progOf(a))[0];
+    if (leader) ARMS.push({ tgt: leader, t: 1.3 });
+  }
+  if (r === K) itemSound();
+}
+// one computer racer: follows the road in its own lane, dodges slime puddles, keeps races close (rubber band), uses items
+function rivalStep(r, dt, tt) {
+  const near = nearest(r.x, r.y, r.idx); r.idx = near.i; const off = near.d > ROAD / 2 + CURB * .6, L = lat(r.x, r.y, r.idx);
+  if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) r.boost = Math.max(r.boost, .8); } }
+  const air = r.z > 0;
+  for (const key of ["spin", "inv", "squash", "boost", "itemT"]) if (r[key] > 0) r[key] -= dt;
+  if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 76; r.laneT = 1.5 + Math.random() * 3; }
+  for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
+  for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
+  r.lane = Math.max(-ROAD / 2 + 14, Math.min(ROAD / 2 - 14, r.lane));
+  const [tx, ty] = at(r.idx + 14, r.lane); let d = Math.atan2(ty - r.y, tx - r.x) - r.a; d = Math.atan2(Math.sin(d), Math.cos(d));
+  const turn = Math.max(-2.6, Math.min(2.6, d * 4)); r.steer += (Math.sign(turn) * Math.min(1, Math.abs(turn) / 2) - r.steer) * Math.min(1, dt * 8);
+  if (r.spin <= 0) r.a += turn * dt * Math.min(1, r.v / 80);
+  const gap = (progOf(K) - progOf(r)) / N;   // + when you're ahead of them
+  const band = 1 + Math.max(-.13, Math.min(.15, gap * .7));
+  const top = r.done ? 140 : (off && !air ? 110 : r.skill * band) + (r.boost > 0 ? 90 : 0);
+  if (r.spin > 0) r.v *= Math.pow(.3, dt); else r.v += (r.v < top ? (r.v < 120 ? 190 : 110) : -220) * dt;
+  r.x += Math.cos(r.a) * r.v * dt; r.y += Math.sin(r.a) * r.v * dt;
+  const pad = air ? null : padAt(r.idx, L);
+  if (pad && pad !== r.lastPad) {
+    if (pad.t === "boost") r.boost = Math.max(r.boost, 1);
+    if (pad.t === "ramp" && r.v > 60) { r.vz = 160 + r.v * .22; r.z = .1; }
+    if (pad.t === "slime") hit(r);
+  }
+  r.lastPad = pad;
+  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && Math.hypot(r.x - q.x, r.y - q.y) < 17) hit(r); }
+  const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0);
+  if (r.kingWas < .55 && kp >= .55 && Math.hypot(r.x - kx, r.y - ky) < 36 && !air) { hit(r); r.squash = 1.1; r.v = 0; }
+  r.kingWas = kp;
+  // items: Elixirs and the Arm right away, a slime when someone is close behind, an arrow when someone is ahead
+  if (r.item && r.itemT <= 0 && r.spin <= 0) {
+    const p = progOf(r), others = racers().filter(o => o !== r);
+    const behind = others.some(o => p - progOf(o) > 0 && p - progOf(o) < 30), ahead = others.some(o => progOf(o) - p > 0 && progOf(o) - p < 120);
+    if (["elixir", "triple", "arm"].includes(r.item) || (r.item === "slime" && (behind || Math.random() < dt * .15)) || (r.item === "arrow" && (ahead || Math.random() < dt * .1))) {
+      useItem(r); r.itemT = .6;
+    }
+  }
+  lapTick(r);
+}
+function lapTick(r) {   // 4 checkpoints in order, then the start line; true when a lap is done
+  const prog = r.idx / N, cp = Math.floor(prog * 4);
+  if (cp === (r.cps + 1) % 4 && r.cps < 3) r.cps = cp;
+  let done = false;
+  if (r.cps === 3 && r.prog > .9 && prog < .1) { r.lap++; r.cps = 0; done = true; if (r !== K && r.lap >= LAPS && !r.done) { r.done = true; r.finish = ++finishers; } }
+  r.prog = prog; return done;
+}
+let finishers = 0;
+// everything that moves besides you: rivals, item boxes, slime drops, arrows, Zakum's arm, karts bumping
+function worldStep(dt, tt) {
+  for (const r of RIV) rivalStep(r, dt, tt);
+  const all = racers();
+  for (const b of BOXES) {
+    if (b.t > 0) { b.t -= dt; continue; }
+    for (const r of all) if (r.z < 22 && Math.hypot(r.x - b.x, r.y - b.y) < 15) {
+      b.t = 2.5;
+      if (r === K) { if (!K.item && K.roll <= 0) { K.roll = 1.1; K.pending = rollItem(rankOf(K)); boxSound(); } }
+      else if (!r.item) { r.item = rollItem(rankOf(r)); r.itemN = r.item === "triple" ? 3 : 0; r.itemT = .8 + Math.random() * 1.5; }
+      break;
+    }
+  }
+  for (let i = DROPS.length - 1; i >= 0; i--) {
+    const d = DROPS[i]; d.t -= dt; if (d.grace > 0) d.grace -= dt;
+    let gone = d.t <= 0;
+    for (const r of all) if (!gone && r.z <= 0 && Math.hypot(r.x - d.x, r.y - d.y) < 15 && !(r === d.by && d.grace > 0)) { hit(r, "🫧 Slimed!"); gone = true; }
+    if (gone) DROPS.splice(i, 1);
+  }
+  for (let i = SHOTS.length - 1; i >= 0; i--) {
+    const sh = SHOTS[i]; sh.life -= dt;
+    if (sh.tgt) { let d = Math.atan2(sh.tgt.y - sh.y, sh.tgt.x - sh.x) - sh.a; d = Math.atan2(Math.sin(d), Math.cos(d)); sh.a += Math.max(-7, Math.min(7, d * 9)) * dt; }
+    sh.x += Math.cos(sh.a) * sh.v * dt; sh.y += Math.sin(sh.a) * sh.v * dt;
+    let gone = sh.life <= 0;
+    for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16) { hit(r, "🏹 Arrowed!"); gone = true; if (r !== K && sh.by === K) flash(`🏹 Got ${r.name}!`, 900); }
+    if (gone) SHOTS.splice(i, 1);
+  }
+  for (let i = ARMS.length - 1; i >= 0; i--) {
+    const a = ARMS[i]; a.t -= dt;
+    if (a.t <= 0) { hit(a.tgt, "🖐️ Zakum's Arm!"); a.tgt.squash = 1; if (a.tgt === K) { K.v = 0; K.shake = .4; } slamSound(0); ARMS.splice(i, 1); }
+  }
+  for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {   // karts bump each other
+    const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+    if (d > 0 && d < 15 && Math.abs(a.z - b.z) < 12) {
+      const push = (15 - d) / 2, nx = dx / d, ny = dy / d; a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push;
+      const fast = a.v > b.v ? a : b; fast.v *= .9;
+      if (a === K || b === K) { K.shake = Math.max(K.shake, .1); if (K.bump <= 0) { bumpSound(); K.bump = .3; } }
+    }
+  }
+}
+
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, PADS, PIGS, KING, at }) : null;
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, PADS, PIGS, KING, at }) : null;
 function freshKart() {
-  const i = (N - 10) % N, a = tangent(i);
-  return { x: PTS[i][0], y: PTS[i][1], a, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
+  const g = gridSpot(4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
+  return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
     t: 0, lapStart: 0, laps: [], wrong: 0, prog: 0, off: false, bump: 0, z: 0, vz: 0, trick: false, flip: 0, spin: 0, inv: 0, squash: 0,
-    shake: 0, stall: 0, mesos: 0, items: 3, held: null, lastPad: null, prevDrift: false, prevItem: false, kingWas: 0 };
+    shake: 0, stall: 0, mesos: 0, held: null, lastPad: null, prevDrift: false, prevItem: false, kingWas: 0 };
 }
 const fmt = ms => ms == null ? "--" : `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(Math.floor(ms % 1000)).padStart(3, "0")}`;
 const bestKey = () => "kart_best:henesys:" + me;
@@ -246,8 +383,9 @@ function step(dt) {
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
   else k.v += (k.v < top ? (k.v < 120 ? 210 : 120) : -260) * dt;
   for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip"]) if (k[key] > 0) k[key] -= dt;
-  // the 3 Elixirs (like the time-trial mushrooms): a burst of speed whenever you want
-  if (racing && inp.item && !k.prevItem && k.items > 0 && k.spin <= 0) { k.items--; k.boost = Math.max(k.boost, 1.3); itemSound(); }
+  // items from the boxes: the slot spins like a slot machine for a second, then it's yours to use
+  if (k.roll > 0) { k.roll -= dt; if (k.roll <= 0) { k.item = k.pending; k.itemN = k.item === "triple" ? 3 : 0; flash(`${ITEM_NAME[k.item]}!`, 700); } }
+  if (racing && inp.item && !k.prevItem && k.item && k.roll <= 0 && k.spin <= 0) useItem(k);
   k.prevItem = inp.item;
   // drifting: hold drift while turning, the longer you hold the bigger the boost when you let go
   if (racing && !air && k.spin <= 0 && inp.drift && !k.drift && Math.abs(inp.steer) > .25 && k.v > 140) { k.drift = Math.sign(inp.steer); k.charge = 0; k.hop = .18; hopSound(); }
@@ -281,12 +419,11 @@ function step(dt) {
   k.kingWas = kp;
   if (kp >= .55) solid(kx, ky, 26);
   if (!racing) return;
+  worldStep(dt, tt);
   // laps: 4 checkpoints in order, then crossing the start line
   k.t += dt * 1000;
-  const prog = k.idx / N, cp = Math.floor(prog * 4);
-  if (cp === (k.cps + 1) % 4 && k.cps < 3) k.cps = cp;
-  if (k.cps === 3 && k.prog > .9 && prog < .1) {
-    k.laps.push(k.t - k.lapStart); k.lapStart = k.t; k.lap++; k.cps = 0; lapSound();
+  if (lapTick(k)) {
+    k.laps.push(k.t - k.lapStart); k.lapStart = k.t; lapSound();
     COINS.forEach(c => c.got = false);   // mesos come back every lap (the 10 max stays)
     if (k.lap >= LAPS) finish();
     else flash(k.lap === LAPS - 1 ? "🏁 FINAL LAP!" : `Lap ${k.lap + 1}`, 1300);
@@ -294,7 +431,6 @@ function step(dt) {
   // wrong way: moving against the track direction for a moment
   const along = Math.cos(k.a - tangent(k.idx)) * k.v;
   k.wrong = along < -20 ? k.wrong + dt : Math.max(0, k.wrong - dt * 2);
-  k.prog = prog;
 }
 
 // ------------------------------------------------------------------ drawing
@@ -340,12 +476,29 @@ function render() {
     if (sx < -120 || sx > W + 120) return;
     vis.push({ im, fz, sx, sc, z, flip, shadow, px: im.px });
   };
+  const addDraw = (x, y, draw) => {
+    const rx = x - cx, ry = y - cy, fz = rx * ca + ry * sa;
+    if (fz < 6 || fz > 1300) return;
+    const sx = W / 2 + (-rx * sa + ry * ca) * FOCAL / fz;
+    if (sx < -80 || sx > W + 80) return;
+    vis.push({ fz, sx, draw });
+  };
+  for (const r of RIV) addDraw(r.x, r.y, (sx, gy, sc, fz) => drawRival(r, sx, gy, sc, fz));
+  for (const b of BOXES) if (b.t <= 0) addDraw(b.x, b.y, (sx, gy, sc) => drawBox(sx, gy, sc, tt));
+  for (const d of DROPS) add(d.x, d.y, IMG.slime, .32, 0, false, .5);
+  for (const sh of SHOTS) addDraw(sh.x, sh.y, (sx, gy, sc) => { const im = IMG.arrowIcon; if (!im) return; const w = 26 * sc; ctx.save(); ctx.translate(sx, gy - 12 * sc);
+    ctx.fillStyle = "rgba(255,240,120,.5)"; ctx.beginPath(); ctx.arc(0, 0, w * .6, 0, 7); ctx.fill(); ctx.drawImage(im, -w / 2, -w / 2, w, w); ctx.restore(); });
+  for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 1;
+    ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
   for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, 0);
   for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.coin, .55, 6 + Math.sin(tt * 4 + c.x) * 2);
   for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG.pig, .45, 0, q.dir > 0); }
   const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0), kz = kingZ(kp); add(kx, ky, IMG.king_slime, .5, kz, false, kz > 0 ? 1 - kz / 170 : 0);
   vis.sort((a, b) => b.fz - a.fz);
+  let kartDrawn = false;
   for (const v of vis) {
+    if (!kartDrawn && v.fz < CAMD) { ctx.globalAlpha = 1; drawKart(k); kartDrawn = true; }   // things between the camera and you go in front of your kart
+    if (v.draw) { ctx.globalAlpha = 1; v.draw(v.sx, HOR + CAMH * FOCAL / v.fz, FOCAL / v.fz, v.fz); continue; }
     const { im, fz, sx, z, flip, shadow } = v, sc = FOCAL / fz * v.sc, w = im.width * sc, h = im.height * sc, gy = HOR + CAMH * FOCAL / fz;
     if (w < .6) continue;
     ctx.globalAlpha = fz > 1000 ? Math.max(0, (1400 - fz) / 400) : 1; ctx.imageSmoothingEnabled = !v.px;
@@ -355,13 +508,15 @@ function render() {
     else ctx.drawImage(im, sx - w / 2, top, w, h);
   }
   ctx.globalAlpha = 1;
-  drawKart(k);
+  if (!kartDrawn) drawKart(k);
   // minimap
   if (mini) {
     ctx.imageSmoothingEnabled = true;
     const mx = W - 54, my = Math.round(H * .3), s = 50 / 128;
     ctx.globalAlpha = .85; ctx.drawImage(mini, mx, my, 50, 50); ctx.globalAlpha = 1;
-    ctx.fillStyle = "#e0453a"; ctx.fillRect(mx + k.x * 128 / WORLD * s - 2, my + k.y * 128 / WORLD * s - 2, 4, 4);
+    for (const r of RIV) { ctx.fillStyle = r.color; ctx.fillRect(mx + r.x * 128 / WORLD * s - 1.5, my + r.y * 128 / WORLD * s - 1.5, 3, 3); }
+    ctx.fillStyle = "#fff"; ctx.fillRect(mx + k.x * 128 / WORLD * s - 3, my + k.y * 128 / WORLD * s - 3, 6, 6);
+    ctx.fillStyle = "#46a05a"; ctx.fillRect(mx + k.x * 128 / WORLD * s - 2, my + k.y * 128 / WORLD * s - 2, 4, 4);
   }
 }
 function drawKart(k) {
@@ -403,6 +558,41 @@ function drawKart(k) {
     ctx.moveTo(sx - 3, -bh * .2); ctx.lineTo(sx + 3, -bh * .2); ctx.lineTo(sx, -bh * .2 + 6 + Math.random() * 6); ctx.fill(); }
   ctx.restore(); ctx.globalAlpha = 1;
 }
+// a rival's kart: same shape as yours in their colour, their character picture sharp when close, their name above
+function drawRival(r, sx, gy, sc, fz) {
+  const w = 17 * sc, bh = w * .42, y = gy - r.z * sc * .45, t = performance.now() / 1000;
+  ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(sx, gy + 1, w * .55, Math.max(1, 3 * sc / 2), 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(sx, y); ctx.rotate(r.steer * .06);
+  if (r.spin > 0) ctx.scale(Math.cos((.9 - r.spin) * Math.PI * 4), 1);
+  if (r.squash > 0) ctx.scale(1.35, .45);
+  if (r.inv > 0 && r.spin <= 0 && Math.floor(t * 11) % 2) ctx.globalAlpha = .55;
+  const sp = r.img;
+  if (sp && sp.complete && sp.naturalHeight) {
+    const dh = (H * .2 / (FOCAL / CAMD)) * sc, dev = dh * S;
+    const zoom = dev >= sp.height ? Math.round(dev / sp.height) : 0, h = zoom ? sp.height * zoom / S : dh, ww = sp.width * h / sp.height;
+    ctx.save(); ctx.imageSmoothingEnabled = !zoom; ctx.translate(0, -bh * .45); if (r.steer < -.3) ctx.scale(-1, 1);
+    ctx.drawImage(sp, -ww / 2, -h, ww, h); ctx.restore();
+  }
+  ctx.fillStyle = "#1d1d22"; ctx.fillRect(-w / 2 - 1, -bh * .55, w * .22, bh * .75); ctx.fillRect(w / 2 + 1 - w * .22, -bh * .55, w * .22, bh * .75);
+  ctx.fillStyle = "#2d2832"; rr(-w * .36, -bh * .8, w * .72, bh * .65, Math.max(1, 3 * sc / 2)); ctx.fill();
+  ctx.fillStyle = r.color; rr(-w * .34, -bh * .8, w * .68, bh * .48, Math.max(1, 3 * sc / 2)); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.fillRect(-w * .34, -bh * .4, w * .68, Math.max(.5, sc));
+  if (r.boost > 0) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e"; ctx.fillRect(-w * .1, -bh * .2, w * .2, bh * .4 + Math.random() * bh * .4); }
+  ctx.restore(); ctx.globalAlpha = 1;
+  if (fz < 420) {
+    ctx.font = `bold ${Math.max(5, Math.min(9, 7 * sc / 2))}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = 2; ctx.strokeStyle = "rgba(0,0,0,.7)";
+    const ny = y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc - 2; ctx.strokeText(r.name, sx, ny); ctx.fillStyle = "#fff"; ctx.fillText(r.name, sx, ny);
+  }
+}
+// an item box: a spinning rainbow "?" block
+function drawBox(sx, gy, sc, tt) {
+  const s2 = 15 * sc, y = gy - s2 - 4 * sc + Math.sin(tt * 3 + sx) * 1.5 * sc, hue = (tt * 120) % 360, sq = Math.abs(Math.cos(tt * 2)) * .3 + .7;
+  ctx.save(); ctx.translate(sx, y + s2 / 2); ctx.scale(sq, 1);
+  ctx.fillStyle = `hsla(${hue},90%,60%,.85)`; ctx.strokeStyle = "#fff"; ctx.lineWidth = Math.max(.6, sc * .8);
+  rr(-s2 / 2, -s2 / 2, s2, s2, s2 * .18); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#fff"; ctx.font = `900 ${Math.max(4, s2 * .7)}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", 0, s2 * .04);
+  ctx.textBaseline = "alphabetic"; ctx.restore();
+}
 function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
 // ------------------------------------------------------------------ HUD + flow
@@ -414,9 +604,13 @@ function hud() {
   $k("#kSpeed").textContent = state === "race" ? `${Math.max(0, Math.round(k.v * .5))} km/h` : "";
   $k("#kWrong").hidden = !(state === "race" && k.wrong > .6);
   $k("#kBag").textContent = state === "menu" ? "" : `🪙 ${k.mesos}/10`;
-  $k("#kItemBoxN").textContent = k.items; $k("#kItemBox").classList.toggle("empty", !k.items);
-  $k("#kItemN").textContent = k.items;
-  $k("#kPad [data-k=i]").disabled = !k.items;
+  const icon = k.roll > 0 ? ITEM_ICON[Object.keys(ITEM_ICON)[Math.floor(performance.now() / 80) % 5]] : k.item ? ITEM_ICON[k.item] : "";
+  const img = $k("#kItemBox img"); if (img.dataset.src !== icon) { img.dataset.src = icon; img.src = icon || "data:image/gif;base64,R0lGODlhAQABAAAAACw="; }
+  $k("#kItemBox").classList.toggle("empty", !k.item && k.roll <= 0);
+  $k("#kItemBoxN").textContent = k.item === "triple" ? k.itemN : ""; $k("#kItemBoxN").hidden = k.item !== "triple";
+  const pb = $k("#kPad [data-k=i]"); pb.disabled = !k.item || k.roll > 0; const pi = pb.querySelector("img"); if (pi.dataset.src !== icon) { pi.dataset.src = icon; pi.src = icon || "data:image/gif;base64,R0lGODlhAQABAAAAACw="; }
+  const rk = state === "menu" ? 0 : state === "done" ? K.place : rankOf(k);
+  $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk;
 }
 let flashT = null;
 function flash(t, ms) { const f = $k("#kFlash"); f.textContent = t; f.className = "k-flash on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash", ms); }
@@ -450,7 +644,7 @@ async function start() {
   window.getAC && window.getAC(); fullTries = 0; goLandscape();
   if (!TEX) { $k("#kLoad").hidden = false; await prepare(); $k("#kLoad").hidden = true; }
   IMG.me = await loadImg(spriteOf(me)); fit();
-  K = freshKart(); state = "wait"; B.music("henesys"); syncMusicBtn();
+  K = freshKart(); finishers = 0; makeRivals(); state = "wait"; B.music("henesys"); syncMusicBtn();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   await waitLandscape(); fit(); if (state !== "wait") return; state = "count";
   countAt = performance.now(); COINS.forEach(c => c.got = false);
@@ -461,23 +655,26 @@ async function start() {
     if (h != null && h >= 950) { K.boost = 1.2; K.v = 160; flash("🚀 ROCKET START!", 1000); boostSound(); }
     else if (h != null) { K.stall = .9; flash("💨 Too early!", 1000); bumpSound(); }
     else flash("GO!", 900);
+    RIV.forEach(r => { if (Math.random() < .35) { r.boost = 1; r.v = 120; } });
   }, 3000);
 }
 async function prepare() {
   paintTrack(); placeObjects();
   sky = await loadImg(B.M + "bg_henesys.webp?v=9"); IMG.coin = coinImg();
+  [IMG.arrowIcon, IMG.arm] = await Promise.all([loadImg(B.M + "sk_arrowrain.png"), loadImg(B.M + "zarm_stand.gif")]);
   await Promise.all([...MOBS, "king_slime"].map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); if (IMG[m]) IMG[m].px = true; })
     .concat(Object.keys(PROPS).map(async k => { IMG[k] = await loadImg(`media/kart/${k}.webp?v=1`); }))
     .concat([(async () => { IMG.strip = await loadImg("media/kart/henesys_strip.webp?v=1"); })()]));
 }
 function finish() {
-  state = "done"; const k = K, total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
+  const k = K; k.place = 1 + RIV.filter(r => r.done).length; state = "done"; const total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
   const newRace = !best || !best.race || total < best.race, newLap = !best || !best.lap || bl < best.lap;
   best = { race: newRace ? total : best.race, lap: newLap ? bl : best.lap }; store.set(bestKey(), JSON.stringify(best));
-  B.sound("win"); flash("🏁 FINISH!", 1600);
+  B.sound(k.place <= 3 ? "win" : "lose"); flash(k.place === 1 ? "🏆 1st PLACE!" : "🏁 FINISH!", 1600);
   const sent = guildOf(me) ? submit(k.laps) : Promise.resolve(null);
   setTimeout(() => {
-    $k("#kResult").innerHTML = `<h3>🏁 ${fmt(total)}</h3>
+    const medal = ["", "🥇", "🥈", "🥉"][k.place] || "🏁", suffix = ["", "st", "nd", "rd"][k.place] || "th";
+    $k("#kResult").innerHTML = `<h3>${medal} ${k.place}${suffix} place · ${fmt(total)}</h3>
       <div class="k-laps">${k.laps.map((l, i) => `<span class="${l === bl ? "b" : ""}">Lap ${i + 1}: ${fmt(l)}</span>`).join("")}</div>
       <p>${newRace ? "🎉 New personal best race!" : `Your best race: ${fmt(best.race)}`}${newLap ? "<br>⚡ New best lap!" : ""}</p>
       <p class="k-rank" id="kRank">${guildOf(me) ? "Saving your time…" : "Guests aren't on the guild board."}</p>
@@ -585,5 +782,6 @@ const jumpSound = () => tone(200, .3, "triangle", .1, 700);
 const itemSound = () => { tone(520, .1, "square", .06); setTimeout(() => tone(780, .25, "sawtooth", .06, 1200), 80); };
 const spinSound = () => { for (let i = 0; i < 4; i++) setTimeout(() => tone(600 - i * 90, .12, "square", .06, 300 - i * 50), i * 110); };
 const slamSound = d => tone(90, .5, "square", Math.max(.03, .16 - d / 2500), 35);
+const boxSound = () => { for (let i = 0; i < 8; i++) setTimeout(() => tone(700 + (i % 3) * 180, .06, "square", .04), i * 120); };
 const lapSound = () => { tone(660, .12, "square", .07); setTimeout(() => tone(990, .2, "square", .07), 110); };
 })();

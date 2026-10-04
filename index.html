@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=5">
+<link rel="stylesheet" href="kart.css?v=6">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -494,7 +494,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <div id="kMenu" class="sk-home">
     <div class="sk-panel">
       <div class="sk-name"><input id="kName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go"></div>
-      <div class="kt-track"><img src="media/duel/bg_henesys.webp?v=9" alt=""><div><b>🍄 Henesys Loop</b><small>Time trial · 3 laps</small></div></div>
+      <div class="kt-track"><img src="media/duel/bg_henesys.webp?v=9" alt=""><div><b>🍄 Henesys Loop</b><small>8 racers · 3 laps</small></div></div>
       <div class="kt-mine" id="kMine"></div>
       <button class="sk-btn bd-play" id="kGo">🏁 Start race!</button>
       <div class="sk-err" id="kErr"></div>
@@ -504,24 +504,24 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <p>Your kart speeds up by itself. Steer round the track, and stay on the road: the grass slows you right down.</p>
       <p>💨 <b>Drift:</b> hold <b>Drift</b> while you turn. Sparks turn <span style="color:#2f7fd0;font-weight:700">blue</span>, then <span style="color:#e07a12;font-weight:700">orange</span>.
         Let go for a speed boost, and the longer you held it, the bigger the boost.</p>
-      <p>🚀 <b>Rocket start:</b> hold Drift when the <b>2</b> shows. Too early and you stall!</p>
-      <p>🟨 <b>Boost arrows</b> speed you up · 🟦 <b>ramps</b> launch you: tap Drift in the air for a trick boost ·
-        🪙 <b>mesos</b> raise your top speed (up to 10) · 🧪 <b>3 Elixirs</b> for a burst whenever you like.</p>
-      <p>⚠️ <b>Watch out:</b> purple slime puddles and wandering pigs spin you out, rocky patches shake you about, and the
-        <b>King Slime</b> jumps up and slams down on the road. Watch its shadow!</p>
-      <p>⌨️ Computer: <b>← →</b> steer, <b>Space</b> drift, <b>↑</b> Elixir, <b>↓</b> brake. 📱 Phone: joystick, 🧪, Brake and Drift.</p>
+      <p>🏁 <b>Race 7 guild members</b> over 3 laps and finish 1st! 🚀 <b>Rocket start:</b> hold Drift when the <b>2</b> shows.</p>
+      <p>❓ <b>Item boxes</b> give you an item: 🧪 Elixir boost (3 if you're far behind) · 🫧 Slime drop behind you · 🏹 Arrow that chases the racer ahead ·
+        🖐️ <b>Zakum's Arm</b> slams whoever is in 1st. The further back you are, the better your items.</p>
+      <p>🟨 Boost arrows · 🟦 ramps (tap Drift in the air for a trick boost) · 🪙 mesos raise your top speed.
+        ⚠️ Slime puddles, wandering pigs, rocky patches and the stomping <b>King Slime</b>.</p>
+      <p>⌨️ Computer: <b>← →</b> steer, <b>Space</b> drift, <b>↑</b> use item, <b>↓</b> brake. 📱 Phone: joystick, item, Brake and Drift.</p>
       <h3>🏆 Guild board · Henesys Loop</h3>
       <ol class="dboard kt-board" id="kBoard"></ol>
-      <p class="kt-soon">🚧 Prototype: ghosts of the guild's best laps, items and more tracks are coming next.</p>
+      <p class="kt-soon">🚧 More tracks coming: El Nath, Ludibrium, Sleepywood and Zakum.</p>
     </div>
   </div>
   <div id="kGame" class="kt-game" hidden>
     <div class="kt-screen">
       <canvas id="kCanvas"></canvas>
       <canvas id="kFx"></canvas>
-      <div class="kt-hud-l"><div class="kt-item" id="kItemBox"><img src="media/duel/elixir.png" alt="Elixir"><b id="kItemBoxN">3</b></div>
+      <div class="kt-hud-l"><div class="kt-item empty" id="kItemBox"><img alt=""><b id="kItemBoxN" hidden></b></div>
         <div class="kt-hudtxt"><div class="kt-lap" id="kLap"></div><div class="kt-bag" id="kBag"></div></div></div>
-      <div class="kt-hud-r"><div class="kt-time" id="kTime"></div><div class="kt-best" id="kBest"></div></div>
+      <div class="kt-hud-r"><div class="kt-time" id="kTime"></div><div class="kt-best" id="kBest"></div><div class="kt-pos" id="kPos"></div></div>
       <div class="kt-btns"><button class="sk-small bd-music" id="kMusic" title="Music on/off">🔇</button><button class="sk-small" id="kLeave">✕ Leave</button></div>
       <div class="kt-speed" id="kSpeed"></div>
       <div class="k-flash" id="kFlash"></div>
@@ -534,7 +534,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="kt-pad" id="kPad">
       <div class="kt-stick" id="kStick" aria-label="Steering: slide left or right"><b>◀</b><i></i><b>▶</b></div>
       <span></span>
-      <button type="button" data-k="i" class="itm" aria-label="Use an Elixir">🧪<b id="kItemN">3</b></button>
+      <button type="button" data-k="i" class="itm" aria-label="Use your item" disabled><img alt=""></button>
       <button type="button" data-k="b" class="brk" aria-label="Brake">Brake</button>
       <button type="button" data-k="d" class="drf" aria-label="Drift">💨 Drift</button>
     </div>
@@ -860,7 +860,7 @@ show();
 <script src="duel-songs.js?v=1"></script>
 <script src="duel.js?v=30"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=5"></script>
+<script src="kart.js?v=6"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

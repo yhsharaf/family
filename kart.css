@@ -94,3 +94,7 @@
 .kt-btns { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); display: flex; gap: 6px; z-index: 3; }
 .kt-btns .sk-small { padding: 3px 9px; font-size: 13px; opacity: .85; }
 @media (max-width: 560px), (max-height: 420px) { .kt-time { font-size: 22px; } .kt-lap { font-size: 16px; } .kt-item { width: 44px; height: 44px; } .kt-item img { width: 30px; height: 30px; } }
+.kt-pos { font: 900 46px Ubuntu, sans-serif; color: #fff; -webkit-text-stroke: 2px #2d2832; paint-order: stroke; text-shadow: 0 4px 0 #2d2832; line-height: 1; margin-top: 2px; }
+.kt-pos.p1 { color: #ffd23f; } .kt-pos.p2 { color: #e6e6f0; } .kt-pos.p3 { color: #f0a868; }
+.kt-pad .itm img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+@media (max-width: 560px), (max-height: 420px) { .kt-pos { font-size: 32px; } }
