@@ -39,7 +39,7 @@ const MAPS = {
   henesys: { name: "Henesys",       rule: "Normal rules",      plat: { w: 900, h: 482, top: 140, frac: .86 } },
   elnath:  { name: "El Nath",       rule: "Dodge is free",     plat: { w: 900, h: 541, top: 2, frac: .7 } },
   zakum:   { name: "Zakum's Altar", rule: "Every hit does +1", plat: { w: 850, h: 400, top: 8, frac: .8 } },
-  ludi:    { name: "Ludibrium",     rule: "8-second turns",    plat: { w: 900, h: 388, top: 0, frac: .74 } },
+  ludi:    { name: "Ludibrium",     rule: "The clock strikes every 4th turn: MP refills",    plat: { w: 900, h: 388, top: 0, frac: .74 } },
   sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 25–40 for both, nobody can see it", plat: { w: 900, h: 400, top: 6, frac: .78 } },
 };
 const ATTACKS = ["bonk", "heavy", "arrow", "steal", "coin"];
@@ -315,6 +315,7 @@ function resolveTurn(s) {
   s.rage1 = r.r1; s.rage2 = r.r2; s.lucky1 = s.lucky1 || r.l1; s.lucky2 = s.lucky2 || r.l2;
   s.afk1 = m1 === "zzz" ? s.afk1 + 1 : 0; s.afk2 = m2 === "zzz" ? s.afk2 + 1 : 0;
   s.pick1 = s.pick2 = null; s.picked1 = s.picked2 = false; s.mine = null; s.turn++;
+  if (s.map === "ludi" && s.turn % 4 === 0) { s.en1 = s.enmax1; s.en2 = s.enmax2; }   // the clock strikes (same as bd_resolve)
   checkEnd(s);
 }
 function checkEnd(s) {
@@ -326,7 +327,7 @@ function checkEnd(s) {
 function startBot(kind, name) {
   showGame();
   bot = { kind, hist: [], timer: null };
-  const c1 = myClass, c2 = BOTS[kind].cls, map = MAPS[new URLSearchParams(location.search).get("bdmap")] ? new URLSearchParams(location.search).get("bdmap") : Object.keys(MAPS)[Math.floor(Math.random() * 5)], secs = map === "ludi" ? 8 : 15;
+  const c1 = myClass, c2 = BOTS[kind].cls, map = MAPS[new URLSearchParams(location.search).get("bdmap")] ? new URLSearchParams(location.search).get("bdmap") : Object.keys(MAPS)[Math.floor(Math.random() * 5)], secs = 15;
   const secret = 25 + Math.floor(Math.random() * 16);   // Sleepywood: same hidden HP for both
   const hp = c => map === "sleepy" ? secret : c === "warrior" ? 22 : c === "pirate" ? 21 : 20, en = c => c === "magician" ? 4 : 3, enmax = c => c === "magician" ? 6 : 5;
   st = { r: "ok", me: 1, status: "pick", turn: 1, p1: name, p2: BOTS[kind].name, class1: c1, class2: c2, map, secs,
@@ -451,7 +452,8 @@ function render() {
   $b("#bdArena").className = "bd-arena m-" + (st.map || "henesys") + (sd ? " sd" : "");
   placePlat();
   $b("#bdPhase").innerHTML = s === "wait" ? (room === "public" ? "🔍 Looking for an opponent…" : "⏳ Waiting for your friend…")
-    : s === "over" ? "🏁 Duel over" : `Turn ${Math.min(st.turn, 20)}/20 · <span class="bd-map" title="${esc((MAPS[st.map] || MAPS.henesys).rule)}">${esc((MAPS[st.map] || MAPS.henesys).name)}</span>${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
+    : s === "over" ? "🏁 Duel over" : `Turn ${Math.min(st.turn, 20)}/20 · <span class="bd-map" title="${esc((MAPS[st.map] || MAPS.henesys).rule)}">${esc((MAPS[st.map] || MAPS.henesys).name)}</span>${
+      st.map === "ludi" ? (st.turn % 4 === 0 ? " · <b class='clk'>⏰ MP FULL!</b>" : ` · ⏰ in ${4 - st.turn % 4}`) : ""}${sd ? " · <b class='sdt'>⚡ SUDDEN DEATH</b>" : ""}`;
   $b("#bdStake").innerHTML = s === "wait" ? "" : st.practice ? "🎯 Practice" : `${st.stake > 1 ? "🔥" : "🏆"} ${st.stake} pt${st.stake > 1 ? "s" : ""}`;
   // moves
   const myEn = me ? st["en" + me] : 0, canPick = me && s === "pick" && !inReveal();
@@ -538,6 +540,7 @@ function reveal(l, prev) {
   });
   sound("flip");
   if (l.sd && l.turn === 10) banner("⚡ SUDDEN DEATH! Every hit +1, MP ×2", 2200);
+  if (st.map === "ludi" && (l.turn + 1) % 4 === 0) setTimeout(() => { banner("⏰ DONG! The clock strikes: MP refilled!", 2200); sound("clock"); }, 2400);
   // 2. the action
   setTimeout(() => {
     [1, 2].forEach(s => {
@@ -734,6 +737,7 @@ function sound(kind) {
     else if (kind === "win") [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, i * .11, .22, "triangle", .15));
     else if (kind === "lose") [392, 370, 349, 262].forEach((f, i) => tone(f, i * .28, .35, "sawtooth", .07));
     else if (kind === "thud") tone(120, 0, .4, "square", .15, 50);
+    else if (kind === "clock") [0, .45, .9].forEach(t => { tone(523, t, .4, "triangle", .15); tone(784, t, .4, "sine", .08); });
     else if (kind === "crit") { tone(880, 0, .08, "square", .12); tone(1320, .06, .18, "square", .12); noise(0, .15, 2500, .25); }
     else tone(660, 0, .1, "sine", .12, 990);
   } catch (e) {}

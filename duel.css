@@ -36,7 +36,7 @@
 .bd-game[hidden] { display: none; }
 .bd-top { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--edge); border-radius: 12px; padding: 6px 10px; }
 .bd-phase { flex: 1; font-weight: 800; font-size: 16px; }
-.bd-phase .sdt { color: #c0392b; }
+.bd-phase .sdt { color: #c0392b; } .bd-phase .clk { color: #2f6db5; }
 .bd-stake { font-weight: 800; font-size: 14px; background: #fff3d6; border: 1px solid #e8cf7a; border-radius: 10px; padding: 3px 8px; white-space: nowrap; }
 .bd-stake:empty { display: none; }
 #bdClock { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; border: 3px solid var(--ink); display: flex; align-items: center;
