@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=4">
+<link rel="stylesheet" href="kart.css?v=5">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -516,10 +516,13 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     </div>
   </div>
   <div id="kGame" class="kt-game" hidden>
-    <div class="bd-top"><div class="kt-lap" id="kLap"></div><div class="kt-time" id="kTime"></div><div class="kt-bag" id="kBag"></div><div class="kt-best" id="kBest"></div>
-      <button class="sk-small bd-music" id="kMusic" title="Music on/off">🔇</button><button class="sk-small" id="kLeave">Leave</button></div>
     <div class="kt-screen">
       <canvas id="kCanvas"></canvas>
+      <canvas id="kFx"></canvas>
+      <div class="kt-hud-l"><div class="kt-item" id="kItemBox"><img src="media/duel/elixir.png" alt="Elixir"><b id="kItemBoxN">3</b></div>
+        <div class="kt-hudtxt"><div class="kt-lap" id="kLap"></div><div class="kt-bag" id="kBag"></div></div></div>
+      <div class="kt-hud-r"><div class="kt-time" id="kTime"></div><div class="kt-best" id="kBest"></div></div>
+      <div class="kt-btns"><button class="sk-small bd-music" id="kMusic" title="Music on/off">🔇</button><button class="sk-small" id="kLeave">✕ Leave</button></div>
       <div class="kt-speed" id="kSpeed"></div>
       <div class="k-flash" id="kFlash"></div>
       <div class="kt-wrong" id="kWrong" hidden>↩️ WRONG WAY!</div>
@@ -857,7 +860,7 @@ show();
 <script src="duel-songs.js?v=1"></script>
 <script src="duel.js?v=30"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=4"></script>
+<script src="kart.js?v=5"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

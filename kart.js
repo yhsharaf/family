@@ -66,21 +66,28 @@ const tex = document.createElement("canvas"); tex.width = tex.height = WORLD;
 let TEX = null, mini = null;
 function paintTrack() {
   const g = tex.getContext("2d");
-  g.fillStyle = "#62b04c"; g.fillRect(0, 0, WORLD, WORLD);
-  g.fillStyle = "#58a444";
-  for (let k = -WORLD; k < WORLD * 2; k += 96) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 48, 0); g.lineTo(k + 48 - WORLD, WORLD); g.lineTo(k - WORLD, WORLD); g.fill(); }
+  g.fillStyle = "#6cc04a"; g.fillRect(0, 0, WORLD, WORLD);
+  g.fillStyle = "#5cb03e";                                                     // mowed stripes
+  for (let k = -WORLD; k < WORLD * 2; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 32, 0); g.lineTo(k + 32 - WORLD, WORLD); g.lineTo(k - WORLD, WORLD); g.fill(); }
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const flowers = ["#ffe066", "#ffffff", "#ff8fb8", "#ffb347"];
-  for (let k = 0; k < 2600; k++) { g.fillStyle = flowers[k % 4]; const x = rnd() * WORLD, y = rnd() * WORLD; g.fillRect(x, y, 5, 5); g.fillStyle = "#3f8a34"; g.fillRect(x + 1, y + 5, 3, 3); }
+  for (let k = 0; k < 2200; k++) { const x = rnd() * WORLD, y = rnd() * WORLD; g.fillStyle = "#3f8a34"; g.fillRect(x + 1, y + 4, 3, 3); g.fillStyle = flowers[k % 4]; g.fillRect(x, y, 5, 5); }
   const path = () => { g.beginPath(); PTS.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
   g.lineJoin = g.lineCap = "round";
-  path(); g.strokeStyle = "#3c7a30"; g.lineWidth = ROAD + CURB * 2 + 10; g.stroke();             // grass edge shadow
-  path(); g.strokeStyle = "#ffffff"; g.lineWidth = ROAD + CURB * 2; g.stroke();
-  path(); g.strokeStyle = "#e0453a"; g.setLineDash([26, 26]); g.stroke(); g.setLineDash([]);
-  path(); g.strokeStyle = "#c79a62"; g.lineWidth = ROAD; g.stroke();
-  for (let k = 0; k < 1800; k++) { const i = Math.floor(rnd() * N), [x, y] = PTS[i], a = rnd() * 6.28, r = rnd() * ROAD * .45;   // pebbles
-    g.fillStyle = rnd() < .5 ? "#b78a55" : "#d4ab74"; g.fillRect(x + Math.cos(a) * r, y + Math.sin(a) * r, 4, 4); }
-  path(); g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 3; g.setLineDash([22, 30]); g.stroke(); g.setLineDash([]);
+  path(); g.strokeStyle = "#2f6e2a"; g.lineWidth = ROAD + CURB * 2 + 8; g.stroke();             // dark edge where grass meets the curb
+  path(); g.strokeStyle = "#ffffff"; g.lineWidth = ROAD + CURB * 2; g.stroke();                   // chequered red/white curb
+  path(); g.strokeStyle = "#e0453a"; g.setLineDash([16, 16]); g.stroke(); g.setLineDash([]);
+  path(); g.strokeStyle = "#6e6558"; g.lineWidth = ROAD + 4; g.stroke();
+  path(); g.strokeStyle = "#bdb3a2"; g.lineWidth = ROAD; g.stroke();                             // Henesys cobblestone road
+  for (let i = 0; i < N; i++) {          // rows of flat cobbles across the road
+    const a = tangent(i), ca = Math.cos(a), sa = Math.sin(a), shift = (i & 1) * 5;
+    for (let o = -ROAD / 2 + 4 + shift; o < ROAD / 2 - 4; o += 10) {
+      const x = PTS[i][0] - sa * o, y = PTS[i][1] + ca * o, t = rnd();
+      g.fillStyle = t < .33 ? "#c9c0b0" : t < .66 ? "#b2a896" : "#a89e8c"; g.fillRect(x - 3.5, y - 3.5, 7, 7);
+      if (t > .85) { g.fillStyle = "#d8d0c2"; g.fillRect(x - 3, y - 3, 3, 2); }
+    }
+  }
+  path(); g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 3; g.setLineDash([20, 28]); g.stroke(); g.setLineDash([]);
   // the extras: boost arrows, jump ramps, rocky patches and slime puddles
   const atf = (i, o) => { const i0 = Math.floor(i), f = i - i0, p = at(i0, o), q = at(i0 + 1, o); return [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f]; };
   const quad = (i, o1, o2, col) => { const a = atf(i, o1), b = atf(i, o2), c = atf(i + .6, o2), d = atf(i + .6, o1);
@@ -91,10 +98,11 @@ function paintTrack() {
       const chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;   // arrows pointing down the track
       quad(p.i + j, o1, o2, p.t === "boost" ? (chev ? "#ff7a12" : "#ffd84a") : (j < .6 || j > p.len - .6 ? "#1e4f9a" : chev ? "#ffffff" : "#3d8de0"));
     }
-    if (p.t === "rock") for (let k = 0; k < p.len * 9; k++) {
-      const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .95), z = 5 + rnd() * 7;
-      g.fillStyle = "#6f675c"; g.fillRect(x - z / 2 + 1.5, y - z / 2 + 1.5, z, z * .8); g.fillStyle = rnd() < .5 ? "#a39a8c" : "#8c8476"; g.fillRect(x - z / 2, y - z / 2, z, z * .8);
-      g.fillStyle = "#c9c0b0"; g.fillRect(x - z / 2 + 1, y - z / 2 + 1, z * .35, z * .25);
+    if (p.t === "rock") for (let k = 0; k < p.len * 7; k++) {
+      const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .95), z = 8 + rnd() * 9;
+      g.fillStyle = "#3e3830"; g.beginPath(); g.ellipse(x + 2, y + 2, z / 2, z * .4, 0, 0, 7); g.fill();
+      g.fillStyle = rnd() < .5 ? "#7d7466" : "#696154"; g.beginPath(); g.ellipse(x, y, z / 2, z * .4, 0, 0, 7); g.fill();
+      g.fillStyle = "#a59c8c"; g.beginPath(); g.ellipse(x - z * .15, y - z * .12, z * .18, z * .12, 0, 0, 7); g.fill();
     }
     if (p.t === "slime") {
       const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i);
@@ -119,18 +127,13 @@ function paintTrack() {
   m.strokeStyle = "rgba(0,0,0,.45)"; m.lineWidth = 9; m.stroke(); m.strokeStyle = "#f4e2b8"; m.lineWidth = 5; m.stroke();
 }
 
-// roadside things: Henesys monsters and trees (flat pictures that always face the camera)
-const MOBS = ["orange_mushroom", "green_mushroom", "blue_mushroom", "spotty_mushroom", "snail", "blue_snail", "red_snail", "slime", "stump", "pig", "ribbon_pig"];
+// roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
+// s = world units per picture pixel, r = how solid it is
+const PROPS = { tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
+  hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10] };
+const MOBS = ["orange_mushroom", "green_mushroom", "blue_mushroom", "snail", "blue_snail", "slime", "pig"];
 const IMG = {};
 const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
-function treeImg() {   // a chunky pixel tree drawn here (no picture to download)
-  const c = document.createElement("canvas"); c.width = 60; c.height = 84; const g = c.getContext("2d");
-  g.fillStyle = "#6b4426"; g.fillRect(25, 50, 10, 34); g.fillStyle = "#4e301a"; g.fillRect(31, 50, 4, 34);
-  const blob = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
-  blob(30, 34, 26, "#2f7d32"); blob(18, 40, 16, "#2f7d32"); blob(42, 40, 16, "#2f7d32");
-  blob(26, 28, 18, "#43a047"); blob(38, 32, 13, "#43a047"); blob(22, 22, 8, "#66bb6a");
-  return c;
-}
 function coinImg() {   // a gold meso
   const c = document.createElement("canvas"); c.width = c.height = 24; const g = c.getContext("2d");
   g.fillStyle = "#8a5a00"; g.beginPath(); g.arc(12, 12, 11, 0, 7); g.fill();
@@ -142,34 +145,41 @@ function coinImg() {   // a gold meso
 let OBJS = [];
 function placeObjects() {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const near = ["sunflower", "redshrooms", "bush", "hay", "posts", "tallshroom", "stall", "stall2", "haypile", "tree", "shroomtower", "shroomhouse"];
   OBJS = [];
-  for (let s = 20; s < N; s += 30) {
+  for (let s = 20; s < N; s += 26) {
     for (const side of [-1, 1]) {
-      if (rnd() < .35) continue;
-      const a = tangent(s), off = ROAD / 2 + CURB + 26 + rnd() * 70, x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
-      if (nearest(x, y).d < ROAD / 2 + CURB + 18 || x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
-      const tree = rnd() < .38;
-      OBJS.push({ x, y, k: tree ? "tree" : MOBS[Math.floor(rnd() * MOBS.length)], s: tree ? 1.05 : .42, r: tree ? 14 : 10 });
+      if (rnd() < .3) continue;
+      const a = tangent(s), off = ROAD / 2 + CURB + 22 + rnd() * 80, x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
+      if (nearest(x, y).d < ROAD / 2 + CURB + 16 || x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
+      if (rnd() < .18) { OBJS.push({ x, y, k: MOBS[Math.floor(rnd() * MOBS.length)], s: .42, r: 10, mob: true }); continue; }
+      const k = near[Math.floor(rnd() * near.length)];
+      OBJS.push({ x, y, k, s: PROPS[k][0], r: PROPS[k][1] });
     }
   }
-  for (let k = 0; k < 160; k++) {   // a forest further out
-    const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60);
-    if (nearest(x, y).d > ROAD / 2 + 140) OBJS.push({ x, y, k: "tree", s: 1.25, r: 16 });
+  for (let k = 0; k < 170; k++) {   // woods and houses further out
+    const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = nearest(x, y).d;
+    if (d < ROAD / 2 + 130) continue;
+    const kk = rnd() < .55 ? "tree" : rnd() < .5 ? "bush" : rnd() < .5 ? "shroomhouse" : "shroomtower";
+    OBJS.push({ x, y, k: kk, s: PROPS[kk][0] * 1.2, r: PROPS[kk][1] });
   }
 }
 
 // ------------------------------------------------------------------ screen
 // fixed 320 px wide; the height follows the screen's shape (tall on phones), with the camera raised to match
-const W = 320, FOCAL = 170, CAMD = 64;
-let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [];
-const cv = $k("#kCanvas"), ctx = cv.getContext("2d");
+const W = 320, FOCAL = 170, CAMD = 84;
+let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1;
+const cv = $k("#kCanvas"), bctx = cv.getContext("2d");
+const fxc = $k("#kFx"), ctx = fxc.getContext("2d");   // sky, town, props, karts and the minimap, drawn sharp at screen resolution
 function fit() {
   const r = $k(".kt-screen").getBoundingClientRect();
   const h = r.width > 0 ? Math.round(W * r.height / r.width) : 192;
-  H = Math.max(130, Math.min(640, h)); HOR = Math.round(H * .3); CAMH = (H * .75 - HOR) * CAMD / FOCAL;
-  cv.width = W; cv.height = H; ctx.imageSmoothingEnabled = false;
-  floor = ctx.createImageData(W, H - HOR); F32 = new Uint32Array(floor.data.buffer);
-  FOG = []; for (let y = 0; y < H - HOR; y++) FOG[y] = Math.max(0, Math.round(256 * Math.pow(1 - y / (H - HOR), 5) * .9));   // haze near the horizon
+  H = Math.max(130, Math.min(640, h)); HOR = Math.round(H * .27); CAMH = (H * .8 - HOR) * CAMD / FOCAL;
+  cv.width = W; cv.height = H; bctx.imageSmoothingEnabled = false;
+  floor = bctx.createImageData(W, H - HOR); F32 = new Uint32Array(floor.data.buffer);
+  FOG = []; for (let y = 0; y < H - HOR; y++) FOG[y] = y < 8 ? Math.round(150 * (1 - y / 8)) : 0;   // only a thin blend into the horizon
+  const dpr = Math.min(2, window.devicePixelRatio || 1), pw = Math.min(1800, Math.round((r.width || W) * dpr));
+  fxc.width = pw; fxc.height = Math.round(pw * H / W); S = pw / W;
 }
 fit();
 addEventListener("resize", () => { if (state !== "menu") fit(); });
@@ -291,15 +301,20 @@ function step(dt) {
 function render() {
   const k = K, ca = Math.cos(k.a), sa = Math.sin(k.a);
   const cx = k.x - ca * CAMD, cy = k.y - sa * CAMD;
-  // sky: the Henesys background, scrolling as you turn
-  ctx.fillStyle = "#8fd0ff"; ctx.fillRect(0, 0, W, HOR + 2);
+  // sky: Henesys hills and clouds, then the town panorama on the horizon, scrolling as you turn (sharp layer)
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxc.width, fxc.height); ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true;
+  ctx.fillStyle = "#8fd0ff"; ctx.fillRect(0, 0, W, HOR + 1);
+  const turn = k.a / (Math.PI * 2);
   if (sky) {
-    const sh = HOR + 26, sw = sky.width * sh / sky.height, off = ((k.a / (Math.PI * 2)) * sw * 2 % sw + sw) % sw;
-    const tile = Math.floor(((k.a / (Math.PI * 2)) * sw * 2) / sw);
+    const sh = HOR + 10, sw = sky.width * sh / sky.height, off = ((turn * sw * 1.2) % sw + sw) % sw, tile = Math.floor(turn * 1.2);
     for (let x = -off, i = 0; x < W; x += sw, i++) {
-      if ((tile + i) & 1) { ctx.save(); ctx.translate(x + sw, 0); ctx.scale(-1, 1); ctx.drawImage(sky, 0, HOR + 4 - sh, sw, sh); ctx.restore(); }
-      else ctx.drawImage(sky, x, HOR + 4 - sh, sw, sh);
+      if ((tile + i) & 1) { ctx.save(); ctx.translate(x + sw, 0); ctx.scale(-1, 1); ctx.drawImage(sky, 0, HOR + 1 - sh, sw, sh); ctx.restore(); }
+      else ctx.drawImage(sky, x, HOR + 1 - sh, sw, sh);
     }
+  }
+  if (IMG.strip) {
+    const st = IMG.strip, sh = Math.min(HOR * .78, H * .2), sw = st.width * sh / st.height, off = ((turn * sw * 1.6) % sw + sw) % sw;
+    for (let x = -off; x < W; x += sw) ctx.drawImage(st, x, HOR + 1.5 - sh, sw + .5, sh);
   }
   // floor, one row at a time
   for (let y = 0; y < H - HOR; y++) {
@@ -315,7 +330,7 @@ function render() {
       F32[o] = c;
     }
   }
-  ctx.putImageData(floor, 0, HOR);
+  bctx.putImageData(floor, 0, HOR);
   // billboards, far to near: scenery, mesos, pigs and the King Slime (with a shadow when it's up in the air)
   const tt = performance.now() / 1000, vis = [];
   const add = (x, y, im, sc, z, flip, shadow) => {
@@ -323,7 +338,7 @@ function render() {
     if (fz < 8 || fz > 1400 || !im) return;
     const sx = W / 2 + (-rx * sa + ry * ca) * FOCAL / fz;
     if (sx < -120 || sx > W + 120) return;
-    vis.push({ im, fz, sx, sc, z, flip, shadow });
+    vis.push({ im, fz, sx, sc, z, flip, shadow, px: im.px });
   };
   for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, 0);
   for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.coin, .55, 6 + Math.sin(tt * 4 + c.x) * 2);
@@ -333,7 +348,7 @@ function render() {
   for (const v of vis) {
     const { im, fz, sx, z, flip, shadow } = v, sc = FOCAL / fz * v.sc, w = im.width * sc, h = im.height * sc, gy = HOR + CAMH * FOCAL / fz;
     if (w < .6) continue;
-    ctx.globalAlpha = fz > 1000 ? Math.max(0, (1400 - fz) / 400) : 1;
+    ctx.globalAlpha = fz > 1000 ? Math.max(0, (1400 - fz) / 400) : 1; ctx.imageSmoothingEnabled = !v.px;
     if (shadow) { ctx.fillStyle = `rgba(0,0,0,${.15 + shadow * .3})`; ctx.beginPath(); ctx.ellipse(sx, gy, w * .45 * (.4 + shadow * .6), h * .08 + 1, 0, 0, 7); ctx.fill(); }
     const top = gy - h - z * FOCAL / fz;
     if (flip) { ctx.save(); ctx.translate(sx, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w / 2, top, w, h); ctx.restore(); }
@@ -343,7 +358,8 @@ function render() {
   drawKart(k);
   // minimap
   if (mini) {
-    const mx = W - 54, my = TOUCH ? 30 : 4, s = 50 / 128;
+    ctx.imageSmoothingEnabled = true;
+    const mx = W - 54, my = Math.round(H * .3), s = 50 / 128;
     ctx.globalAlpha = .85; ctx.drawImage(mini, mx, my, 50, 50); ctx.globalAlpha = 1;
     ctx.fillStyle = "#e0453a"; ctx.fillRect(mx + k.x * 128 / WORLD * s - 2, my + k.y * 128 / WORLD * s - 2, 4, 4);
   }
@@ -352,9 +368,9 @@ function drawKart(k) {
   const gy = HOR + CAMH * FOCAL / CAMD, sc = FOCAL / CAMD, x = W / 2 + k.steer * 4;
   const hop = k.hop > 0 ? Math.sin((k.hop / .18) * Math.PI) * 6 : 0, rumble = k.off && k.v > 40 ? (Math.random() - .5) * 2 : 0;
   const y = gy - hop + rumble - k.z * sc * .45, tilt = (k.drift ? k.drift * .16 : 0) + k.steer * .06 + (k.flip > 0 ? (1 - k.flip / .4) * Math.PI * 2 : 0);
-  const w = 18 * sc, t = performance.now() / 1000;
+  const w = 17 * sc, t = performance.now() / 1000;
   ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(x, gy + 2, w * .55 / (1 + k.z / 80), 4, 0, 0, 7); ctx.fill();
-  cv.style.transform = k.shake > 0 ? `translate(${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px, ${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px)` : "";
+  cv.style.transform = fxc.style.transform = k.shake > 0 ? `translate(${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px, ${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px)` : "";
   // drift sparks and dust
   if (k.drift && k.charge > .2) {
     const col = k.charge > 1.6 ? ["#ff9a2e", "#ffd34d"] : k.charge > .75 ? ["#5ab4ff", "#c8ecff"] : ["#ffffff", "#dddddd"];
@@ -370,8 +386,8 @@ function drawKart(k) {
   // driver (their picture faces right; mirror it when turning left), sitting in the kart: the body hides their legs
   const sp = IMG.me;
   if (sp) {
-    const dh = 58, dw = sp.width * dh / sp.height;
-    ctx.save(); ctx.translate(0, -bh * .45); if (k.steer < -.3 || k.drift < 0) ctx.scale(-1, 1);
+    const zoom = Math.max(1, Math.round(H * .2 * S / sp.height)), dh = sp.height * zoom / S, dw = sp.width * zoom / S;
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(0, -bh * .45); if (k.steer < -.3 || k.drift < 0) ctx.scale(-1, 1);
     ctx.drawImage(sp, -dw / 2, -dh, dw, dh); ctx.restore();
   }
   // kart body from behind: Family green with gold trim, wheels and a low spoiler
@@ -392,12 +408,13 @@ function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x 
 // ------------------------------------------------------------------ HUD + flow
 function hud() {
   const k = K;
-  $k("#kLap").textContent = state === "menu" ? "" : `Lap ${Math.min(k.lap + 1, LAPS)}/${LAPS}`;
+  $k("#kLap").textContent = state === "menu" ? "" : `LAP ${Math.min(k.lap + 1, LAPS)}/${LAPS}`;
   $k("#kTime").textContent = state === "menu" ? "" : fmt(k.t);
-  $k("#kBest").textContent = best && best.lap ? `Best lap ${fmt(best.lap)}` : "";
+  $k("#kBest").textContent = best && best.lap ? `Best ${fmt(best.lap)}` : "";
   $k("#kSpeed").textContent = state === "race" ? `${Math.max(0, Math.round(k.v * .5))} km/h` : "";
   $k("#kWrong").hidden = !(state === "race" && k.wrong > .6);
-  $k("#kBag").textContent = state === "menu" ? "" : `🪙 ${k.mesos}/10 · 🧪 ${k.items}`;
+  $k("#kBag").textContent = state === "menu" ? "" : `🪙 ${k.mesos}/10`;
+  $k("#kItemBoxN").textContent = k.items; $k("#kItemBox").classList.toggle("empty", !k.items);
   $k("#kItemN").textContent = k.items;
   $k("#kPad [data-k=i]").disabled = !k.items;
 }
@@ -448,8 +465,10 @@ async function start() {
 }
 async function prepare() {
   paintTrack(); placeObjects();
-  const [s, tr] = [await loadImg(B.M + "bg_henesys.webp?v=9"), treeImg()]; sky = s; IMG.tree = tr; IMG.coin = coinImg();
-  await Promise.all([...MOBS, "king_slime"].map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); }));
+  sky = await loadImg(B.M + "bg_henesys.webp?v=9"); IMG.coin = coinImg();
+  await Promise.all([...MOBS, "king_slime"].map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); if (IMG[m]) IMG[m].px = true; })
+    .concat(Object.keys(PROPS).map(async k => { IMG[k] = await loadImg(`media/kart/${k}.webp?v=1`); }))
+    .concat([(async () => { IMG.strip = await loadImg("media/kart/henesys_strip.webp?v=1"); })()]));
 }
 function finish() {
   state = "done"; const k = K, total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);

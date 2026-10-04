@@ -14,7 +14,7 @@
 .kt-time { flex: 1; font: 800 18px ui-monospace, Menlo, Consolas, monospace; }
 .kt-best { font-size: 12px; color: var(--muted); font-weight: 700; white-space: nowrap; }
 .kt-screen { position: relative; border-radius: 14px; overflow: hidden; border: 3px solid #3b2f22; background: #8fd0ff; aspect-ratio: 5 / 3; }
-#kCanvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+#kCanvas, #kFx { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
 .kt-speed { position: absolute; left: 8px; bottom: 6px; font: 900 16px Ubuntu, sans-serif; color: #fff; text-shadow: 0 2px 0 #000, 0 0 4px #000; }
 .k-flash { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font: 900 54px Ubuntu, sans-serif; color: #ffe066;
   -webkit-text-stroke: 3px #3b2f22; text-shadow: 0 5px 0 #3b2f22; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .2s; pointer-events: none; }
@@ -77,3 +77,20 @@
 .kt-pad .itm { font-size: 24px; background: #fff1c9; position: relative; }
 .kt-pad .itm b { position: absolute; right: 6px; bottom: 4px; font-size: 14px; background: #2d2832; color: #fff; border-radius: 8px; padding: 0 5px; }
 .kt-pad button:disabled { opacity: .4; }
+#kFx { pointer-events: none; image-rendering: auto; }
+/* arcade HUD over the track (Mario Kart PC style) */
+.kt-hud-l { position: absolute; left: 8px; top: 8px; display: flex; gap: 8px; align-items: flex-start; z-index: 2; pointer-events: none; }
+.kt-item { width: 54px; height: 54px; border-radius: 10px; background: rgba(20,20,30,.55); border: 3px solid #fff; box-shadow: 0 0 0 2px #2d2832;
+  display: flex; align-items: center; justify-content: center; position: relative; }
+.kt-item img { width: 36px; height: 36px; image-rendering: pixelated; }
+.kt-item b { position: absolute; right: -6px; bottom: -6px; background: #ffd23f; color: #2d2832; border: 2px solid #2d2832; border-radius: 9px; font: 900 13px Ubuntu, sans-serif; padding: 0 5px; }
+.kt-item.empty img { opacity: .25; }
+.kt-hudtxt { display: flex; flex-direction: column; gap: 2px; }
+.kt-lap, .kt-time, .kt-bag, .kt-best { font: 900 22px Ubuntu, sans-serif; color: #fff; -webkit-text-stroke: 1.5px #2d2832; paint-order: stroke; text-shadow: 0 3px 0 #2d2832; background: none; padding: 0; }
+.kt-lap { font-size: 20px; } .kt-bag { font-size: 15px; -webkit-text-stroke: 1px #2d2832; }
+.kt-hud-r { position: absolute; right: 10px; top: 6px; text-align: right; z-index: 2; pointer-events: none; }
+.kt-time { font-size: 30px; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+.kt-best { font-size: 13px; -webkit-text-stroke: 1px #2d2832; text-shadow: 0 2px 0 #2d2832; color: #ffe8a3; }
+.kt-btns { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); display: flex; gap: 6px; z-index: 3; }
+.kt-btns .sk-small { padding: 3px 9px; font-size: 13px; opacity: .85; }
+@media (max-width: 560px), (max-height: 420px) { .kt-time { font-size: 22px; } .kt-lap { font-size: 16px; } .kt-item { width: 44px; height: 44px; } .kt-item img { width: 30px; height: 30px; } }
