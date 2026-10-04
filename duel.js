@@ -81,8 +81,30 @@ let sb = null, ch = null, sess = null, st = null, leftAt = 0, polling = false, p
 let shownTurn = -1, animUntil = 0, disp = null, bot = null, room = "public", liveT = null, lastBanner = "";
 
 // ------------------------------------------------------------------ lobby
-$b("#bdHelp").innerHTML = ORDER.map(k => { const m = MOVES[k];
-  return `<div class="bdh"><img src="${M + m.icon}" alt=""><b>${m.name}</b><i>${m.cost ? m.cost + " MP" : "Free"}</i><small>${m.desc}</small></div>`; }).join("");
+// "what beats what": the 4 basic moves form a circle (each beats the next), Elixir sits outside it, class skills listed below
+$b("#bdHelp").innerHTML = (() => {
+  const mv = (k, x, y, c, r, sub) => `<div class="cy-mv" style="left:${x}%;top:${y}%;--c:var(--${c});--r:${r}deg"><div class="ic"><img src="${M + MOVES[k].icon}" alt=""></div><b>${MOVES[k].name}</b><small>${sub}</small></div>`;
+  const lbl = (x, y, t) => `<div class="cy-lbl" style="left:${x}%;top:${y}%">${t}</div>`;
+  const sk = (k, e, t) => `<div class="cy-sk"><img src="${M + MOVES[k].icon}" alt=""><div><b>${MOVES[k].name}</b> ${e} ${t}</div></div>`;
+  return `<h4 class="cy-h">⚔️ What beats what <small>follow the arrows: each move beats the next one</small></h4>
+  <div class="cy-ring"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><marker id="cyAh" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2d2832"/></marker></defs>
+    <g fill="none" stroke="#2d2832" stroke-width="1.4" stroke-linecap="round" marker-end="url(#cyAh)">
+    <path d="M61,16 Q80,20 84,38"/><path d="M84,62 Q80,80 61,84"/><path d="M39,84 Q20,80 16,62"/><path d="M16,38 Q20,20 39,16"/></g></svg>
+    ${mv("bonk", 50, 12, "red", -3, "2 dmg · 1 MP")}${mv("dodge", 88, 50, "purple", 3, "1 MP")}${mv("heavy", 50, 88, "gold", -2, "4 dmg · 3 MP")}${mv("shield", 12, 50, "blue", 2, "Free")}
+    ${lbl(80, 20, "hits through<br>a Dodge")}${lbl(80, 80, "dodges it &amp;<br>hits back 3")}${lbl(20, 80, "smashes<br>the Shield")}${lbl(20, 20, "blocks it<br>+1 MP")}
+    <div class="cy-mid"><big>➜</big>arrow<br>= beats</div></div>
+  <div class="cy-side"><img src="${M + MOVES.charge.icon}" alt=""><div><b>🧪 Elixir: the risky one</b>+2 MP, but any hit on you does +1 this turn.</div></div>
+  <p class="cy-tip">Same move on both sides? Bonk vs Bonk or Heavy vs Heavy: you both get hit.</p>
+  <h4 class="cy-h">✨ Class skills <small>your 6th move</small></h4>
+  <div class="cy-sks">
+    ${sk("rage", "🗡️", `<span class="ok">blocks Bonk</span>, next hit +2 · <span class="no">Heavy gets through</span>`)}
+    ${sk("teleport", "🔮", `<span class="ok">nothing hits you</span>, zaps attacker 1 · <span class="no">not twice in a row</span>`)}
+    ${sk("arrow", "🏹", `3 dmg · <span class="ok">can't be blocked or dodged</span>`)}
+    ${sk("steal", "🗝️", `2 dmg · <span class="ok">steals an Elixir's +2 MP</span> · <span class="no">Shield blocks it</span>`)}
+    ${sk("coin", "🏴‍☠️", `coin flip: 4 dmg or nothing · <span class="no">Shield blocks it</span>`)}
+  </div>`;
+})();
 function drawClasses() {
   $b("#bdClasses").innerHTML = Object.entries(CLASSES).map(([k, c]) => { const sk = MOVES[c.skill];
     return `<button type="button" class="bd-class ${k === myClass ? "on" : ""}" data-c="${k}"><img src="${M + sk.icon}" alt="">

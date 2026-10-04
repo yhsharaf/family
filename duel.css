@@ -308,3 +308,25 @@
   .bt-arena .bd-card b { font-size: 10px; }
   .bt-pl small { display: none; }
 }
+
+/* how to play: the "what beats what" circle */
+.cy-h { margin: 4px 0 2px; font-size: 15px; } .cy-h small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.cy-ring { position: relative; width: 100%; max-width: 340px; aspect-ratio: 1; margin: 18px auto 14px; }
+.cy-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.cy-mv { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 96px; }
+.cy-mv .ic { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: linear-gradient(#3a4a6e, #222c45);
+  border: 3px solid #fff; box-shadow: 0 0 0 2px #2d2832, 3px 4px 0 rgba(0,0,0,.18); transform: rotate(var(--r)); }
+.cy-mv .ic img { width: 38px; height: 38px; image-rendering: pixelated; }
+.cy-mv b { white-space: nowrap; font-size: 13px; background: var(--c); color: #fff; padding: 1px 8px; border-radius: 6px; transform: rotate(calc(var(--r) * -1)); box-shadow: 2px 2px 0 rgba(0,0,0,.15); }
+.cy-mv small { font-size: 11px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.cy-lbl { position: absolute; transform: translate(-50%, -50%); font-size: 11.5px; font-weight: 700; background: #fff8e6; border: 1.5px dashed var(--gold); border-radius: 8px;
+  padding: 2px 6px; white-space: nowrap; text-align: center; line-height: 1.25; }
+.cy-mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: 700; font-size: 12px; color: var(--muted); }
+.cy-mid big { display: block; font-size: 28px; }
+.cy-side { display: flex; gap: 10px; align-items: center; background: #eef6ff; border: 1px solid #c8daf0; border-radius: 12px; padding: 8px 10px; font-size: 13px; }
+.cy-side img { width: 34px; height: 34px; image-rendering: pixelated; } .cy-side b { display: block; font-size: 14px; }
+.cy-tip { font-size: 12.5px; color: var(--muted); margin: 8px 0 6px; text-align: center; }
+.cy-sks { display: grid; gap: 5px; }
+.cy-sk { display: grid; grid-template-columns: 32px 1fr; gap: 8px; align-items: center; background: #fff; border: 1px solid var(--edge); border-radius: 10px; padding: 5px 8px; font-size: 12.5px; }
+.cy-sk img { width: 30px; height: 30px; image-rendering: pixelated; }
+.cy-sk .ok { color: #2e7d32; font-weight: 700; } .cy-sk .no { color: var(--red); font-weight: 700; }
