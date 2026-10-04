@@ -40,7 +40,7 @@ const MAPS = {
   elnath:  { name: "El Nath",       rule: "Dodge is free",     plat: { w: 900, h: 541, top: 2, frac: .7 } },
   zakum:   { name: "Zakum's Altar", rule: "Every hit does +1", plat: { w: 850, h: 400, top: 8, frac: .8 } },
   ludi:    { name: "Ludibrium",     rule: "The clock strikes every 4th turn: MP refills",    plat: { w: 900, h: 388, top: 0, frac: .74 } },
-  sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 25–40 for both, nobody can see it", plat: { w: 900, h: 400, top: 6, frac: .78 } },
+  sleepy:  { name: "Sleepywood",    rule: "Secret HP: same random 20–40 for both, nobody can see it", plat: { w: 900, h: 400, top: 6, frac: .78 } },
 };
 const ATTACKS = ["bonk", "heavy", "arrow", "steal", "coin"];
 // no Teleport two turns in a row: side s just teleported?
@@ -328,7 +328,7 @@ function startBot(kind, name) {
   showGame();
   bot = { kind, hist: [], timer: null };
   const c1 = myClass, c2 = BOTS[kind].cls, map = MAPS[new URLSearchParams(location.search).get("bdmap")] ? new URLSearchParams(location.search).get("bdmap") : Object.keys(MAPS)[Math.floor(Math.random() * 5)], secs = 15;
-  const secret = 25 + Math.floor(Math.random() * 16);   // Sleepywood: same hidden HP for both
+  const secret = 20 + Math.floor(Math.random() * 21);   // Sleepywood: same hidden HP for both
   const hp = c => map === "sleepy" ? secret : c === "warrior" ? 22 : c === "pirate" ? 21 : 20, en = c => c === "magician" ? 4 : 3, enmax = c => c === "magician" ? 6 : 5;
   st = { r: "ok", me: 1, status: "pick", turn: 1, p1: name, p2: BOTS[kind].name, class1: c1, class2: c2, map, secs,
          hp1: hp(c1), hp2: hp(c2), hpmax1: hp(c1), hpmax2: hp(c2), en1: en(c1), en2: en(c2), enmax1: enmax(c1), enmax2: enmax(c2),

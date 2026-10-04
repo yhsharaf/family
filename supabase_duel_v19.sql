@@ -65,7 +65,7 @@ create or replace function bd_join(p_room text, p_name text, p_tok uuid, p_class
 language plpgsql security definer set search_path = public as $$
 declare rm text := left(coalesce(nullif(p_room, ''), 'public'), 20); nm text := left(trim(coalesce(p_name, '')), 20);
         cls text := case when p_class in ('warrior', 'magician', 'bowman', 'thief', 'pirate') then p_class else 'warrior' end;
-        d bd_duels; why text; mp text; secret int := 25 + floor(random() * 16)::int;   -- Sleepywood: same hidden HP for both
+        d bd_duels; why text; mp text; secret int := 20 + floor(random() * 21)::int;   -- Sleepywood: same hidden HP for both (20-40)
 begin
   perform rl_check('bd_join', 30, 60);
   delete from bd_duels where created_at < now() - interval '3 hours';
