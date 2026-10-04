@@ -217,7 +217,7 @@ $b("#bdLive").addEventListener("click", e => { const b = e.target.closest(".bd-l
 // ------------------------------------------------------------------ entering / leaving a duel
 function showGame() {
   $b("#bdLobby").hidden = true; $b("#bdGame").hidden = false; $b("#duel").classList.add("playing"); document.body.classList.add("bd-playing");
-  $b("#bdResult").hidden = true; $b("#bdArena").querySelectorAll(".bd-fx, .bd-num, .bd-tomb, .bd-bubble, .bd-card").forEach(x => x.remove());
+  $b("#bdResult").hidden = true; $b("#bdArena").querySelectorAll(".bd-fx, .bd-num, .bd-tomb, .bd-bubble, .bd-card, .bd-arm").forEach(x => x.remove());
   ["#bdF1", "#bdF2"].forEach(k => { const f = $b(k); f.classList.remove("bd-ko", "bd-lunge", "bd-ouch"); f.dataset.n = ""; });
   window.scrollTo(0, 0); st = null; shownTurn = -1; animUntil = 0; disp = null; lastBanner = "";
   clearTimeout(liveT);
@@ -442,10 +442,7 @@ function fighter(el, s) {
   el.querySelector(".bd-hp b").textContent = hidden ? "HP ???" : `HP ${hp}/${hpmax}`;
   el.querySelector(".bd-mp").innerHTML = Array.from({ length: enmax }, (_, i) => `<i class="${i < en ? "on" : ""}"></i>`).join("") + `<b>MP ${en}</b>`;
   el.querySelector(".bd-buffs").textContent = st["rage" + s] ? "🔥 Rage" : "";
-  let arm = el.querySelector(".bd-arm");
-  const aimed = st.map === "zakum" && st.arm === s && st.status === "pick";
-  if (aimed && !arm) { arm = document.createElement("img"); arm.className = "bd-arm"; arm.src = M + "zarm_stand.gif"; arm.alt = ""; el.prepend(arm); }
-  if (!aimed && arm && !arm.classList.contains("slam")) arm.remove();
+  if (s === side()) placeArm();
   const think = el.querySelector(".bd-think");
   const picking = st.status === "pick" && !inReveal();
   const ready = st["picked" + s] || (st.me === s && st.mine);
@@ -590,7 +587,7 @@ function reveal(l, prev) {
     critRing(l, F);
   }, 1150);
   if (l.arm) {   // the arm slams down on its target
-    const tgt = F[l.arm], arm = tgt.querySelector(".bd-arm");
+    const tgt = F[l.arm], arm = $b("#bdArena .bd-arm");
     if (arm) { arm.classList.add("slam"); setTimeout(() => arm.remove(), 1500); }
     const safe = ["shield", "dodge", "teleport"].includes(m[l.arm]);
     setTimeout(() => { sound(safe ? "clang" : "heavy"); bubble(l.arm, safe ? "Phew! Missed me 😅" : "OUCH! 🖐️💥"); }, 1250);
@@ -703,6 +700,15 @@ function bubble(s, text) {
   el.querySelectorAll(".bd-bubble").forEach(x => x.remove());
   const b = document.createElement("div"); b.className = "bd-bubble"; b.textContent = text;
   el.appendChild(b); setTimeout(() => b.remove(), 2600);
+}
+// Zakum's arm: sits at the far edge of the arena on the side of the player it aims at
+function placeArm() {
+  const ar = $b("#bdArena"); let arm = ar.querySelector(".bd-arm");
+  const aimed = st && st.map === "zakum" && st.arm && st.status === "pick";
+  if (!aimed) { if (arm && !arm.classList.contains("slam")) arm.remove(); return; }
+  const onRight = st.arm !== side();
+  if (!arm) { arm = document.createElement("img"); arm.className = "bd-arm"; arm.src = M + "zarm_stand.gif"; arm.alt = ""; ar.appendChild(arm); }
+  arm.classList.toggle("r", onRight); arm.classList.toggle("l", !onRight);
 }
 function armWarning() {
   const who = st.me === st.arm ? "YOU" : esc(st["p" + st.arm]);
