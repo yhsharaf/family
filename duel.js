@@ -907,7 +907,7 @@ $b("#bdMusic").onclick = () => { musicOn = !musicOn; store.set("family_bd_music"
 // shared with the 2v2 screen (duel2.js)
 window.BD = { MOVES, CLASSES, MAPS, ATTACKS, M, esc, store, cost, realMove, spriteOf, guildOf, client, askProf, sound, fx, num, tomb, myName,
   getClass: () => myClass, music: map => { extMusic = map; syncMusic(); },
-  toggleMusic: () => { musicOn = !musicOn; store.set("family_bd_music", musicOn ? "1" : "0"); syncMusic(); }, loadBoard: () => loadBoard() };
+  toggleMusic: () => { musicOn = !musicOn; store.set("family_bd_music", musicOn ? "1" : "0"); syncMusic(); }, musicOn: () => musicOn, loadBoard: () => loadBoard() };
 async function loadBoard() {
   if (!(await client())) return;
   const { data } = await sb.from("bd_scores").select("player,duels,wins,points").order("points", { ascending: false }).order("wins", { ascending: false }).limit(15);

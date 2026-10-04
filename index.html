@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
+<link rel="stylesheet" href="kart.css?v=2">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -231,6 +232,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <a href="#draw" style="--r:-2deg;background:var(--teal)">Draw & Guess</a>
   <a href="#ww" style="--r:2deg;background:#3b3561">Werewolf</a>
   <a href="#duel" style="--r:-2deg;background:#c0612b">Bonk Duel</a>
+  <a href="#kart" style="--r:2deg;background:#46a05a">Family Kart</a>
 </nav>
 
 <div class="smega" id="smega" hidden><span class="tag">📣</span><div class="track"><span id="smegaText"></span></div><button id="smegaX" aria-label="hide">×</button></div>
@@ -484,6 +486,49 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <div class="sk-panel bd-fame">
     <h3>🏆 Bonk Duel Hall of Fame</h3>
     <ol class="dboard" id="bdBoard"></ol>
+  </div>
+</section>
+
+<section id="kart" class="kt">
+  <h2 class="kt-h"><span class="word" style="background:#46a05a">Family</span><span class="word" style="background:var(--gold);--r:2deg">Kart</span></h2>
+  <div id="kMenu" class="sk-home">
+    <div class="sk-panel">
+      <div class="sk-name"><input id="kName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go"></div>
+      <div class="kt-track"><img src="media/duel/bg_henesys.webp?v=9" alt=""><div><b>🍄 Henesys Loop</b><small>Time trial · 3 laps</small></div></div>
+      <div class="kt-mine" id="kMine"></div>
+      <button class="sk-btn bd-play" id="kGo">🏁 Start race!</button>
+      <div class="sk-err" id="kErr"></div>
+    </div>
+    <div class="sk-panel kt-about">
+      <h3>How to drive</h3>
+      <p>Your kart speeds up by itself. Steer round the track, and stay on the road: the grass slows you right down.</p>
+      <p>💨 <b>Drift:</b> hold <b>Drift</b> while you turn. Sparks turn <span style="color:#2f7fd0;font-weight:700">blue</span>, then <span style="color:#e07a12;font-weight:700">orange</span>.
+        Let go for a speed boost, and the longer you held it, the bigger the boost.</p>
+      <p>⌨️ Computer: <b>← →</b> steer, <b>Space</b> drift, <b>↓</b> brake. 📱 Phone: the buttons under the track.</p>
+      <h3>🏆 Guild board · Henesys Loop</h3>
+      <ol class="dboard kt-board" id="kBoard"></ol>
+      <p class="kt-soon">🚧 Prototype: ghosts of the guild's best laps, items and more tracks are coming next.</p>
+    </div>
+  </div>
+  <div id="kGame" class="kt-game" hidden>
+    <div class="bd-top"><div class="kt-lap" id="kLap"></div><div class="kt-time" id="kTime"></div><div class="kt-best" id="kBest"></div>
+      <button class="sk-small bd-music" id="kMusic" title="Music on/off">🔇</button><button class="sk-small" id="kLeave">Leave</button></div>
+    <div class="kt-screen">
+      <canvas id="kCanvas"></canvas>
+      <div class="kt-speed" id="kSpeed"></div>
+      <div class="k-flash" id="kFlash"></div>
+      <div class="kt-wrong" id="kWrong" hidden>↩️ WRONG WAY!</div>
+      <div class="kt-load" id="kLoad" hidden>Building the track…</div>
+      <div class="kt-rotate" id="kRotate" hidden><span>📱↪️</span>Turn your phone sideways to race</div>
+      <div class="bd-result kt-result" id="kResult" hidden></div>
+    </div>
+    <div class="kt-pad" id="kPad">
+      <button type="button" data-k="l" aria-label="Steer left">◀</button>
+      <button type="button" data-k="r" aria-label="Steer right">▶</button>
+      <span></span>
+      <button type="button" data-k="b" class="brk" aria-label="Brake">Brake</button>
+      <button type="button" data-k="d" class="drf" aria-label="Drift">💨 Drift</button>
+    </div>
   </div>
 </section>
 
@@ -804,8 +849,9 @@ show();
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
 <script src="duel-songs.js?v=1"></script>
-<script src="duel.js?v=29"></script>
+<script src="duel.js?v=30"></script>
 <script src="duel2.js?v=3"></script>
+<script src="kart.js?v=2"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>
