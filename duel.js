@@ -880,6 +880,7 @@ function playStep(ac, out, delay, song, step, t, stepDur) {
   }
 }
 let extMusic = null;   // the 2v2 screen asks for a map's song through BD.music(map)
+let musicRate = 1;   // tempo (Family Kart speeds it up on the final lap)
 function startMusic(map) {
   stopMusic();
   const ac = window.getAC && window.getAC(); if (!ac || !musicOn || !map) return;
@@ -889,7 +890,7 @@ function startMusic(map) {
   if (song.echoMix) { delay = ac.createDelay(1); delay.delayTime.value = 60 / song.bpm * .75; const fb = ac.createGain(), mix = ac.createGain();
     fb.gain.value = .3; mix.gain.value = song.echoMix * 1.6; delay.connect(fb).connect(delay); delay.connect(mix).connect(out); }
   const stepDur = 60 / song.bpm / song.div; let step = 0, next = ac.currentTime + .1;
-  const tick = () => { while (next < ac.currentTime + .25) { playStep(ac, out, delay, song, step, next, stepDur); step++; next += stepDur; } };
+  const tick = () => { while (next < ac.currentTime + .25) { const sd = stepDur / musicRate; playStep(ac, out, delay, song, step, next, sd); step++; next += sd; } };
   tick(); music = { timer: setInterval(tick, 80), out, map };
 }
 function stopMusic() {
@@ -907,7 +908,7 @@ $b("#bdMusic").onclick = () => { musicOn = !musicOn; store.set("family_bd_music"
 // shared with the 2v2 screen (duel2.js)
 window.BD = { MOVES, CLASSES, MAPS, ATTACKS, M, esc, store, cost, realMove, spriteOf, guildOf, client, askProf, sound, fx, num, tomb, myName,
   getClass: () => myClass, music: map => { extMusic = map; syncMusic(); },
-  toggleMusic: () => { musicOn = !musicOn; store.set("family_bd_music", musicOn ? "1" : "0"); syncMusic(); }, musicOn: () => musicOn, loadBoard: () => loadBoard() };
+  toggleMusic: () => { musicOn = !musicOn; store.set("family_bd_music", musicOn ? "1" : "0"); syncMusic(); }, musicOn: () => musicOn, musicRate: r => { musicRate = r || 1; }, loadBoard: () => loadBoard() };
 async function loadBoard() {
   if (!(await client())) return;
   const { data } = await sb.from("bd_scores").select("player,duels,wins,points").order("points", { ascending: false }).order("wins", { ascending: false }).limit(15);
