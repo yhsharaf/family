@@ -238,6 +238,7 @@ function listen(game) {
   ch.subscribe();
 }
 function exit(msg) {
+  stopMusic();
   clearInterval(pollT); pollT = null; if (ch && sb) sb.removeChannel(ch); ch = null;
   sess = null; st = null; bot = null;
   $b("#bdLobby").hidden = false; $b("#bdGame").hidden = true; $b("#duel").classList.remove("playing"); document.body.classList.remove("bd-playing");
@@ -496,6 +497,7 @@ function render() {
     if (lastBanner !== html) { lastBanner = html; banner(html, 0, true); }
   } else if (lastBanner && lastBanner.includes("data-a")) { lastBanner = ""; $b("#bdBanner").className = "bd-banner"; }
   if (s === "over") showResult();
+  syncMusic();
 }
 // stand the map's platform under the fighters: its walkable top lines up with the feet line (--gl)
 function placePlat() {
@@ -771,6 +773,88 @@ function sound(kind) {
     else tone(660, 0, .1, "sine", .12, 990);
   } catch (e) {}
 }
+
+
+// ------------------------------------------------------------------ background music
+// Original loops in the style of each map's theme (see duel-songs.js; no game audio is used). Each song is a melody plus
+// layers (arpeggio, bass, chords, drums, cave rumble), scheduled a little ahead with Web Audio. Off until the 🔇 button is pressed.
+const SONGS = window.BD_SONGS || {};
+let musicOn = store.get("family_bd_music") === "1", music = null;
+const hz = n => 440 * Math.pow(2, (n - 69) / 12);
+function note(ac, out, f, t, dur, wave, vol, opt = {}) {
+  const o = ac.createOscillator(), g = ac.createGain(); o.type = wave; o.frequency.setValueAtTime(f, t);
+  const atk = opt.atk || .01, rel = opt.box ? dur * .9 : dur;
+  if (opt.vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 5.5; lg.gain.value = f * .006; l.connect(lg).connect(o.frequency); l.start(t + .08); l.stop(t + rel + .05); }
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + atk);
+  if (opt.box) g.gain.exponentialRampToValueAtTime(.0005, t + Math.max(atk + .01, rel));      // plucked / bell: rings out
+  else { g.gain.setValueAtTime(vol, t + Math.max(atk, dur * .7)); g.gain.linearRampToValueAtTime(0, t + dur); }
+  o.connect(g).connect(out); o.start(t); o.stop(t + rel + .05);
+}
+function noiseBuf(ac, secs, shape) {
+  const sr = ac.sampleRate, b = ac.createBuffer(1, Math.max(1, sr * secs | 0), sr), c = b.getChannelData(0);
+  for (let i = 0; i < c.length; i++) c[i] = (Math.random() * 2 - 1) * shape(i / c.length);
+  return b;
+}
+function drum(ac, out, t, kind, vol) {
+  if (kind === "kick" || kind === "tom") { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(kind === "kick" ? 120 : 90, t);
+    o.frequency.exponentialRampToValueAtTime(40, t + .18); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + .22); o.connect(g).connect(out); o.start(t); o.stop(t + .25); return; }
+  if (kind === "click") { const o = ac.createOscillator(), g = ac.createGain(); o.type = "square"; o.frequency.setValueAtTime(vol > .03 ? 1900 : 1300, t);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0005, t + .04); o.connect(g).connect(out); o.start(t); o.stop(t + .05); return; }
+  if (kind === "snare") {
+    const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(110, t + .1);
+    g.gain.setValueAtTime(vol * .6, t); g.gain.exponentialRampToValueAtTime(.001, t + .12); o.connect(g).connect(out); o.start(t); o.stop(t + .14);
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g2 = ac.createGain(); s.buffer = noiseBuf(ac, .16, x => (1 - x) * (1 - x));
+    f.type = "bandpass"; f.frequency.value = 2200; f.Q.value = .7; g2.gain.value = vol; s.connect(f).connect(g2).connect(out); s.start(t); return; }
+  if (kind === "rumble") {   // a deep cave rumble that swells and fades over ~3 seconds
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = noiseBuf(ac, 3.2, x => Math.sin(Math.PI * x));
+    f.type = "lowpass"; f.frequency.value = 140; g.gain.value = vol * 3; s.connect(f).connect(g).connect(out); s.start(t); return; }
+  const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = noiseBuf(ac, .06, x => 1 - x);   // hi-hat / shaker
+  f.type = "highpass"; f.frequency.value = 6000; g.gain.value = vol; s.connect(f).connect(g).connect(out); s.start(t);
+}
+function playStep(ac, out, delay, song, step, t, stepDur) {
+  const spb = song.spb, nb = song.roots.length, bar = Math.floor(step / spb) % nb, pos = step % spb, i = step % song.mel.length;
+  const L = song.lead, m = song.mel[i];
+  if (m != null) {
+    let len = L.len || 1.6;
+    if (L.legato) { len = 1; while (len < 4 && song.mel[(i + len) % song.mel.length] == null) len++; len *= .95; }
+    note(ac, out, hz(song.root + m), t, stepDur * len, L.wave, L.vol, { box: L.box, vib: L.vib, atk: L.atk });
+    if (L.oct2) note(ac, out, hz(song.root + m + 12), t, stepDur * Math.min(len, 1.4), L.oct2.wave, L.oct2.vol, { box: L.box, vib: L.vib });
+    if (delay) note(ac, delay, hz(song.root + m), t, stepDur * Math.min(len, 1.6), L.wave, L.vol * .6, { box: L.box });
+  }
+  for (const ly of song.layers) {
+    if (ly.bars && !ly.bars.includes(bar)) continue;
+    const opt = { box: ly.box, atk: ly.atk }, oct = ly.oct || 0, dur = stepDur * (ly.len || 1);
+    if (ly.type === "arp") { const k = ly.at.indexOf(pos); if (k < 0) continue;
+      const [ci, add] = ly.pattern[k % ly.pattern.length]; note(ac, out, hz(song.root + oct + song.chords[bar][ci] + add), t, dur, ly.wave, ly.vol, opt); }
+    else if (ly.type === "bass") { if (!(pos in ly.at)) continue; note(ac, out, hz(song.root + oct + song.roots[bar] + ly.at[pos]), t, dur, ly.wave, ly.vol, opt); }
+    else if (ly.type === "chord") { if (!ly.at.includes(pos)) continue; song.chords[bar].forEach(c => note(ac, out, hz(song.root + oct + c), t, dur, ly.wave, ly.vol, opt)); }
+    else if (ly.type === "drum") { if (!ly.at.includes(pos)) continue; drum(ac, out, t, ly.kind, ly.vol * (ly.clock && st && st.turn % 4 === 3 ? 2 : 1)); }   // tick-tock louder right before the clock strikes
+    else if (ly.type === "rumble") { if (pos === 0) drum(ac, out, t, "rumble", ly.vol); }
+  }
+}
+function startMusic() {
+  stopMusic();
+  const ac = window.getAC && window.getAC(); if (!ac || !musicOn || !st) return;
+  const song = SONGS[st.map] || SONGS.henesys; if (!song) return;
+  const out = ac.createGain(); out.gain.value = .9; out.connect(ac.destination);
+  let delay = null;
+  if (song.echoMix) { delay = ac.createDelay(1); delay.delayTime.value = 60 / song.bpm * .75; const fb = ac.createGain(), mix = ac.createGain();
+    fb.gain.value = .3; mix.gain.value = song.echoMix * 1.6; delay.connect(fb).connect(delay); delay.connect(mix).connect(out); }
+  const stepDur = 60 / song.bpm / song.div; let step = 0, next = ac.currentTime + .1;
+  const tick = () => { while (next < ac.currentTime + .25) { playStep(ac, out, delay, song, step, next, stepDur); step++; next += stepDur; } };
+  tick(); music = { timer: setInterval(tick, 80), out, map: st.map };
+}
+function stopMusic() {
+  if (!music) return; clearInterval(music.timer);
+  try { const ac = window.getAC(); music.out.gain.setTargetAtTime(0, ac.currentTime, .15); const o = music.out; setTimeout(() => o.disconnect(), 800); } catch (e) {}
+  music = null;
+}
+function syncMusic() {   // right song for the map, only while a duel is on screen
+  const want = musicOn && st && !$b("#bdGame").hidden && st.status !== "wait";
+  if (!want) { stopMusic(); } else if (!music || music.map !== st.map) startMusic();
+  $b("#bdMusic").textContent = musicOn ? "🔊" : "🔇";
+}
+$b("#bdMusic").onclick = () => { musicOn = !musicOn; store.set("family_bd_music", musicOn ? "1" : "0"); syncMusic(); };
 
 async function loadBoard() {
   if (!(await client())) return;
