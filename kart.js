@@ -238,10 +238,13 @@ function useItem(r) {
 }
 // one computer racer: follows the road in its own lane, dodges slime puddles, keeps races close (rubber band), uses items
 function rivalStep(r, dt, tt) {
+  if (rescueStep(r, dt)) return;
   const near = nearest(r.x, r.y, r.idx); r.idx = near.i; const off = near.d > ROAD / 2 + CURB * .6, L = lat(r.x, r.y, r.idx);
   if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) r.boost = Math.max(r.boost, .8); } }
   const air = r.z > 0;
   for (const key of ["spin", "inv", "squash", "boost", "itemT"]) if (r[key] > 0) r[key] -= dt;
+  const lost = near.d > ROAD / 2 + 110 || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
+  r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
   if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 76; r.laneT = 1.5 + Math.random() * 3; }
   for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
   for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
@@ -348,12 +351,39 @@ function input() {
     item: !!(keys.ArrowUp || keys.w || keys.e || touch.i) };
 }
 function spinOut(msg) {
-  const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0) return;
-  k.spin = .9; k.inv = 1.9; k.drift = 0; k.charge = 0; k.boost = 0; flash(msg, 900); spinSound();
+  const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0) return;
+  k.spin = .9; k.inv = 1.9; k.drift = 0; k.charge = 0; k.boost = 0; spinSound();
+  const lose = Math.min(3, k.mesos); k.mesos -= lose;   // getting hit drops mesos, like coins in Mario Kart
+  for (let i = 0; i < lose; i++) COINFX.push({ x: (Math.random() - .5) * 10, y: 0, vx: (Math.random() - .5) * 90, vy: -120 - Math.random() * 60, t: 1 });
+  flash(lose ? `${msg} −${lose} 🪙` : msg, 1000);
+}
+const COINFX = [];   // mesos flying out of your kart (screen space, relative to the kart)
+// 📜 Return Scroll: wrong way, lost far off the road or stuck for a few seconds -> lifted out and put back on the road facing forward
+function rescue(r) {
+  if (r.rescue > 0) return;
+  r.rescue = 1.4; r.rescueAt = (r.idx - 4 + N) % N; r.drift = 0; r.charge = 0; r.boost = 0; r.spin = 0;
+  if (r === K) { flash("📜 Return Scroll!", 1200); scrollSound(); }
+}
+function rescueStep(r, dt) {   // true while being rescued (no driving)
+  if (!(r.rescue > 0)) return false;
+  const before = r.rescue; r.rescue -= dt; r.v = 0;
+  if (before > .7 && r.rescue <= .7) {   // halfway: move to the road
+    const [x, y] = at(r.rescueAt, 0); r.x = x; r.y = y; r.a = tangent(r.rescueAt); r.idx = r.rescueAt; r.z = 0; r.vz = 0;
+    r.lostT = 0; r.wrong = 0;
+  }
+  if (r.rescue <= 0) { r.rescue = 0; r.inv = 1; }
+  return true;
 }
 function step(dt) {
   const k = K, inp = input(), racing = state === "race", tt = performance.now() / 1000;
+  for (let i = COINFX.length - 1; i >= 0; i--) { const c = COINFX[i]; c.t -= dt; c.vy += 320 * dt; c.x += c.vx * dt; c.y += c.vy * dt; if (c.t <= 0) COINFX.splice(i, 1); }
+  if (rescueStep(k, dt)) { if (racing) { k.t += dt * 1000; worldStep(dt, tt); } return; }
   const near = nearest(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > ROAD / 2 + CURB * .6;
+  if (racing) {
+    const lost = near.d > ROAD / 2 + 150 || (k.v < 25 && !inp.brake && k.spin <= 0 && k.stall <= 0 && k.squash <= 0);
+    k.lostT = lost ? (k.lostT || 0) + dt : Math.max(0, (k.lostT || 0) - dt);
+    if (k.lostT > 2.6 || k.wrong > 3) { rescue(k); return; }
+  }
   const L = lat(k.x, k.y, k.idx);
   // in the air (ramps): gravity, and a trick on the way up/down gives a boost when you land
   if (k.z > 0 || k.vz > 0) {
@@ -533,7 +563,11 @@ function drawKart(k) {
       ctx.fillRect(sx, sy, 2, 2); }
   }
   if (k.off && k.v > 60) for (let i = 0; i < 4; i++) { ctx.fillStyle = "rgba(120,90,50,.6)"; ctx.fillRect(x + (Math.random() - .5) * w, y - Math.random() * 6, 3, 3); }
-  ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
+  for (const c of COINFX) if (IMG.coin) { const cs = 9 * Math.abs(Math.cos(c.t * 12)) + 2; ctx.drawImage(IMG.coin, x + c.x - cs / 2, y - 30 + c.y, cs, 9); }
+  let lift = 0;
+  if (k.rescue > 0) { const p = k.rescue > .7 ? (1.4 - k.rescue) / .7 : k.rescue / .7; lift = p * 40; ctx.globalAlpha = Math.max(0, 1 - p);
+    ctx.font = "16px sans-serif"; ctx.textAlign = "center"; ctx.fillText("📜", x, y - 60 - lift); }
+  ctx.save(); ctx.translate(x, y - lift); ctx.rotate(tilt);
   if (k.spin > 0) ctx.scale(Math.cos((.9 - k.spin) * Math.PI * 4), 1);      // spinning out
   if (k.squash > 0) ctx.scale(1.35, .45);                                   // flattened by the King Slime
   if (k.inv > 0 && k.spin <= 0 && Math.floor(performance.now() / 90) % 2) ctx.globalAlpha = .55;
@@ -573,11 +607,12 @@ function drawKart(k) {
 function drawRival(r, sx, gy, sc, fz) {
   const w = 17 * sc, bh = w * .42, y = gy - r.z * sc * .45, t = performance.now() / 1000;
   ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(sx, gy + 1, w * .55, Math.max(1, 3 * sc / 2), 0, 0, 7); ctx.fill();
+  if (r.rescue > 0) { const p = r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7; ctx.globalAlpha = Math.max(0, 1 - p); }
   ctx.save(); ctx.translate(sx, y); ctx.rotate(r.steer * .06);
   if (r.spin > 0) ctx.scale(Math.cos((.9 - r.spin) * Math.PI * 4), 1);
   if (r.squash > 0) ctx.scale(1.35, .45);
   if (r.inv > 0 && r.spin <= 0 && Math.floor(t * 11) % 2) ctx.globalAlpha = .55;
-  if (fz < CAMD * .9) ctx.globalAlpha = .4;   // right behind you, between you and the camera: see-through so your kart stays visible
+  if (fz < CAMD * .9) ctx.globalAlpha = Math.min(ctx.globalAlpha, .4);   // right behind you, between you and the camera: see-through so your kart stays visible
   const sp = r.img;
   if (sp && sp.complete && sp.naturalHeight) {
     const dh = (H * .2 / (FOCAL / CAMD)) * sc, dev = dh * S;
@@ -617,10 +652,10 @@ function hud() {
   $k("#kWrong").hidden = !(state === "race" && k.wrong > .6);
   $k("#kBag").textContent = state === "menu" ? "" : `🪙 ${k.mesos}/10`;
   const icon = k.roll > 0 ? ITEM_ICON[Object.keys(ITEM_ICON)[Math.floor(performance.now() / 80) % 5]] : k.item ? ITEM_ICON[k.item] : "";
-  const img = $k("#kItemBox img"); if (img.dataset.src !== icon) { img.dataset.src = icon; img.src = icon || "data:image/gif;base64,R0lGODlhAQABAAAAACw="; }
+  const img = $k("#kItemBox img"); if (img.dataset.src !== icon) { img.dataset.src = icon; if (icon) img.src = icon; img.hidden = !icon; }
   $k("#kItemBox").classList.toggle("empty", !k.item && k.roll <= 0);
   $k("#kItemBoxN").textContent = k.item === "triple" ? k.itemN : ""; $k("#kItemBoxN").hidden = k.item !== "triple";
-  const pb = $k("#kPad [data-k=i]"); pb.disabled = !k.item || k.roll > 0; const pi = pb.querySelector("img"); if (pi.dataset.src !== icon) { pi.dataset.src = icon; pi.src = icon || "data:image/gif;base64,R0lGODlhAQABAAAAACw="; }
+  const pb = $k("#kPad [data-k=i]"); pb.disabled = !k.item || k.roll > 0; const pi = pb.querySelector("img"); if (pi.dataset.src !== icon) { pi.dataset.src = icon; if (icon) pi.src = icon; pi.hidden = !icon; }
   const rk = state === "menu" ? 0 : state === "done" ? K.place : rankOf(k);
   $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk;
 }
@@ -795,5 +830,6 @@ const itemSound = () => { tone(520, .1, "square", .06); setTimeout(() => tone(78
 const spinSound = () => { for (let i = 0; i < 4; i++) setTimeout(() => tone(600 - i * 90, .12, "square", .06, 300 - i * 50), i * 110); };
 const slamSound = d => tone(90, .5, "square", Math.max(.03, .16 - d / 2500), 35);
 const boxSound = () => { for (let i = 0; i < 8; i++) setTimeout(() => tone(700 + (i % 3) * 180, .06, "square", .04), i * 120); };
+const scrollSound = () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, .14, "triangle", .07), i * 90)); };
 const lapSound = () => { tone(660, .12, "square", .07); setTimeout(() => tone(990, .2, "square", .07), 110); };
 })();

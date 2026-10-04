@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=6">
+<link rel="stylesheet" href="kart.css?v=7">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -519,10 +519,10 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="kt-screen">
       <canvas id="kCanvas"></canvas>
       <canvas id="kFx"></canvas>
-      <div class="kt-hud-l"><div class="kt-item empty" id="kItemBox"><img alt=""><b id="kItemBoxN" hidden></b></div>
+      <div class="kt-hud-l"><div class="kt-item empty" id="kItemBox"><img alt="" hidden><span>?</span><b id="kItemBoxN" hidden></b></div>
         <div class="kt-hudtxt"><div class="kt-lap" id="kLap"></div><div class="kt-bag" id="kBag"></div></div></div>
       <div class="kt-hud-r"><div class="kt-time" id="kTime"></div><div class="kt-best" id="kBest"></div><div class="kt-pos" id="kPos"></div></div>
-      <div class="kt-btns"><button class="sk-small bd-music" id="kMusic" title="Music on/off">🔇</button><button class="sk-small" id="kLeave">✕ Leave</button></div>
+      <div class="kt-btns"><button class="kt-ibtn" id="kMusic" title="Music on/off">🔇</button><button class="kt-ibtn" id="kLeave" title="Leave the race">✕</button></div>
       <div class="kt-speed" id="kSpeed"></div>
       <div class="k-flash" id="kFlash"></div>
       <div class="kt-wrong" id="kWrong" hidden>↩️ WRONG WAY!</div>
@@ -533,10 +533,9 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     </div>
     <div class="kt-pad" id="kPad">
       <div class="kt-stick" id="kStick" aria-label="Steering: slide left or right"><b>◀</b><i></i><b>▶</b></div>
-      <span></span>
-      <button type="button" data-k="i" class="itm" aria-label="Use your item" disabled><img alt=""></button>
-      <button type="button" data-k="b" class="brk" aria-label="Brake">Brake</button>
-      <button type="button" data-k="d" class="drf" aria-label="Drift">💨 Drift</button>
+      <button type="button" data-k="i" class="itm" aria-label="Use your item" disabled><img alt="" hidden><span>?</span></button>
+      <button type="button" data-k="b" class="brk" aria-label="Brake">BRAKE</button>
+      <button type="button" data-k="d" class="drf" aria-label="Drift"><small>💨</small>DRIFT</button>
     </div>
   </div>
 </section>
@@ -860,7 +859,7 @@ show();
 <script src="duel-songs.js?v=1"></script>
 <script src="duel.js?v=30"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=7"></script>
+<script src="kart.js?v=8"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

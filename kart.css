@@ -27,22 +27,15 @@
 .kt-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 360px); }
 .k-laps { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 8px; font: 700 14px ui-monospace, Menlo, Consolas, monospace; }
 .k-laps .b { color: #2e7d32; } .k-laps .b::after { content: " ⚡"; }
-.kt-pad { display: grid; grid-template-columns: 2fr .2fr .9fr 1fr 1.3fr; gap: 8px; }
-.kt-pad button { height: 72px; border-radius: 16px; border: 3px solid #3b2f22; background: var(--card); font: 900 26px Ubuntu, sans-serif; color: var(--ink);
-  box-shadow: 0 5px 0 #3b2f22; touch-action: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
-.kt-pad button.on { transform: translateY(4px); box-shadow: 0 1px 0 #3b2f22; background: #ffe8a3; }
-.kt-pad .brk { font-size: 16px; background: #f3d6d3; }
-.kt-pad .drf { font-size: 19px; background: #d7ecff; }
 @media (hover: hover) and (pointer: fine) { .kt-pad { display: none; } }
 @media (max-width: 900px) {
   .kt.racing { padding: 4px; }
   .kt.racing .kt-h { display: none; }
   .kt-game { min-height: calc(100dvh - 8px); padding: 4px; border-radius: 12px; }
-  .kt-pad { margin-top: auto; }
 }
 @media (max-width: 900px) and (orientation: portrait) { .kt-screen { aspect-ratio: auto; flex: 1 1 auto; min-height: 220px; } }
 @media (max-width: 900px) and (orientation: landscape) { .kt-screen { width: min(100%, calc((100dvh - 150px) * 5 / 3)); margin: 0 auto; } }
-@media (max-width: 560px) { .k-flash { font-size: 40px; } .kt-best { display: none; } .kt-pad button { height: 64px; } }
+@media (max-width: 560px) { .k-flash { font-size: 40px; } .kt-best { display: none; } }
 .kt-board li { display: flex; align-items: center; gap: 6px; }
 .kt-board img { width: 28px; height: 28px; object-fit: contain; image-rendering: pixelated; }
 .kt-board b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -56,27 +49,13 @@
 /* phones sideways: the track fills the screen, buttons sit over its bottom corners */
 @media (pointer: coarse) and (orientation: landscape) {
   .kt.racing .kt-game { position: fixed; inset: 0; z-index: 50; max-width: none; min-height: 0; margin: 0; padding: 0; border-radius: 0; gap: 0; box-shadow: none; }
-  .kt.racing .bd-top { position: absolute; top: 4px; left: 6px; right: 6px; z-index: 3; padding: 2px 8px; background: rgba(252,250,244,.82); }
   .kt.racing .kt-screen { position: absolute; inset: 0; width: auto; margin: 0; border: 0; border-radius: 0; aspect-ratio: auto; }
-  .kt.racing .kt-pad { position: absolute; left: 0; right: 0; bottom: 10px; z-index: 3; padding: 0 14px; margin: 0;
-    grid-template-columns: 170px 1fr 70px 78px 100px; pointer-events: none; }
-  .kt.racing .kt-pad button, .kt.racing .kt-stick { pointer-events: auto; height: 66px; opacity: .88; }
   .kt.racing .kt-speed { left: 50%; transform: translateX(-50%); bottom: 12px; }
 }
-.kt-stick { position: relative; height: 72px; border-radius: 36px; border: 3px solid #3b2f22; background: var(--card); box-shadow: 0 5px 0 #3b2f22;
-  display: flex; align-items: center; justify-content: space-between; padding: 0 14px; touch-action: none; -webkit-tap-highlight-color: transparent; }
-.kt-stick b { font-size: 18px; color: #b3a892; pointer-events: none; }
-.kt-stick i { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle at 35% 30%, #7fd18c, #46a05a 60%, #2d6e3c); border: 3px solid #2d2832; box-shadow: 0 3px 0 rgba(0,0,0,.3); }
-.kt-stick.on { background: #fff5d8; }
 .kt-full { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 16%; z-index: 4; background: rgba(45,40,50,.85); color: #fff; font-weight: 800;
   padding: 5px 12px; font-size: 14px; border-radius: 12px; pointer-events: none; animation: pop .6s infinite alternate; white-space: nowrap; }
 .kt-full[hidden] { display: none; }
-@media (max-width: 560px) { .kt-stick { height: 64px; } }
 .kt-bag { font-weight: 800; font-size: 14px; white-space: nowrap; }
-.kt-pad .itm { font-size: 24px; background: #fff1c9; position: relative; }
-.kt-pad .itm b { position: absolute; right: 6px; bottom: 4px; font-size: 14px; background: #2d2832; color: #fff; border-radius: 8px; padding: 0 5px; }
-.kt-pad button:disabled { opacity: .4; }
 #kFx { pointer-events: none; image-rendering: auto; }
 /* arcade HUD over the track (Mario Kart PC style) */
 .kt-hud-l { position: absolute; left: 8px; top: 8px; display: flex; gap: 8px; align-items: flex-start; z-index: 2; pointer-events: none; }
@@ -91,10 +70,47 @@
 .kt-hud-r { position: absolute; right: 10px; top: 6px; text-align: right; z-index: 2; pointer-events: none; }
 .kt-time { font-size: 30px; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 .kt-best { font-size: 13px; -webkit-text-stroke: 1px #2d2832; text-shadow: 0 2px 0 #2d2832; color: #ffe8a3; }
-.kt-btns { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); display: flex; gap: 6px; z-index: 3; }
-.kt-btns .sk-small { padding: 3px 9px; font-size: 13px; opacity: .85; }
 @media (max-width: 560px), (max-height: 420px) { .kt-time { font-size: 22px; } .kt-lap { font-size: 16px; } .kt-item { width: 44px; height: 44px; } .kt-item img { width: 30px; height: 30px; } }
 .kt-pos { font: 900 46px Ubuntu, sans-serif; color: #fff; -webkit-text-stroke: 2px #2d2832; paint-order: stroke; text-shadow: 0 4px 0 #2d2832; line-height: 1; margin-top: 2px; }
 .kt-pos.p1 { color: #ffd23f; } .kt-pos.p2 { color: #e6e6f0; } .kt-pos.p3 { color: #f0a868; }
-.kt-pad .itm img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
 @media (max-width: 560px), (max-height: 420px) { .kt-pos { font-size: 32px; } }
+
+/* touch controls: round see-through game buttons in the Family colours (red, gold, white) */
+.kt-pad { position: relative; height: 150px; }
+@media (hover: hover) and (pointer: fine) { .kt-pad { display: none; } }
+.kt-pad > * { position: absolute; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.kt-pad button { border-radius: 50%; cursor: pointer; font: 900 13px Ubuntu, sans-serif; letter-spacing: .5px; color: #fff; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-shadow: 0 1px 2px rgba(0,0,0,.6); transition: transform .06s; }
+.kt-pad button.on { transform: scale(.92); filter: brightness(1.15); }
+.kt-stick { left: 14px; bottom: 12px; width: 168px; height: 76px; border-radius: 38px; background: rgba(25,18,30,.38); border: 2px solid rgba(255,255,255,.75);
+  box-shadow: 0 0 0 2px rgba(205,150,30,.7), inset 0 2px 8px rgba(0,0,0,.35); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+.kt-stick b { font-size: 16px; color: rgba(255,255,255,.75); pointer-events: none; }
+.kt-stick i { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 35% 30%, #ff7a7f, #c8232c 55%, #7a1418); border: 3px solid #ffd75e; box-shadow: 0 3px 6px rgba(0,0,0,.4), inset 0 -3px 0 rgba(0,0,0,.2); }
+.kt-stick.on { background: rgba(25,18,30,.5); }
+.kt-pad .drf { right: 14px; bottom: 12px; width: 92px; height: 92px; font-size: 15px;
+  background: radial-gradient(circle at 35% 28%, #ff6b72, #c8232c 55%, #7a1418); border: 3px solid #ffd75e; box-shadow: 0 0 0 2px rgba(122,20,24,.8), 0 4px 10px rgba(0,0,0,.35); }
+.kt-pad .drf small { font-size: 20px; line-height: 1; }
+.kt-pad .brk { right: 118px; bottom: 10px; width: 62px; height: 62px; font-size: 11px; background: rgba(25,18,30,.45); border: 2px solid rgba(255,255,255,.8); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.kt-pad .itm { right: 84px; bottom: 102px; width: 66px; height: 66px; background: rgba(25,18,30,.45); border: 3px solid #ffd75e; box-shadow: 0 0 0 2px rgba(122,20,24,.7), 0 2px 6px rgba(0,0,0,.3); }
+.kt-pad .itm img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.kt-pad .itm span { font-size: 26px; color: rgba(255,255,255,.55); }
+.kt-pad .itm img:not([hidden]) + span { display: none; }
+.kt-pad .itm:not(:disabled) { animation: ktglow 1s ease-in-out infinite alternate; }
+@keyframes ktglow { to { box-shadow: 0 0 0 2px rgba(122,20,24,.7), 0 0 16px 4px rgba(255,215,94,.8); } }
+.kt-pad button:disabled { cursor: default; }
+/* below the track (upright screens) the pad sits on a dark strip; sideways it floats over the track */
+.kt-pad { background: #2d2832; border-radius: 14px; }
+@media (pointer: coarse) and (orientation: landscape) {
+  .kt.racing .kt-pad { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; z-index: 3; background: none; pointer-events: none; }
+  .kt.racing .kt-pad > * { pointer-events: auto; }
+  .kt.racing .kt-pad .itm, .kt.racing .kt-pad .brk, .kt.racing .kt-stick { opacity: .92; }
+}
+/* small round buttons at the top */
+.kt-btns { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 3; }
+.kt-ibtn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,.85); background: rgba(25,18,30,.45); color: #fff;
+  font: 900 15px Ubuntu, sans-serif; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.kt-ibtn:hover { background: rgba(200,35,44,.8); }
+.kt-item span { font: 900 24px Ubuntu, sans-serif; color: rgba(255,255,255,.5); }
+.kt-item img:not([hidden]) + span { display: none; }
+.kt-item { border-color: #ffd75e; box-shadow: 0 0 0 2px #7a1418; }
