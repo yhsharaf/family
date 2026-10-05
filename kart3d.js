@@ -343,9 +343,11 @@ export function create(A) {
   function fadeBlockers() {
     let me = null; for (const m of karts.values()) if (m.me && m.used) me = m; if (!me) return;
     const dMe = tmp.copy(me.root.position).sub(camera.position).dot(fwd);
-    for (const m of karts.values()) { if (m === me || m.ghost || !m.used) continue;
-      const d = tmp.copy(m.root.position).sub(camera.position).dot(fwd), lat = tmp.addScaledVector(fwd, -d).length(), block = d > 0 && d < dMe - 6 && lat < 30;
-      if (block !== m.faded) { m.faded = block; for (const mt of m.mats) { mt.transparent = block || mt === m.mats[6]; mt.opacity = block ? .3 : 1; mt.depthWrite = !block; mt.needsUpdate = true; } } }
+    for (const m of karts.values()) { if (m === me || !m.used) continue;
+      if (!m.base) m.base = m.mats.map(mt => [mt.transparent, mt.opacity, mt.depthWrite]);
+      const d = tmp.copy(m.root.position).sub(camera.position).dot(fwd), lat = tmp.addScaledVector(fwd, -d).length(), block = m.ghost ? d < dMe + 15 : d > 0 && d < dMe - 6 && lat < 30;   // ghosts fade whenever they're level with you or behind
+      if (block !== m.faded) { m.faded = block; m.mats.forEach((mt, i) => { const [tr, op, dw] = m.base[i];
+        mt.transparent = block || tr; mt.opacity = block ? (m.ghost ? .1 : .3) : op; mt.depthWrite = block ? false : dw; mt.needsUpdate = true; }); } }
   }
   function end() {
     fadeBlockers();
