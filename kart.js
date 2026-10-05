@@ -494,10 +494,10 @@ const TRACKS = {
 // the cups: 3 tracks each, raced in this order in the Grand Prix. Each new cup has its own twist.
 const CUPS = {
   henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "town", "forest"], rule: "" },
-  elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: your kart keeps sliding" },
+  elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads, and frost turrets shoot ice arrows across the road: a hit freezes you" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Every 15 s the lights go out for 3 s · no minimap" },
-  zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Outrun the rising lava · one long climb, no laps" },
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 Left and right swap now and then (⚠️ you get a warning first)" },
+  zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Outrun the rising lava · dodge the rolling boulders · fall off the road and you land in lava" },
+  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 Left and right swap now and then (⚠️ warning first) · Clocktower Night: Papulatus shocks everyone on the ground" },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
 function loadTrack(key) {
@@ -539,6 +539,11 @@ function paintTrack() {
     for (let k = 0; k < (th.tufts || 26000); k++) { const x = rnd() * WORLD, y = rnd() * WORLD; g.fillStyle = tuftCols[k & 3]; g.fillRect(x, y, 1.5, 3); g.fillRect(x + 1.5, y + 1, 1.5, 2); }
   }
   for (let k = 0; k < th.flowers; k++) { const x = rnd() * WORLD, y = rnd() * WORLD; if (stem) { g.fillStyle = stem; g.fillRect(x + 1, y + 4, 3, 3); } g.fillStyle = flowers[k % 4]; g.fillRect(x, y, 5, 5); }
+  if (T.cup === "zakum") {   // 🔥 no ground beside the road: it's all lava (glowing blobs and bright veins)
+    g.fillStyle = "#6a1806"; g.fillRect(0, 0, WORLD, WORLD);
+    for (let k = 0; k < 2600; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 6 + rnd() * 26; g.fillStyle = ["#a8280a", "#d2441a", "#ff7a1e", "#8a1e08"][k & 3]; g.globalAlpha = .55; g.beginPath(); g.ellipse(x, y, r, r * .6, rnd() * 3, 0, 7); g.fill(); }
+    g.globalAlpha = 1; g.lineWidth = 2.5; for (let k = 0; k < 500; k++) { let x = rnd() * WORLD, y = rnd() * WORLD; g.strokeStyle = rnd() < .5 ? "#ffd23f" : "#ff9a2e"; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (rnd() - .5) * 50; y += (rnd() - .5) * 50; g.lineTo(x, y); } g.stroke(); }
+  }
   if (th.cracks) { g.lineWidth = 2; for (let k = 0; k < 260; k++) {   // glowing cracks in the rock
     let x = rnd() * WORLD, y = rnd() * WORLD; g.strokeStyle = rnd() < .5 ? "#ff6a1e" : "#c8321a"; g.beginPath(); g.moveTo(x, y);
     for (let j = 0; j < 5; j++) { x += (rnd() - .5) * 40; y += (rnd() - .5) * 40; g.lineTo(x, y); } g.stroke(); } }
@@ -547,7 +552,7 @@ function paintTrack() {
   g.lineJoin = g.lineCap = "round";
   // racing curbs: solid red and white blocks that follow the road exactly (each block is one shape, so no seams or smudges)
   const curbs = (p, wd, pts, tan, closed) => {
-    p(); g.strokeStyle = th.border || "#24561f"; g.lineWidth = wd + CURB * 2 + 6; g.stroke();                 // dark line where the grass meets the curb
+    p(); g.strokeStyle = th.border || "#24561f"; g.lineWidth = wd + CURB * 2 + (th.checker ? 22 : T.cup === "zakum" ? 18 : 6); g.stroke();   // dark line where the grass meets the curb (wide on Ludibrium's pastel floors)
     const n = pts.length, last = closed ? n : n - 1, off = (i, o) => { const k = i % n, a = tan(k); return [pts[k][0] - Math.sin(a) * o, pts[k][1] + Math.cos(a) * o]; };
     for (const side of [-1, 1]) {
       const o1 = side * wd / 2, o2 = side * (wd / 2 + CURB);
@@ -631,13 +636,22 @@ function paintTrack() {
       const o1 = p.o - p.w / 2 + p.w * c / 10, o2 = o1 + p.w / 10 + .5, chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;
       quad(p.i + j, o1, o2, j < .6 || j > p.len - .6 ? "#7a1418" : chev ? "#ffd75e" : "#c8232c");
     }
-    if (p.t === "boost" || p.t === "ramp") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {
+    if (p.t === "boost") for (let j = 0; j <= p.len; j += .25) for (let c = 0; c < 12; c++) {   // big readable arrows: bright chevrons on a hot orange pad, dark rim
+      const o1 = p.o - p.w / 2 + p.w * c / 12, o2 = o1 + p.w / 12 + .5, edge = c === 0 || c === 11 || j < .4 || j > p.len - .4;
+      const ph = ((j * 1.6 - Math.abs(c - 5.5) * .55) % 3.2 + 3.2) % 3.2;
+      quad(p.i + j, o1, o2, edge ? "#7a2a08" : ph < 1.1 ? "#fff6c2" : ph < 1.5 ? "#ffd23f" : "#ff6a12");
+    }
+    if (p.t === "ramp") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {
       const o1 = p.o - p.w / 2 + p.w * c / 10, o2 = o1 + p.w / 10 + .5;
       const chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;   // arrows pointing down the track
-      quad(p.i + j, o1, o2, p.t === "boost" ? (chev ? "#ff7a12" : "#ffd84a") : (j < .6 || j > p.len - .6 ? "#1e4f9a" : chev ? "#ffffff" : "#3d8de0"));
+      quad(p.i + j, o1, o2, j < .6 || j > p.len - .6 ? "#1e4f9a" : chev ? "#ffffff" : "#3d8de0");
     }
-    if (p.t === "rock") for (let k = 0; k < p.len * 7; k++) {
-      const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .95), z = 8 + rnd() * 9;
+    if (p.t === "rock") for (let k = 0; k < p.len * 16; k++) {   // gravel first, then fewer, bigger shaded rocks
+      const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .98); g.fillStyle = RS === "snow" ? "#c9d6ea" : RS === "toy" ? "#e8dcff" : rnd() < .5 ? "#8a8274" : "#6e675b"; g.fillRect(x - 1.5, y - 1, 3, 2);
+    }
+    if (p.t === "rock") for (let k = 0; k < p.len * 4; k++) {
+      const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .9), z = 10 + rnd() * 10;
+      g.fillStyle = "rgba(0,0,0,.35)"; g.beginPath(); g.ellipse(x + 3, y + 3, z / 2 + 1, z * .42, 0, 0, 7); g.fill();   // its shadow
       const rp = RS === "toy" ? [["#c8323c", "#ff5a64", "#ffb0b4"], ["#2a6ac8", "#5a9aff", "#b0d0ff"], ["#d8a020", "#ffd23f", "#fff0a0"], ["#2a9a3a", "#5ad06a", "#b8f0c0"]][Math.floor(rnd() * 4)]
         : RS === "snow" ? [rnd() < .5 ? "#c4d4ea" : "#b0c4e0", "#eef4ff"] : RS === "basalt" ? [rnd() < .5 ? "#3a3236" : "#4a3e40", "#ff7a3a"] : [rnd() < .5 ? "#7d7466" : "#696154", "#a59c8c"];
       g.fillStyle = "#3e3830"; g.beginPath(); g.ellipse(x + 2, y + 2, z / 2, z * .4, 0, 0, 7); g.fill();   // lumpy rocks (toy blocks in Ludibrium, snow lumps in El Nath)
@@ -773,6 +787,18 @@ function placeObjects() {
   }
   T.extraFn(push);
   placeStart(push);   // the FAMILY arch and balloons on every map
+  { const li = OPEN ? START_I : 0, s0 = PTS[li];   // a map's own gate at the start line moves to halfway round, so the two arches don't stand together
+    for (const o of OBJS) if (!o.r && !/^(arch|balloon)/.test(o.k) && Math.hypot(o.x - s0[0], o.y - s0[1]) < 140 && nearest(o.x, o.y).d < 30) {
+      const [x, y] = at(OPEN ? Math.round(START_I + (N - FIN_OFF - START_I) * .5) : Math.round(N * .5), 0); o.x = x; o.y = y; } }
+  // anything solid that touches the road is moved back off it (a haypile on the curb…); where the road doubles back there may be no room: then it goes
+  const touching = o => { const m = nearest(o.x, o.y); if (m.d < ROAD / 2 + CURB + o.r + 5) return [m, ROAD / 2, PTS[m.i]];
+    if (AN) { const a = nearAlt(o.x, o.y); if (a.d < ALT_ROAD / 2 + CURB + o.r + 5) return [a, ALT_ROAD / 2, ALT[a.j]]; } return null; };
+  OBJS = OBJS.filter(o => {
+    if (!(o.r > 0)) return true;
+    for (let tries = 0; tries < 4; tries++) { const t = touching(o); if (!t) return true;
+      const [m, half, p] = t, want = half + CURB + o.r + 6, dx = o.x - p[0], dy = o.y - p[1], len = Math.hypot(dx, dy) || 1; o.x = p[0] + dx / len * want; o.y = p[1] + dy / len * want; }
+    return !touching(o);
+  });
   for (let k = 0; k < 170; k++) {   // woods and houses further out
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
     if (d < ROAD / 2 + 130 || inLake(x, y)) continue;
@@ -994,6 +1020,65 @@ function explode(b, all) {
   }
   if (dK < 140) K.hitFlash = Math.max(K.hitFlash || 0, .12 * (1 - dK / 140));
 }
+// ================================================================ map hazards
+// ❄️ El Nath: frost turrets beside the road fire an ice arrow straight across it every few seconds (a glint warns first); a hit freezes you for a moment.
+// 🧸 Clocktower Night: Papulatus floats over the track, charges up and shocks everyone on the ground (be in the air to dodge it).
+// 🔥 Zakum: boulders roll down the climb at you, and the road has no safe edge: drive off it and you fall into the lava.
+const HAZ = { lanes: [], ice: [], rocks: [], rockT: 3, pap: null };
+function setupHazards() {
+  HAZ.lanes = []; HAZ.ice = []; HAZ.rocks = []; HAZ.rockT = 4; HAZ.pap = null;
+  const F = f => OPEN ? Math.round(START_I + (N - FIN_OFF - START_I) * f) : Math.round(N * f) % N;
+  if (T.cup === "elnath") [.24, .52, .79].forEach((f, n) => HAZ.lanes.push({ i: F(f), side: n % 2 ? 1 : -1, period: 5.5 + n * .4, phase: n * 1.9, shot: -1, warn: 0 }));
+  if (TRACK_KEY === "ld3") HAZ.pap = { charge: 0, fx: 0, last: -1 };
+}
+function freeze(r) {
+  if (r.frozen > 0 || r.hyper > 0 || r.z > 20 || r.rescue > 0 || r.done) return;
+  r.frozen = 1.1; r.v *= .45; r.drift = 0; r.charge = 0;
+  if (r === K) { flash("🧊 Frozen!", 900); iceSound(); K.shake = Math.max(K.shake, .15); }
+}
+function hazardStep(dt, all) {
+  const t = K.t / 1000;
+  for (const r of all) if (r.frozen > 0) { r.frozen -= dt; if (r !== K) r.v = Math.min(r.v, 90); }
+  // ❄️ ice arrows
+  for (const L of HAZ.lanes) {
+    const cyc = Math.floor((t + L.phase) / L.period), ph = (t + L.phase) % L.period;
+    L.warn = t > 4 && ph > L.period - .8 ? 1 - (L.period - ph) / .8 : 0;
+    if (t > 4 && cyc !== L.shot && L.shot !== -1) {
+      const [x0, y0] = at(L.i, L.side * (ROAD / 2 + CURB + 34)), [x1, y1] = at(L.i, -L.side * (ROAD / 2 + CURB + 34)), d = Math.hypot(x1 - x0, y1 - y0);
+      HAZ.ice.push({ x: x0, y: y0, a: Math.atan2(y1 - y0, x1 - x0), v: 430, life: d / 430 }); if (Math.hypot(K.x - x0, K.y - y0) < 500) tone(2400, .12, "triangle", .04, 1200);
+    }
+    L.shot = cyc;
+  }
+  for (let i = HAZ.ice.length - 1; i >= 0; i--) {
+    const a = HAZ.ice[i]; a.life -= dt; a.x += Math.cos(a.a) * a.v * dt; a.y += Math.sin(a.a) * a.v * dt;
+    let gone = a.life <= 0;
+    for (const r of all) if (!gone && r.z < 22 && Math.hypot(r.x - a.x, r.y - a.y) < 15) { freeze(r); gone = true; }
+    if (gone) HAZ.ice.splice(i, 1);
+  }
+  // 🧸 Papulatus: every 24 s from 18 s in; 3.2 s of charging (the warning), then the shock
+  if (HAZ.pap) {
+    const P = HAZ.pap, c = t - 18, n = c >= 0 ? Math.floor(c / 24) : -1, ph = c >= 0 ? c % 24 : -1;
+    P.charge = ph > 24 - 3.2 ? 1 - (24 - ph) / 3.2 : 0; if (P.fx > 0) P.fx -= dt;
+    if (n > P.last && n >= 1) { P.fx = .7; papSound();
+      for (const r of all) { if (r.z > 8 || r.hyper > 0 || r.rescue > 0 || r.done) continue; if (r === K) { spinOut("⚡ Shocked by Papulatus!"); K.shake = Math.max(K.shake, .3); } else hit(r); } }
+    if (n > P.last) P.last = n;
+  }
+  // 🪨 Zakum boulders roll down the climb towards you
+  if (MECH === "lava") {
+    if ((HAZ.rockT -= dt) <= 0 && t > 5) { HAZ.rockT = 2.4 + Math.random() * 1.6;
+      const i0 = Math.min(N - FIN_OFF - 2, K.idx + Math.round(420 / SPC)); if (i0 > K.idx + 20) HAZ.rocks.push({ i: i0, o: (Math.random() - .5) * ROAD * .8, v: 150 + Math.random() * 70, R: 13 + Math.random() * 5, roll: 0, x: 0, y: 0 }); }
+    for (let j = HAZ.rocks.length - 1; j >= 0; j--) {
+      const b = HAZ.rocks[j]; b.i -= b.v / SPC * dt; b.roll += b.v / b.R * dt;
+      const i0 = Math.floor(b.i), f = b.i - i0, p = at(i0, b.o), q = at(i0 + 1, b.o); b.x = p[0] + (q[0] - p[0]) * f; b.y = p[1] + (q[1] - p[1]) * f;
+      let gone = b.i < START_I || b.i < K.idx - 80 || (LAVA && b.i < LAVA.i);
+      for (const r of all) if (!gone && r.z < 20 && Math.hypot(r.x - b.x, r.y - b.y) < b.R + 8) { const was = r.spin; hit(r, "🪨 Boulder!"); if (r === K && !(was > 0) && K.spin > 0) { K.v *= .3; K.shake = Math.max(K.shake, .25); bumpSound(); } gone = true; }
+      if (gone) HAZ.rocks.splice(j, 1);
+    }
+    for (const r of all) if (!r.remote && r !== K && !r.done && !(r.rescue > 0) && r.z <= 0 && !r.onAlt && nearest(r.x, r.y, r.idx).d > ROAD / 2 + CURB + 10) rescue(r);   // rivals fall in too
+  }
+}
+const iceSound = () => { tone(1900, .16, "triangle", .07, 900); noiseHit(5200, .3, .05, 4); };
+const papSound = () => { thunderSound(); tone(90, .5, "sawtooth", .08, 40); for (let i = 0; i < 5; i++) setTimeout(() => noiseHit(3000 + Math.random() * 2000, .08, .06, 6), i * 70); };
 // one computer racer: follows the road in its own lane, dodges slime puddles, keeps races close (rubber band), uses items
 function rivalStep(r, dt, tt) {
   if (r.remote) { remoteStep(r, dt); return; }
@@ -1117,6 +1202,7 @@ function worldStep(dt, tt) {
     for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16) { hit(r, "🏹 Arrowed!"); gone = true; if (r !== K && sh.by === K) flash(`🏹 Got ${r.name}!`, 900); }
     if (gone) SHOTS.splice(i, 1);
   }
+  if (state === "race") hazardStep(dt, all);
   for (let i = BOMBS.length - 1; i >= 0; i--) {
     const b = BOMBS[i]; b.t += dt; b.vz -= 560 * dt; b.z += b.vz * dt; b.x += Math.cos(b.a) * b.v * dt * SPD; b.y += Math.sin(b.a) * b.v * dt * SPD;
     let boom = b.z <= 0;
@@ -1151,7 +1237,7 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get floorMs() { return floorMs; } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get floorMs() { return floorMs; } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -1229,6 +1315,9 @@ function step(dt) {
     if (k.lostT > 2.6 || k.wrong > 3) { rescue(k); return; }
   }
   const ground = under(near, k.x, k.y), L = ground.L;
+  if (MECH === "lava" && racing && k.z <= 0 && !k.onAlt && near.d > near.half + CURB + 8) {   // 🔥 Zakum: there's no safe edge, off the road is lava
+    k.fallT = (k.fallT || 0) + dt; if (k.fallT > .12) { k.fallT = 0; rescue(k, "🔥 Fell into the lava!"); return; }
+  } else k.fallT = 0;
   // in the air (ramps): gravity, and a trick on the way up/down gives a boost when you land
   if (k.z > 0 || k.vz > 0) {
     k.vz -= 720 * dt; k.z += k.vz * dt;
@@ -1243,6 +1332,7 @@ function step(dt) {
   if (MECH === "flip" && racing) { k.flipT -= dt; if (k.flipT <= 0) { k.flipped = !k.flipped; k.flipT = 15 + Math.random() * 15;
     flash(k.flipped ? "🔀 Controls swapped!" : "✅ Controls back to normal", 1200); tone(k.flipped ? 330 : 660, .25, "square", .07, k.flipped ? 165 : 990); } }
   if (k.flipped && !(DEV && DEV.auto)) inp.steer = -inp.steer;
+  if (k.frozen > 0) { inp.steer = 0; inp.drift = false; }   // 🧊 frozen solid: no steering for a moment
   k.steer += ((k.spin > 0 ? 0 : inp.steer) - k.steer) * Math.min(1, dt * 10);
   // what's under the wheels
   const pad = air ? null : ground.pad;
@@ -1268,7 +1358,7 @@ function step(dt) {
   // speed: always accelerating (phone friendly), the brake slows / reverses; mesos raise the top speed a little
   const hb = k.hyper > 0;
   boostTick(k, dt);
-  const top = hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
+  const top = k.frozen > 0 ? 90 : hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
   if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
   else k.v += (k.v < top ? (k.extra > 5 ? 900 : k.v < 120 ? 210 : 120) : -260) * dt;   // boosts reach their speed almost at once
@@ -1458,6 +1548,37 @@ function render() {
       ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = g; ctx.lineWidth = Math.max(1, 3 * sc); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(tail[0], ty); ctx.lineTo(sx, y); ctx.stroke(); ctx.restore(); }
     if (!im) return; const w = Math.max(6, 34 * sc), h = w * im.height / im.width * 1.6;
     ctx.save(); ctx.translate(sx, y); ctx.rotate(ang); ctx.imageSmoothingEnabled = false; ctx.shadowColor = "rgba(255,230,120,.9)"; ctx.shadowBlur = 6; ctx.drawImage(im, -w * .8, -h / 2, w, h); ctx.restore(); });
+  // 🔥 lava pools bubble and glow
+  for (const p of PADS) if (p.t === "lava") { const [lx, ly] = at(p.i + p.len / 2, p.o); addDraw(lx, ly, (sx, gy, sc) => {
+    const rx = (p.w / 2 + 4) * sc, pulse = .55 + .25 * Math.sin(tt * 3 + p.i);
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(sx, gy, 0, sx, gy, rx * 1.4); g.addColorStop(0, `rgba(255,170,40,${pulse})`); g.addColorStop(1, "rgba(255,60,0,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, gy, rx * 1.4, rx * .45, 0, 0, 7); ctx.fill();
+    for (let b = 0; b < 4; b++) { const ph = (tt * .9 + b * .27 + p.i * .1) % 1, bx = sx + Math.sin(b * 2.3 + p.i) * rx * .6, by = gy - ph * 10 * sc; ctx.globalAlpha = 1 - ph; ctx.fillStyle = "#ffe08a"; ctx.beginPath(); ctx.arc(bx, by, Math.max(.6, (1.2 + ph * 2) * sc), 0, 7); ctx.fill(); }
+    ctx.restore(); }); }
+  // ❄️ frost turrets (an ice crystal that glints before it fires) and their ice arrows
+  for (const L of HAZ.lanes) { const [lx, ly] = at(L.i, L.side * (ROAD / 2 + CURB + 34)); addDraw(lx, ly, (sx, gy, sc) => {
+    const h = 26 * sc, w = 11 * sc; ctx.save(); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(sx, gy, w * .9, w * .25, 0, 0, 7); ctx.fill();
+    const g = ctx.createLinearGradient(sx - w, 0, sx + w, 0); g.addColorStop(0, "#9ad4ff"); g.addColorStop(.5, "#ffffff"); g.addColorStop(1, "#5aa8e8");
+    ctx.fillStyle = g; ctx.strokeStyle = "#2e6fb0"; ctx.lineWidth = Math.max(.6, sc * .8); ctx.beginPath(); ctx.moveTo(sx, gy - h); ctx.lineTo(sx + w, gy - h * .45); ctx.lineTo(sx + w * .5, gy); ctx.lineTo(sx - w * .5, gy); ctx.lineTo(sx - w, gy - h * .45); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (L.warn > 0) { ctx.globalCompositeOperation = "lighter"; const gr = ctx.createRadialGradient(sx, gy - h * .6, 0, sx, gy - h * .6, w * 2.4); gr.addColorStop(0, `rgba(200,240,255,${L.warn})`); gr.addColorStop(1, "rgba(120,200,255,0)");
+      ctx.fillStyle = gr; ctx.fillRect(sx - w * 2.4, gy - h * .6 - w * 2.4, w * 4.8, w * 4.8); }
+    ctx.restore(); }); }
+  for (const a of HAZ.ice) addDraw(a.x, a.y, (sx, gy, sc) => {
+    const im = IMG.iceArrow, head = proj(a.x + Math.cos(a.a) * 12, a.y + Math.sin(a.a) * 12), tail = proj(a.x - Math.cos(a.a) * 50, a.y - Math.sin(a.a) * 50), y = gy - 12 * sc;
+    const ang = head ? Math.atan2((head[1] - 12 * head[2]) - y, head[0] - sx) : 0;
+    if (tail) { const ty = tail[1] - 12 * tail[2], g = ctx.createLinearGradient(tail[0], ty, sx, y); g.addColorStop(0, "rgba(140,210,255,0)"); g.addColorStop(1, "rgba(220,245,255,.9)");
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = g; ctx.lineWidth = Math.max(1, 3.5 * sc); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(tail[0], ty); ctx.lineTo(sx, y); ctx.stroke(); ctx.restore(); }
+    if (!im) return; const w = Math.max(6, 36 * sc), h = w * im.height / im.width * 1.8;
+    ctx.save(); ctx.translate(sx, y); ctx.rotate(ang); ctx.imageSmoothingEnabled = false; ctx.shadowColor = "rgba(150,220,255,1)"; ctx.shadowBlur = 8; ctx.drawImage(im, -w * .8, -h / 2, w, h); ctx.restore(); });
+  // 🪨 boulders rolling down at you
+  for (const b of HAZ.rocks) addDraw(b.x, b.y, (sx, gy, sc) => {
+    const R = b.R * sc, y = gy - R - Math.abs(Math.sin(b.roll * .5)) * 3 * sc;
+    ctx.save(); ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(sx, gy, R * 1.05, R * .28, 0, 0, 7); ctx.fill();
+    const g = ctx.createRadialGradient(sx - R * .35, y - R * .4, R * .1, sx, y, R * 1.05); g.addColorStop(0, "#9a8c80"); g.addColorStop(.6, "#5e5048"); g.addColorStop(1, "#2a201c");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, y, R, 0, 7); ctx.fill();
+    ctx.translate(sx, y); ctx.rotate(-b.roll); ctx.strokeStyle = "rgba(30,20,16,.75)"; ctx.lineWidth = Math.max(.8, R * .09);
+    ctx.beginPath(); ctx.moveTo(-R * .6, -R * .2); ctx.lineTo(-R * .1, R * .1); ctx.lineTo(R * .5, -R * .3); ctx.moveTo(-R * .1, R * .1); ctx.lineTo(R * .1, R * .7); ctx.moveTo(R * .2, -R * .75); ctx.lineTo(R * .35, -R * .35); ctx.stroke();
+    ctx.restore(); });
   // 💣 Pirate Bombs: the spinning skull bomb up in the air with its shadow on the road and a fizzing fuse
   for (const b of BOMBS) addDraw(b.x, b.y, (sx, gy, sc) => {
     const F = IMG.bombF; if (!F) return; const im = F[Math.floor(tt * 18) % 8], w = 20 * sc, y = gy - b.z * sc - w * .55;
@@ -1488,7 +1609,7 @@ function render() {
       ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }
   });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
-  if (IMG.meso) for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
+  if (IMG.meso) for (const c of COINS) if (!c.got && (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
   for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
   if (KING) { const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0), kz = kingZ(kp); add(kx, ky, IMG[KING.k], KING.s, kz, false, kz > 0 ? 1 - kz / 170 : 0); }
   vis.sort((a, b) => b.fz - a.fz);
@@ -1502,6 +1623,7 @@ function render() {
     const { im, fz, sx, z, flip, shadow } = v, sc = FO / fz * v.sc, w = im.width * sc, h = im.height * sc, gy = HOR + CH * FO / fz;
     if (w < .6) continue;
     ctx.globalAlpha = fz > 1000 ? Math.max(0, (1400 - fz) / 400) : 1; ctx.imageSmoothingEnabled = !v.px;
+    if (h > H * .7) ctx.globalAlpha *= Math.max(.12, Math.min(1, (H * 1.25 - h) / (H * .55)));   // filling the screen: fade to see-through
     if (shadow) { ctx.fillStyle = `rgba(0,0,0,${.15 + shadow * .3})`; ctx.beginPath(); ctx.ellipse(sx, gy, w * .45 * (.4 + shadow * .6), h * .08 + 1, 0, 0, 7); ctx.fill(); }
     const top = gy - h - z * FO / fz;
     if (flip) { ctx.save(); ctx.translate(sx, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w / 2, top, w, h); ctx.restore(); }
@@ -1510,6 +1632,7 @@ function render() {
   ctx.globalAlpha = 1;
   if (!kartDrawn) { lightsOut(); drawKart(k); }
   if (T.theme.snow) snowfall(T.theme.snow);
+  if (HAZ.pap && IMG.papStand) drawPapulatus(k, tt);
   if (!T.theme.snow) petals(T.cup);   // petals in Henesys, fireflies in Sleepywood, embers at Zakum, confetti in Ludibrium (El Nath has its snow)
   if (LAVA && state !== "menu" && !k.done) { const near = Math.max(0, 1 - (k.idx - LAVA.i) * SPC / 640); if (near > 0) {   // the screen glows red as the lava closes in
     const gr = ctx.createRadialGradient(W / 2, H * .6, H * .2, W / 2, H * .6, W * .75); gr.addColorStop(0, "rgba(255,60,0,0)"); gr.addColorStop(1, `rgba(255,60,0,${near * .5})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); } }
@@ -1554,23 +1677,38 @@ function darkness() {
   const t = K.t / 1000; if (t < 15) return 0;
   const p = t % 15; return p < 3 ? Math.min(1, p / .25, (3 - p) / .4) : 0;
 }
+// 🧸 Papulatus hovering over the clocktower: idle, then charging (his own skill animation), then the shock (bolts down to the road)
+function drawPapulatus(k, tt) {
+  const P = HAZ.pap, charging = P.charge > 0, shocking = P.fx > 0, F = charging ? IMG.papSkill.slice(0, 7) : shocking ? IMG.papSkill.slice(7) : IMG.papStand;
+  const im = F[Math.floor(tt * (charging ? 12 : shocking ? 10 : 6)) % F.length]; if (!im) return;
+  const h = Math.min(H * .42, HOR * 1.5) * (1 + P.charge * .25), w = h * im.width / im.height, x = W * .74 + Math.sin(tt * .7) * W * .05, y = HOR * .1 + Math.sin(tt * 1.3) * 3;
+  if (charging) { ctx.save(); ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(x, y + h * .5, 0, x, y + h * .5, h * (.6 + P.charge * .5)); g.addColorStop(0, `rgba(170,220,255,${.5 * P.charge})`); g.addColorStop(1, "rgba(90,140,255,0)"); ctx.fillStyle = g; ctx.fillRect(x - h, y - h * .2, h * 2, h * 1.6); ctx.restore(); }
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(im, x - w / 2, y, w, h); ctx.restore();
+  if (shocking) {   // the shock: blue-white flash and bolts from him down onto the track
+    ctx.fillStyle = `rgba(180,220,255,${P.fx * .5})`; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "rgba(220,240,255,.95)"; ctx.lineWidth = 2; ctx.shadowColor = "#7ab8ff"; ctx.shadowBlur = 8;
+    for (let b = 0; b < 4; b++) { let bx = x + (Math.random() - .5) * w * .3, by = y + h * .6; ctx.beginPath(); ctx.moveTo(bx, by); const tx = W * (.15 + b * .23), ty = H * (.6 + Math.random() * .3);
+      while (by < ty) { bx += (tx - bx) * .25 + (Math.random() - .5) * 16; by += 8 + Math.random() * 10; ctx.lineTo(bx, by); } ctx.stroke(); }
+    ctx.shadowBlur = 0;
+  }
+}
 // 🌸 Henesys: petals and leaves drifting past the camera
 let PETALS = [];
 const PART = {
   henesys: { cols: ["#ffc8de", "#ffffff", "#ff9fc4", "#ffe08a", "#8fd46a"], up: false, glow: false, shape: "petal" },
-  sleepy: { cols: ["#d8ff7a", "#fff3a0", "#9fffd0"], up: false, glow: true, shape: "dot", slow: true },
+  sleepy: { cols: ["#d8ff7a", "#fff3a0", "#9fffd0"], up: false, glow: true, shape: "dot", slow: true, max: 12, small: true },
   zakum: { cols: ["#ff7a1e", "#ffb02e", "#ff4a1a", "#ffe08a"], up: true, glow: true, shape: "dot" },
   ludi: { cols: ["#ff5a8a", "#ffd23f", "#5ac8ff", "#8aff7a", "#c87aff"], up: false, glow: false, shape: "square" },
 };
 function petals(cup) {
   const P = PART[cup] || PART.henesys, t = performance.now() / 1000, sw = (K ? K.steer : 0) * 26 + (K ? K.v : 0) * .02;
-  if (PETALS.length < 26 && Math.random() < .3) PETALS.push({ x: Math.random() * W * 1.4 - W * .2, y: P.up ? H + 6 : -6, v: (P.slow ? 4 : 10) + Math.random() * (P.slow ? 6 : 16), r: Math.random() * 6, vr: (Math.random() - .5) * 4,
+  if (PETALS.length < (P.max || 26) && Math.random() < .3) PETALS.push({ x: Math.random() * W * 1.4 - W * .2, y: P.up ? H + 6 : -6, v: (P.slow ? 4 : 10) + Math.random() * (P.slow ? 6 : 16), r: Math.random() * 6, vr: (Math.random() - .5) * 4,
     ph: Math.random() * 6, s: 1.2 + Math.random() * 1.8, c: P.cols[Math.floor(Math.random() * P.cols.length)] });
   if (P.glow) { ctx.save(); ctx.globalCompositeOperation = "lighter"; }
   for (let i = PETALS.length - 1; i >= 0; i--) { const p = PETALS[i]; p.y += (P.up ? -p.v : p.v) / 60; p.x += (Math.sin(t * 1.3 + p.ph) * 9 - sw) / 60; p.r += p.vr / 60;
     if (p.y > H + 8 || p.y < -8 || p.x < -W * .3 || p.x > W * 1.3) { PETALS.splice(i, 1); continue; }
     ctx.fillStyle = p.c;
-    if (P.shape === "dot") { ctx.globalAlpha = .55 + .45 * Math.sin(t * 5 + p.ph); ctx.beginPath(); ctx.arc(p.x, p.y, p.s * .7, 0, 7); ctx.fill(); ctx.globalAlpha *= .35; ctx.beginPath(); ctx.arc(p.x, p.y, p.s * 2, 0, 7); ctx.fill(); continue; }
+    if (P.shape === "dot") { ctx.globalAlpha = .55 + .45 * Math.sin(t * 5 + p.ph); ctx.beginPath(); ctx.arc(p.x, p.y, p.s * .7, 0, 7); ctx.fill(); ctx.globalAlpha *= .35; ctx.beginPath(); ctx.arc(p.x, p.y, p.s * (P.small ? 1.3 : 2), 0, 7); ctx.fill(); continue; }
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.scale(1, Math.abs(Math.cos(t * 2 + p.ph)) * .8 + .2); ctx.globalAlpha = .9;
     if (P.shape === "square") ctx.fillRect(-p.s, -p.s * .6, p.s * 2, p.s * 1.2); else { ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * .6, 0, 0, 7); ctx.fill(); }
     ctx.restore(); }
@@ -1687,6 +1825,15 @@ function drawKart(k) {
   }
   ctx.restore(); ctx.globalAlpha = 1;
   if (k.spin > 0 || k.squash > 0) dizzy(x, y - lift - w * 1.55, w * .55, t);   // 💫 seeing stars after a hit
+  if (k.frozen > 0) iceBlock(x, y - lift, w, Math.min(1, k.frozen / .3));
+}
+// 🧊 a block of ice over a frozen kart (melting away at the end)
+function iceBlock(x, y, w, a) {
+  const bw = w * 1.25, bh = w * 1.45; ctx.save(); ctx.globalAlpha = .55 * a;
+  const g = ctx.createLinearGradient(x - bw / 2, y - bh, x + bw / 2, y); g.addColorStop(0, "#e8f7ff"); g.addColorStop(1, "#7cc4f4");
+  ctx.fillStyle = g; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = Math.max(1, w * .05); rr(x - bw / 2, y - bh, bw, bh, w * .12); ctx.fill(); ctx.globalAlpha = .9 * a; ctx.stroke();
+  ctx.globalAlpha = .7 * a; ctx.fillStyle = "#ffffff"; ctx.fillRect(x - bw * .38, y - bh * .9, bw * .1, bh * .45); ctx.fillRect(x - bw * .22, y - bh * .9, bw * .05, bh * .25);
+  ctx.restore();
 }
 // 💫 little stars circling over someone's head after they get hit
 function dizzy(x, y, r, t) {
@@ -1742,6 +1889,7 @@ function drawRival(r, sx, gy, sc, fz) {
     const fl = w * (.4 + Math.random() * .25); ctx.beginPath(); ctx.moveTo(sx - w * .1, -bh * .25); ctx.lineTo(sx + w * .1, -bh * .25); ctx.lineTo(sx, -bh * .25 + fl); ctx.fill(); } ctx.restore(); }
   if (r.holding && r.item) { const hi = r.item === "arrow" ? IMG.arrowIcon : IMG.slime; if (hi) { const hs = 9 * sc; ctx.drawImage(hi, -hs / 2, -hs * .3, hs, hs * hi.height / hi.width); } }
   ctx.restore(); ctx.globalAlpha = 1;
+  if (r.frozen > 0) iceBlock(sx, y, w, Math.min(1, r.frozen / .3));
   if ((r.spin > 0 || r.squash > 0) && fz < 600) dizzy(sx, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc - 3 * sc, w * .5, t);
   if (r.ink > 0 && fz < 500) { ctx.fillStyle = "rgba(10,10,18,.75)"; ctx.beginPath(); ctx.arc(sx + w * .1, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc * .7, w * .22, 0, 7); ctx.fill(); }
   if (fz < 420 && fz >= CAMD * .9) {
@@ -1782,8 +1930,10 @@ function hud() {
   const armIn = state === "race" && ARMS.some(a => a.tgt === k), shotIn = state === "race" && SHOTS.some(sh => sh.tgt === k);
   const flipIn = MECH === "flip" && state === "race" && k.flipT < 3 ? Math.ceil(k.flipT) : 0;   // 🧸 Ludibrium: a swap (or the swap back) is coming
   if (flipIn && flipIn !== flipWarnN) { flipWarnN = flipIn; tone(1040, .12, "square", .06); } if (!flipIn) flipWarnN = 0;
-  const warn = cd ? cd : flipIn ? `⚠️ Left ↔ right ${k.flipped ? "back to normal" : "SWAP"} in ${flipIn}…` : armIn ? "🖐️ ZAKUM'S ARM IS COMING FOR YOU!" : shotIn ? (k.holding ? "⚠️🏹 Arrow behind you · your item will block it" : "⚠️🏹 Arrow behind you! Hold a Slime or Arrow to block") : "";
-  if ($k("#kWarn").textContent !== warn) { $k("#kWarn").textContent = warn; $k("#kWarn").className = "kt-warn" + (armIn || cd || flipIn ? " arm" : ""); }
+  const papIn = HAZ.pap && state === "race" && HAZ.pap.charge > 0;
+  if (papIn && !wasPap) { tone(220, 1.2, "sawtooth", .05, 880); } wasPap = papIn;
+  const warn = cd ? cd : papIn ? "⚡ Papulatus is charging… jump or brace!" : flipIn ? `⚠️ Left ↔ right ${k.flipped ? "back to normal" : "SWAP"} in ${flipIn}…` : armIn ? "🖐️ ZAKUM'S ARM IS COMING FOR YOU!" : shotIn ? (k.holding ? "⚠️🏹 Arrow behind you · your item will block it" : "⚠️🏹 Arrow behind you! Hold a Slime or Arrow to block") : "";
+  if ($k("#kWarn").textContent !== warn) { $k("#kWarn").textContent = warn; $k("#kWarn").className = "kt-warn" + (armIn || cd || flipIn || papIn ? " arm" : ""); }
   $k("#kWarn").hidden = !warn;
   if (warn && !cd && !flipIn && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
   const bag = state === "menu" ? "" : `${k.mesos}/10`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${bag}` : ""; }
@@ -1803,7 +1953,7 @@ function hud() {
   const pop = posPop && performance.now() - posPop.at < 650 ? (posPop.up ? " up" : " down") : "";
   $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + pop;
 }
-let flipWarnN = 0, flashT = null, warnAt = 0, lastRk = 0, posPop = null;
+let wasPap = false, flipWarnN = 0, flashT = null, warnAt = 0, lastRk = 0, posPop = null;
 function flash(t, ms, kind) { const f = $k("#kFlash"); if (kind === "intro") f.innerHTML = `<img class="k-crown" src="media/crown.png" alt="">` + esc(t); else f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
 // phones race sideways: go fullscreen + lock to landscape where the browser allows it (Android), otherwise ask to rotate and pause
 const TOUCH = matchMedia("(pointer: coarse)").matches;
@@ -1869,7 +2019,7 @@ async function start() {
   
   try { ghost = mode === "tt" ? JSON.parse(store.get(ghostKey())) : null; } catch (e) { ghost = null; }
   ghostRec = []; PFX = []; FIRE = [];
-  K = freshKart(); PETALS = []; FWK = []; lastRk = 0; finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
+  K = freshKart(); setupHazards(); PETALS = []; FWK = []; lastRk = 0; finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
   LAVA = MECH === "lava" ? { i: START_I - 440 / SPC, v: 0, t: 0 } : null; makeRivals(mode === "gp" ? gp.names : null); if (mode === "gp") gp.names = RIV.map(r => r.name);
   if (mode === "tt") { K.item = "triple"; K.itemN = 3; }
   B.musicRate(1);
@@ -1899,6 +2049,8 @@ async function prepare() {
   [IMG.arrowIcon, IMG.arm, IMG.arrowShot] = await Promise.all([loadImg("media/kart/items/arrow_icon.png"), loadImg(B.M + "zarm_stand.gif"), loadImg("media/kart/items/arrow.png")]);   // the quiver (held as a shield) and the real arrow
   IMG.bombF = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map(i => loadImg(`media/kart/items/bomb${i}.png`)));   // 💣 Gunslinger's Grenade (MapleStory)
   IMG.boomF = await Promise.all([0, 1, 2, 3, 4, 5, 6].map(i => loadImg(`media/kart/items/boom${i}.png`)));
+  if (IMG.arrowShot) { const c = document.createElement("canvas"); c.width = IMG.arrowShot.width; c.height = IMG.arrowShot.height; const g = c.getContext("2d");
+    g.drawImage(IMG.arrowShot, 0, 0); g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(120,200,255,.75)"; g.fillRect(0, 0, c.width, c.height); IMG.iceArrow = c; }
   if (IMG.bombF.some(x => !x)) IMG.bombF = null; if (IMG.boomF.some(x => !x)) IMG.boomF = null;
   await Promise.all([...MOBS, "king_slime", "ribbon_pig"].map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); if (IMG[m]) IMG[m].px = true; })
     .concat(Object.keys(PROPS).filter(k => !PROPS[k][2]).map(async k => { IMG[k] = await loadImg(`media/kart/${k}.webp?v=1`); })));
@@ -1915,6 +2067,8 @@ async function loadArt() {
   }
   const art = T.art || HEN_ART;
   jobs.push(makeCrowd());
+  if (TRACK_KEY === "ld3" && !IMG.papStand) jobs.push(Promise.all([...[0, 1, 2, 3, 4, 5].map(i => artImg(`media/kart/ludi/pap_stand${i}.webp`)), ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => artImg(`media/kart/ludi/pap_skill${i}.webp`))])
+    .then(a => { if (a.every(Boolean)) { IMG.papStand = a.slice(0, 6); IMG.papSkill = a.slice(6); } }));
   jobs.push(artImg(art.sky).then(im => { sky = im; }), artImg(art.strip).then(im => { IMG.strip = im; }));
   await Promise.all(jobs);
 }
