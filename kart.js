@@ -1013,6 +1013,24 @@ const nameOf = o => o === K ? MP.me : o && o.name;
 // items used by you, or by one of the host's bots, are announced to the room
 function mpItem(r, payload) { if ((r === K || r.bot) && mpOn()) mpSend("it", { ...payload, n: nameOf(r) }); }
 function mpByName(n) { return n === MP.me ? K : RIV.find(r => r.name === n); }
+// Every arrow, slime drop and bomb in a room has an id. Whoever threw it is the judge: if it hits another player's kart on the
+// thrower's screen, the thrower tells that player's game ("hx") and they spin out, so a hit you see is a hit they get (once).
+let itemSeq = 0; const HITS = new Set();
+const itemId = r => mpOn() && (r === K || (r.bot && !r.remote)) ? `${MP.me}:${++itemSeq}` : null;
+function hitBy(r, msg, o, kind) {
+  if (r.remote) { if (o && o.id && o.own && mpOn() && !HITS.has(o.id + "|" + r.name)) { HITS.add(o.id + "|" + r.name); mpSend("hx", { id: o.id, v: r.name, m: msg, k: kind }); } return; }
+  if (o && o.id) { if (HITS.has(o.id + "|" + nameOf(r))) return; HITS.add(o.id + "|" + nameOf(r)); if (!o.own && mpOn() && r === K) mpSend("hx", { id: o.id, v: MP.me, k: kind, seen: 1 }); }
+  hit(r, msg);
+}
+function mpOnHit(p) {
+  if (!p || p.rc !== MP.raceNo || !K || state === "menu" || !p.id) return;
+  if (p.k === "shot") { const i = SHOTS.findIndex(o => o.id === p.id); if (i >= 0) SHOTS.splice(i, 1); }   // it's gone for everyone
+  if (p.k === "drop") { const i = DROPS.findIndex(o => o.id === p.id); if (i >= 0) DROPS.splice(i, 1); }
+  if (p.seen) return;
+  const v = mpByName(p.v); if (!v || v.remote || HITS.has(p.id + "|" + p.v)) return;
+  HITS.add(p.id + "|" + p.v); const was = v.spin; hit(v, String(p.m || "💥 Hit!").slice(0, 60));
+  if (p.k === "bomb" && v.spin > 0 && !(was > 0)) { v.vz = 230; v.z = .1; v.v *= .3; }
+}
 function mpOnPos(p) {
   if (!p || p.rc !== MP.raceNo || !K) return;
   const r = RIV.find(o => o.name === p.n); if (!r) return;
@@ -1024,9 +1042,9 @@ function mpOnPos(p) {
 function mpOnItem(p) {
   if (!p || p.rc !== MP.raceNo || !K || state === "menu") return;
   const by = RIV.find(o => o.name === p.n); if (!by) return;
-  if (p.k === "drop") DROPS.push({ x: p.x, y: p.y, t: 40, by, grace: .3 });
-  if (p.k === "bomb") BOMBS.push({ x: p.x, y: p.y, z: 12, a: p.a, v: p.v, vz: 230, by, t: 0 });
-  if (p.k === "shot") SHOTS.push({ x: p.x, y: p.y, a: p.a, v: p.v, tgt: p.tgt ? mpByName(p.tgt) || null : null, by, life: 4 });
+  if (p.k === "drop") DROPS.push({ x: p.x, y: p.y, t: 40, by, grace: .3, id: p.id });
+  if (p.k === "bomb") BOMBS.push({ x: p.x, y: p.y, z: 12, a: p.a, v: p.v, vz: 230, by, t: 0, id: p.id });
+  if (p.k === "shot") SHOTS.push({ x: p.x, y: p.y, a: p.a, v: p.v, tgt: p.tgt ? mpByName(p.tgt) || null : null, by, life: 4, id: p.id });
   if (p.k === "arm" && p.tgt === MP.me) { ARMS.push({ tgt: K, t: 2.6, by }); armCD = 20; }
   if (p.k === "thunder") {
     thunderCD = 25; thunderFx = .35; thunderSound();
@@ -1117,15 +1135,15 @@ function useItem(r) {
   else r.item = null;
   if (it === "elixir") giveBoost(r, 1.5, 120);
   if (it === "hyper") { r.hyper = 7; r.spin = 0; r.small = 0; r.ink = 0; if (r === K) { flash("💪 HYPER BODY!", 1000); hyperSound(); } }
-  if (it === "slime") { const d = { x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5 }; DROPS.push(d); mpItem(r, { k: "drop", x: d.x, y: d.y }); }
+  if (it === "slime") { const d = { x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5, id: itemId(r), own: true }; DROPS.push(d); mpItem(r, { k: "drop", x: d.x, y: d.y, id: d.id }); }
   if (it === "arrow") {
     const p = progOf(r), ahead = racers().filter(o => o !== r && progOf(o) > p && progOf(o) - p < N * .5).sort((a, b) => progOf(a) - progOf(b))[0];
-    const sh = { x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4 }; SHOTS.push(sh);
-    mpItem(r, { k: "shot", x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? nameOf(ahead) : null });
+    const sh = { x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4, id: itemId(r), own: true }; SHOTS.push(sh);
+    mpItem(r, { k: "shot", x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? nameOf(ahead) : null, id: sh.id });
   }
   if (it === "bomb") {   // 💣 lobbed forward in an arc; explodes where it lands (or on whoever it hits on the way)
-    const b = { x: r.x + Math.cos(r.a) * 18, y: r.y + Math.sin(r.a) * 18, z: 12, a: r.a, v: Math.max(250, Math.abs(r.v) + 120), vz: 230, by: r, t: 0 }; BOMBS.push(b);
-    mpItem(r, { k: "bomb", x: Math.round(b.x), y: Math.round(b.y), a: +b.a.toFixed(3), v: Math.round(b.v) });
+    const b = { x: r.x + Math.cos(r.a) * 18, y: r.y + Math.sin(r.a) * 18, z: 12, a: r.a, v: Math.max(250, Math.abs(r.v) + 120), vz: 230, by: r, t: 0, id: itemId(r), own: true }; BOMBS.push(b);
+    mpItem(r, { k: "bomb", x: Math.round(b.x), y: Math.round(b.y), a: +b.a.toFixed(3), v: Math.round(b.v), id: b.id });
     if (r === K) flash("💣 Bombs away!", 700);
   }
   if (it === "splat") {   // like the Blooper: inks everyone ahead of whoever uses it
@@ -1162,9 +1180,9 @@ function explode(b, all) {
   boomSound(dK); if (dK < 520) K.shake = Math.max(K.shake, .55 * (1 - dK / 520));
   for (const r of all) {
     const d = Math.hypot(r.x - b.x, r.y - b.y); if (d > BOMB_R || r.z > 60 || r.done || r.rescue > 0) continue;
-    const was = r.spin; hit(r, b.by === K ? "💣 Your own bomb!" : `💣 Boom${b.by && b.by.name ? ` from ${b.by.name}` : ""}!`);
+    const was = r.spin; hitBy(r, b.by === K ? "💣 Your own bomb!" : `💣 Boom from ${nameOf(b.by) || "someone"}!`, b, "bomb");
     if (r.spin > 0 && !(was > 0) && !r.remote) { r.vz = 150 + 160 * (1 - d / BOMB_R); r.z = .1; r.v *= .3; }
-    if (r !== K && b.by === K && r.spin > 0 && !(was > 0)) flash(`💣 Blew up ${r.name}!`, 900);
+    if (r !== K && b.by === K && (r.remote || (r.spin > 0 && !(was > 0)))) flash(`💣 Blew up ${r.name}!`, 900);
   }
   if (dK < 140) K.hitFlash = Math.max(K.hitFlash || 0, .12 * (1 - dK / 140));
   if (b.by !== K && dK > BOMB_R && dK < BOMB_R * 1.5) closeCall();   // just outside the blast
@@ -1341,7 +1359,7 @@ function worldStep(dt, tt) {
   for (let i = DROPS.length - 1; i >= 0; i--) {
     const d = DROPS[i]; d.t -= dt; if (d.grace > 0) d.grace -= dt;
     let gone = d.t <= 0;
-    for (const r of all) if (!gone && r.z <= 0 && Math.hypot(r.x - d.x, r.y - d.y) < 15 && !(r === d.by && d.grace > 0)) { hit(r, "🫧 Slimed!"); gone = true; }
+    for (const r of all) if (!gone && r.z <= 0 && Math.hypot(r.x - d.x, r.y - d.y) < 15 && !(r === d.by && d.grace > 0)) { hitBy(r, "🫧 Slimed!", d, "drop"); gone = true; }
     if (gone) DROPS.splice(i, 1);
   }
   for (let i = SHOTS.length - 1; i >= 0; i--) {
@@ -1355,7 +1373,7 @@ function worldStep(dt, tt) {
       if (r === K) flash("🛡️ Blocked!", 800); else if (sh.by === K) flash(`🛡️ ${r.name} blocked it`, 900);
     }
     if (!gone && sh.by !== K) nearMiss(sh, Math.hypot(K.x - sh.x, K.y - sh.y), 34);
-    for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16) { hit(r, "🏹 Arrowed!"); gone = true; if (r !== K && sh.by === K) flash(`🏹 Got ${r.name}!`, 900); }
+    for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16) { hitBy(r, `🏹 Arrow from ${nameOf(sh.by) || "someone"}!`, sh, "shot"); gone = true; if (r !== K && sh.by === K) flash(`🏹 Got ${r.name}!`, 900); }
     if (gone) SHOTS.splice(i, 1);
   }
   if (state === "race") hazardStep(dt, all);
@@ -1375,10 +1393,11 @@ function worldStep(dt, tt) {
     }
   }
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {   // karts bump each other
-    const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-    if (d > 0 && d < 15 && Math.abs(a.z - b.z) < 12) {
-      const push = (15 - d) / 2, nx = dx / d, ny = dy / d;
-      if (a.remote || b.remote) { const s2 = a === K ? -1 : 1; K.x += nx * push * 2 * s2; K.y += ny * push * 2 * s2; }   // you can only move yourself
+    const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), BR = PTS[0].length > 2 ? 21 : 15;   // 3D karts are bigger: they touch sooner
+    if (d > 0 && d < BR && Math.abs(a.z - b.z) < 12) {
+      const push = (BR - d) / 2, nx = dx / d, ny = dy / d;
+      if (a.remote && b.remote) continue;   // two other players' karts: their own games sort it out
+      if (a.remote || b.remote) { const me2 = a.remote ? b : a, s2 = me2 === a ? -1 : 1; me2.x += nx * push * 2 * s2; me2.y += ny * push * 2 * s2; }   // only the kart this game drives is moved
       else { a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
       const fast = a.v > b.v ? a : b; fast.v *= .9;
       if ((a.hyper > 0) !== (b.hyper > 0)) { const v = a.hyper > 0 ? b : a; hit(v, "💪 Rammed by Hyper Body!"); if (v.spin > 0) { v.v *= .4; if (v === K || a === K || b === K) slamSound(0); } }
@@ -1391,7 +1410,7 @@ function worldStep(dt, tt) {
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
     g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
   decal: () => trackData().decal(),
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
@@ -2264,7 +2283,7 @@ async function start() {
   
   try { ghost = mode === "tt" ? JSON.parse(store.get(ghostKey())) : null; } catch (e) { ghost = null; }
   ghostRec = []; PFX = []; FIRE = [];
-  K = freshKart(); setupHazards(); PETALS = []; POPS = []; if (G3E) G3E.clearKarts(); FWK = []; lastRk = 0; finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
+  K = freshKart(); setupHazards(); PETALS = []; POPS = []; HITS.clear(); if (G3E) G3E.clearKarts(); FWK = []; lastRk = 0; finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
   LAVA = MECH === "lava" ? { i: START_I - 440 / SPC, v: 0, t: 0 } : null; makeRivals(mode === "gp" ? gp.names : null); if (mode === "gp") gp.names = RIV.map(r => r.name);
   if (mode === "tt") { K.item = "triple"; K.itemN = 3; }
   B.musicRate(1);
@@ -2453,6 +2472,7 @@ function mpChannel(sb, code) {
     .on("broadcast", { event: "pb" }, ({ payload }) => { if (payload && Array.isArray(payload.list)) for (const q of payload.list) mpOnPos({ ...q, rc: payload.rc }); })
     .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
     .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
+    .on("broadcast", { event: "hx" }, ({ payload }) => mpOnHit(payload))
     .on("broadcast", { event: "go" }, () => mpPoll())
     .on("broadcast", { event: "rd" }, () => mpPoll())
     .on("broadcast", { event: "ch" }, ({ payload }) => { if (payload && chatAdd([{ id: payload.id, name: payload.name, msg: payload.msg }])) tone(880, .07, "triangle", .04); })
