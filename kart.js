@@ -175,8 +175,8 @@ const TRACKS = {
     ctrl: [[380, 1580, 0], [380, 1150, 0], [380, 760, 8], [440, 470, 30], [620, 320, 50], [900, 280, 72], [1130, 280, 95], [1400, 285, 62], [1620, 300, 42],
       [1790, 420, 32], [1760, 620, 26], [1560, 700, 20], [1290, 720, 18], [1080, 860, 14], [1090, 1080, 8], [1290, 1200, 2], [1520, 1330, -10],
       [1760, 1440, -22], [1850, 1660, -16], [1720, 1840, -6], [1400, 1880, 10], [1050, 1865, 28], [750, 1880, 10], [470, 1840, 0]],
-    theme: { grass: ["#6cc04a", "#5cb03e"], flowers: 2200, road: "cobble" },
-    near: ["sunflower", "redshrooms", "bush", "hay", "posts", "tallshroom", "stall", "stall2", "haypile", "tree", "shroomtower", "shroomhouse"],
+    theme: { grass: ["#6cc04a", "#64b944"], flowers: 350, tufts: 9000, road: "pave" },
+    near: ["sunflower", "redshrooms", "bush", "tallshroom", "tree", "shroomtower", "shroomhouse"],
     far: ["tree", "tree", "bush", "shroomhouse", "shroomtower"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom", "snail", "blue_snail", "slime", "pig"],
     build() {
       const pen = { a: I(1195, 282), b: I(1330, 284) }, sA = I(1290, 720), sB = I(1290, 1200), coins = [];
@@ -207,10 +207,9 @@ const TRACKS = {
         boxes: [...boxRow(I(380, 1000), [-56, -19, 19, 56]), ...boxRow(I(1520, 290), [-54, -18, 18, 54]), ...boxRow(I(1180, 790), [-54, -18, 18, 54]), ...boxRow(I(780, 1879), [-56, -19, 19, 56])],
         extra(push) {
           for (let i = pen.a; i <= pen.b; i += 4) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 8)); push(x, y, "posts", .32, 6); }
-          for (const [x, y, k] of [[1150, 170, "haypile"], [1290, 170, "haypile"], [1050, 400, "hay"], [1380, 400, "redshrooms"], [1240, 400, "haypile"]]) push(x, y, k);
-          for (let i = sA; i <= sB; i += 9) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 24)); push(x, y, ["stall", "stall2", "haypile", "hay"][(Math.round(i / 9) + (side > 0 ? 1 : 0)) & 3]); }   // the market
-          for (let i = I(380, 1500); i >= I(380, 820); i -= 8) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 16)); push(x, y, side > 0 ? "sunflower" : "bush", .42, 0); }   // the start straight
-          for (const [x, y, k] of [[700, 820, "shroomtower"], [880, 1330, "shroomhouse"], [560, 1360, "shroomhouse"], [940, 820, "tallshroom"], [620, 640, "shroomhouse"]]) push(x, y, k);
+          for (const [x, y, k] of [[1150, 150, "haypile"], [1300, 150, "haypile"], [1330, 450, "redshrooms"]]) push(x, y, k);
+          for (let i = sA + 10; i <= sB - 10; i += 26) { const [x, y] = at(i, -(ROAD / 2 + CURB + 70)); push(x, y, i % 52 < 26 ? "stall" : "stall2"); }   // a few market stalls, set back from the road
+          for (const [x, y, k] of [[720, 760, "shroomtower"], [900, 1380, "shroomhouse"], [600, 1420, "shroomhouse"], [660, 560, "shroomhouse"]]) push(x, y, k);
         },
       };
     },
@@ -895,10 +894,11 @@ function placeObjects() {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   OBJS = [];
   const push = (x, y, k, sc, r) => OBJS.push({ x, y, k, s: sc != null ? sc : PROPS[k][0], r: r != null ? r : PROPS[k][1] });
-  for (let s = 20; s < N; s += 16) {
+  const CLEAN = PTS[0].length > 2;
+  for (let s = 20; s < N; s += CLEAN ? 46 : 16) {
     for (const side of [-1, 1]) {
-      if (rnd() < .22) continue;
-      const a = tangent(s), off = ROAD / 2 + CURB + 18 + rnd() * 60, x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
+      if (rnd() < (CLEAN ? .45 : .22)) continue;
+      const a = tangent(s), off = ROAD / 2 + CURB + (CLEAN ? 70 + rnd() * 110 : 18 + rnd() * 60), x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
       if (roadDist(x, y) < ROAD / 2 + CURB + 16 || inLake(x, y) || x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
       if (rnd() < .18) { OBJS.push({ x, y, k: T.mobs[Math.floor(rnd() * T.mobs.length)], s: .42, r: 10, mob: true }); continue; }
       push(x, y, T.near[Math.floor(rnd() * T.near.length)]);
@@ -918,9 +918,9 @@ function placeObjects() {
       const [m, half, p] = t, want = half + CURB + o.r + 6, dx = o.x - p[0], dy = o.y - p[1], len = Math.hypot(dx, dy) || 1; o.x = p[0] + dx / len * want; o.y = p[1] + dy / len * want; }
     return !touching(o);
   });
-  for (let k = 0; k < 170; k++) {   // woods and houses further out
+  for (let k = 0; k < (CLEAN ? 60 : 170); k++) {   // woods and houses further out
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
-    if (d < ROAD / 2 + 130 || inLake(x, y)) continue;
+    if (d < ROAD / 2 + (CLEAN ? 260 : 130) || inLake(x, y)) continue;
     const kk = T.far[Math.floor(rnd() * T.far.length)];
     push(x, y, kk, PROPS[kk][0] * 1.2);
   }
@@ -962,7 +962,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = WORLD; paintTrack(c); return c; } });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=8"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=15"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1386,7 +1386,10 @@ function worldStep(dt, tt) {
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, closeCall: () => closeCall(),
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
+    g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
+  decal: () => trackData().decal(),
+  park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
   get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
@@ -1415,7 +1418,8 @@ function input() {
 }
 // ✨ little rewards: text that pops up by your kart, a buzz on phones, and "close call" boosts
 let POPS = [], popT = 0, lastClose = 0;
-function pop(text, col = "#ffe14a", big = false) { POPS.push({ text, col, big, t: 1.1, dx: Math.random() * 10 }); if (POPS.length > 5) POPS.shift(); }
+function pop(text, col = "#ffe14a", big = false) { for (const q of POPS) q.t = Math.min(q.t, 1.1) - .28;   // older ones move up out of the way
+  POPS.push({ text, col, big, t: 1.1, dx: Math.random() * 10 }); if (POPS.length > 5) POPS.shift(); }
 const buzz = ms => { try { if (navigator.vibrate && matchMedia("(pointer: coarse)").matches) navigator.vibrate(ms); } catch (e) {} };
 function closeCall() {
   const now = performance.now(); if (now - lastClose < 1500 || state !== "race" || K.spin > 0 || K.frozen > 0) return; lastClose = now;
@@ -1814,7 +1818,7 @@ function render() {
       ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }
   });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
-  if (IMG.meso) for (const c of COINS) if (!c.got && (G3 || (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
+  if (IMG.meso) for (const c of COINS) if (!c.got && (G3 ? (c.x - k.x) * ca + (c.y - k.y) * sa > -12 : (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
   for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
   if (KING) { const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0), kz = kingZ(kp); add(kx, ky, IMG[KING.k], KING.s, kz, false, kz > 0 ? 1 - kz / 170 : 0); }
   vis.sort((a, b) => b.fz - a.fz);
@@ -1840,7 +1844,7 @@ function render() {
   if (!kartDrawn) { lightsOut(); drawKart(k); }
   if (T.theme.snow) snowfall(T.theme.snow);
   if (HAZ.pap && IMG.papStand) drawPapulatus(k, tt);
-  if (!T.theme.snow) petals(T.cup);   // petals in Henesys, fireflies in Sleepywood, embers at Zakum, confetti in Ludibrium (El Nath has its snow)
+  if (!T.theme.snow && !G3) petals(T.cup);   // petals in Henesys, fireflies in Sleepywood, embers at Zakum, confetti in Ludibrium (El Nath has its snow)
   if (LAVA && state !== "menu" && !k.done) { const near = Math.max(0, 1 - (k.idx - LAVA.i) * SPC / 640); if (near > 0) {   // the screen glows red as the lava closes in
     const gr = ctx.createRadialGradient(W / 2, H * .6, H * .2, W / 2, H * .6, W * .75); gr.addColorStop(0, "rgba(255,60,0,0)"); gr.addColorStop(1, `rgba(255,60,0,${near * .5})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); } }
   if (k.hitFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(.7, k.hitFlash * 8)})`; ctx.fillRect(0, 0, W, H); }

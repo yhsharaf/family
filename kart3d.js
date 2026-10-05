@@ -27,7 +27,7 @@ export function create(A) {
 
   // ---------------------------------------------------------------- ground: heights, terrain mesh, sky
   const G = 8, GN = WORLD / G + 1;
-  let HG = new Float32Array(GN * GN), terrain = null, skyMesh = null, key = null, skyRefs = [];
+  let HG = new Float32Array(GN * GN), terrain = null, plain = null, skyMesh = null, key = null, skyRefs = [];
   const h = (x, y) => {
     const fx = Math.max(0, Math.min(GN - 1.001, x / G)), fy = Math.max(0, Math.min(GN - 1.001, y / G)), i = fx | 0, j = fy | 0, ax = fx - i, ay = fy - j, o = j * GN + i;
     return (HG[o] * (1 - ax) + HG[o + 1] * ax) * (1 - ay) + (HG[o + GN] * (1 - ax) + HG[o + GN + 1] * ax) * ay;
@@ -61,13 +61,13 @@ export function create(A) {
     if (t.AN > 1 && t.FORK_A >= 0) { const ea = E[Math.max(0, Math.min(t.N - 1, t.FORK_A))], eb = E[Math.max(0, Math.min(t.N - 1, t.FORK_B))];
       for (let j = 0; j < t.AN; j++) splat(t.ALT[j][0], t.ALT[j][1], ea + (eb - ea) * j / (t.AN - 1)); }
     let mean = 0; for (const e of E) mean += e; mean /= E.length;
-    const s0 = seedOf(t.key) % 1000, edge = t.ROAD / 2 + t.CURB, hillAmp = 150 * (t.theme.hills ?? 1);
+    const s0 = seedOf(t.key) % 1000, edge = t.ROAD / 2 + t.CURB, hillAmp = 85 * (t.theme.hills ?? 1);
     for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) {
       const o = j * GN + i, x = i * G, y = j * G, d = Math.sqrt(dmin[o]);
       const road = wsum[o] > 0 ? hsum[o] / wsum[o] : mean, base = road + (mean - road) * smooth(200, 300, d);
-      const n = vnoise(x / 300, y / 300, s0) * .65 + vnoise(x / 120, y / 120, s0 + 1) * .35;
-      const be = Math.min(x, y, WORLD - x, WORLD - y), border = Math.pow(smooth(300, 0, be), 1.4) * 330;
-      HG[o] = base + Math.max(-28, (n - .32) * hillAmp) * smooth(edge + 25, edge + 300, d) + border * smooth(edge + 40, edge + 260, d);
+      const n = vnoise(x / 520, y / 520, s0) * .8 + vnoise(x / 230, y / 230, s0 + 1) * .2;   // broad, gentle hills
+      const be = Math.min(x, y, WORLD - x, WORLD - y), hgt = base + Math.max(-20, (n - .32) * hillAmp) * smooth(edge + 90, edge + 520, d);
+      HG[o] = hgt + (mean - hgt) * smooth(160, 0, be) * smooth(edge + 40, edge + 200, d);   // levels out to the open plain at the map's edge
     }
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
     // the terrain mesh, painted with the track picture, and a fine grain so it looks like a surface up close
@@ -81,6 +81,12 @@ export function create(A) {
     mat.onBeforeCompile = sh => { sh.uniforms.detail = { value: DETAIL };
       sh.fragmentShader = "uniform sampler2D detail;\n" + sh.fragmentShader.replace("#include <map_fragment>",
         "#include <map_fragment>\n diffuseColor.rgb *= (.9 + .2 * texture2D(detail, vMapUv * 97.0).r) * (.94 + .12 * texture2D(detail, vMapUv * 19.0).g);"); };
+    // the open plain all round the map, out to the horizon
+    if (plain) { scene.remove(plain); plain.children.forEach(m => m.geometry.dispose()); }
+    plain = new THREE.Group(); const pm = new THREE.MeshLambertMaterial({ color: new THREE.Color(t.theme.grass ? t.theme.grass[0] : "#5cae46") }), F = 7000;
+    for (const [cx, cz, w, d] of [[WORLD / 2, -F / 2, WORLD + 2 * F, F], [WORLD / 2, WORLD + F / 2, WORLD + 2 * F, F], [-F / 2, WORLD / 2, F, WORLD], [WORLD + F / 2, WORLD / 2, F, WORLD]]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pm); m.rotation.x = -Math.PI / 2; m.position.set(cx, mean - .3, cz); plain.add(m); }
+    scene.add(plain);
     if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); terrain.material.map.dispose(); terrain.material.dispose(); }
     terrain = new THREE.Mesh(geo, mat); scene.add(terrain);
     buildRoad(t);
@@ -113,6 +119,13 @@ export function create(A) {
       for (let y = 0, j = 0; y < 192; y += 24, j++) for (let x = 0, i = 0; x < U; x += U / 8, i++) { g.fillStyle = cols[(i + j) % 4]; rr(x + 1, y + 1, U / 8 - 2, 22, 3); g.fill(); g.fillStyle = "rgba(255,255,255,.55)"; rr(x + 2.5, y + 2.5, U / 8 - 9, 3, 1.5); g.fill(); } }
     else if (style === "planks") { for (let y = 0, j = 0; y < 192; y += 8, j++) { g.fillStyle = ["#8a5a2e", "#9a6634", "#7e5229"][j % 3]; g.fillRect(0, y, U, 8); g.fillStyle = "#4a2e14"; g.fillRect(0, y + 7.2, U, .8);
       g.fillStyle = "rgba(255,220,170,.12)"; g.fillRect(0, y + .5, U, 1.2); g.fillStyle = "#3a2410"; for (const x of [6, U - 7]) g.fillRect(x, y + 3, 1.2, 1.2); } }
+    else if (style === "pave") {   // smooth warm-grey pavement: a fine grain, a few soft patches and faint wear where the wheels run
+      g.fillStyle = "#aca79e"; g.fillRect(0, 0, U, 192);
+      for (let k = 0; k < 90; k++) { const x = r() * U, y = r() * 192, rad = 6 + r() * 16, gr = g.createRadialGradient(x, y, 0, x, y, rad), dk = r() < .5;
+        gr.addColorStop(0, dk ? "rgba(80,70,60,.07)" : "rgba(255,250,240,.07)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+        for (const dy of [-192, 192]) if (y + dy - rad < 192 && y + dy + rad > 0) { g.save(); g.translate(0, dy); g.fillRect(x - rad, y - rad, rad * 2, rad * 2); g.restore(); } }
+      for (let k = 0; k < 26000; k++) { g.fillStyle = r() < .5 ? "rgba(70,62,54,.16)" : "rgba(255,255,255,.14)"; g.fillRect(r() * U, r() * 192, .3, .3); }
+      g.fillStyle = "rgba(60,50,40,.045)"; for (const x of [.3, .7]) g.fillRect(U * x - 10, 0, 20, 192); }
     else specks("#5d5d64", ["#555560", "#66666e", "#4f4f58"], 3000, 1.2);
     if (style !== "planks" && style !== "toy") { g.fillStyle = "rgba(255,255,255,.88)"; g.fillRect(3, 0, 2.2, 192); g.fillRect(U - 5.2, 0, 2.2, 192); }   // edge lines
     if (style !== "planks") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
@@ -129,7 +142,7 @@ export function create(A) {
     // road surface
     const P = [], UV = [], I = [];
     for (let i = 0; i < rows; i++) for (let k = 0; k <= K; k++) { const [x, y] = at(i, -Wd / 2 + Wd * k / K); P.push(x, h(x, y) + lift, y); UV.push(k / K, L[i] * rv); }
-    for (let i = 0; i < rows - 1; i++) for (let k = 0; k < K; k++) { const a = i * (K + 1) + k, b = a + K + 1; I.push(a, b, a + 1, a + 1, b, b + 1); }
+    for (let i = 0; i < rows - 1; i++) for (let k = 0; k < K; k++) { const a = i * (K + 1) + k, b = a + K + 1; I.push(a, a + 1, b, a + 1, b + 1, b); }   // wound so the surface faces up
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I); geo.computeVertexNormals();
     // curbs: a low red-and-white kerb each side, with a little wall down to the grass
     const CP = [], CU = [], CI = [], CUR = A.CURB || 14;
@@ -165,9 +178,9 @@ export function create(A) {
     const c = canvas(4096, 512), g = c.getContext("2d"), hor = Math.round(512 * (1 - SKY_BELOW / SKY_H));
     const pxU = 4096 / (2 * Math.PI * SKY_R) * 2, pyU = 512 / SKY_H, ax = pxU / pyU;   // 2 repeats around
     g.fillStyle = t.theme.sky || "#8fd0ff"; g.fillRect(0, 0, 4096, hor);
-    if (t.sky) { const sh = hor, sw = t.sky.width * sh / t.sky.height * ax;
+    if (t.sky) { const sh = hor, n = Math.max(2, Math.round(4096 / (t.sky.width * sh / t.sky.height * ax) / 2) * 2), sw = 4096 / n;   // a whole, even number of tiles: no seam
       for (let x = 0, i = 0; x < 4096; x += sw, i++) { if (i & 1) { g.save(); g.translate(x + sw, 0); g.scale(-1, 1); g.drawImage(t.sky, 0, 0, sw, sh); g.restore(); } else g.drawImage(t.sky, x, 0, sw, sh); } }
-    if (t.strip) { const sh = 420 * pyU, sw = t.strip.width * sh / t.strip.height * ax; for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
+    if (t.strip) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
     g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, hor + 6, 4096, 512);
     const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.repeat.x = -2; map.anisotropy = aniso;
     if (skyMesh) { scene.remove(skyMesh); skyMesh.material.map.dispose(); skyMesh.material.dispose(); }
@@ -329,5 +342,6 @@ export function create(A) {
   }
   function resize(w, hh) { renderer.setSize(w, hh, false); }
   function clearKarts() { for (const m of karts.values()) scene.remove(m.root); karts.clear(); cam.yaw = null; }
-  return { sync, begin, end, spr, box, kart, proj, hidden, h, resize, clearKarts, renderer, get key() { return key; } };
+  const snap = () => { renderer.render(scene, camera); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
+  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, resize, clearKarts, renderer, get key() { return key; } };
 }
