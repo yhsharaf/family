@@ -180,12 +180,14 @@ const TRACKS = {
     far: ["tree", "tree", "bush", "shroomhouse", "shroomtower"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom", "snail", "blue_snail", "slime", "pig"],
     build() {
       const pen = { a: I(1195, 282), b: I(1330, 284) }, sA = I(1290, 720), sB = I(1290, 1200), coins = [];
-      const row = (a, b, st, o, z = 0) => { for (let i = a, j = 0; i <= b; i += st, j++) { const [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      row(I(380, 1300), I(380, 1060), 6, 0);                               // down the middle of the start straight
-      row(I(760, 292), I(1000, 280), 6, j => (j & 1 ? 22 : -22));          // zig-zag up the climb
-      for (let i = pen.a + 3; i <= pen.b - 3; i += 4) { const [x, y] = at(i, 0); coins.push({ x, y, z: 62, got: false }); }   // in the air over the pen
-      row(sA + 6, sB - 6, 6, j => Math.sin(j * .5) * 40);                  // a snake of mesos through the S-bend
-      row(I(1300, 1878), I(1120, 1868), 6, -26); row(I(980, 1866), I(820, 1878), 6, 26);
+      // about 30 mesos a lap in neat lines of 5-6 on the racing line, where they reward good driving (like Mario Kart Tour's coin lines)
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      row(I(760, 292), I(960, 281), 5, 0);                                // up the climb
+      row(pen.a + 3, pen.b - 3, 6, 0, 62);                                // in the air over the pig pen (jump straight to get them)
+      row(I(1650, 312), I(1590, 693), 6, 46);                             // round the inside of the hairpin
+      row(sA + 8, sB - 8, 6, j => Math.sin(j * 1.2) * 38);                // the line through the S-bend
+      row(I(1700, 1420), I(1760, 1825), 5, 46);                           // round the inside of the valley turn
+      row(I(1330, 1879), I(1130, 1868), 6, 0);                            // lined up for the hop on the back straight
       return {
         pen, lake: { cx: 760, cy: 1090, rx: 190, ry: 130 },   // (no short cut: a second road crossing the first never looks clean)
         pads: [
@@ -1389,10 +1391,10 @@ function worldStep(dt, tt) {
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
     g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
   decal: () => trackData().decal(),
-  park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, ma: a }); },
+  park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
   get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
@@ -1596,7 +1598,7 @@ function step(dt) {
   if (k.slip > .9) { k.slip = 0; giveBoost(k, .8, 80); flash("💨 Slipstream!", 600); }
   // mesos, pigs and the King Slime
   for (const c of COINS) if (!c.got && Math.abs(k.z - (c.z || 0)) < 30 && Math.hypot(k.x - c.x, k.y - c.y) < 18) {
-    c.got = true; const was = k.mesos; k.mesos = Math.min(10, k.mesos + 1); k.v = Math.min(k.v + 22, 360); coinSound();
+    c.got = true; const was = k.mesos; k.mesos = Math.min(10, k.mesos + 1); k.mesoTotal = (k.mesoTotal || 0) + 1; k.v = Math.min(k.v + 22, 360); coinSound();
     const now = performance.now(); k.comboN = now - (k.comboT || 0) < 1300 ? (k.comboN || 0) + 1 : 1; k.comboT = now;   // 💰 a chain of quick pick-ups climbs in pitch
     if (k.comboN > 1) tone(1320 + k.comboN * 110, .06, "square", .04); pop(k.comboN > 1 ? `+1 ×${k.comboN}` : "+1", "#ffd23f"); buzz(6);
     if (k.comboN === 5 || k.comboN === 10) pop(`💰 Meso streak ×${k.comboN}!`, "#ffe14a", true);
@@ -2168,7 +2170,7 @@ function hud() {
   if ($k("#kWarn").textContent !== warn) { $k("#kWarn").textContent = warn; $k("#kWarn").className = "kt-warn" + (armIn || cd || flipIn || papIn ? " arm" : ""); }
   $k("#kWarn").hidden = !warn;
   if (warn && !cd && !flipIn && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
-  const bag = state === "menu" ? "" : `${k.mesos}/10`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${bag}` : ""; }
+  const bag = state === "menu" ? "" : `${k.mesos}/10 · ${k.mesoTotal || 0}`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${k.mesos}/10 <span class="kt-tot" title="mesos collected this race">💰${k.mesoTotal || 0}</span>` : ""; }
   if ((k.roll > 0 || k.roll2 > 0) && performance.now() - rollTick > 85) { rollTick = performance.now(); tone([660, 740, 830, 880, 990, 880, 830, 740][rollN++ % 8], .05, "square", .035); }
   const keys = Object.keys(ITEM_ICON), spinIcon = () => ITEM_ICON[keys[Math.floor(performance.now() / 80) % keys.length]];
   const icon = k.roll > 0 ? spinIcon() : k.item ? ITEM_ICON[k.item] : "";
@@ -2344,7 +2346,7 @@ function finish() {
   const my = raceId;
   setTimeout(() => {
     if (my !== raceId || state !== "done") return;
-    const laps = `<div class="k-laps">${k.laps.map((l, i) => `<span class="${l === bl ? "b" : ""}">Lap ${i + 1}: ${fmt(l)}</span>`).join("")}</div>`;
+    const laps = `<div class="k-laps">${k.laps.map((l, i) => `<span class="${l === bl ? "b" : ""}">Lap ${i + 1}: ${fmt(l)}</span>`).join("")}</div><p class="k-mesos">💰 ${k.mesoTotal || 0} mesos collected</p>`;
     let html;
     if (mode === "tt") {
       html = `<h3>⏱️ ${fmt(total)}</h3>${laps}
@@ -2358,7 +2360,7 @@ function finish() {
         <td>${r.est ? "~" : ""}${fmt(r.time)}</td>${mode === "gp" ? `<td class="pts">+${r.add}</td>` : ""}</tr>`).join("")}</table>`;
       const last = mode === "gp" && gp.race >= GP_RACES;
       const nx = mode === "gp" && !last ? TRACKS[CUPS[gp.cup].tracks[gp.race]] : null;
-      html = `${head}<p class="k-diff">${DIFF().label}${mode === "gp" ? ` · ${CUPS[gp.cup].name} race ${gp.race}/${GP_RACES}` : ` · ${T.name}`}</p>${table}
+      html = `${head}<p class="k-mesos">💰 ${k.mesoTotal || 0} mesos collected</p><p class="k-diff">${DIFF().label}${mode === "gp" ? ` · ${CUPS[gp.cup].name} race ${gp.race}/${GP_RACES}` : ` · ${T.name}`}</p>${table}
         <div class="row">${mode === "gp" ? (last ? `<button class="sk-btn bd-play" data-a="podium">🏆 See the podium</button>` : `<button class="sk-btn bd-play" data-a="next">Next: ${nx.icon} ${nx.name} ▶</button>`)
           : `<button class="sk-btn bd-play" data-a="again">Race again</button>`}<button class="sk-btn sk-private" data-a="back">Back</button></div>`;
     }
@@ -2383,7 +2385,7 @@ function mpTimeUp() {
 }
 function mpShowWaiting(total) {
   const rows = racers().slice().sort((a, b) => progOf(b) - progOf(a));
-  $k("#kResult").innerHTML = `<h3>${total == null ? "⏱️ Time's up!" : "🏁 " + fmt(total)}</h3><p class="k-diff">${total == null ? "Your place is where you were on the track. Getting the results…" : "Everyone else has 10 seconds to finish…"}</p>
+  $k("#kResult").innerHTML = `<h3>${total == null ? "⏱️ Time's up!" : "🏁 " + fmt(total)}</h3><p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">${total == null ? "Your place is where you were on the track. Getting the results…" : "Everyone else has 10 seconds to finish…"}</p>
     <table class="k-table">${rows.map((r, i) => `<tr class="${r === K ? "you" : ""}"><td>${ordinal(i + 1)}</td><td><img src="${r !== K && r.bot ? botImg(r.name) : spriteOf(r === K ? me : r.name)}" alt=""></td><td>${esc(r === K ? me : r.name)}</td>
     <td>${r === K ? (total == null ? "—" : fmt(total)) : r.done ? fmt(r.finishT) : "racing…"}</td></tr>`).join("")}</table>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
@@ -2393,7 +2395,7 @@ function mpShowResults(res) {
   const mine = res.find(r => r.name === MP.me);
   if (MP.tallied !== MP.raceNo) { MP.tallied = MP.raceNo; for (const r of res) MP.tally[r.name] = (MP.tally[r.name] || 0) + (GP_PTS[r.place - 1] || 0); }   // this room's own standings, for everyone
   $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
-    <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[String(MP.track).split("@")[0]] ? TRACKS[String(MP.track).split("@")[0]].name : "")} · ${CCS[raceCC].label}</p>
+    <p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[String(MP.track).split("@")[0]] ? TRACKS[String(MP.track).split("@")[0]].name : "")} · ${CCS[raceCC].label}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${r.bot ? botImg(r.name) : spriteOf(r.name)}" alt=""></td><td>${r.bot ? "🤖 " : ""}${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
     <p class="k-rank">${res[0] && res[0].counted === false ? (res[0].humans != null && res[0].humans < 2 ? "⚠️ Races need at least 2 real players to count: no points or times this time." : `⚠️ Only races with 4 or more racers count: no points or times saved this time (${res[0].n} racers).`) : "🏆 Points and times saved (guild members only)."}</p>

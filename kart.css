@@ -362,3 +362,6 @@ kbd.w { min-width: 54px; }
 .kt-bots { margin: 6px 0 2px; } .kt-bots button { font-size: 13px; padding: 5px 9px; }
 /* watching a race: no controls of your own */
 #kart.watching .kt-pad, #kart.watching #kItemBox, #kart.watching #kBag { display: none !important; }
+/* every meso counts: the race total next to the 10 you hold, and on the results */
+.kt-bag .kt-tot { color: #ffd75e; margin-left: 4px; }
+.k-mesos { font-weight: 800; color: #b07a12 !important; margin: 4px 0; }
