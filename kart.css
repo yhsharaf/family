@@ -359,3 +359,4 @@ kbd.w { min-width: 54px; }
   .kt.racing.rot .kt-item { width: 44px; height: 44px; } .kt.racing.rot .kt-item img { width: 30px; height: 30px; }
   .kt.racing.rot .kt-best { display: none; }
 }
+.kt-bots { margin: 6px 0 2px; } .kt-bots button { font-size: 13px; padding: 5px 9px; }

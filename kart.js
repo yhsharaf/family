@@ -874,7 +874,10 @@ function gridSpot(slot) { const row = Math.floor(slot / 2), col = slot % 2, i = 
 // Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
 const MP = { tally: {}, tallied: null, pick: null, endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
 const mpOn = () => mode === "mp" && !!MP.code;
-function mpSend(event, payload) { if (MP.ch) MP.ch.send({ type: "broadcast", event, payload: { ...payload, n: MP.me, rc: MP.raceNo } }); }
+function mpSend(event, payload) { if (MP.ch) MP.ch.send({ type: "broadcast", event, payload: { n: MP.me, rc: MP.raceNo, ...payload } }); }   // payload.n speaks for a bot
+const nameOf = o => o === K ? MP.me : o && o.name;
+// items used by you, or by one of the host's bots, are announced to the room
+function mpItem(r, payload) { if ((r === K || r.bot) && mpOn()) mpSend("it", { ...payload, n: nameOf(r) }); }
 function mpByName(n) { return n === MP.me ? K : RIV.find(r => r.name === n); }
 function mpOnPos(p) {
   if (!p || p.rc !== MP.raceNo || !K) return;
@@ -882,7 +885,7 @@ function mpOnPos(p) {
   r.net = { x: p.x, y: p.y, a: p.a, v: p.v, t: performance.now() };
   r.z = p.z || 0; r.steer = p.s || 0; r.spin = p.sp || 0; r.small = p.sm || 0; r.hyper = p.hy || 0; r.extra = p.ex || 0; r.squash = p.sq || 0;
   r.lap = p.lap; r.cps = p.cps; r.idx = p.idx; r.holding = !!p.ho; r.item = p.it || null; r.ink = p.ik || 0;
-  if (p.dn && !r.done) { r.done = true; r.finishT = p.ft; r.finish = ++finishers; if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = r.name; } }
+  if (p.dn && !r.done) { r.done = true; r.finishT = p.ft; r.finish = ++finishers; if (!MP.endAt && !r.bot) { MP.endAt = performance.now() + 10000; MP.firstName = r.name; } }   // bots don't start the 10 s clock
 }
 function mpOnItem(p) {
   if (!p || p.rc !== MP.raceNo || !K || state === "menu") return;
@@ -905,14 +908,19 @@ function remoteStep(r, dt) {
   let d = r.net.a - r.a; d = Math.atan2(Math.sin(d), Math.cos(d)); r.a += d * f;
   r.gone = performance.now() - r.net.t > 6000;
 }
+// 🤖 computer racers in rooms are MapleStory monsters in karts
+const BOT_IMG = { "Orange Mushroom": "orange_mushroom", "Ribbon Pig": "ribbon_pig", "Blue Snail": "blue_snail", "Stump": "stump", "Green Mushroom": "green_mushroom", "Horny Mushroom": "horny_mushroom", "Pig": "pig" };
+const botImg = name => `media/mobs/${BOT_IMG[name] || "orange_mushroom"}.png`;
 function makeRivals(keep) {
   if (mode === "tt") { RIV = []; DROPS = []; SHOTS = []; ARMS = []; return; }
   if (mode === "mp") {   // the other players in the room, on the grid in the order they joined
-    const order = MP.players.map(p => p.name), others = order.filter(n => n !== MP.me);
-    RIV = others.map((name, n) => {
-      const g = gridSpot(order.indexOf(name)), [x, y] = at(g.i, g.o), img = new Image(); img.src = spriteOf(name);
-      return { name, img, color: RIVAL_COLORS[n % RIVAL_COLORS.length], x, y, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0, finishT: 0,
-        remote: true, net: null, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0, extra: 0, item: null, itemN: 0, itemT: 0, skill: VMAX, lane: 0, laneT: 9 };
+    const order = MP.players.map(p => p.name), others = MP.players.filter(p => p.name !== MP.me), host = MP.host === MP.me;
+    RIV = others.map((p, n) => {
+      const name = p.name, g = gridSpot(order.indexOf(name)), [x, y] = at(g.i, g.o), img = new Image(); img.src = p.bot ? botImg(name) : spriteOf(name);
+      const r = { name, img, color: RIVAL_COLORS[n % RIVAL_COLORS.length], x, y, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0, finishT: 0,
+        remote: true, net: null, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0, extra: 0, item: null, itemN: 0, itemT: 0, skill: VMAX, lane: 0, laneT: 9, bot: !!p.bot };
+      if (p.bot && host) Object.assign(r, { remote: false, lane: g.o, laneT: 1 + Math.random() * 2, skill: 226 + n * 3 + Math.random() * 10, lastPad: null, kingWas: 0 });   // 🤖 the host drives the bots
+      return r;
     });
     DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BOXES.forEach(b => b.t = 0); return;
   }
@@ -969,19 +977,19 @@ function useItem(r) {
   else r.item = null;
   if (it === "elixir") giveBoost(r, 1.5, 120);
   if (it === "hyper") { r.hyper = 7; r.spin = 0; r.small = 0; r.ink = 0; if (r === K) { flash("💪 HYPER BODY!", 1000); hyperSound(); } }
-  if (it === "slime") { const d = { x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5 }; DROPS.push(d); if (r === K && mpOn()) mpSend("it", { k: "drop", x: d.x, y: d.y }); }
+  if (it === "slime") { const d = { x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5 }; DROPS.push(d); mpItem(r, { k: "drop", x: d.x, y: d.y }); }
   if (it === "arrow") {
     const p = progOf(r), ahead = racers().filter(o => o !== r && progOf(o) > p && progOf(o) - p < N * .5).sort((a, b) => progOf(a) - progOf(b))[0];
     const sh = { x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4 }; SHOTS.push(sh);
-    if (r === K && mpOn()) mpSend("it", { k: "shot", x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? ahead.name : null });
+    mpItem(r, { k: "shot", x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? nameOf(ahead) : null });
   }
   if (it === "bomb") {   // 💣 lobbed forward in an arc; explodes where it lands (or on whoever it hits on the way)
     const b = { x: r.x + Math.cos(r.a) * 18, y: r.y + Math.sin(r.a) * 18, z: 12, a: r.a, v: Math.max(250, Math.abs(r.v) + 120), vz: 230, by: r, t: 0 }; BOMBS.push(b);
-    if (r === K && mpOn()) mpSend("it", { k: "bomb", x: Math.round(b.x), y: Math.round(b.y), a: +b.a.toFixed(3), v: Math.round(b.v) });
+    mpItem(r, { k: "bomb", x: Math.round(b.x), y: Math.round(b.y), a: +b.a.toFixed(3), v: Math.round(b.v) });
     if (r === K) flash("💣 Bombs away!", 700);
   }
   if (it === "splat") {   // like the Blooper: inks everyone ahead of whoever uses it
-    bloopCD = 14; if (r === K && mpOn()) mpSend("it", { k: "splat", p: progOf(K) });
+    bloopCD = 14; mpItem(r, { k: "splat", p: progOf(r) });
     const p = progOf(r), from = r === K ? "" : ` from ${r.name}`;
     const hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0) && !(o.bloopSafe > 0) && !(o.ink > 0) && !(o.hyper > 0));
     for (const o of hitList) {
@@ -991,7 +999,7 @@ function useItem(r) {
     if (r === K) flash(hitList.length ? `🐙 Inked ${hitList.length} racer${hitList.length > 1 ? "s" : ""} ahead!` : "Nobody ahead of you!", 1000);
   }
   if (it === "thunder") {   // ⚡ like Mario Kart's Lightning: strikes every other racer; they spin, shrink and drop what they hold. Nothing blocks it.
-    thunderCD = 25; thunderFx = .35; thunderSound(); if (r === K && mpOn()) mpSend("it", { k: "thunder" });
+    thunderCD = 25; thunderFx = .35; thunderSound(); mpItem(r, { k: "thunder" });
     const from = r === K ? "" : ` from ${r.name}`;
     for (const o of racers()) {
       if (o === r || o.done || o.rescue > 0 || o.hyper > 0) continue;
@@ -1003,7 +1011,7 @@ function useItem(r) {
   }
   if (it === "arm") {
     const leader = racers().filter(o => o !== r && !o.done).sort((a, b) => progOf(b) - progOf(a))[0];
-    if (leader) { ARMS.push({ tgt: leader, t: 2.6, by: r }); armCD = 20; if (r === K && mpOn()) mpSend("it", { k: "arm", tgt: leader.name }); }
+    if (leader) { ARMS.push({ tgt: leader, t: 2.6, by: r }); armCD = 20; mpItem(r, { k: "arm", tgt: nameOf(leader) }); }
   }
   if (r === K) itemSound();
 }
@@ -1135,15 +1143,17 @@ function rivalStep(r, dt, tt) {
   }
   lapTick(r);
 }
+// the race clock: your own time while you race, and it keeps running after you finish (for rivals and bots still out there)
+const raceNow = () => K.doneAt ? K.t + (performance.now() - K.doneAt) : K.t;
 function lapTick(r) {   // 4 checkpoints in order, then the start line; true when a lap is done
   if (OPEN) {   // one long run: done when you reach the finish line near the end
-    if (r.lap === 0 && r.idx >= N - FIN_OFF) { r.lap = 1; if (r !== K && !r.done) { r.done = true; r.finish = ++finishers; r.finishT = K.t; } return true; }
+    if (r.lap === 0 && r.idx >= N - FIN_OFF) { r.lap = 1; if (r !== K && !r.done) { r.done = true; r.finish = ++finishers; r.finishT = raceNow(); } return true; }
     r.prog = r.idx / N; return false;
   }
   const prog = r.idx / N, cp = Math.floor(prog * 4);
   if (cp === (r.cps + 1) % 4 && r.cps < 3) r.cps = cp;
   let done = false;
-  if (r.cps === 3 && r.prog > .9 && prog < .1) { r.lap++; r.cps = 0; done = true; if (r !== K && r.lap >= LAPS && !r.done) { r.done = true; r.finish = ++finishers; r.finishT = K.t; } }
+  if (r.cps === 3 && r.prog > .9 && prog < .1) { r.lap++; r.cps = 0; done = true; if (r !== K && r.lap >= LAPS && !r.done) { r.done = true; r.finish = ++finishers; r.finishT = raceNow(); } }
   r.prog = prog; return done;
 }
 let finishers = 0;
@@ -1428,7 +1438,7 @@ function step(dt) {
     k.kingWas = kp;
     if (kp >= .55) solid(kx, ky, KING.big ? 44 : 26);
   }
-  if (!racing) return;
+  if (!racing) { if (mpOn() && state === "done" && MP.host === MP.me && RIV.some(r => r.bot && !r.remote && !r.done)) worldStep(dt, tt); return; }   // 🤖 bots race on after you finish
   worldStep(dt, tt);
   // laps: 4 checkpoints in order, then crossing the start line
   k.t += dt * 1000;
@@ -1992,6 +2002,9 @@ function loop(now) {
     mpSend("p", { x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(3), v: Math.round(k.v), z: Math.round(k.z), s: +k.steer.toFixed(2), sp: k.spin > 0 ? +k.spin.toFixed(2) : 0,
       sm: k.small > 0 ? 1 : 0, hy: k.hyper > 0 ? 1 : 0, ex: Math.round(k.extra || 0), sq: k.squash > 0 ? 1 : 0, lap: k.lap, cps: k.cps, idx: k.idx, ho: k.holding ? 1 : 0, it: k.holding ? k.item : null,
       ik: k.ink > 0 ? 1 : 0, dn: state === "done" ? 1 : 0, ft: state === "done" ? Math.round(k.laps.reduce((a, b) => a + b, 0)) : 0 });
+    for (const r of RIV) if (r.bot && !r.remote) mpSend("p", { n: r.name, x: Math.round(r.x), y: Math.round(r.y), a: +r.a.toFixed(3), v: Math.round(r.v), z: Math.round(r.z || 0), s: +(r.steer || 0).toFixed(2),
+      sp: r.spin > 0 ? +r.spin.toFixed(2) : 0, sm: r.small > 0 ? 1 : 0, hy: r.hyper > 0 ? 1 : 0, ex: Math.round(r.extra || 0), sq: r.squash > 0 ? 1 : 0, lap: r.lap, cps: r.cps, idx: r.idx,
+      ho: r.holding ? 1 : 0, it: r.holding ? r.item : null, ik: r.ink > 0 ? 1 : 0, dn: r.done ? 1 : 0, ft: r.done ? Math.round(r.finishT) : 0 });
   }
   raf = requestAnimationFrame(loop);
 }
@@ -2076,7 +2089,7 @@ const ordinal = n => n + (["", "st", "nd", "rd"][n] || "th");
 let TRACK_LEN = 0;
 function finish() {
   if (mode === "mp") return mpFinish();
-  const k = K; state = "done"; B.musicRate(1); fireworks(6);
+  const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); fireworks(6);
   if (!TRACK_LEN) for (let i = 0; i < N; i++) TRACK_LEN += Math.hypot(PTS[(i + 1) % N][0] - PTS[i][0], PTS[(i + 1) % N][1] - PTS[i][1]);
   const total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
   // everyone's time: rivals who finished have theirs, the rest are estimated from how far they still have to go
@@ -2124,7 +2137,7 @@ function finish() {
   }, 1400);
 }
 function mpFinish() {
-  const k = K; state = "done"; B.musicRate(1); MP.finished = true; fireworks(6); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
+  const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); MP.finished = true; fireworks(6); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
   const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
   B.sound(place <= 3 ? "win" : "lose"); flash(place === 1 ? "🏆 1st PLACE!" : "🏁 FINISH!", 1600);
   B.client().then(sb => sb && sb.rpc("kart_room_finish", { p_code: MP.code, p_tok: MP.token, p_ms: total })).then(() => mpPoll());
@@ -2133,13 +2146,13 @@ function mpFinish() {
 }
 function mpTimeUp() {
   if (state !== "race" || MP.finished) return;
-  state = "done"; MP.finished = true; B.musicRate(1); flash("⏱️ Time's up!", 1400); B.sound("lose"); mpPoll();
+  state = "done"; K.doneAt = performance.now(); MP.finished = true; B.musicRate(1); flash("⏱️ Time's up!", 1400); B.sound("lose"); mpPoll();
   const my = raceId; setTimeout(() => { if (my === raceId && state === "done" && !MP.results) mpShowWaiting(null); }, 1200);
 }
 function mpShowWaiting(total) {
   const rows = racers().slice().sort((a, b) => progOf(b) - progOf(a));
   $k("#kResult").innerHTML = `<h3>${total == null ? "⏱️ Time's up!" : "🏁 " + fmt(total)}</h3><p class="k-diff">${total == null ? "Your place is where you were on the track. Getting the results…" : "Everyone else has 10 seconds to finish…"}</p>
-    <table class="k-table">${rows.map((r, i) => `<tr class="${r === K ? "you" : ""}"><td>${ordinal(i + 1)}</td><td><img src="${spriteOf(r === K ? me : r.name)}" alt=""></td><td>${esc(r === K ? me : r.name)}</td>
+    <table class="k-table">${rows.map((r, i) => `<tr class="${r === K ? "you" : ""}"><td>${ordinal(i + 1)}</td><td><img src="${r !== K && r.bot ? botImg(r.name) : spriteOf(r === K ? me : r.name)}" alt=""></td><td>${esc(r === K ? me : r.name)}</td>
     <td>${r === K ? (total == null ? "—" : fmt(total)) : r.done ? fmt(r.finishT) : "racing…"}</td></tr>`).join("")}</table>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
 }
@@ -2149,9 +2162,9 @@ function mpShowResults(res) {
   if (MP.tallied !== MP.raceNo) { MP.tallied = MP.raceNo; for (const r of res) MP.tally[r.name] = (MP.tally[r.name] || 0) + (GP_PTS[r.place - 1] || 0); }   // this room's own standings, for everyone
   $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
     <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[String(MP.track).split("@")[0]] ? TRACKS[String(MP.track).split("@")[0]].name : "")} · ${CCS[raceCC].label}</p>
-    <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${spriteOf(r.name)}" alt=""></td><td>${esc(r.name)}</td>
+    <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${r.bot ? botImg(r.name) : spriteOf(r.name)}" alt=""></td><td>${r.bot ? "🤖 " : ""}${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
-    <p class="k-rank">${res[0] && res[0].counted === false ? `⚠️ Only races with 4 or more racers count: no points or times saved this time (${res[0].n} racers).` : "🏆 Points and times saved (guild members only)."}</p>
+    <p class="k-rank">${res[0] && res[0].counted === false ? (res[0].humans != null && res[0].humans < 2 ? "⚠️ Races need at least 2 real players to count: no points or times this time." : `⚠️ Only races with 4 or more racers count: no points or times saved this time (${res[0].n} racers).`) : "🏆 Points and times saved (guild members only)."}</p>
     <div id="kNext">${mpNextHtml()}</div>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide"); chatMount($k("#kResult"));
   if (mine && mine.place <= 3) confetti();
@@ -2165,9 +2178,9 @@ function mpNextHtml() {
       <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("")}</div>
       <div class="kt-trackpick">${CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("")}</div>
       <div class="kt-diff">${Object.entries(CCS).map(([k, c]) => `<button type="button" data-cc="${k}" class="${+k === cc ? "on" : ""}">${c.label}</button>`).join("")}</div>
-      ${playerList()}
-      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${MP.players.length < 2 || !R.all ? "disabled" : ""}>${R.all ? `🏁 Race ${t.icon} ${esc(t.name)} · ${CCS[cc].label.split(" ")[1]}!` : `⏳ Waiting for ${R.waiting.length} to be ready…`}</button></div>
-      ${MP.players.length < 2 ? `<p class="k-diff">Everyone else left… waiting for someone to join.</p>` : !R.all ? `<p class="k-diff">Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋</p>` : ""}`
+      ${playerList()}${botPick()}<p class="k-diff">${countNote()}</p>
+      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${(humansIn() < 2 && !botsWant) || !R.all ? "disabled" : ""}>${R.all ? `🏁 Race ${t.icon} ${esc(t.name)} · ${CCS[cc].label.split(" ")[1]}!` : `⏳ Waiting for ${R.waiting.length} to be ready…`}</button></div>
+      ${humansIn() < 2 && !botsWant ? `<p class="k-diff">Everyone else left… waiting for someone to join (or turn on 🤖).</p>` : !R.all ? `<p class="k-diff">Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋</p>` : ""}`
     : `${readyBtn(R.mine)}${playerList()}<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the next race</b>
       <small>Next up: ${t.icon} ${esc(t.name)} · ${CCS[roomCC()].label}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
   return `${stand}${pick}<div class="row"><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
@@ -2214,6 +2227,9 @@ async function mpPoll(first) {
     const racingNow = state === "race" && K && !MP.finished;
     const prog = racingNow ? Math.max(0, Math.min(1, OPEN ? K.idx / N : (K.lap * N + (K.cps === 0 && K.idx > N * .75 ? K.idx - N : K.idx)) / (LAPS * N))) : null;
     const sb = await B.client(); const { data } = await sb.rpc("kart_room_state", { p_code: MP.code, p_tok: MP.token, p_prog: prog });
+    const bots = (state === "race" || state === "done") && K && MP.host === MP.me ? RIV.filter(r => r.bot && !r.remote) : [];
+    if (bots.length) { const d = {}; for (const r of bots) d[r.name] = r.done ? { p: 1, f: Math.round(r.finishT) } : { p: +Math.max(0, Math.min(1, OPEN ? r.idx / N : (r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx)) / (LAPS * N))).toFixed(3) };
+      sb.rpc("kart_room_bots", { p_code: MP.code, p_tok: MP.token, p_data: d }).then(() => {}); }   // (.then: the request is only sent once something listens)
     if (!data) return;
     if (data.r === "gone") { mpLeave(true); $k("#kErr").textContent = "You left that room."; return; }
     Object.assign(MP, { host: data.host, players: data.players || [], status: data.status, track: data.track, pub: !!data.public });
@@ -2231,8 +2247,8 @@ async function mpPoll(first) {
   } finally { MP.polling = false; }
 }
 async function mpStart() {
-  const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: cc === 150 ? track : `${track}@${cc}` });
-  if (!data || data.r !== "ok") { if (state === "done") { flash("Couldn't start, try again", 1200); const b = $k("[data-a=mpgo]"); if (b) b.disabled = false; } $k("#kErr").textContent = { few: "You need at least 2 players to start.", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track.",
+  const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: cc === 150 ? track : `${track}@${cc}`, p_bots: botsWant });
+  if (!data || data.r !== "ok") { if (state === "done") { flash("Couldn't start, try again", 1200); const b = $k("[data-a=mpgo]"); if (b) b.disabled = false; } $k("#kErr").textContent = { few: "You need at least 2 players to start (or turn on 🤖 computer racers).", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track.",
     notready: `Waiting for ${(data && data.who || []).join(", ")} to press Ready ✋` }[data && data.r] || "Couldn't start, try again.";
     if (data && data.r === "notready" && state === "done") flash("⏳ Not everyone is ready", 1200);
     return; }
@@ -2241,7 +2257,7 @@ async function mpStart() {
 }
 async function mpLeave(silent) {
   const sb = await B.client();
-  if (MP.code && !silent) { sb.rpc("kart_room_leave", { p_code: MP.code, p_tok: MP.token }); try { store.del("kart_room_tok:" + MP.code); } catch (e) {} }
+  if (MP.code && !silent) { sb.rpc("kart_room_leave", { p_code: MP.code, p_tok: MP.token }).then(() => {}); try { store.del("kart_room_tok:" + MP.code); } catch (e) {} }
   clearInterval(MP.poll); if (MP.ch) sb.removeChannel(MP.ch);
   Object.assign(MP, { code: null, token: null, ch: null, players: [], host: null, status: null, chat: [] });
   if (location.hash.startsWith("#kart/")) history.replaceState(null, "", "#kart");
@@ -2270,18 +2286,31 @@ function drawRoom() {
     ${!host && MP.status !== "racing" ? readyBtn(R.mine) : ""}
     ${!host && MP.status !== "racing" ? `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the race</b>
       <small>Next up: ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</small></div></div>` : ""}
-    ${MP.players.length >= 2 && MP.players.length < 4 ? `<p class="kt-modenote">ℹ️ ${MP.players.length} racers: this race won't count for points or times (needs 4+).</p>` : ""}
-    <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? (MP.pub ? "Waiting for at least one more player… they can join from the Open rooms list." : "Waiting for at least one more player… share the link!") : R.all ? "Everyone's ready ✅ Pick a cup and track below, then start!" : `You're the host 👑: pick a cup and track below. Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋`) : R.mine ? "You're ready ✅ The race starts when the host presses Start." : "Press ✋ Ready so the host can start the race."}</p>
+    ${host && MP.status !== "racing" ? botPick() : ""}
+    ${MP.status !== "racing" && countNote() ? `<p class="kt-modenote">${countNote()}</p>` : ""}
+    <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (humansIn() < 2 ? (botsWant ? "Race the 🤖 bots now, or wait for friends: " : "") + (MP.pub ? "others can join from the Open rooms list." : "share the link to invite others!") : R.all ? "Everyone's ready ✅ Pick a cup and track below, then start!" : `You're the host 👑: pick a cup and track below. Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋`) : R.mine ? "You're ready ✅ The race starts when the host presses Start." : "Press ✋ Ready so the host can start the race."}</p>
     <button class="sk-small" id="kRoomLeave">🚪 Leave the room</button>`;
   chatMount(box);
-  $k("#kGo").textContent = MP.players.length < 2 ? "🏁 Start the race!" : R.all ? "🏁 Everyone's ready: Start!" : `⏳ Waiting for ${R.waiting.length} to be ready…`; $k("#kGo").disabled = MP.players.length < 2 || !R.all;
+  const solo = humansIn() < 2;
+  $k("#kGo").textContent = solo ? (botsWant ? "🤖 Race the bots!" : "🏁 Start the race!") : R.all ? "🏁 Everyone's ready: Start!" : `⏳ Waiting for ${R.waiting.length} to be ready…`;
+  $k("#kGo").disabled = (solo && !botsWant) || !R.all;
 }
+// 🤖 computer racers: the host fills empty seats up to 4 or 8 racers (or none)
+let botsWant = store.get("kart_bots") != null && [0, 4, 8].includes(+store.get("kart_bots")) ? +store.get("kart_bots") : 4;   // "Fill to 4" unless you picked something else
+const humansIn = () => (MP.players || []).filter(p => !p.bot).length;
+const botPick = () => `<div class="kt-diff kt-bots"><span>🤖 Computer racers:</span>${[[0, "Off"], [4, "Fill to 4"], [8, "Fill to 8"]].map(([v, l]) => `<button type="button" data-bots="${v}" class="${botsWant === v ? "on" : ""}">${l}</button>`).join("")}</div>`;
+function countNote() {   // will this race count for points and times?
+  const h = humansIn(), total = botsWant ? Math.max(h, botsWant) : h;
+  if (h < 2) return botsWant ? "ℹ️ Just you: race the 🤖 bots for fun. Points and times need at least 2 real players." : "";
+  return total < 4 ? `ℹ️ ${total} racers: this race won't count for points or times (needs 4+, turn on 🤖 to fill seats).` : "✅ This race counts for 🏆 points and 🏁 race times.";
+}
+function setBots(v) { botsWant = v; store.set("kart_bots", v); if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); }
 // ✋ Ready: everyone but the host has to press it before the host can start (the host's Start is their ready)
 function mpReadyInfo() {
-  const others = (MP.players || []).filter(p => p.name !== MP.host), waiting = others.filter(p => !p.ready).map(p => p.name), me = (MP.players || []).find(p => p.name === MP.me);
+  const others = (MP.players || []).filter(p => p.name !== MP.host && !p.bot), waiting = others.filter(p => !p.ready).map(p => p.name), me = (MP.players || []).find(p => p.name === MP.me);
   return { all: !waiting.length, waiting, mine: !!(me && me.ready) };
 }
-const playerList = () => `<div class="kt-plist">${MP.players.map(p => `<div class="kt-pl${p.name === MP.me ? " me" : ""}${p.name === MP.host || p.ready ? " rdy" : ""}"><img src="${spriteOf(p.name)}" alt=""><b>${esc(p.name)}</b>
+const playerList = () => `<div class="kt-plist">${MP.players.filter(p => !p.bot).map(p => `<div class="kt-pl${p.name === MP.me ? " me" : ""}${p.name === MP.host || p.ready ? " rdy" : ""}"><img src="${spriteOf(p.name)}" alt=""><b>${esc(p.name)}</b>
   <em>${p.name === MP.host ? "👑 host" : p.ready ? "✅ ready" : "⏳ not ready"}</em></div>`).join("")}</div>`;
 const readyBtn = mine => `<button type="button" class="sk-btn kt-readybtn${mine ? " on" : ""}" data-ready="${mine ? 0 : 1}">${mine ? "✅ I'm ready! <small>(tap to cancel)</small>" : "✋ Ready!"}</button>`;
 async function mpReady(v) {
@@ -2323,6 +2352,7 @@ $k("#kRoomBox").addEventListener("click", e => {
   if (e.target.id === "kJoin") { const c = ($k("#kCode").value || "").trim().toUpperCase(); if (c) mpJoin(c); }
   if (e.target.id === "kRoomLeave") mpLeave();
   const rb = e.target.closest("[data-ready]"); if (rb) mpReady(rb.dataset.ready === "1");
+  const bb = e.target.closest("[data-bots]"); if (bb) setBots(+bb.dataset.bots);
   if (e.target.id === "kCopy") { const i = $k("#kInvite"); i.select(); try { navigator.clipboard.writeText(i.value); } catch (er) { document.execCommand("copy"); } e.target.textContent = "Copied!"; setTimeout(() => e.target.textContent = "Copy", 1200); }
 });
 // 🌍 the open public rooms, refreshed every few seconds while you look at the multiplayer menu
@@ -2448,7 +2478,7 @@ function drawMode() {
   $k("#kGo").textContent = { gp: `🏆 Start the ${CUPS[cup].name}!`, race: "🏁 Start race!", tt: "⏱️ Start Time Trial!", mp: "🏁 Start the race!" }[mode];
   $k("#kGo").hidden = false; $k("#kGo").disabled = false;
   $k("#kModeNote").textContent = { gp: "3 races against the same 7 computer rivals (cup points only, nothing on the board).", race: "One race against 7 computer rivals (no board points).",
-    tt: "Alone at 🔥 150cc with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race real guild members live. Races with 4 or more racers earn 🏆 points and save your 🏁 race time." }[mode];
+    tt: "Alone at 🔥 150cc with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race guild members live (🤖 computer racers can fill empty seats). Races with 4+ racers and 2+ real players earn 🏆 points and save your 🏁 race time." }[mode];
   drawRoom();
 }
 $k("#kMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; if (mode === "mp" && b.dataset.m !== "mp" && MP.code) mpLeave(); mode = b.dataset.m; store.set("kart_mode", mode); gp = null; drawMode(); drawTrack(); });
@@ -2507,6 +2537,7 @@ $k("#kResult").addEventListener("click", e => {
   if (a.dataset.a === "room") quit();
   if (a.dataset.a === "mpgo") { a.disabled = true; askFull(); mpStart(); }
   const rb = e.target.closest("[data-ready]"); if (rb) mpReady(rb.dataset.ready === "1");
+  const bb = e.target.closest("[data-bots]"); if (bb) setBots(+bb.dataset.bots);
   if (a.dataset.a === "mpleave") { mpLeave(); quit(); }
 });
 $k("#kResult").addEventListener("click", e => {   // the host's cup / track pick on the results screen

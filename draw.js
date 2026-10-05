@@ -114,7 +114,7 @@ let roomPing = null;  // keep checking in while inside, so the room stays counte
 
 // ------------------------------------------------------------------ realtime
 function connect() {
-  clearInterval(roomPing); roomPing = setInterval(() => sb.rpc("draw_room", { p_room: room }), 30000);
+  clearInterval(roomPing); roomPing = setInterval(() => sb.rpc("draw_room", { p_room: room }).then(() => {}), 30000);   // .then: the request only goes out once something listens
   ch = sb.channel("draw:" + room, { config: { broadcast: { self: false }, presence: { key: myId } } });
   ch.on("presence", { event: "sync" }, () => {
     players = {};
