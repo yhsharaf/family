@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=14">
+<link rel="stylesheet" href="kart.css?v=16">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -501,7 +501,8 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="kt-modes" id="kMode"><button type="button" data-m="gp">🏆 Grand Prix</button><button type="button" data-m="race">🏁 Race</button><button type="button" data-m="tt">⏱️ Time Trial</button><button type="button" data-m="mp">👥 Multiplayer</button></div>
       <div class="kt-modenote" id="kModeNote"></div>
       <div class="kt-room" id="kRoomBox" hidden></div>
-      <div class="kt-trackpick" id="kTrackPick"><button type="button" data-t="henesys">🍄 Loop</button><button type="button" data-t="town">🏘️ Town Run</button><button type="button" data-t="forest">🌲 Forest</button></div>
+      <div class="kt-cuppick" id="kCupPick"></div>
+      <div class="kt-trackpick" id="kTrackPick"></div>
       <div class="kt-diff" id="kDiff"><span>Rivals:</span><button type="button" data-d="easy">🌱 Easy</button><button type="button" data-d="normal">🏁 Normal</button><button type="button" data-d="hard">🔥 Hard</button></div>
       <div class="kt-mine" id="kMine"></div>
       <button class="sk-btn bd-play" id="kGo">🏁 Start race!</button>
@@ -541,6 +542,14 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
             <div><img src="media/mobs/octopus.png" alt=""><b>Splat</b><small>inks everyone ahead</small></div>
           </div>
           <small>🛡️ hold the item button to keep it behind you as a shield · you can carry 2 items</small></div>
+        <div class="hd-card"><h4>🗺️ Cups <small>each one has its own twist</small></h4>
+          <div class="hd-tiles cups">
+            <div><span>🍄</span><b>Henesys</b><small>3 laps, the classic</small></div>
+            <div><span>❄️</span><b>El Nath</b><small>icy roads: you slide</small></div>
+            <div><span>🌙</span><b>Sleepywood</b><small>lights out 3 s every 15 s · no map</small></div>
+            <div><span>🔥</span><b>Zakum</b><small>outrun the lava · no laps</small></div>
+            <div><span>🧸</span><b>Ludibrium</b><small>left and right swap, no warning</small></div>
+          </div></div>
         <div class="hd-card"><h4>⚠️ Watch out</h4>
           <div class="hd-items haz">
             <div><img src="media/mobs/slime.png" alt=""><b>Slime puddle</b><small>spin out</small></div>
@@ -555,7 +564,6 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="kt-boardtabs" id="kBoardTabs"><button type="button" data-b="time">⏱️ Times</button><button type="button" data-b="points">🏆 Points</button></div>
       <div class="kt-boardhead" id="kBoardHead"></div><span id="kBoardName" hidden></span>
       <ol class="dboard kt-board" id="kBoard"></ol>
-      <p class="kt-soon">🚧 More tracks coming: El Nath, Ludibrium, Sleepywood and Zakum.</p>
     </div>
   </div>
   <div id="kGame" class="kt-game" hidden>
@@ -901,9 +909,10 @@ show();
 <script src="draw.js?v=12"></script>
 <script src="ww.js?v=4"></script>
 <script src="duel-songs.js?v=2"></script>
+<script src="kart-songs.js?v=1"></script>
 <script src="duel.js?v=31"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=41"></script>
+<script src="kart.js?v=43"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

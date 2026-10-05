@@ -209,3 +209,30 @@ kbd.w { min-width: 54px; }
 .hd-items .rock { display: block; width: 34px; height: 26px; margin: 2px 0; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #a59c8c, #696154 60%, #3e3830); }
 .hd-items span { font-size: 24px; line-height: 30px; }
 @media (max-width: 420px) { .hd-items, .hd-items.haz { grid-template-columns: repeat(3, 1fr); } .hd-phone { grid-template-columns: 80px 1fr 28px 32px 40px; } }
+/* cups */
+.kt-cuppick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.kt-cuppick[hidden] { display: none; }
+.kt-cuppick button { border: 2px solid var(--edge); background: #fff; border-radius: 10px; padding: 5px 2px; font: 800 11.5px Ubuntu, sans-serif; cursor: pointer; color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.1; }
+.kt-cuppick button span { font-size: 18px; }
+.kt-cuppick button.on { border-color: #c8232c; background: #fff0f0; box-shadow: 0 0 0 2px #e8b43a; }
+.kt-trackpick button { font-size: 12px; line-height: 1.15; }
+.kt-track small.kt-rule { display: block; color: #c8232c; font-weight: 800; margin-top: 2px; }
+.kt-best.hot { color: #ff6a3a; animation: kHot .5s infinite alternate; }
+@keyframes kHot { to { color: #ffd23f; } }
+@media (max-width: 560px) { .kt-best.lava { display: block; } }
+.hd-tiles.cups { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 420px) { .hd-tiles.cups { grid-template-columns: repeat(3, 1fr); } }
+/* public rooms */
+.kt-create { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kt-create .sk-btn { margin: 0; font-size: 17px; padding: 10px 6px; }
+.kt-open { background: #fff; border: 1px solid var(--edge); border-radius: 12px; padding: 8px; margin: 8px 0; }
+.kt-open > b { display: block; font-size: 14px; margin-bottom: 6px; }
+#kOpenRooms { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; }
+#kOpenRooms .bd-none { margin: 2px 0; font-size: 13px; }
+.kt-oroom { display: flex; align-items: center; gap: 8px; border: 2px solid var(--edge); background: #fbf8f1; border-radius: 10px; padding: 4px 8px; cursor: pointer; text-align: left; font: inherit; color: var(--ink); }
+.kt-oroom:hover:not(:disabled) { border-color: #c8232c; }
+.kt-oroom:disabled { opacity: .6; cursor: default; }
+.kt-oroom img { width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; }
+.kt-oroom span { flex: 1; display: flex; flex-direction: column; line-height: 1.2; }
+.kt-oroom span b { font-size: 14px; } .kt-oroom span small { font-size: 12px; color: var(--muted); }
+.kt-oroom em { font-style: normal; font-weight: 800; font-size: 13px; color: #c8232c; white-space: nowrap; }
