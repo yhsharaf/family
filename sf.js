@@ -228,17 +228,32 @@ function setName() {
   if (nn.length >= 2 && nn !== me) { me = nn; if (g) store.set("family_me", g.name); auto = false; loadRun(); }
   else if (nn.length < 2) { me = ""; run = null; draw(); }
 }
+// your character shown big, and the name search with pictures and arrow keys (same as Family Kart)
+function showFace() {
+  const n = $s("#sfName").value.trim(), g = guildOf(n);
+  $s("#sfFace").innerHTML = `<img src="${n ? spriteOf(g ? g.name : n) : B.M + "guest.png?v=2"}" alt="">`;
+}
+let suggIdx = -1;
 function suggest() {
   const q = $s("#sfName").value.trim().toLowerCase(), box = $s("#sfSugg");
   if (!q) { box.hidden = true; return; }
   const hits = ROSTER.filter(p => p.name.toLowerCase().includes(q)).sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || a.name.length - b.name.length).slice(0, 8);
   if (!hits.length || (hits.length === 1 && hits[0].name.toLowerCase() === q)) { box.hidden = true; return; }
+  suggIdx = -1;
   box.innerHTML = hits.map(p => `<button type="button" data-n="${esc(p.name)}">${p.sprite ? `<img src="${p.sprite}" alt="">` : "<span style='width:34px'>👤</span>"} ${esc(p.name)}</button>`).join("");
   box.hidden = false;
 }
-$s("#sfSugg").addEventListener("pointerdown", e => { const b = e.target.closest("button"); if (!b) return; e.preventDefault(); $s("#sfName").value = b.dataset.n; $s("#sfSugg").hidden = true; setName(); });
-$s("#sfName").addEventListener("input", () => { suggest(); clearTimeout(setName.t); setName.t = setTimeout(setName, 500); });
+const pickName = n => { $s("#sfName").value = n; $s("#sfSugg").hidden = true; showFace(); setName(); };
+$s("#sfSugg").addEventListener("pointerdown", e => { const b = e.target.closest("button"); if (!b) return; e.preventDefault(); pickName(b.dataset.n); });
+$s("#sfName").addEventListener("input", () => { showFace(); suggest(); clearTimeout(setName.t); setName.t = setTimeout(setName, 500); });
 $s("#sfName").addEventListener("blur", () => setTimeout(() => { $s("#sfSugg").hidden = true; setName(); }, 150));
+$s("#sfName").addEventListener("keydown", e => {
+  const items = [...$s("#sfSugg").querySelectorAll("button")], open = items.length && !$s("#sfSugg").hidden;
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && open) { e.preventDefault();
+    suggIdx = (suggIdx + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length; items.forEach((b, i) => b.classList.toggle("on", i === suggIdx)); }
+  if (e.key === "Enter") { e.preventDefault(); if (open && suggIdx >= 0 && items[suggIdx]) pickName(items[suggIdx].dataset.n); else { $s("#sfSugg").hidden = true; setName(); } }
+  if (e.key === "Escape") $s("#sfSugg").hidden = true;
+});
 $s("#sfItems").addEventListener("click", e => { const b = e.target.closest("[data-i]"); if (!b || busy || auto) return; item = b.dataset.i; store.set("sf_item", item); run = SET && SET.items[item] || null; shown = null; draw(); });
 $s("#sfFix").addEventListener("click", async e => {
   const b = e.target.closest("[data-fix]"); if (!b || busy || !run || !run.broken) return;
@@ -294,5 +309,5 @@ $s("#sfAuto").onclick = autoRun;
 addEventListener("keydown", e => { if (location.hash === "#sf" && e.key === " " && document.activeElement === document.body) { e.preventDefault(); enhanceOnce(); } });
 addEventListener("hashchange", () => { if (location.hash !== "#sf") auto = false; else loadBoard(); });
 $s("#sfName").value = store.get("family_me") || "";
-setName(); draw(); if (location.hash === "#sf") loadBoard();
+setName(); showFace(); draw(); if (location.hash === "#sf") loadBoard();
 })();
