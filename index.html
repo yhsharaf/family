@@ -48,6 +48,9 @@ nav a { text-decoration: none; padding: 6px 12px; font-weight: 700; color: #fcfa
         box-shadow: 3px 4px 0 rgba(60,45,30,.25); transition: transform .15s; }
 nav a:hover, nav a.on { transform: rotate(0) scale(1.08); }
 nav a.on { outline: 3px solid var(--ink); }
+/* Family Kart: a black-and-white chequered racing flag, with the words on a dark outline so they stay readable */
+nav a.nav-kart { background: repeating-conic-gradient(#1d1d22 0 25%, #fff 0 50%) 0 0 / 14px 14px; color: #fff;
+  text-shadow: -1.5px -1.5px 0 #1d1d22, 1.5px -1.5px 0 #1d1d22, -1.5px 1.5px 0 #1d1d22, 1.5px 1.5px 0 #1d1d22, 0 2px 0 #1d1d22; }
 nav img { height: 34px; margin-right: 6px; align-self: center; }
 
 main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; }
@@ -232,7 +235,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <a href="#draw" style="--r:-2deg;background:var(--teal)">Draw & Guess</a>
   <a href="#ww" style="--r:2deg;background:#3b3561">Werewolf</a>
   <a href="#duel" style="--r:-2deg;background:#c0612b">Bonk Duel</a>
-  <a href="#kart" style="--r:2deg;background:#46a05a">Family Kart</a>
+  <a href="#kart" class="nav-kart" style="--r:2deg">🏁 Family Kart</a>
 </nav>
 
 <div class="smega" id="smega" hidden><span class="tag">📣</span><div class="track"><span id="smegaText"></span></div><button id="smegaX" aria-label="hide">×</button></div>
