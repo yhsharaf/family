@@ -252,3 +252,31 @@ kbd.w { min-width: 54px; }
 .kt-result .kt-cuppick, .kt-result .kt-trackpick { margin: 6px 0; }
 .kt-result .kt-pickhead { margin: 6px 0 0; }
 .kt-diff[hidden] { display: none; }
+
+/* ===== menu layout: desktop = set up on the left; board on top of the right side, "How to drive" cards under it. Phones = one column ===== */
+#kMenu { grid-template-columns: minmax(340px, 410px) minmax(0, 1fr); grid-template-areas: "setup board" "setup how"; grid-template-rows: auto 1fr;
+  align-items: start; justify-content: stretch; max-width: 1280px; margin: 0 auto; }
+#kMenu > .sk-panel:first-child { grid-area: setup; }
+#kMenu > .kt-boardpanel { grid-area: board; }
+#kMenu > .kt-about { grid-area: how; }
+.kt-modes { grid-template-columns: repeat(2, 1fr); }
+.kt-modes button { padding: 11px 6px; font-size: 16px; }
+.kt-boardpanel h3 { margin: 0; }
+.kt-boardpanel .kt-board { margin: 0; columns: 2 300px; column-gap: 12px; }
+.kt-boardpanel .kt-board li { break-inside: avoid; }
+.kt-about { display: block; padding: 12px 16px; }
+.kt-about > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+.kt-about > summary::-webkit-details-marker { display: none; }
+.kt-about > summary h3 { margin: 4px 0; }
+.kt-about > summary::after { content: "▾"; font-size: 18px; color: var(--muted); transition: transform .2s; }
+.kt-about[open] > summary::after { transform: rotate(180deg); }
+.kt-about[open] > summary { margin-bottom: 8px; }
+.kt-about .hd { margin-bottom: 0; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-items: start; }
+@media (max-width: 900px) {
+  #kMenu { grid-template-columns: 1fr; grid-template-areas: "setup" "board" "how"; grid-template-rows: none; gap: 12px; }
+  .kt-boardpanel .kt-board { columns: 1; }
+  #kMenu .sk-avatar { padding: 4px; }
+  #kMenu .sk-face { height: 92px; width: 92px; }
+  #kMenu .sk-face img { max-height: 92px; transform: scale(1.15); }
+  #kMenu .kt-track img { width: 72px; height: 44px; }
+}

@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=19">
+<link rel="stylesheet" href="kart.css?v=21">
 <link rel="stylesheet" href="sf.css?v=7">
 <link rel="stylesheet" href="br.css?v=1">
 <link rel="stylesheet" href="extras.css?v=46">
@@ -51,6 +51,15 @@ nav a { text-decoration: none; padding: 6px 12px; font-weight: 700; color: #fcfa
 nav a:hover, nav a.on { transform: rotate(0) scale(1.08); }
 nav a.on { outline: 3px solid var(--ink); }
 nav img { height: 34px; margin-right: 6px; align-self: center; }
+/* phones: one row you swipe sideways (it slides to the page you're on), instead of 4 rows stuck over the screen */
+@media (max-width: 700px) {
+  nav { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; gap: 8px; padding: 9px 10px 11px; scrollbar-width: none; scroll-behavior: smooth;
+        -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  nav::-webkit-scrollbar { display: none; }
+  nav a { flex: 0 0 auto; white-space: nowrap; padding: 6px 11px; font-size: 14px; }
+  nav a:last-child { margin-right: 30px; }
+  nav img { height: 28px; margin-right: 0; flex: 0 0 auto; }
+}
 
 main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; }
 section { display: none; animation: pop .35s ease-out; }
@@ -513,8 +522,14 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <button class="sk-btn bd-play" id="kGo">🏁 Start race!</button>
       <div class="sk-err" id="kErr"></div>
     </div>
-    <div class="sk-panel kt-about">
-      <h3>How to drive</h3>
+    <div class="sk-panel kt-boardpanel">
+      <h3>🏆 Guild board</h3>
+      <div class="kt-boardtabs" id="kBoardTabs"><button type="button" data-b="time">⏱️ Times</button><button type="button" data-b="points">🏆 Points</button></div>
+      <div class="kt-boardhead" id="kBoardHead"></div><span id="kBoardName" hidden></span>
+      <ol class="dboard kt-board" id="kBoard"></ol>
+    </div>
+    <details class="sk-panel kt-about" id="kHow">
+      <summary><h3>How to drive</h3></summary>
       <div class="hd">
         <div class="hd-card"><h4>🎮 Controls</h4>
           <div class="hd-keys"><span><kbd>←</kbd><kbd>→</kbd>Steer</span><span><kbd class="w">Space</kbd>Drift</span><span><kbd>↑</kbd>Item</span><span><kbd>↓</kbd>Brake</span></div>
@@ -565,11 +580,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
           </div>
           <small>Getting hit drops 3 mesos · wrong way or lost? a 📜 Return Scroll puts you back</small></div>
       </div>
-      <h3>🏆 Guild board</h3>
-      <div class="kt-boardtabs" id="kBoardTabs"><button type="button" data-b="time">⏱️ Times</button><button type="button" data-b="points">🏆 Points</button></div>
-      <div class="kt-boardhead" id="kBoardHead"></div><span id="kBoardName" hidden></span>
-      <ol class="dboard kt-board" id="kBoard"></ol>
-    </div>
+    </details>
   </div>
   <div id="kGame" class="kt-game" hidden>
     <div class="kt-screen">
@@ -761,6 +772,8 @@ function show() {
   const id = (location.hash || "#home").slice(1);
   document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === id));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + id));
+  const on = document.querySelector("nav a.on"), nav = document.querySelector("nav");   // phones: slide the menu so the open page shows
+  if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2;
   window.scrollTo(0, 0);
 }
 addEventListener("hashchange", show);
@@ -994,7 +1007,7 @@ show();
 <script src="kart-songs.js?v=1"></script>
 <script src="duel.js?v=31"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=49"></script>
+<script src="kart.js?v=50"></script>
 <script src="sf.js?v=15"></script>
 <script src="br.js?v=2"></script>
 <script src="extras.js?v=51"></script>

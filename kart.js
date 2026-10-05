@@ -2028,6 +2028,7 @@ function drawMode() {
 }
 $k("#kMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; if (mode === "mp" && b.dataset.m !== "mp" && MP.code) mpLeave(); mode = b.dataset.m; store.set("kart_mode", mode); gp = null; drawMode(); drawTrack(); });
 drawMode(); drawTrack();
+$k("#kHow").open = matchMedia("(min-width: 901px)").matches;   // "How to drive" starts folded on phones so the board is close
 function drawCC() { document.querySelectorAll("#kCC [data-cc], #kResult [data-cc]").forEach(b => b.classList.toggle("on", +b.dataset.cc === cc)); }
 $k("#kCC").addEventListener("click", e => { const b = e.target.closest("[data-cc]"); if (!b) return; cc = +b.dataset.cc; store.set("kart_cc", cc); drawCC(); drawTrack(); if (mode === "mp" && MP.code) drawRoom(); });
 drawCC();
