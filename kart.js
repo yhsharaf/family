@@ -967,7 +967,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = WORLD; paintTrack(c); return c; } });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=18"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=19"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2220,7 +2220,13 @@ function syncRot() {
   return r;
 }
 addEventListener("resize", () => { if (state !== "menu") syncRot(); });
+// the frame loop: the next frame is always booked first, so a bug in one frame can never freeze the game
+let loopErrs = 0;
 function loop(now) {
+  raf = requestAnimationFrame(loop);
+  try { frame(now); } catch (e) { if (loopErrs++ < 3) console.error("Family Kart frame error", e); }
+}
+function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
   syncRot(); $k("#kFull").hidden = !wantFull();
   const t0 = performance.now();
@@ -2235,7 +2241,6 @@ function loop(now) {
       ho: r.holding ? 1 : 0, it: r.holding ? r.item : null, ik: r.ink > 0 ? 1 : 0, dn: r.done ? 1 : 0, ft: r.done ? Math.round(r.finishT) : 0 }));
     if (bl.length) mpSend("pb", { list: bl });   // all the host's bots in one message
   }
-  raf = requestAnimationFrame(loop);
 }
 let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
 async function start() {

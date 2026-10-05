@@ -326,7 +326,7 @@ export function create(A) {
     const want = Math.max(h(k.x, k.y), h(gx, gz) - 6) + up;
     cam.y = o.snap || !cam.y ? want : cam.y + (want - cam.y) * Math.min(1, o.dt * 6);
     camera.position.set(gx, Math.max(cam.y, h(gx, gz) + 5), gz);
-    look.set(k.x + Math.cos(cam.yaw) * 40, h(k.x, k.y) + 9 + Math.min(k.z || 0, 120) * .85, k.y + Math.sin(cam.yaw) * 40);
+    look.set(k.x + Math.cos(cam.yaw) * 40, h(k.x, k.y) + 9 + Math.min(k.z || 0, 120) * .65, k.y + Math.sin(cam.yaw) * 40);   // rises with you in a jump (no tilting up at the sky)
     if (o.intro != null && o.intro < 1 && o.grid) {   // before the start: from in front of the grid (everyone facing you), swooping up and round to behind your kart
       const [qx, qy, qa] = o.grid, e = o.intro * o.intro * (3 - 2 * o.intro), fx = qx + Math.cos(qa) * 170, fz = qy + Math.sin(qa) * 170;
       tmp.set(fx, h(fx, fz) + 38, fz).lerp(camera.position, e); tmp.y += Math.sin(Math.PI * e) * 45; camera.position.copy(tmp);
