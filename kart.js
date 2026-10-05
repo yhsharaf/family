@@ -2330,28 +2330,42 @@ function engineLoop(ac, fire) {
   for (let i = 0; i < len; i++) d[i] /= peak || 1;
   const buf = ac.createBuffer(1, len, sr); buf.getChannelData(0).set(d); return (ENGBUF[key] = buf);
 }
+// the real engine: two loops cut from a recording of a Maserati GranTurismo S V8 (lmartins, Freesound, CC BY 4.0):
+// idle (~55 Hz rumble) and high revs (~130 Hz). They're re-pitched with your revs and blended; the modelled V8 above is only the fallback.
+const REAL = { idle: null, high: null, base: { idle: 55, high: 130 }, loading: false };
+async function loadRealEngine() {
+  const ac = window.getAC && window.getAC(); if (!ac || REAL.loading || REAL.idle) return; REAL.loading = true;
+  try {
+    const get = async u => { const r = await fetch(u); const b = await r.arrayBuffer(); return await new Promise((ok, no) => ac.decodeAudioData(b, ok, no)); };
+    [REAL.idle, REAL.high] = await Promise.all([get("media/kart/sound/eng_idle.wav?v=2"), get("media/kart/sound/eng_high.wav?v=2")]);
+    if (eng && !eng.real) stopEngine();   // swap the fallback for the real one
+  } catch (e) { REAL.idle = REAL.high = null; } finally { REAL.loading = false; }
+}
 function engine() {
   const ac = window.getAC && window.getAC(); if (!ac || state === "menu") return;
+  if (!REAL.idle && !REAL.loading) loadRealEngine();
   if (!eng) {
-    const mk = fire => { const src = ac.createBufferSource(), g = ac.createGain(); src.buffer = engineLoop(ac, fire); src.loop = true; g.gain.value = 0; src.connect(g); src.start(); return { src, g }; };
-    const lo = mk(40), hi = mk(120), f = ac.createBiquadFilter(), g = ac.createGain();
+    const real = !!(REAL.idle && REAL.high);
+    const mk = (buf, fire) => { const src = ac.createBufferSource(), g = ac.createGain(); src.buffer = buf || engineLoop(ac, fire); src.loop = true; g.gain.value = 0; src.connect(g); src.start(); return { src, g }; };
+    const lo = mk(real && REAL.idle, 40), hi = mk(real && REAL.high, 120), f = ac.createBiquadFilter(), g = ac.createGain();
     f.type = "lowpass"; f.frequency.value = 1800; f.Q.value = .7; g.gain.value = 0;
     lo.g.connect(f); hi.g.connect(f); f.connect(g).connect(ac.destination);
     const tb = ac.createOscillator(), tg = ac.createGain(); tb.type = "sine"; tg.gain.value = 0; tb.connect(tg).connect(ac.destination); tb.start();   // turbo
     const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();   // wind
     n.buffer = noise(ac); n.loop = true; nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .6; ng.gain.value = 0;
     n.connect(nf).connect(ng).connect(ac.destination); n.start();
-    eng = { lo, hi, f, g, tb, tg, n, ng, nf, lastV: 0 };
+    eng = { lo, hi, f, g, tb, tg, n, ng, nf, lastV: 0, real, bl: real ? REAL.base.idle : 40, bh: real ? REAL.base.high : 120 };
   }
   const v = Math.abs(K.v); let f = v / VMAX; f = f > 1 ? 1 + (1 - 1 / f) : f;
   // revs: climb through each gear, drop at 1/3 and 2/3 of top speed like gear changes, and keep rising in a boost
-  const gear = .6 + .35 * (.9 * f + 3 * ((Math.min(f, 1) % (1 / 3)))), fire = (40 + Math.max(0, gear - .6) * 560) * (f > 1 ? f : 1), t = ac.currentTime;
-  const mix = Math.max(0, Math.min(1, (fire - 85) / 70));   // low loop -> high loop
-  eng.lo.src.playbackRate.setTargetAtTime(Math.min(3.2, fire / 40), t, .05); eng.hi.src.playbackRate.setTargetAtTime(Math.max(.6, fire / 120), t, .05);
+  const gear = .6 + .35 * (.9 * f + 3 * ((Math.min(f, 1) % (1 / 3)))), t = ac.currentTime;
+  const fire = eng.real ? (55 + Math.max(0, gear - .6) * 400) * (f > 1 ? f : 1) : (40 + Math.max(0, gear - .6) * 560) * (f > 1 ? f : 1);
+  const mix = eng.real ? Math.max(0, Math.min(1, (fire - 72) / 52)) : Math.max(0, Math.min(1, (fire - 85) / 70));   // low loop -> high loop
+  eng.lo.src.playbackRate.setTargetAtTime(Math.min(3, fire / eng.bl), t, .05); eng.hi.src.playbackRate.setTargetAtTime(Math.max(.6, fire / eng.bh), t, .05);
   eng.lo.g.gain.setTargetAtTime(1 - mix, t, .08); eng.hi.g.gain.setTargetAtTime(mix, t, .08);
   const on = state !== "done", thr = state === "race" && K.v > 0 ? 1 : .55;   // on the gas it's louder and brighter
-  eng.g.gain.setTargetAtTime(on ? (.16 + Math.min(.12, v / 2600)) * thr : 0, t, .1);
-  eng.f.frequency.setTargetAtTime(520 + fire * 9 * thr, t, .1);
+  eng.g.gain.setTargetAtTime(on ? (eng.real ? .21 + Math.min(.14, v / 2000) : .16 + Math.min(.12, v / 2600)) * thr : 0, t, .1);
+  eng.f.frequency.setTargetAtTime(eng.real ? 2200 + fire * 14 * thr : 520 + fire * 9 * thr, t, .1);
   eng.tb.frequency.setTargetAtTime(1800 + v * 11, t, .2); eng.tg.gain.setTargetAtTime(state === "race" ? Math.min(.012, (v / VMAX) ** 2 * .01) : 0, t, .2);
   if (state === "race" && eng.lastV > 200 && (v < eng.lastV - 60 || K.spin > 0) && t - (eng.bov || 0) > 1.2) { eng.bov = t; noiseHit(2400, .35, .06, 1.2, 900); }   // blow-off valve "pssh" when you lose speed fast
   eng.lastV = eng.lastV * .9 + v * .1;
