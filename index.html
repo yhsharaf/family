@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=18">
+<link rel="stylesheet" href="kart.css?v=19">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -504,6 +504,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="kt-pickhead" id="kPickHead" hidden>👑 Pick the cup and track for this race</div>
       <div class="kt-cuppick" id="kCupPick"></div>
       <div class="kt-trackpick" id="kTrackPick"></div>
+      <div class="kt-diff" id="kCC"><span>Speed:</span><button type="button" data-cc="50">🐢 50cc</button><button type="button" data-cc="100">🏎️ 100cc</button><button type="button" data-cc="150">🔥 150cc</button></div>
       <div class="kt-diff" id="kDiff"><span>Rivals:</span><button type="button" data-d="easy">🌱 Easy</button><button type="button" data-d="normal">🏁 Normal</button><button type="button" data-d="hard">🔥 Hard</button></div>
       <div class="kt-mine" id="kMine"></div>
       <button class="sk-btn bd-play" id="kGo">🏁 Start race!</button>
@@ -515,7 +516,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
         <div class="hd-card"><h4>🎮 Controls</h4>
           <div class="hd-keys"><span><kbd>←</kbd><kbd>→</kbd>Steer</span><span><kbd class="w">Space</kbd>Drift</span><span><kbd>↑</kbd>Item</span><span><kbd>↓</kbd>Brake</span></div>
           <div class="hd-phone"><i class="j">◀ <b></b> ▶</i><span class="sp"></span><i class="it">?</i><i class="br">BRAKE</i><i class="dr">DRIFT</i></div>
-          <small>Your kart speeds up by itself · stay on the road (grass = slow) · phones race sideways</small></div>
+          <small>Your kart speeds up by itself · stay on the road (grass = slow) · phones race sideways · too fast? pick 🐢 50cc or 🏎️ 100cc (each speed has its own board)</small></div>
         <div class="hd-card"><h4>💨 Drift = boost</h4>
           <small>Hold Drift while turning, let go to boost. Hold longer = bigger boost. Turning into the corner charges faster.</small>
           <div class="hd-graph">
@@ -913,7 +914,7 @@ show();
 <script src="kart-songs.js?v=1"></script>
 <script src="duel.js?v=31"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=45"></script>
+<script src="kart.js?v=46"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>

@@ -251,3 +251,4 @@ kbd.w { min-width: 54px; }
 @keyframes kDance { 0%, 100% { transform: rotate(-10deg) translateY(0) scaleX(1); } 25% { transform: rotate(0) translateY(-8px) scaleX(-1); } 50% { transform: rotate(10deg) translateY(0) scaleX(-1); } 75% { transform: rotate(0) translateY(-8px) scaleX(1); } }
 .kt-result .kt-cuppick, .kt-result .kt-trackpick { margin: 6px 0; }
 .kt-result .kt-pickhead { margin: 6px 0 0; }
+.kt-diff[hidden] { display: none; }

@@ -771,10 +771,14 @@ if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
 const GP_RACES = 3, GP_PTS = [10, 8, 6, 4, 3, 2, 1, 0];
 let gp = null;   // { race, names, pts: { name: points } }
 let ghost = null, ghostRec = [];   // your best Time Trial run, sampled 10 times a second: [t, x, y, a, z]
-const ghostKey = () => `kart_ghost2:${TRACK_ID}:${me}`;
+const ghostKey = () => `kart_ghost2:${ccId(TRACK_ID, raceCC)}:${me}`;
 // difficulty, picked before the race: rival speed, how hard they catch up, how often they grab items
 const DIFFS = { easy: { skill: .95, band: .07, pick: .4, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .6, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: .8, label: "Hard" } };
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
+// speed classes like Mario Kart's: everything on the track moves slower (turning stays the same, so it's easier to steer)
+const CCS = { 50: { spd: .7, label: "🐢 50cc" }, 100: { spd: .85, label: "🏎️ 100cc" }, 150: { spd: 1, label: "🔥 150cc" } };
+let cc = CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 150, SPD = 1;   // SPD: the class of the race being driven right now
+const ccId = (id, c) => c === 150 ? id : `${id}_${c}`;   // board / ghost / best ids: 150cc keeps the plain track id
 const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
 const ITEM_ICON = { elixir: "media/duel/elixir.png", triple: "media/duel/elixir.png", slime: "media/mobs/slime.png", arrow: "media/duel/sk_arrowrain.png", arm: "media/duel/zarm_stand.gif",
@@ -815,7 +819,7 @@ function mpOnItem(p) {
 // other players' karts: glide toward where their last message says they are (with a little prediction)
 function remoteStep(r, dt) {
   if (!r.net) return;
-  const age = Math.min(.3, (performance.now() - r.net.t) / 1000), px = r.net.x + Math.cos(r.net.a) * r.net.v * age, py = r.net.y + Math.sin(r.net.a) * r.net.v * age;
+  const age = Math.min(.3, (performance.now() - r.net.t) / 1000), px = r.net.x + Math.cos(r.net.a) * r.net.v * SPD * age, py = r.net.y + Math.sin(r.net.a) * r.net.v * SPD * age;
   const f = Math.min(1, dt * 12); r.x += (px - r.x) * f; r.y += (py - r.y) * f; r.v = r.net.v;
   let d = r.net.a - r.a; d = Math.atan2(Math.sin(d), Math.cos(d)); r.a += d * f;
   r.gone = performance.now() - r.net.t > 6000;
@@ -946,12 +950,12 @@ function rivalStep(r, dt, tt) {
   const ricy = MECH === "ice" && !air && (ground.pad && ground.pad.t === "ice" || (LAKE && LAKE.kind === "ice" && inLake(r.x, r.y)));
   { const rg = MECH === "ice" ? (ricy ? 2 : 5) : 99; let dm = r.a - (r.ma == null ? r.a : r.ma); dm = Math.atan2(Math.sin(dm), Math.cos(dm)); r.ma = rg > 50 ? r.a : (r.ma == null ? r.a : r.ma) + dm * Math.min(1, rg * dt); }
   if (!air && ground.pad && ground.pad.t === "mud") r.v = Math.min(r.v, 150);
-  r.x += Math.cos(r.ma) * r.v * dt; r.y += Math.sin(r.ma) * r.v * dt;
+  r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD;
   const pad = air ? null : ground.pad;
   if (pad && pad !== r.lastPad) {
     if (pad.t === "boost") giveBoost(r, 1, 110);
-    if (pad.t === "ramp" && r.v > 60) { r.vz = 160 + r.v * .22; r.z = .1; }
-    if (pad.t === "bigramp" && r.v > 60) { r.vz = 300 + r.v * .3; r.z = .1; }
+    if (pad.t === "ramp" && r.v > 60) { r.vz = (160 + r.v * .22) / SPD; r.z = .1; }
+    if (pad.t === "bigramp" && r.v > 60) { r.vz = (300 + r.v * .3) / SPD; r.z = .1; }
     if (pad.t === "hay") { r.vz = 230; r.z = .1; }
     if (pad.t === "slime" || pad.t === "lava") hit(r);
   }
@@ -990,7 +994,7 @@ function lavaStep(dt) {
   const L = LAVA; L.t += dt; if (L.t < 3) return;   // it starts moving 3 seconds after GO
   const lead = Math.max(...racers().filter(r => !r.done).map(r => r.idx), 0);
   // ~150 units/s at first, up to ~245 after 45 s; and faster if you're far ahead, so it never falls too far behind
-  L.v = (150 + Math.min(95, (L.t - 3) * 2.2) + Math.max(0, (K.idx - L.i) * SPC - 900) * .35) / SPC;
+  L.v = ((150 + Math.min(95, (L.t - 3) * 2.2)) * SPD + Math.max(0, (K.idx - L.i) * SPC - 900) * .35) / SPC;
   L.i = Math.min(N - FIN_OFF - 4, L.i + L.v * dt);
   for (const r of racers()) {
     if (r.done || r.remote || r.rescue > 0 || r.inv > 0 || r.z > 30) continue;
@@ -1029,7 +1033,7 @@ function worldStep(dt, tt) {
   for (let i = SHOTS.length - 1; i >= 0; i--) {
     const sh = SHOTS[i]; sh.life -= dt;
     if (sh.tgt) { let d = Math.atan2(sh.tgt.y - sh.y, sh.tgt.x - sh.x) - sh.a; d = Math.atan2(Math.sin(d), Math.cos(d)); sh.a += Math.max(-7, Math.min(7, d * 9)) * dt; }
-    sh.x += Math.cos(sh.a) * sh.v * dt; sh.y += Math.sin(sh.a) * sh.v * dt;
+    sh.x += Math.cos(sh.a) * sh.v * dt * SPD; sh.y += Math.sin(sh.a) * sh.v * dt * SPD;
     let gone = sh.life <= 0;
     for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16 && r.holding && HOLDABLE(r.item)
       && (sh.x - r.x) * Math.cos(r.a) + (sh.y - r.y) * Math.sin(r.a) < 0) {   // blocked by the item held behind
@@ -1074,7 +1078,8 @@ function freshKart() {
     shake: 0, stall: 0, mesos: 0, held: null, lastPad: null, prevDrift: false, prevItem: false, kingWas: 0, ma: a, flipped: false, flipT: 15 + Math.random() * 15 };
 }
 const fmt = ms => ms == null ? "--" : `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(Math.floor(ms % 1000)).padStart(3, "0")}`;
-const bestKey = () => `kart_best2:${TRACK_ID}:${me}`;
+const bestKey = () => `kart_best2:${ccId(TRACK_ID, raceCC)}:${me}`;
+let raceCC = 150;
 
 function input() {
   if (DEV && DEV.auto && K) {   // local testing only: aim at a point further along the track
@@ -1161,8 +1166,8 @@ function step(dt) {
   const pad = air ? null : ground.pad;
   if (pad && pad !== k.lastPad) {
     if (pad.t === "boost") { giveBoost(k, 1, 110); padSound(); }
-    if (pad.t === "ramp" && k.v > 60) { k.vz = 160 + k.v * .22; k.z = .1; k.drift = 0; jumpSound(); if (!k.tricked) { k.tricked = true; flash("Tap Drift in the air! ✨", 900); } }
-    if (pad.t === "bigramp" && k.v > 60) { k.vz = 300 + k.v * .3; k.z = .1; k.drift = 0; jumpSound(); setTimeout(jumpSound, 120); flash(PEN ? (k.v > 200 ? "🐷 Fly over the pig farm!" : "Uh oh… 🐷") : "🚀 Big jump!", 900); }
+    if (pad.t === "ramp" && k.v > 60) { k.vz = (160 + k.v * .22) / SPD; k.z = .1; k.drift = 0; jumpSound(); if (!k.tricked) { k.tricked = true; flash("Tap Drift in the air! ✨", 900); } }
+    if (pad.t === "bigramp" && k.v > 60) { k.vz = (300 + k.v * .3) / SPD; k.z = .1; k.drift = 0; jumpSound(); setTimeout(jumpSound, 120); flash(PEN ? (k.v > 200 ? "🐷 Fly over the pig farm!" : "Uh oh… 🐷") : "🚀 Big jump!", 900); }
     if (pad.t === "hay") { k.vz = 230; k.z = .1; k.mesos = Math.min(10, k.mesos + 2); flash("🌾 Boing! +2 mesos", 900); hopSound(); coinSound(); }
     if (pad.t === "slime") spinOut("🫧 Slimed!");
     if (pad.t === "lava") { spinOut("🔥 Lava! Hot hot hot!"); k.shake = .3; }
@@ -1214,7 +1219,7 @@ function step(dt) {
   { let dm = k.a - k.ma; dm = Math.atan2(Math.sin(dm), Math.cos(dm)); k.ma = grip > 50 ? k.a : k.ma + dm * Math.min(1, grip * dt); }
   let mx = Math.cos(k.ma) * k.v, my = Math.sin(k.ma) * k.v;
   if (k.drift) { mx += -Math.sin(k.a) * -k.drift * k.v * .16; my += Math.cos(k.a) * -k.drift * k.v * .16; }   // slide outwards a bit
-  k.x += mx * dt; k.y += my * dt;
+  k.x += mx * dt * SPD; k.y += my * dt * SPD;
   if (k.hop > 0) k.hop -= dt;
   // the map edge and roadside things push you back
   if (k.x < 20 || k.y < 20 || k.x > WORLD - 20 || k.y > WORLD - 20) { k.x = Math.min(WORLD - 20, Math.max(20, k.x)); k.y = Math.min(WORLD - 20, Math.max(20, k.y)); k.v *= .5; }
@@ -1519,7 +1524,7 @@ async function fetchTop() {
   topGhost = null; const my = raceId;
   if (DEV && DEV.topGhost) { topGhost = DEV.topGhost; return; }
   const sb = await B.client(); if (!sb) return;
-  const { data } = await sb.from("kart_times").select("player,race_ms,ghost").eq("track", TRACK_ID).not("ghost", "is", null).order("race_ms").limit(1);
+  const { data } = await sb.from("kart_times").select("player,race_ms,ghost").eq("track", ccId(TRACK_ID, raceCC)).not("ghost", "is", null).order("race_ms").limit(1);
   if (my !== raceId || !data || !data[0]) return;
   let g; try { g = JSON.parse(data[0].ghost); } catch (e) { return; }
   const img = new Image(); img.src = spriteOf(data[0].player);
@@ -1588,7 +1593,7 @@ function hud() {
   $k("#kBest").textContent = lavaGap != null && LAVA.t > 1 ? `🔥 Lava ${lavaGap} m behind` : mode === "tt" ? (best && best.race ? `Best ${fmt(best.race)}` : "") : mode === "gp" && gp ? `Cup race ${gp.race}/${GP_RACES}` : T ? T.name : "";
   $k("#kBest").classList.toggle("hot", lavaGap != null && lavaGap < 50);
   $k("#kBest").classList.toggle("lava", lavaGap != null);
-  $k("#kSpeed").textContent = state === "race" ? `${Math.max(0, Math.round(k.v * .5))} km/h` : "";
+  $k("#kSpeed").textContent = state === "race" ? `${Math.max(0, Math.round(k.v * .5 * SPD))} km/h` : "";
   $k("#kWrong").hidden = !(state === "race" && k.wrong > .6);
   let cd = "";   // multiplayer: someone finished, the rest have 10 seconds
   if (mpOn() && MP.endAt && state === "race" && !MP.finished) {
@@ -1650,13 +1655,16 @@ async function start() {
   $k("#kErr").textContent = "";
   const g = guildOf(n); me = g ? g.name : n; if (g) store.set("family_me", g.name);
   if (mode === "mp") { if (!MP.code) return; me = MP.me; MP.finished = false; MP.results = null; }
+  raceCC = mode === "mp" ? (CCS[String(MP.track || "").split("@")[1]] ? +String(MP.track).split("@")[1] : 150) : cc;
   try { best = JSON.parse(store.get(bestKey())) || null; } catch (e) { best = null; }
   $k("#kMenu").hidden = true; $k("#kResult").hidden = true; $k("#kGame").hidden = false;
   $k("#kart").classList.add("racing"); document.body.classList.add("bd-playing");
   window.getAC && window.getAC(); fullTries = 0; goLandscape();
   state = "loading";
   if (mode === "gp" && (!gp || gp.over)) gp = { race: 1, names: null, pts: {}, cup };
-  const key = mode === "gp" ? CUPS[gp.cup].tracks[gp.race - 1] : mode === "mp" ? (TRACKS[MP.track] ? MP.track : "henesys") : track;
+  const [mk, mcc] = String(MP.track || "henesys").split("@");
+  const key = mode === "gp" ? CUPS[gp.cup].tracks[gp.race - 1] : mode === "mp" ? (TRACKS[mk] ? mk : "henesys") : track;
+  raceCC = mode === "mp" ? (CCS[mcc] ? +mcc : 150) : cc; SPD = CCS[raceCC].spd;
   if (!assetsReady || TRACK_KEY !== key) { $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); $k("#kLoad").hidden = true; }
   if (!alive()) return;
   IMG.me = await loadImg(spriteOf(me)); if (!alive()) return; fit();
@@ -1780,7 +1788,7 @@ function mpShowResults(res) {
   const mine = res.find(r => r.name === MP.me);
   if (MP.tallied !== MP.raceNo) { MP.tallied = MP.raceNo; for (const r of res) MP.tally[r.name] = (MP.tally[r.name] || 0) + (GP_PTS[r.place - 1] || 0); }   // this room's own standings, for everyone
   $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
-    <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[MP.track].name)}</p>
+    <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[String(MP.track).split("@")[0]] ? TRACKS[String(MP.track).split("@")[0]].name : "")} · ${CCS[raceCC].label}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${spriteOf(r.name)}" alt=""></td><td>${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
     <p class="k-rank">Board points go to guild members only.</p>
@@ -1796,10 +1804,11 @@ function mpNextHtml() {
   const pick = host ? `<p class="kt-pickhead">👑 You're the host: pick the next race</p>
       <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("")}</div>
       <div class="kt-trackpick">${CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("")}</div>
-      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${MP.players.length < 2 ? "disabled" : ""}>🏁 Race ${t.icon} ${esc(t.name)}!</button></div>
+      <div class="kt-diff">${Object.entries(CCS).map(([k, c]) => `<button type="button" data-cc="${k}" class="${+k === cc ? "on" : ""}">${c.label}</button>`).join("")}</div>
+      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${MP.players.length < 2 ? "disabled" : ""}>🏁 Race ${t.icon} ${esc(t.name)} · ${CCS[cc].label.split(" ")[1]}!</button></div>
       ${MP.players.length < 2 ? `<p class="k-diff">Everyone else left… waiting for someone to join.</p>` : ""}`
     : `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the next race</b>
-      <small>Next up: ${t.icon} ${esc(t.name)}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
+      <small>Next up: ${t.icon} ${esc(t.name)} · ${CCS[roomCC()].label}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
   return `${stand}${pick}<div class="row"><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
 }
 function mpRedrawNext() { const el = $k("#kNext"); if (el && !$k("#kResult").hidden) el.innerHTML = mpNextHtml(); }
@@ -1824,7 +1833,7 @@ async function mpJoin(code, pub) {
     .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
     .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
     .on("broadcast", { event: "go" }, () => mpPoll())
-    .on("broadcast", { event: "tr" }, ({ payload }) => { if (payload && TRACKS[payload.t] && MP.pick !== payload.t) { MP.pick = payload.t; if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); } })
+    .on("broadcast", { event: "tr" }, ({ payload }) => { if (payload && TRACKS[payload.t] && (MP.pick !== payload.t || MP.pickCC !== payload.cc)) { MP.pick = payload.t; MP.pickCC = CCS[payload.cc] ? +payload.cc : 150; if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); } })
     .subscribe();
   if (location.hash !== "#kart/" + code) history.replaceState(null, "", "#kart/" + code);
   clearInterval(MP.poll); MP.poll = setInterval(mpPoll, 1500); await mpPoll(true);
@@ -1847,11 +1856,11 @@ async function mpPoll(first) {
       start();
     }
     if (data.status === "lobby" && data.results && MP.finished && !MP.results) { MP.results = data.results; mpShowResults(data.results); loadBoard(); }
-    if (!$k("#kMenu").hidden) drawRoom(); else if (MP.results) { mpRedrawNext(); if (MP.host === MP.me && MP.ch) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track } }); }
+    if (!$k("#kMenu").hidden) drawRoom(); else if (MP.results) { mpRedrawNext(); if (MP.host === MP.me && MP.ch) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track, cc } }); }
   } finally { MP.polling = false; }
 }
 async function mpStart() {
-  const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: track });
+  const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: cc === 150 ? track : `${track}@${cc}` });
   if (!data || data.r !== "ok") { if (state === "done") { flash("Couldn't start, try again", 1200); const b = $k("[data-a=mpgo]"); if (b) b.disabled = false; } $k("#kErr").textContent = { few: "You need at least 2 players to start.", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track." }[data && data.r] || "Couldn't start, try again."; return; }
   MP.ch && MP.ch.send({ type: "broadcast", event: "go", payload: {} });
   mpPoll();
@@ -1879,12 +1888,12 @@ function drawRoom() {
     return;
   }
   const link = location.href.split("#")[0] + "#kart/" + MP.code;
-  box.innerHTML = `<div class="kt-roomhead"><b>${MP.pub ? "🌍 Public" : "🔒 Private"} room ${MP.code}</b> · ${MP.players.length}/8 · ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)}</div>
+  box.innerHTML = `<div class="kt-roomhead"><b>${MP.pub ? "🌍 Public" : "🔒 Private"} room ${MP.code}</b> · ${MP.players.length}/8 · ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</div>
     ${MP.pub ? `<p class="kt-modenote">Anyone can join from the Open rooms list on the Family Kart page.</p>` : ""}
     <div class="bd-inv"><input id="kInvite" readonly value="${esc(link)}"><button class="sk-small" id="kCopy">Copy</button></div>
     <div class="kt-plist">${MP.players.map(p => `<div class="kt-pl${p.name === MP.me ? " me" : ""}"><img src="${spriteOf(p.name)}" alt=""><b>${esc(p.name)}</b>${p.name === MP.host ? " 👑" : ""}</div>`).join("")}</div>
     ${!host && MP.status !== "racing" ? `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the race</b>
-      <small>Next up: ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)}</small></div></div>` : ""}
+      <small>Next up: ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</small></div></div>` : ""}
     <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? (MP.pub ? "Waiting for at least one more player… they can join from the Open rooms list." : "Waiting for at least one more player… share the link!") : "You're the host 👑: pick a cup and track below, then start!") : "The race starts as soon as the host presses Start."}</p>
     <button class="sk-small" id="kRoomLeave">🚪 Leave the room</button>`;
   $k("#kGo").textContent = "🏁 Start the race!"; $k("#kGo").disabled = MP.players.length < 2;
@@ -1904,7 +1913,7 @@ function openRoomsHtml() {
   if (!openRooms) return `<p class="bd-none">Looking for rooms…</p>`;
   if (!openRooms.length) return `<p class="bd-none">No open rooms right now. Make a public one and others can hop in!</p>`;
   return openRooms.map(r => `<button type="button" class="kt-oroom" data-room="${esc(r.code)}" ${r.status === "racing" || r.n >= 8 ? "disabled" : ""}>
-    <img src="${spriteOf(r.host)}" alt=""><span><b>${esc(r.host)}'s room</b><small>${r.status === "racing" && TRACKS[r.track] ? `${TRACKS[r.track].icon} ${esc(TRACKS[r.track].name)}` : "👥 in the lobby"} · ${r.n}/8</small></span>
+    <img src="${spriteOf(r.host)}" alt=""><span><b>${esc(r.host)}'s room</b><small>${r.status === "racing" && TRACKS[r.track.split("@")[0]] ? `${TRACKS[r.track.split("@")[0]].icon} ${esc(TRACKS[r.track.split("@")[0]].name)}` : "👥 in the lobby"} · ${r.n}/8</small></span>
     <em>${r.status === "racing" ? "🏁 racing" : r.n >= 8 ? "full" : "Join ▶"}</em></button>`).join("");
 }
 async function loadOpenRooms() {
@@ -1949,7 +1958,7 @@ function quit() {
 async function submit(laps) {
   if (DEV) return { r: "dev" };   // local test races never touch the real board
   const sb = await B.client(); if (!sb) return null;
-  const { data } = await sb.rpc("kart_submit", { p_track: TRACK_ID, p_name: me, p_laps: laps.map(Math.round), p_ghost: JSON.stringify(ghostRec) });
+  const { data } = await sb.rpc("kart_submit", { p_track: ccId(TRACK_ID, raceCC), p_name: me, p_laps: laps.map(Math.round), p_ghost: JSON.stringify(ghostRec) });
   loadBoard(); return data;
 }
 let boardView = "time";   // the guild board shows Time Trial times by default; Points (from multiplayer races) on request
@@ -1964,8 +1973,8 @@ async function loadBoard() {
     return;
   }
   const bt = TRACKS[mode === "gp" ? CUPS[cup].tracks[0] : track];
-  $k("#kBoardHead").textContent = `⏱️ Times · ${bt.name} (Time Trial)`;
-  const { data } = await sb.from("kart_times").select("player,race_ms,lap_ms").eq("track", bt.id).order("race_ms").limit(10);
+  $k("#kBoardHead").textContent = `⏱️ Times · ${bt.name} · ${CCS[cc].label} (Time Trial)`;
+  const { data } = await sb.from("kart_times").select("player,race_ms,lap_ms").eq("track", ccId(bt.id, cc)).order("race_ms").limit(10);
   if (mode === "tt") $k("#kModeNote").textContent = data && data[0] ? `You'll race 🏆 ${data[0].player}'s ghost (${fmt(data[0].race_ms)}), the guild record. Only Time Trial times go on the board.`
     : "Alone with 3 Elixirs. No guild record yet on this track: set the first one and everyone will race your ghost!";
   $k("#kBoard").innerHTML = (data || []).length ? data.map((r, i) => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>
@@ -1974,13 +1983,14 @@ async function loadBoard() {
 if (location.hash === "#kart") loadBoard();
 addEventListener("hashchange", () => { if (location.hash === "#kart") loadBoard(); });
 function showBest() {
-  const bt = TRACKS[mode === "gp" ? CUPS[cup].tracks[0] : track], n = ($k("#kName").value || "").trim(), g = n && guildOf(n), key = `kart_best2:${bt.id}:${g ? g.name : n}`;
+  const bt = TRACKS[mode === "gp" ? CUPS[cup].tracks[0] : track], n = ($k("#kName").value || "").trim(), g = n && guildOf(n), key = `kart_best2:${ccId(bt.id, cc)}:${g ? g.name : n}`;
   let b = null; try { b = JSON.parse(store.get(key)); } catch (e) {}
   $k("#kMine").innerHTML = b && b.race ? `🏆 Your best: ${bt.open ? "run" : "race"} <b>${fmt(b.race)}</b>${bt.open ? "" : ` · lap <b>${fmt(b.lap)}</b>`}` : "No time yet on this track. Go set one!";
 }
 $k("#kGo").onclick = () => mode === "mp" ? mpStart() : start();
 // the room's track as everyone should see it: the host's own pick, or what the host last told the room
-const roomTrack = () => MP.host === MP.me ? track : TRACKS[MP.pick] ? MP.pick : TRACKS[MP.track] ? MP.track : "henesys";
+const roomTrack = () => { const st = String(MP.track || "").split("@")[0]; return MP.host === MP.me ? track : TRACKS[MP.pick] ? MP.pick : TRACKS[st] ? st : "henesys"; };
+const roomCC = () => { const sc = String(MP.track || "").split("@")[1]; return MP.host === MP.me ? cc : MP.pick ? (MP.pickCC || 150) : CCS[sc] ? +sc : 150; };
 function drawTrack(light) {
   if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
   const inRoom = mode === "mp" && !!MP.code, rk = inRoom ? roomTrack() : track, C = CUPS[inRoom ? cupOf(rk) : cup];
@@ -1989,15 +1999,16 @@ function drawTrack(light) {
   $k("#kCupPick").hidden = pickHidden;
   $k("#kTrackPick").innerHTML = CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("");
   $k("#kTrackPick").hidden = mode === "gp" || pickHidden;
+  $k("#kCC").hidden = pickHidden;
   const rule = C.rule ? `<small class="kt-rule">${C.rule}</small>` : "";
   $k("#kPickHead").hidden = !(mode === "mp" && (!inRoom || MP.host === MP.me));
   $k("#kPickHead").textContent = inRoom ? "👑 Pick the cup and track for this race" : "Pick the cup and track for your room";
   $k("#kTrackCard").innerHTML = mode === "gp" ? `<b>🏆 ${C.name}</b><small>${C.tracks.map(c => TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}</small>${rule}`
-    : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : "3 laps"} · ${t.sub}</small>${rule}${mode === "mp" && !inRoom ? `<small>Make a room and you're the host 👑: this is the first race.</small>` : ""}`;
+    : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : "3 laps"} · ${inRoom ? CCS[roomCC()].label + " · " : ""}${t.sub}</small>${rule}${mode === "mp" && !inRoom ? `<small>Make a room and you're the host 👑: this is the first race.</small>` : ""}`;
   $k(".kt-track img").src = (t.art || HEN_ART).sky;
   if (mode === "gp") $k("#kGo").textContent = `🏆 Start the ${C.name}!`;
   $k("#kBoardName").textContent = t.name;
-  if (inRoom && MP.host === MP.me && MP.ch) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track } });   // tell the room what the host picked
+  if (inRoom && MP.host === MP.me && MP.ch) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track, cc } });   // tell the room what the host picked
   if (!light) { showBest(); loadBoard(); }
 }
 $k("#kBoardTabs").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (!b) return; boardView = b.dataset.b; loadBoard(); });
@@ -2005,7 +2016,8 @@ $k("#kTrackPick").addEventListener("click", e => { const b = e.target.closest("[
 $k("#kCupPick").addEventListener("click", e => { const b = e.target.closest("[data-c]"); if (!b) return; cup = b.dataset.c; store.set("kart_cup", cup); track = CUPS[cup].tracks[0]; store.set("kart_track", track); gp = null; drawTrack(); });
 function drawMode() {
   document.querySelectorAll("#kMode [data-m]").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
-  $k("#kDiff").hidden = mode === "tt" || mode === "mp"; $k("#kMine").hidden = mode === "mp";   // your best time is about solo tracks, not rooms $k("#kGo").textContent = { gp: `🏆 Start the ${CUPS[cup].name}!`, race: "🏁 Start race!", tt: "⏱️ Start Time Trial!", mp: "🏁 Start the race!" }[mode];
+  $k("#kDiff").hidden = mode === "tt" || mode === "mp"; $k("#kMine").hidden = mode === "mp";   // your best time is about solo tracks, not rooms
+  $k("#kGo").textContent = { gp: `🏆 Start the ${CUPS[cup].name}!`, race: "🏁 Start race!", tt: "⏱️ Start Time Trial!", mp: "🏁 Start the race!" }[mode];
   $k("#kGo").hidden = false; $k("#kGo").disabled = false;
   $k("#kModeNote").textContent = { gp: "3 races against the same 7 computer rivals (cup points only, nothing on the board).", race: "One race against 7 computer rivals (no board points).",
     tt: "Alone with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race real guild members live. Multiplayer races are the only way to earn 🏆 board points." }[mode];
@@ -2013,6 +2025,9 @@ function drawMode() {
 }
 $k("#kMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; if (mode === "mp" && b.dataset.m !== "mp" && MP.code) mpLeave(); mode = b.dataset.m; store.set("kart_mode", mode); gp = null; drawMode(); drawTrack(); });
 drawMode(); drawTrack();
+function drawCC() { document.querySelectorAll("#kCC [data-cc], #kResult [data-cc]").forEach(b => b.classList.toggle("on", +b.dataset.cc === cc)); }
+$k("#kCC").addEventListener("click", e => { const b = e.target.closest("[data-cc]"); if (!b) return; cc = +b.dataset.cc; store.set("kart_cc", cc); drawCC(); drawTrack(); if (mode === "mp" && MP.code) drawRoom(); });
+drawCC();
 function drawDiff() { document.querySelectorAll("#kDiff [data-d]").forEach(b => b.classList.toggle("on", b.dataset.d === diff)); }
 $k("#kDiff").addEventListener("click", e => { const b = e.target.closest("[data-d]"); if (!b) return; diff = b.dataset.d; store.set("kart_diff", diff); drawDiff(); });
 drawDiff();
@@ -2060,10 +2075,10 @@ $k("#kResult").addEventListener("click", e => {
   if (a.dataset.a === "mpleave") { mpLeave(); quit(); }
 });
 $k("#kResult").addEventListener("click", e => {   // the host's cup / track pick on the results screen
-  const c = e.target.closest("[data-c]"), t = e.target.closest("[data-t]"); if (!c && !t) return;
-  if (c) { cup = c.dataset.c; track = CUPS[cup].tracks[0]; } else track = t.dataset.t;
+  const c = e.target.closest("[data-c]"), t = e.target.closest("[data-t]"), v = e.target.closest("[data-cc]"); if (!c && !t && !v) return;
+  if (c) { cup = c.dataset.c; track = CUPS[cup].tracks[0]; } else if (t) track = t.dataset.t; else { cc = +v.dataset.cc; store.set("kart_cc", cc); drawCC(); }
   store.set("kart_cup", cup); store.set("kart_track", track);
-  if (MP.ch && MP.host === MP.me) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track } });
+  if (MP.ch && MP.host === MP.me) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track, cc } });
   mpRedrawNext();
 });
 const syncMusicBtn = () => { $k("#kMusic").textContent = B.musicOn && B.musicOn() ? "🔊" : "🔇"; };
