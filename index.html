@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=13">
+<link rel="stylesheet" href="kart.css?v=14">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -509,19 +509,48 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     </div>
     <div class="sk-panel kt-about">
       <h3>How to drive</h3>
-      <p>Your kart speeds up by itself. Steer round the track, and stay on the road: the grass slows you right down.</p>
-      <p>💨 <b>Drift:</b> hold <b>Drift</b> while you turn. Sparks turn <span style="color:#2f7fd0;font-weight:700">blue</span>, then <span style="color:#e07a12;font-weight:700">orange</span>.
-        then <span style="color:#a64bd6;font-weight:700">purple</span>. Turn into the corner to charge faster. Let go for a boost: the longer you held it, the bigger it is.</p>
-      <p>🏁 <b>Race 7 guild members</b> over 3 laps and finish 1st! 🚀 <b>Rocket start:</b> hold Drift when the <b>2</b> shows.
-        💨 <b>Slipstream:</b> stay right behind a kart to get pulled past it. On the bottom straight the road <b>splits</b>: the main road has the King Slime, the market path is safe but longer.</p>
-      <p>🐷 <b>Pig farm:</b> hit the big red-and-gold ramp fast to fly over the pig pen and grab the mesos in the air. Too slow and you land in the mud!
-        Then bounce off the 🌾 hay bale for +2 mesos.</p>
-      <p>❓ <b>Item boxes</b> give you an item, and a second one waits in a small slot (hold 🫧 Slime or 🏹 Arrow behind you as a shield: keep the item button pressed, let go to use it): 🧪 Elixir boost (3 if you're far behind) · 🫧 Slime drop behind you · 🏹 Arrow that chases the racer ahead ·
-        🖐️ <b>Zakum's Arm</b> slams whoever is in 1st · 💪 <b>Hyper Body</b> makes you big, fast and unstoppable (ram into others!) · ⚡ <b>Thunder</b> strikes every other racer: they spin, shrink and drop their item ·
-        🐙 <b>Splat</b> covers everyone ahead in octopus ink. The further back you are, the better your items.</p>
-      <p>🟨 Boost arrows · 🟦 ramps (tap Drift in the air for a trick boost) · 🪙 mesos raise your top speed.
-        ⚠️ Slime puddles, wandering pigs, rocky patches and the stomping <b>King Slime</b>.</p>
-      <p>⌨️ Computer: <b>← →</b> steer, <b>Space</b> drift, <b>↑</b> use item, <b>↓</b> brake. 📱 Phone: joystick, item, Brake and Drift.</p>
+      <div class="hd">
+        <div class="hd-card"><h4>🎮 Controls</h4>
+          <div class="hd-keys"><span><kbd>←</kbd><kbd>→</kbd>Steer</span><span><kbd class="w">Space</kbd>Drift</span><span><kbd>↑</kbd>Item</span><span><kbd>↓</kbd>Brake</span></div>
+          <div class="hd-phone"><i class="j">◀ <b></b> ▶</i><span class="sp"></span><i class="it">?</i><i class="br">BRAKE</i><i class="dr">DRIFT</i></div>
+          <small>Your kart speeds up by itself · stay on the road (grass = slow) · phones race sideways</small></div>
+        <div class="hd-card"><h4>💨 Drift = boost</h4>
+          <small>Hold Drift while turning, let go to boost. Hold longer = bigger boost. Turning into the corner charges faster.</small>
+          <div class="hd-graph">
+            <div class="hd-bar"><i style="--h:24%;--c:#4aa8ff"></i><b>Blue</b><small>hold 0.8 s</small><em>0.6 s boost</em></div>
+            <div class="hd-bar"><i style="--h:48%;--c:#ff7a2e"></i><b>Orange</b><small>hold 1.7 s</small><em>1.2 s boost</em></div>
+            <div class="hd-bar"><i class="rb" style="--h:100%"></i><b>Rainbow</b><small>hold 2.6 s</small><em>2.5 s boost</em></div>
+          </div></div>
+        <div class="hd-card"><h4>⭐ Tricks</h4>
+          <div class="hd-tiles">
+            <div><span>🚀</span><b>Rocket start</b><small>hold Drift on "2"</small></div>
+            <div><span>💨</span><b>Slipstream</b><small>tuck behind a kart</small></div>
+            <div><span class="ramp"></span><b>Ramp trick</b><small>tap Drift in the air</small></div>
+            <div><img src="media/kart/meso1.png" alt=""><b>Mesos</b><small>+speed, max 10</small></div>
+            <div><span class="boost"></span><b>Boost pads</b><small>drive over them</small></div>
+            <div><span>🔀</span><b>Shortcuts</b><small>riskier, faster</small></div>
+          </div></div>
+        <div class="hd-card"><h4>❓ Items <small>further back = better items</small></h4>
+          <div class="hd-items">
+            <div><img src="media/duel/elixir.png" alt=""><b>Elixir</b><small>boost (×3 far back)</small></div>
+            <div><img src="media/mobs/slime.png" alt=""><b>Slime drop</b><small>leave a puddle 🛡️</small></div>
+            <div><img src="media/duel/sk_arrowrain.png" alt=""><b>Arrow</b><small>chases the next kart 🛡️</small></div>
+            <div><img src="media/duel/zarm_stand.gif" alt=""><b>Zakum's Arm</b><small>hits 1st place</small></div>
+            <div><img src="media/kart/hyperbody.png" alt=""><b>Hyper Body</b><small>big, fast, unstoppable</small></div>
+            <div><img src="media/kart/thunder.png?v=2" alt=""><b>Thunder</b><small>everyone else shrinks</small></div>
+            <div><img src="media/mobs/octopus.png" alt=""><b>Splat</b><small>inks everyone ahead</small></div>
+          </div>
+          <small>🛡️ hold the item button to keep it behind you as a shield · you can carry 2 items</small></div>
+        <div class="hd-card"><h4>⚠️ Watch out</h4>
+          <div class="hd-items haz">
+            <div><img src="media/mobs/slime.png" alt=""><b>Slime puddle</b><small>spin out</small></div>
+            <div><img src="media/mobs/pig.png" alt=""><b>Crossers</b><small>pigs, snails, mushrooms</small></div>
+            <div><span class="rock"></span><b>Rocks</b><small>bumpy &amp; slow</small></div>
+            <div><img src="media/mobs/mushmom.png" alt=""><b>Stompers</b><small>King Slime &amp; Mushmom: watch the shadow</small></div>
+            <div><span>🟫</span><b>Mud &amp; lake</b><small>jump over fast!</small></div>
+          </div>
+          <small>Getting hit drops 3 mesos · wrong way or lost? a 📜 Return Scroll puts you back</small></div>
+      </div>
       <h3>🏆 Guild board</h3>
       <div class="kt-boardtabs" id="kBoardTabs"><button type="button" data-b="time">⏱️ Times</button><button type="button" data-b="points">🏆 Points</button></div>
       <div class="kt-boardhead" id="kBoardHead"></div><span id="kBoardName" hidden></span>

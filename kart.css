@@ -173,3 +173,39 @@
 .kt-boardtabs button { border: 2px solid var(--edge); background: #fff; border-radius: 10px; padding: 5px 10px; font: 700 13px Ubuntu, sans-serif; cursor: pointer; color: var(--ink); }
 .kt-boardtabs button.on { border-color: #c8232c; background: #c8232c; color: #fff; }
 .kt-boardhead { font-size: 12.5px; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+/* How to drive: a visual guide */
+.hd { display: grid; gap: 10px; margin-bottom: 14px; }
+.hd-card { background: #fff; border: 1px solid var(--edge); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+.hd-card h4 { margin: 0; font-size: 15px; } .hd-card h4 small { font-weight: 500; color: var(--muted); font-size: 12px; margin-left: 4px; }
+.hd-card > small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.hd-keys { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; font-weight: 700; }
+.hd-keys span { display: flex; align-items: center; gap: 3px; }
+kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px; background: #f4f1ea;
+  border: 1px solid #b8ad9c; box-shadow: 0 2px 0 #b8ad9c; font: 800 12px Ubuntu, sans-serif; color: var(--ink); margin-right: 2px; }
+kbd.w { min-width: 54px; }
+.hd-phone { display: grid; grid-template-columns: 88px 1fr 30px 34px 44px; align-items: center; gap: 5px; background: #2d2832; border-radius: 10px; padding: 7px 9px; }
+.hd-phone i { font-style: normal; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font: 800 8px Ubuntu, sans-serif; }
+.hd-phone .j { border-radius: 18px; height: 30px; border: 2px solid rgba(255,255,255,.7); gap: 6px; font-size: 9px; color: rgba(255,255,255,.7); }
+.hd-phone .j b { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff7a7f, #c8232c 60%); border: 2px solid #ffd75e; }
+.hd-phone .it { width: 30px; height: 30px; border: 2px solid #ffd75e; font-size: 13px; }
+.hd-phone .br { width: 34px; height: 34px; border: 2px solid #fff; }
+.hd-phone .dr { width: 44px; height: 44px; background: radial-gradient(circle at 35% 28%, #ff6b72, #c8232c 60%); border: 2px solid #ffd75e; font-size: 9px; }
+.hd-graph { display: flex; align-items: flex-end; gap: 10px; height: 130px; padding: 0 4px; border-bottom: 2px solid var(--edge); }
+.hd-bar { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; font-size: 12px; }
+.hd-bar i { width: 70%; height: var(--h); border-radius: 6px 6px 0 0; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.hd-bar i.rb { background: linear-gradient(#ff5a5a, #ffb02e, #ffe066, #6eaa64, #4aa8ff, #a64bd6); box-shadow: 0 0 10px #c86bff; }
+.hd-bar em { font-style: normal; font-weight: 800; font-size: 11px; color: var(--ink); }
+.hd-bar b { font-size: 12px; } .hd-bar small { color: var(--muted); font-size: 11px; font-weight: 700; }
+.hd-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.hd-tiles div, .hd-items div { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; background: #fbf8f1; border: 1px solid var(--edge); border-radius: 10px; padding: 6px 4px; }
+.hd-tiles span { font-size: 22px; line-height: 28px; height: 28px; }
+.hd-tiles img, .hd-items img { height: 30px; max-width: 46px; object-fit: contain; image-rendering: pixelated; }
+.hd-tiles b, .hd-items b { font-size: 12px; } .hd-tiles small, .hd-items small { font-size: 10.5px; color: var(--muted); line-height: 1.2; }
+.hd-tiles .ramp, .hd-tiles .boost { display: block; width: 34px; height: 24px; margin: 2px 0; border-radius: 4px;
+  background: repeating-linear-gradient(135deg, #3d8de0 0 6px, #fff 6px 12px); border: 2px solid #1e4f9a; }
+.hd-tiles .boost { background: repeating-linear-gradient(135deg, #ff7a12 0 6px, #ffd84a 6px 12px); border-color: #c8501a; }
+.hd-items { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.hd-items.haz { grid-template-columns: repeat(5, 1fr); }
+.hd-items .rock { display: block; width: 34px; height: 26px; margin: 2px 0; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #a59c8c, #696154 60%, #3e3830); }
+.hd-items span { font-size: 24px; line-height: 30px; }
+@media (max-width: 420px) { .hd-items, .hd-items.haz { grid-template-columns: repeat(3, 1fr); } .hd-phone { grid-template-columns: 80px 1fr 28px 32px 40px; } }
