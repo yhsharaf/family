@@ -51,15 +51,6 @@ nav a { text-decoration: none; padding: 6px 12px; font-weight: 700; color: #fcfa
 nav a:hover, nav a.on { transform: rotate(0) scale(1.08); }
 nav a.on { outline: 3px solid var(--ink); }
 nav img { height: 34px; margin-right: 6px; align-self: center; }
-/* phones: one row you swipe sideways (it slides to the page you're on), instead of 4 rows stuck over the screen */
-@media (max-width: 700px) {
-  nav { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; gap: 8px; padding: 9px 10px 11px; scrollbar-width: none; scroll-behavior: smooth;
-        -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
-  nav::-webkit-scrollbar { display: none; }
-  nav a { flex: 0 0 auto; white-space: nowrap; padding: 6px 11px; font-size: 14px; }
-  nav a:last-child { margin-right: 30px; }
-  nav img { height: 28px; margin-right: 0; flex: 0 0 auto; }
-}
 
 main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; }
 section { display: none; animation: pop .35s ease-out; }
@@ -772,8 +763,6 @@ function show() {
   const id = (location.hash || "#home").slice(1);
   document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === id));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + id));
-  const on = document.querySelector("nav a.on"), nav = document.querySelector("nav");   // phones: slide the menu so the open page shows
-  if (on && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2;
   window.scrollTo(0, 0);
 }
 addEventListener("hashchange", show);
