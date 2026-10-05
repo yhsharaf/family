@@ -799,6 +799,11 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       g.restore();
     }
   }
+  // the starting grid (3D tracks): a painted bracket round each of the 8 spots, open towards the front, like Mario Kart Tour
+  if (PTS[0].length > 2) for (let slot = 0; slot < 8; slot++) {
+    const gs = gridSpot(slot), i = (gs.i + N) % N, a = tangent(i), [x, y] = at(i, gs.o);
+    g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = "rgba(244,226,184,.95)";
+    g.fillRect(-15, -17, 3.5, 34); g.fillRect(-15, -17, 14, 3.5); g.fillRect(-15, 13.5, 14, 3.5); g.restore(); }
   // start line across the road at point 0
   for (const li of OPEN ? [START_I, N - FIN_OFF] : [0]) {
     const [sx, sy] = PTS[li], ta = tangent(li), nx = -Math.sin(ta), ny = Math.cos(ta), sq = 10;
@@ -962,7 +967,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = WORLD; paintTrack(c); return c; } });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=16"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=18"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -997,7 +1002,9 @@ const BOMB_R = 78;   // 💣 the Pirate Bomb's blast radius (world units; a kart
 const progOf = r => (r.done ? 1e6 - r.finish : 0) + (r.remote && !liveOK(r) && r.srvProg != null ? r.srvProg * (OPEN ? N : LAPS * N) : (OPEN ? r.idx : r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx)));
 const racers = () => [K, ...RIV];
 function rankOf(r) { const p = progOf(r); return 1 + racers().filter(o => o !== r && progOf(o) > p).length; }
-function gridSpot(slot) { const row = Math.floor(slot / 2), col = slot % 2, i = (OPEN ? START_I - 6 : N - 6) - row * 9 - col * 3; return { i, o: col ? 24 : -24 }; }
+function gridSpot(slot) {
+  if (PTS[0] && PTS[0].length > 2) { const row = Math.floor(slot / 2), col = slot % 2, i = (OPEN ? START_I - 7 : N - 7) - row * 11 - col * 5; return { i, o: col ? 38 : -38 }; }   // 3D tracks: a roomy staggered grid
+  const row = Math.floor(slot / 2), col = slot % 2, i = (OPEN ? START_I - 6 : N - 6) - row * 9 - col * 3; return { i, o: col ? 24 : -24 }; }
 // ------------------------------------------------------------------ multiplayer (rooms of 2-8, the first one in is the host)
 // Everyone drives their own kart; positions go out ~12 times a second over Realtime broadcast, other players are drawn from those.
 // Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
@@ -1648,7 +1655,8 @@ function render() {
   const now3 = performance.now(), dt3 = Math.min(.05, (now3 - (r3t || now3)) / 1000); r3t = now3;
   if (G3) {   // 🎮 real 3D: three.js draws the ground, hills, sky, karts and scenery; this canvas only gets the effects and the HUD on top
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxc.width, fxc.height); ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true;
-    G3.sync(trackData()); G3.begin(k, { W, H, dt: dt3, fov: k.fov + .6 * Math.min(1, k.kick || 0) * 0, shake: k.shake, snap: state === "wait" });
+    const gc = gridSpot(3), gi = (gc.i + N) % N, intro = state === "wait" ? 0 : state === "count" ? Math.max(0, Math.min(1, 1 - (countAt + 2100 - now3) / 3200)) : 1;
+    G3.sync(trackData()); G3.begin(k, { W, H, dt: dt3, fov: k.fov, shake: k.shake, snap: state === "wait", intro, grid: [...at(gi, 0), tangent(gi)] });
   }
   const CH = CAMH + Math.min(k.z, 130) * .35;
   if (!G3) {
@@ -1727,7 +1735,7 @@ function render() {
     if (mode !== "tt") BOXES.forEach((b, i) => { if (b.t <= 0) G3.box(b.x, b.y, tt, i); });
     if (mode === "tt" && state !== "menu") for (const [g, gd, col, img, skip] of [[GH3.top, topGhost && topGhost.data, "#e8b43a", topGhost && topGhost.img], [GH3.me, ghost, "#c8232c", IMG.me, topGhost && topGhost.name === me]]) {
       const gs = gd && !skip ? ghostAt(K.t, gd) : null; if (gs) { Object.assign(g, { x: gs.x, y: gs.y, a: gs.a, z: gs.z, v: 200 }); G3.kart(g, { color: col, img, ghost: true, dt: dt3 }); } }
-    if (!k.watch) G3.kart(k, { color: "#c8232c", family: true, img: IMG.me, dt: dt3 });
+    if (!k.watch) G3.kart(k, { color: "#c8232c", family: true, img: IMG.me, dt: dt3, me: true });
   }
   else {
   for (const r of RIV) if (!r.gone) addDraw(r.x, r.y, (sx, gy, sc, fz) => drawRival(r, sx, gy, sc, fz));
@@ -2179,8 +2187,8 @@ function hud() {
   if (state === "race" && rk && lastRk && rk !== lastRk) { posPop = { up: rk < lastRk, at: performance.now() };
     if (rk < lastRk) { tone(988, .09, "square", .05, 1320); buzz(10); const now = performance.now(); k.ovN = now - (k.ovT || 0) < 6000 ? (k.ovN || 0) + 1 : 1; k.ovT = now; if (k.ovN >= 2) pop(`🔥 ${k.ovN} overtakes!`, "#ff9a3a", true); } }
   if (state !== "race") posPop = null; lastRk = rk;
-  const pop = posPop && performance.now() - posPop.at < 650 ? (posPop.up ? " up" : " down") : "";
-  $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + pop;
+  const posCls = posPop && performance.now() - posPop.at < 650 ? (posPop.up ? " up" : " down") : "";
+  $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + posCls;
 }
 let wasPap = false, flipWarnN = 0, flashT = null, warnAt = 0, lastRk = 0, posPop = null;
 function flash(t, ms, kind) { const f = $k("#kFlash"); if (kind === "intro") f.innerHTML = `<img class="k-crown" src="media/crown.png" alt="">` + esc(t); else f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }

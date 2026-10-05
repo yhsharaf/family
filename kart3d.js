@@ -280,13 +280,14 @@ export function create(A) {
     const driverTex = new THREE.Texture(); driverTex.colorSpace = THREE.SRGBColorSpace; driverTex.magFilter = THREE.NearestFilter; driverTex.minFilter = THREE.NearestMipmapLinearFilter; driverTex.wrapS = THREE.RepeatWrapping;
     const driver = new THREE.Sprite(new THREE.SpriteMaterial({ map: driverTex, alphaTest: ghost ? 0 : .4, transparent: !!ghost, opacity: ghost ? .5 : 1 })); driver.center.set(.5, .06); driver.position.set(-2, 7, 0); driver.visible = false; body.add(driver);
     scene.add(root);
-    return { root, tilt, body, wheels, ice, flames, driver, driverTex, paint, im: null, roll: 0, used: true };
+    const mats = [paint, dark, tire, gold, white, metal, badge.material, driver.material];
+    return { root, tilt, body, wheels, ice, flames, driver, driverTex, paint, mats, ghost: !!ghost, faded: false, im: null, roll: 0, used: true };
   }
   const karts = new Map();
   function kart(r, o) {
     let m = karts.get(r);
     if (!m || m.color !== o.color) { if (m) scene.remove(m.root); m = makeKart(o.color, o.ghost, o.family); m.color = o.color; karts.set(r, m); }
-    m.used = true; m.root.visible = true;
+    m.used = true; m.root.visible = true; m.me = !!o.me;
     const gx = r.x, gy = r.y, a = r.a || 0, ca = Math.cos(a), sa = Math.sin(a);
     m.root.position.set(gx, h(gx, gy), gy); m.root.rotation.y = -a;
     // lean with the ground: nose up on a climb, tipped on a side slope
@@ -314,7 +315,7 @@ export function create(A) {
   // ---------------------------------------------------------------- camera and frame
   const cam = { yaw: null, y: 0, x: 0, z: 0 };
   let VW = 320, VH = 180, shake = 0;
-  const fwd = new THREE.Vector3(), tmp = new THREE.Vector3();
+  const fwd = new THREE.Vector3(), tmp = new THREE.Vector3(), look = new THREE.Vector3();
   function begin(k, o) {
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const m of karts.values()) m.used = false;
     const a = k.a || 0;
@@ -325,13 +326,29 @@ export function create(A) {
     const want = Math.max(h(k.x, k.y), h(gx, gz) - 6) + up;
     cam.y = o.snap || !cam.y ? want : cam.y + (want - cam.y) * Math.min(1, o.dt * 6);
     camera.position.set(gx, Math.max(cam.y, h(gx, gz) + 5), gz);
+    look.set(k.x + Math.cos(cam.yaw) * 40, h(k.x, k.y) + 9 + Math.min(k.z || 0, 120) * .85, k.y + Math.sin(cam.yaw) * 40);
+    if (o.intro != null && o.intro < 1 && o.grid) {   // before the start: from in front of the grid (everyone facing you), swooping up and round to behind your kart
+      const [qx, qy, qa] = o.grid, e = o.intro * o.intro * (3 - 2 * o.intro), fx = qx + Math.cos(qa) * 170, fz = qy + Math.sin(qa) * 170;
+      tmp.set(fx, h(fx, fz) + 38, fz).lerp(camera.position, e); tmp.y += Math.sin(Math.PI * e) * 45; camera.position.copy(tmp);
+      tmp.set(qx - Math.cos(qa) * 20, h(qx, qy) + 10, qy - Math.sin(qa) * 20).lerp(look, e); look.copy(tmp);
+      cam.yaw = a; cam.y = want;
+    }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
-    camera.lookAt(k.x + Math.cos(cam.yaw) * 40, h(k.x, k.y) + 9 + Math.min(k.z || 0, 120) * .85, k.y + Math.sin(cam.yaw) * 30);
+    camera.lookAt(look);
     camera.fov = 58 + 12 * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     camera.getWorldDirection(fwd);
     if (skyMesh) skyMesh.position.set(camera.position.x, camera.position.y + SKY_H / 2 - SKY_BELOW, camera.position.z);
   }
+  // a rival between the camera and your kart turns see-through, so it never blocks your view
+  function fadeBlockers() {
+    let me = null; for (const m of karts.values()) if (m.me && m.used) me = m; if (!me) return;
+    const dMe = tmp.copy(me.root.position).sub(camera.position).dot(fwd);
+    for (const m of karts.values()) { if (m === me || m.ghost || !m.used) continue;
+      const d = tmp.copy(m.root.position).sub(camera.position).dot(fwd), lat = tmp.addScaledVector(fwd, -d).length(), block = d > 0 && d < dMe - 6 && lat < 30;
+      if (block !== m.faded) { m.faded = block; for (const mt of m.mats) { mt.transparent = block || mt === m.mats[6]; mt.opacity = block ? .3 : 1; mt.depthWrite = !block; mt.needsUpdate = true; } } }
+  }
   function end() {
+    fadeBlockers();
     for (let i = pi; i < pool.length; i++) pool[i].visible = false;
     for (let i = bi; i < boxes.length; i++) boxes[i].visible = false;
     for (const [r, m] of karts) if (!m.used) { m.root.visible = false; if (r.gone || r.dead) { scene.remove(m.root); karts.delete(r); } }
