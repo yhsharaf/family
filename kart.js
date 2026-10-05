@@ -1014,7 +1014,32 @@ function gridSpot(slot) {
 // Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
 const MP = { tally: {}, tallied: null, pick: null, endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
 const mpOn = () => mode === "mp" && !!MP.code;
-function mpSend(event, payload) { if (MP.ch) MP.ch.send({ type: "broadcast", event, payload: { n: MP.me, rc: MP.raceNo, ...payload } }); }   // payload.n speaks for a bot
+// 🔒 Room messages are encrypted and signed (AES-GCM) with the room's secret, which the server only gives to players who joined.
+// Someone who just knows the room code can't read them or fake them. The direct-connection setup is never sent without it.
+const b64 = u8 => btoa(String.fromCharCode(...u8)), unb64 = s2 => Uint8Array.from(atob(s2), c => c.charCodeAt(0)), enc8 = new TextEncoder(), dec8 = new TextDecoder();
+async function mpSetKey(hex) {
+  if (!hex || hex === MP.keyHex || !(window.crypto && crypto.subtle)) return;
+  MP.keyHex = hex; const raw = await crypto.subtle.digest("SHA-256", enc8.encode("family-kart-room:" + hex));
+  MP.key = await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+async function mpSeal(event, obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12)), ad = enc8.encode(event + "|" + MP.code);   // tied to this room and this kind of message
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: ad }, MP.key, enc8.encode(JSON.stringify(obj))));
+  const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return b64(out);
+}
+async function mpOpen(event, payload, secure) {
+  if (payload && typeof payload.x === "string") {
+    if (!MP.key) return null;
+    try { const all = unb64(payload.x), pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: all.slice(0, 12), additionalData: enc8.encode(event + "|" + MP.code) }, MP.key, all.slice(12));
+      return JSON.parse(dec8.decode(pt)); } catch (e) { return null; }   // wrong key or tampered with: dropped
+  }
+  return secure ? null : payload;   // (games from before this update send plain messages; the connection setup must be sealed)
+}
+function mpSend(event, payload) {
+  if (!MP.ch) return; const ch = MP.ch, obj = { n: MP.me, rc: MP.raceNo, ...payload };
+  if (MP.key) mpSeal(event, obj).then(x => { if (MP.ch === ch) ch.send({ type: "broadcast", event, payload: { x } }); }).catch(() => {});
+  else if (event !== "rtc") ch.send({ type: "broadcast", event, payload: obj });
+}   // payload.n speaks for a bot
 const nameOf = o => o === K ? MP.me : o && o.name;
 // items used by you, or by one of the host's bots, are announced to the room
 function mpItem(r, payload) { if ((r === K || r.bot) && mpOn()) mpSend("it", { ...payload, n: nameOf(r) }); }
@@ -2302,7 +2327,7 @@ function frame(now) {
 // each player's internet address to the others.
 const P2P = new Map(), P2P_ICE = new Map();   // name -> { pc, dc, open, ow, born, tries }; ICE candidates that came before their offer
 const ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
-const p2pOK = () => mpOn() && !MP.pub && typeof RTCPeerConnection !== "undefined" && store.get("kart_p2p") !== "0";
+const p2pOK = () => mpOn() && !MP.pub && !!MP.key && typeof RTCPeerConnection !== "undefined" && store.get("kart_p2p") !== "0";   // private rooms, sealed setup, and you didn't switch it off
 const p2pHumans = () => (MP.players || []).filter(p => !p.bot && p.name !== MP.me).map(p => p.name);
 const p2pAll = () => { const h = p2pHumans(); return h.length > 0 && h.every(n => P2P.get(n) && P2P.get(n).open); };
 function p2pSend(m) { if (!P2P.size) return; const s2 = JSON.stringify(m); for (const c of P2P.values()) if (c.open) try { c.dc.send(s2); } catch (e) {} }
@@ -2567,16 +2592,17 @@ async function mpJoin(code, pub) {
 // the live channel for positions and items; if it drops (a phone switching apps, a network blip) it rejoins by itself
 function mpChannel(sb, code) {
   if (MP.ch) sb.removeChannel(MP.ch);
+  const on = (ev, fn, secure) => ({ payload }) => { mpOpen(ev, payload, secure).then(p => { if (p) fn(p); }); };
   const ch = MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
-    .on("broadcast", { event: "pb" }, ({ payload }) => { if (payload && Array.isArray(payload.list)) for (const q of payload.list) mpOnPos({ ...q, rc: payload.rc }); })
-    .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
-    .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
-    .on("broadcast", { event: "hx" }, ({ payload }) => mpOnHit(payload))
-    .on("broadcast", { event: "rtc" }, ({ payload }) => p2pOnSignal(payload))
+    .on("broadcast", { event: "pb" }, on("pb", payload => { if (payload && Array.isArray(payload.list)) for (const q of payload.list) mpOnPos({ ...q, rc: payload.rc }); }))
+    .on("broadcast", { event: "p" }, on("p", mpOnPos))
+    .on("broadcast", { event: "it" }, on("it", mpOnItem))
+    .on("broadcast", { event: "hx" }, on("hx", mpOnHit))
+    .on("broadcast", { event: "rtc" }, on("rtc", p2pOnSignal, true))
     .on("broadcast", { event: "go" }, () => mpPoll())
     .on("broadcast", { event: "rd" }, () => mpPoll())
-    .on("broadcast", { event: "ch" }, ({ payload }) => { if (payload && chatAdd([{ id: payload.id, name: payload.name, msg: payload.msg }])) tone(880, .07, "triangle", .04); })
-    .on("broadcast", { event: "tr" }, ({ payload }) => { if (payload && TRACKS[payload.t] && (MP.pick !== payload.t || MP.pickCC !== payload.cc)) { MP.pick = payload.t; MP.pickCC = CCS[payload.cc] ? +payload.cc : 150; if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); } })
+    .on("broadcast", { event: "ch" }, on("ch", payload => { if (payload && chatAdd([{ id: payload.id, name: payload.name, msg: payload.msg }])) tone(880, .07, "triangle", .04); }))
+    .on("broadcast", { event: "tr" }, on("tr", payload => { if (payload && TRACKS[payload.t] && (MP.pick !== payload.t || MP.pickCC !== payload.cc)) { MP.pick = payload.t; MP.pickCC = CCS[payload.cc] ? +payload.cc : 150; if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); } }))
     .subscribe(st => { if ((st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") && MP.code === code && MP.ch === ch) setTimeout(() => { if (MP.code === code && MP.ch === ch) mpChannel(sb, code); }, 1500); });
 }
 async function mpJoinedTail(code) {
@@ -2596,6 +2622,7 @@ async function mpPoll(first) {
     if (!data) return;
     if (data.r === "gone") { mpLeave(true); $k("#kErr").textContent = "You left that room."; return; }
     Object.assign(MP, { host: data.host, players: data.players || [], status: data.status, track: data.track, pub: !!data.public });
+    if (data.key) await mpSetKey(data.key);
     p2pSync(); p2pPing();
     if (data.chat) chatAdd(data.chat);
     if (K && RIV.length && (state === "race" || state === "done" || state === "watch")) for (const p of MP.players) {   // the server's view of every racer (a fallback for live messages)
@@ -2615,7 +2642,7 @@ async function mpPoll(first) {
       start();
     }
     if (data.status === "lobby" && data.results && MP.finished && !MP.results) { MP.results = data.results; mpShowResults(data.results); loadBoard(); }
-    if (!$k("#kMenu").hidden) drawRoom(); else if (MP.results) { mpRedrawNext(); if (MP.host === MP.me && MP.ch) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track, cc } }); }
+    if (!$k("#kMenu").hidden) drawRoom(); else if (MP.results) { mpRedrawNext(); if (MP.host === MP.me && MP.ch) mpSend("tr", { t: track, cc }); }
   } finally { MP.polling = false; }
 }
 async function mpStart() {
@@ -2624,7 +2651,7 @@ async function mpStart() {
     notready: `Waiting for ${(data && data.who || []).join(", ")} to press Ready ✋` }[data && data.r] || "Couldn't start, try again.";
     if (data && data.r === "notready" && state === "done") flash("⏳ Not everyone is ready", 1200);
     return; }
-  MP.ch && MP.ch.send({ type: "broadcast", event: "go", payload: {} });
+  mpSend("go", {});
   mpPoll();
 }
 const tokKey = code => "kart_room_tok:" + code + (location.hostname === "localhost" && new URLSearchParams(location.search).get("as") ? ":" + new URLSearchParams(location.search).get("as") : "");   // (testing: ?as=b is a second player)
@@ -2632,7 +2659,7 @@ async function mpLeave(silent) {
   const sb = await B.client();
   if (MP.code && !silent) { sb.rpc("kart_room_leave", { p_code: MP.code, p_tok: MP.token }).then(() => {}); try { store.del(tokKey(MP.code)); } catch (e) {} }
   clearInterval(MP.poll); if (MP.ch) sb.removeChannel(MP.ch); p2pClose();
-  Object.assign(MP, { code: null, token: null, ch: null, players: [], host: null, status: null, chat: [] });
+  Object.assign(MP, { key: null, keyHex: null, code: null, token: null, ch: null, players: [], host: null, status: null, chat: [] });
   if (location.hash.startsWith("#kart/")) history.replaceState(null, "", "#kart");
   drawRoom();
 }
@@ -2653,7 +2680,9 @@ function drawRoom() {
   const link = location.href.split("#")[0] + "#kart/" + MP.code, R = mpReadyInfo();
   let main = box.querySelector("#kRoomMain"); if (!main) { box.innerHTML = `<div id="kRoomMain"></div>`; main = box.firstChild; }
   main.innerHTML = `<div class="kt-roomhead"><b>${MP.pub ? "🌍 Public" : "🔒 Private"} room ${MP.code}</b> · ${MP.players.length}/8 · ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</div>
-    ${MP.pub ? `<p class="kt-modenote">Anyone can join from the Open rooms list on the Family Kart page.</p>` : ""}
+    ${MP.pub ? `<p class="kt-modenote">Anyone can join from the Open rooms list on the Family Kart page.</p>` : `<p class="kt-modenote kt-p2p">🔒 This room's messages are encrypted: only players in it can read them.
+      <button class="sk-small" id="kP2P">${store.get("kart_p2p") === "0" ? "⚡ Direct connection: Off" : "⚡ Direct connection: On"}</button>
+      <small>${store.get("kart_p2p") === "0" ? "Everything goes through the server (a little more delay)." : "Faster: your game talks straight to your friends' games (encrypted). They can see your internet address, like in a video call."}</small></p>`}
     <div class="bd-inv"><input id="kInvite" readonly value="${esc(link)}"><button class="sk-small" id="kCopy">Copy</button></div>
     ${playerList()}
     ${!host && MP.status !== "racing" ? readyBtn(R.mine) : ""}
@@ -2724,6 +2753,7 @@ $k("#kRoomBox").addEventListener("click", e => {
   const or = e.target.closest("[data-room]"); if (or && !or.disabled) mpJoin(or.dataset.room);
   if (e.target.id === "kJoin") { const c = ($k("#kCode").value || "").trim().toUpperCase(); if (c) mpJoin(c); }
   if (e.target.id === "kRoomLeave") mpLeave();
+  if (e.target.id === "kP2P") { store.set("kart_p2p", store.get("kart_p2p") === "0" ? "1" : "0"); if (store.get("kart_p2p") === "0") p2pClose(); else { MP.p2pGaveUp = {}; p2pSync(); } drawRoom(); }
   const rb = e.target.closest("[data-ready]"); if (rb) mpReady(rb.dataset.ready === "1");
   const bb = e.target.closest("[data-bots]"); if (bb) setBots(+bb.dataset.bots);
   if (e.target.id === "kCopy") { const i = $k("#kInvite"); i.select(); try { navigator.clipboard.writeText(i.value); } catch (er) { document.execCommand("copy"); } e.target.textContent = "Copied!"; setTimeout(() => e.target.textContent = "Copy", 1200); }
@@ -2879,7 +2909,7 @@ function drawTrack(light) {
   $k(".kt-track img").src = (t.art || HEN_ART).sky;
   if (mode === "gp") $k("#kGo").textContent = `🏆 Start the ${C.name}!`;
   $k("#kBoardName").textContent = t.name;
-  if (inRoom && MP.host === MP.me && MP.ch) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track, cc } });   // tell the room what the host picked
+  if (inRoom && MP.host === MP.me && MP.ch) mpSend("tr", { t: track, cc });   // tell the room what the host picked
   if (!light) { showBest(); loadBoard(); }
 }
 $k("#kBoardTabs").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (!b) return; boardView = b.dataset.b; loadBoard(); });
@@ -2959,7 +2989,7 @@ $k("#kResult").addEventListener("click", e => {   // the host's cup / track pick
   const c = e.target.closest("[data-c]"), t = e.target.closest("[data-t]"), v = e.target.closest("[data-cc]"); if (!c && !t && !v) return;
   if (c) { cup = c.dataset.c; track = CUPS[cup].tracks[0]; } else if (t) track = t.dataset.t; else { cc = +v.dataset.cc; store.set("kart_cc", cc); drawCC(); }
   store.set("kart_cup", cup); store.set("kart_track", track);
-  if (MP.ch && MP.host === MP.me) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track, cc } });
+  if (MP.ch && MP.host === MP.me) mpSend("tr", { t: track, cc });
   mpRedrawNext();
 });
 const syncMusicBtn = () => { $k("#kMusic").textContent = B.musicOn && B.musicOn() ? "🔊" : "🔇"; };
