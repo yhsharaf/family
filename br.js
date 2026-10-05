@@ -1,4 +1,4 @@
-// Boom Roulette: Liar's Edition. A Kerning City table for 3-6 players with MapleStory Idle's real Star Force odds from 20 stars.
+// Boom Roulette: Liar's Edition. A Kerning City table for 3-6 players with its own Star Force odds from 20 stars (faster than the real game's; see supabase_br_v2.sql).
 // The server rolls everything (br_* functions); this page polls the table once a second and shows only what you're allowed to see.
 (() => {
 const $b = q => document.querySelector(q);
@@ -99,7 +99,7 @@ function draw() {
     let stamp = "";
     if (s.phase === "reveal" || over) {
       const accused = s.players.filter(a => a.target === p.name).map(a => a.name);
-      if (p.busted) stamp = `<b class="br-stamp bad">💀 FAKE 23★<small>real ${p.real}★</small></b>`;
+      if (p.busted) stamp = `<b class="br-stamp bad">💀 FAKE 24★<small>real ${p.real}★</small></b>`;
       else if (accused.length && p.exposed) stamp = `<b class="br-stamp bad">🤥 CAUGHT!<small>really ${CL[p.roll][0]} ${CL[p.roll][1]}</small></b>`;
       else if (accused.length && s.phase === "reveal") stamp = `<b class="br-stamp good">✅ TRUTH<small>${accused.map(esc).join(", ")} −🤥</small></b>`;
     }
