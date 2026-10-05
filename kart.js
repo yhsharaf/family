@@ -834,10 +834,11 @@ let cc = CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 100, SPD = 1;   // 
 const ccId = (id, c) => c === 150 ? id : `${id}_${c}`;   // board / ghost / best ids: 150cc keeps the plain track id
 const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
-const ITEM_ICON = { elixir: "media/duel/elixir.png", triple: "media/duel/elixir.png", slime: "media/mobs/slime.png", arrow: "media/duel/sk_arrowrain.png", arm: "media/duel/zarm_stand.gif",
-  thunder: "media/kart/thunder.png?v=2", splat: "media/mobs/octopus.png", hyper: "media/kart/hyperbody.png" };
-const ITEM_NAME = { elixir: "Elixir", triple: "3 Elixirs", slime: "Slime drop", arrow: "Arrow", arm: "Zakum's Arm", thunder: "Thunder", splat: "Splat", hyper: "Hyper Body" };
-let RIV = [], DROPS = [], SHOTS = [], ARMS = [];
+const ITEM_ICON = { elixir: "media/duel/elixir.png", triple: "media/duel/elixir.png", slime: "media/mobs/slime.png", arrow: "media/kart/items/arrow_icon.png", arm: "media/duel/zarm_stand.gif",
+  thunder: "media/kart/thunder.png?v=2", splat: "media/mobs/octopus.png", hyper: "media/kart/hyperbody.png", bomb: "media/kart/items/bomb0.png" };
+const ITEM_NAME = { elixir: "Elixir", triple: "3 Elixirs", slime: "Slime drop", arrow: "Arrow", arm: "Zakum's Arm", thunder: "Thunder", splat: "Splat", hyper: "Hyper Body", bomb: "Pirate Bomb" };
+let RIV = [], DROPS = [], SHOTS = [], ARMS = [], BOMBS = [], BOOMS = [];
+const BOMB_R = 78;   // 💣 the Pirate Bomb's blast radius (world units; a kart is about 20 wide)
 const progOf = r => (r.done ? 1e6 - r.finish : 0) + (OPEN ? r.idx : r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx));
 const racers = () => [K, ...RIV];
 function rankOf(r) { const p = progOf(r); return 1 + racers().filter(o => o !== r && progOf(o) > p).length; }
@@ -861,6 +862,7 @@ function mpOnItem(p) {
   if (!p || p.rc !== MP.raceNo || !K || state === "menu") return;
   const by = RIV.find(o => o.name === p.n); if (!by) return;
   if (p.k === "drop") DROPS.push({ x: p.x, y: p.y, t: 40, by, grace: .3 });
+  if (p.k === "bomb") BOMBS.push({ x: p.x, y: p.y, z: 12, a: p.a, v: p.v, vz: 230, by, t: 0 });
   if (p.k === "shot") SHOTS.push({ x: p.x, y: p.y, a: p.a, v: p.v, tgt: p.tgt ? mpByName(p.tgt) || null : null, by, life: 4 });
   if (p.k === "arm" && p.tgt === MP.me) { ARMS.push({ tgt: K, t: 2.6, by }); armCD = 20; }
   if (p.k === "thunder") {
@@ -886,7 +888,7 @@ function makeRivals(keep) {
       return { name, img, color: RIVAL_COLORS[n % RIVAL_COLORS.length], x, y, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0, finishT: 0,
         remote: true, net: null, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0, extra: 0, item: null, itemN: 0, itemT: 0, skill: VMAX, lane: 0, laneT: 9 };
     });
-    DROPS = []; SHOTS = []; ARMS = []; BOXES.forEach(b => b.t = 0); return;
+    DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BOXES.forEach(b => b.t = 0); return;
   }
   const pool = [...(typeof D !== "undefined" ? [...D.founders, ...D.members] : [])].map(p => p.name).filter((n, i, a) => n && /^[A-Za-z0-9]{2,13}$/.test(n) && n !== me && a.indexOf(n) === i);
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
@@ -898,7 +900,7 @@ function makeRivals(keep) {
       lane: g.o, laneT: 1 + Math.random() * 2, skill: 228 + n * 3 + Math.random() * 10, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0,
       item: null, itemN: 0, itemT: 0, lastPad: null, kingWas: 0 };
   });
-  DROPS = []; SHOTS = []; ARMS = []; BOXES.forEach(b => b.t = 0);
+  DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BOXES.forEach(b => b.t = 0);
 }
 let bloopCD = 0, armCD = 0, thunderCD = 0, thunderFx = 0;   // Zakum's Arm: at most one every 20 seconds   // Dizzy/Splat: only one in the whole race every 14 seconds, so they stay special
 // items depend on how far behind the leader you are (like Mario Kart 8), not just your place: right behind the leader you get
@@ -907,10 +909,10 @@ function rollItem(r, rival) {
   const lead = racers().reduce((a, b) => progOf(b) > progOf(a) ? b : a), gap = (progOf(lead) - progOf(r)) / N;   // in laps
   const early = K.t < 30000, b = bloopCD > 0 || early ? 0 : rival ? .25 : 1, arm = armCD > 0 || early || ARMS.length ? 0 : 1;
   const th = thunderCD > 0 || early ? 0 : rival ? .3 : 1;
-  const t = (gap < .04 ? [["slime", 5], ["arrow", 3], ["elixir", 2]]
-    : gap < .12 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1], ["splat", .6 * b]]
-    : gap < .25 ? [["triple", 3], ["arrow", 3], ["elixir", 2], ["splat", 1 * b], ["arm", .8 * arm], ["thunder", .5 * th], ["hyper", .8]]
-    : [["triple", 4], ["arrow", 2], ["arm", 2 * arm], ["thunder", 1.2 * th], ["splat", 1.5 * b], ["hyper", 2]]).filter(x => x[1] > 0);
+  const t = (gap < .04 ? [["slime", 5], ["arrow", 3], ["elixir", 2], ["bomb", 1.5]]
+    : gap < .12 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1], ["splat", .6 * b], ["bomb", 2.5]]
+    : gap < .25 ? [["triple", 3], ["arrow", 3], ["elixir", 2], ["splat", 1 * b], ["arm", .8 * arm], ["thunder", .5 * th], ["hyper", .8], ["bomb", 2]]
+    : [["triple", 4], ["arrow", 2], ["arm", 2 * arm], ["thunder", 1.2 * th], ["splat", 1.5 * b], ["hyper", 2], ["bomb", 1]]).filter(x => x[1] > 0);
   let x = Math.random() * t.reduce((a, c) => a + c[1], 0);
   for (const [k, w] of t) { if ((x -= w) < 0) return k; }
   return "elixir";
@@ -947,6 +949,11 @@ function useItem(r) {
     const sh = { x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4 }; SHOTS.push(sh);
     if (r === K && mpOn()) mpSend("it", { k: "shot", x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? ahead.name : null });
   }
+  if (it === "bomb") {   // 💣 lobbed forward in an arc; explodes where it lands (or on whoever it hits on the way)
+    const b = { x: r.x + Math.cos(r.a) * 18, y: r.y + Math.sin(r.a) * 18, z: 12, a: r.a, v: Math.max(250, Math.abs(r.v) + 120), vz: 230, by: r, t: 0 }; BOMBS.push(b);
+    if (r === K && mpOn()) mpSend("it", { k: "bomb", x: Math.round(b.x), y: Math.round(b.y), a: +b.a.toFixed(3), v: Math.round(b.v) });
+    if (r === K) flash("💣 Bombs away!", 700);
+  }
   if (it === "splat") {   // like the Blooper: inks everyone ahead of whoever uses it
     bloopCD = 14; if (r === K && mpOn()) mpSend("it", { k: "splat", p: progOf(K) });
     const p = progOf(r), from = r === K ? "" : ` from ${r.name}`;
@@ -974,13 +981,26 @@ function useItem(r) {
   }
   if (r === K) itemSound();
 }
+// 💥 a Pirate Bomb goes off: everyone in the blast spins out and is thrown into the air (the closer, the higher); the screen shakes with distance
+function explode(b, all) {
+  BOOMS.push({ x: b.x, y: b.y, t: 0, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: ["#3a3236", "#6b4426", "#8a8d96", "#ffb02e"][Math.floor(Math.random() * 4)] })) });
+  const dK = Math.hypot(K.x - b.x, K.y - b.y);
+  boomSound(dK); if (dK < 520) K.shake = Math.max(K.shake, .55 * (1 - dK / 520));
+  for (const r of all) {
+    const d = Math.hypot(r.x - b.x, r.y - b.y); if (d > BOMB_R || r.z > 60 || r.done || r.rescue > 0) continue;
+    const was = r.spin; hit(r, b.by === K ? "💣 Your own bomb!" : `💣 Boom${b.by && b.by.name ? ` from ${b.by.name}` : ""}!`);
+    if (r.spin > 0 && !(was > 0) && !r.remote) { r.vz = 150 + 160 * (1 - d / BOMB_R); r.z = .1; r.v *= .3; }
+    if (r !== K && b.by === K && r.spin > 0 && !(was > 0)) flash(`💣 Blew up ${r.name}!`, 900);
+  }
+  if (dK < 140) K.hitFlash = Math.max(K.hitFlash || 0, .12 * (1 - dK / 140));
+}
 // one computer racer: follows the road in its own lane, dodges slime puddles, keeps races close (rubber band), uses items
 function rivalStep(r, dt, tt) {
   if (r.remote) { remoteStep(r, dt); return; }
   if (rescueStep(r, dt)) return;
   const near = nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
-  if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) giveBoost(r, .8, 90); } }
+  if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
   const air = r.z > 0;
   for (const key of ["spin", "inv", "squash", "boost", "itemT", "small", "ink", "bloopSafe", "noItem", "hyper"]) if (r[key] > 0) r[key] -= dt;
   const lost = near.d > near.half + 110 || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
@@ -1070,6 +1090,7 @@ function worldStep(dt, tt) {
     for (const r of all) if (r.z < 22 && !r.done && Math.hypot(r.x - b.x, r.y - b.y) < 15) {
       b.t = 2.5;
       if (r === K) {
+        K.boxBurst = true;   // ✨ sparkles out of the box
         if (!K.item && K.roll <= 0) { K.roll = 1.1; K.pending = rollItem(K); boxSound(); }
         else if (!K.item2 && !(K.roll2 > 0)) { K.roll2 = 1.1; K.pending2 = rollItem(K); boxSound(); }   // a second item waits in the small slot
       }
@@ -1096,6 +1117,13 @@ function worldStep(dt, tt) {
     for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16) { hit(r, "🏹 Arrowed!"); gone = true; if (r !== K && sh.by === K) flash(`🏹 Got ${r.name}!`, 900); }
     if (gone) SHOTS.splice(i, 1);
   }
+  for (let i = BOMBS.length - 1; i >= 0; i--) {
+    const b = BOMBS[i]; b.t += dt; b.vz -= 560 * dt; b.z += b.vz * dt; b.x += Math.cos(b.a) * b.v * dt * SPD; b.y += Math.sin(b.a) * b.v * dt * SPD;
+    let boom = b.z <= 0;
+    if (!boom) for (const r of all) if (!(r === b.by && b.t < .35) && Math.abs(r.z - b.z) < 26 && Math.hypot(r.x - b.x, r.y - b.y) < 17) { boom = true; break; }   // a direct hit
+    if (boom) { BOMBS.splice(i, 1); explode(b, all); }
+  }
+  for (let i = BOOMS.length - 1; i >= 0; i--) if (!BOOMS[i].frozen && (BOOMS[i].t += dt) > 1.6) BOOMS.splice(i, 1);
   for (let i = ARMS.length - 1; i >= 0; i--) {
     const a = ARMS[i]; a.t -= dt;
     if (a.t <= 0) {
@@ -1123,7 +1151,7 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, get floorMs() { return floorMs; } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get floorMs() { return floorMs; } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -1421,8 +1449,33 @@ function render() {
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a * .75;
     const g3 = ctx.createLinearGradient(0, gy - h, 0, gy); g3.addColorStop(0, "rgba(255,80,20,0)"); g3.addColorStop(.5, "#ff7a1e"); g3.addColorStop(1, "#ffe08a");
     ctx.fillStyle = g3; ctx.beginPath(); ctx.ellipse(sx, gy - h / 2, w2, h / 2, 0, 0, 7); ctx.fill(); ctx.restore(); });
-  for (const sh of SHOTS) addDraw(sh.x, sh.y, (sx, gy, sc) => { const im = IMG.arrowIcon; if (!im) return; const w = 26 * sc; ctx.save(); ctx.translate(sx, gy - 12 * sc);
-    ctx.fillStyle = "rgba(255,240,120,.5)"; ctx.beginPath(); ctx.arc(0, 0, w * .6, 0, 7); ctx.fill(); ctx.drawImage(im, -w / 2, -w / 2, w, w); ctx.restore(); });
+  const proj = (x, y) => { const rx = x - cx, ry = y - cy, fz = rx * ca + ry * sa; return fz < 4 ? null : [W / 2 + (-rx * sa + ry * ca) * FO / fz, HOR + CH * FO / fz, FO / fz]; };
+  // 🏹 a real MapleStory arrow in flight, pointing where it's going, with a glowing streak behind it
+  for (const sh of SHOTS) addDraw(sh.x, sh.y, (sx, gy, sc) => {
+    const im = IMG.arrowShot, tail = proj(sh.x - Math.cos(sh.a) * 46, sh.y - Math.sin(sh.a) * 46), head = proj(sh.x + Math.cos(sh.a) * 10, sh.y + Math.sin(sh.a) * 10), y = gy - 11 * sc;
+    const ang = head ? Math.atan2((head[1] - 11 * head[2]) - y, head[0] - sx) : 0;
+    if (tail) { const ty = tail[1] - 11 * tail[2], g = ctx.createLinearGradient(tail[0], ty, sx, y); g.addColorStop(0, "rgba(255,240,160,0)"); g.addColorStop(1, "rgba(255,250,210,.85)");
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = g; ctx.lineWidth = Math.max(1, 3 * sc); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(tail[0], ty); ctx.lineTo(sx, y); ctx.stroke(); ctx.restore(); }
+    if (!im) return; const w = Math.max(6, 34 * sc), h = w * im.height / im.width * 1.6;
+    ctx.save(); ctx.translate(sx, y); ctx.rotate(ang); ctx.imageSmoothingEnabled = false; ctx.shadowColor = "rgba(255,230,120,.9)"; ctx.shadowBlur = 6; ctx.drawImage(im, -w * .8, -h / 2, w, h); ctx.restore(); });
+  // 💣 Pirate Bombs: the spinning skull bomb up in the air with its shadow on the road and a fizzing fuse
+  for (const b of BOMBS) addDraw(b.x, b.y, (sx, gy, sc) => {
+    const F = IMG.bombF; if (!F) return; const im = F[Math.floor(tt * 18) % 8], w = 20 * sc, y = gy - b.z * sc - w * .55;
+    ctx.fillStyle = `rgba(0,0,0,${.35 - Math.min(.2, b.z / 600)})`; ctx.beginPath(); ctx.ellipse(sx, gy, w * .45, w * .14, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(im, sx - w / 2, y - w / 2, w, w); ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; for (let n = 0; n < 3; n++) { ctx.fillStyle = ["#fff6c0", "#ffb02e", "#ff5a1e"][n]; ctx.beginPath(); ctx.arc(sx + w * .3 + (Math.random() - .5) * w * .25, y - w * .45 + (Math.random() - .5) * w * .25, Math.max(.6, w * (.09 - n * .02)), 0, 7); ctx.fill(); } ctx.restore(); });
+  // 💥 explosions: a flash, a ring racing across the road, the MapleStory Grenade blast (fire, then smoke) and flying debris
+  for (const e of BOOMS) addDraw(e.x, e.y, (sx, gy, sc) => {
+    const t = e.t, R = BOMB_R * sc, F = IMG.boomF;
+    if (t < .5) { ctx.save(); ctx.globalAlpha = (1 - t / .5) * .9; ctx.strokeStyle = "#fff4c8"; ctx.lineWidth = Math.max(1, 5 * sc * (1 - t / .5)); const rr2 = R * (.25 + 1.15 * t / .5);
+      ctx.beginPath(); ctx.ellipse(sx, gy, rr2, rr2 * .28, 0, 0, 7); ctx.stroke(); ctx.restore(); }
+    if (t < .7) { ctx.save(); ctx.globalAlpha = .55 * (1 - t / .7); ctx.fillStyle = "#3a2010"; ctx.beginPath(); ctx.ellipse(sx, gy, R * .7, R * .2, 0, 0, 7); ctx.fill(); ctx.restore(); }   // scorch
+    if (t < .18) { ctx.save(); ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(sx, gy - R * .3, 0, sx, gy - R * .3, R * 1.4);
+      g.addColorStop(0, `rgba(255,250,220,${1 - t / .18})`); g.addColorStop(.4, `rgba(255,170,60,${.7 * (1 - t / .18)})`); g.addColorStop(1, "rgba(255,90,20,0)"); ctx.fillStyle = g; ctx.fillRect(sx - R * 1.4, gy - R * 1.7, R * 2.8, R * 2.8); ctx.restore(); }
+    if (F) { const fr = Math.min(6, Math.floor(t * 13)), im = F[fr], w = R * 2.3 * im.width / 94, h = w * im.height / im.width;
+      ctx.save(); ctx.globalAlpha = fr === 6 ? Math.max(0, 1 - (t - 6 / 13) / 1.1) : 1; ctx.imageSmoothingEnabled = false; ctx.drawImage(im, sx - w / 2, gy - h * .8 - R * .1, w, h); ctx.restore(); }
+    for (const d of e.debris) { const z = d.vz * t - 360 * t * t; if (z < 0 && t > .2) continue; const dx = Math.cos(d.a) * d.v * t * sc, dz = Math.max(0, z) * sc;
+      ctx.fillStyle = d.c; ctx.fillRect(sx + dx - d.s * sc / 2, gy - dz - d.s * sc / 2 + Math.sin(d.a) * d.v * t * sc * .25, d.s * sc, d.s * sc); } });
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
   for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + Math.sin(tt * 2 + ob.x) * ob.bob : ob.z || 0);
@@ -1570,6 +1623,8 @@ function drawKart(k) {
       PFX.push({ x: x + side * w * .4 + (Math.random() - .5) * 6, y: y - 2, vx: side * 18 + (Math.random() - .5) * 20, vy: 25 + Math.random() * 25, t: .45, life: .45, size: 3 + Math.random() * 2, col: T.theme.dust || (T.theme.road === "dirt" ? "120,90,50" : "110,95,60"), kind: "dust" }); }
     if (k.hyper > 0) PFX.push({ x: x + (Math.random() - .5) * w * 1.2, y: y - Math.random() * w * .8, vx: (Math.random() - .5) * 40, vy: 40, t: .35, life: .35, size: 2.5, col: `hsl(${Math.random() * 360},100%,65%)`, kind: "star" });
   }
+  if (k.boxBurst) { k.boxBurst = false; tone(1568, .08, "triangle", .05, 2093);
+    for (let n = 0; n < 20; n++) { const a = Math.random() * 6.28, v = 70 + Math.random() * 110; PFX.push({ x, y: y - w * .5, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 50, t: .55, life: .55, size: 2 + Math.random() * 1.8, col: `hsl(${Math.random() * 360},100%,65%)`, kind: "star" }); } }
   for (let i = PFX.length - 1; i >= 0; i--) {
     const p = PFX[i]; p.t -= fdt; if (p.t <= 0) { PFX.splice(i, 1); continue; }
     p.x += p.vx * fdt; p.y += p.vy * fdt; const a = p.t / p.life;
@@ -1631,6 +1686,13 @@ function drawKart(k) {
     ctx.restore();
   }
   ctx.restore(); ctx.globalAlpha = 1;
+  if (k.spin > 0 || k.squash > 0) dizzy(x, y - lift - w * 1.55, w * .55, t);   // 💫 seeing stars after a hit
+}
+// 💫 little stars circling over someone's head after they get hit
+function dizzy(x, y, r, t) {
+  ctx.save(); ctx.font = `${Math.max(5, r * .55)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let n = 0; n < 3; n++) { const a = t * 7 + n * 2.09, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .3; ctx.globalAlpha = Math.sin(a) > 0 ? 1 : .55; ctx.fillStyle = "#ffe14a"; ctx.fillText("★", px, py); }
+  ctx.restore();
 }
 // a rival's kart: same shape as yours in their colour, their character picture sharp when close, their name above
 // 🏆 the #1 guild member's Time Trial ghost on this track: everyone races it (it comes from the guild board)
@@ -1680,6 +1742,7 @@ function drawRival(r, sx, gy, sc, fz) {
     const fl = w * (.4 + Math.random() * .25); ctx.beginPath(); ctx.moveTo(sx - w * .1, -bh * .25); ctx.lineTo(sx + w * .1, -bh * .25); ctx.lineTo(sx, -bh * .25 + fl); ctx.fill(); } ctx.restore(); }
   if (r.holding && r.item) { const hi = r.item === "arrow" ? IMG.arrowIcon : IMG.slime; if (hi) { const hs = 9 * sc; ctx.drawImage(hi, -hs / 2, -hs * .3, hs, hs * hi.height / hi.width); } }
   ctx.restore(); ctx.globalAlpha = 1;
+  if ((r.spin > 0 || r.squash > 0) && fz < 600) dizzy(sx, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc - 3 * sc, w * .5, t);
   if (r.ink > 0 && fz < 500) { ctx.fillStyle = "rgba(10,10,18,.75)"; ctx.beginPath(); ctx.arc(sx + w * .1, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc * .7, w * .22, 0, 7); ctx.fill(); }
   if (fz < 420 && fz >= CAMD * .9) {
     ctx.font = `bold ${Math.max(5, Math.min(9, 7 * sc / 2))}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = 2; ctx.strokeStyle = "rgba(0,0,0,.7)";
@@ -1833,7 +1896,10 @@ async function start() {
 let assetsReady = false;
 async function prepare() {
   const mstrip = await loadImg("media/kart/meso.png?v=1"); IMG.meso = mstrip ? mesoFrames(mstrip) : null;
-  [IMG.arrowIcon, IMG.arm] = await Promise.all([loadImg(B.M + "sk_arrowrain.png"), loadImg(B.M + "zarm_stand.gif")]);
+  [IMG.arrowIcon, IMG.arm, IMG.arrowShot] = await Promise.all([loadImg("media/kart/items/arrow_icon.png"), loadImg(B.M + "zarm_stand.gif"), loadImg("media/kart/items/arrow.png")]);   // the quiver (held as a shield) and the real arrow
+  IMG.bombF = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map(i => loadImg(`media/kart/items/bomb${i}.png`)));   // 💣 Gunslinger's Grenade (MapleStory)
+  IMG.boomF = await Promise.all([0, 1, 2, 3, 4, 5, 6].map(i => loadImg(`media/kart/items/boom${i}.png`)));
+  if (IMG.bombF.some(x => !x)) IMG.bombF = null; if (IMG.boomF.some(x => !x)) IMG.boomF = null;
   await Promise.all([...MOBS, "king_slime", "ribbon_pig"].map(async m => { IMG[m] = await loadImg(`media/mobs/${m}.png`); if (IMG[m]) IMG[m].px = true; })
     .concat(Object.keys(PROPS).filter(k => !PROPS[k][2]).map(async k => { IMG[k] = await loadImg(`media/kart/${k}.webp?v=1`); })));
   assetsReady = true;
@@ -2466,6 +2532,11 @@ function whistle() {
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.14, t + .03); g.gain.setValueAtTime(.14, t + .55); g.gain.exponentialRampToValueAtTime(.001, t + .8);
   o.start(t); lfo.start(t); o.stop(t + .85); lfo.stop(t + .85);
   noiseHit(3000, .7, .05, 3);   // breath
+}
+function boomSound(d = 0) {   // a deep thump, a roar of fire and some crackle, quieter far away
+  const v = Math.max(.15, 1 - d / 900);
+  tone(70, .7, "sine", .28 * v, 28); tone(140, .35, "square", .08 * v, 50);
+  noiseHit(420, .9, .32 * v, .6, 70); setTimeout(() => noiseHit(2600, .35, .07 * v, 1.5), 60);
 }
 const readySound = () => { [392, 523, 659].forEach((f, i) => setTimeout(() => tone(f, .16, "square", .06), i * 130)); setTimeout(() => tone(784, .4, "triangle", .07), 390); };
 const goSound = () => { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, i === 4 ? .5 : .1, "square", .07), i * 70)); };
