@@ -742,16 +742,15 @@ function placeStart(push) {
   for (let n = 0; n < 10; n++) { const sd = n % 2 ? 1 : -1, [x, y] = at(li + (n >> 1) - 2, sd * (half + 6 + (n % 3) * 7));
     OBJS.push({ x, y, k: "balloon" + (n % 6), s: .7, r: 0, z: 78 + (n % 4) * 9, bob: 4 }); }
 }
-// the guild comes to watch: real Family members cheering and jumping along the start straight
+// Yumeko and Voze cheering and jumping by the start arch
 async function makeCrowd() {
   CROWD = [];
   if (T.cup !== "henesys" || typeof ROSTER === "undefined") return;
-  const pool = ROSTER.filter(p => p.sprite).map(p => p.name).sort(() => Math.random() - .5).slice(0, 18), li = OPEN ? START_I : 0;
+  const pool = ["Yumeko", "Voze"], li = OPEN ? START_I : 0;   // just these two cheer at the start (one on each side of the arch)
   const imgs = await Promise.all(pool.map(n => loadImg(spriteOf(n))));
   imgs.forEach((im, n) => { if (!im) return; im.px = true;
-    const sd = n % 2 ? 1 : -1, i = li + (Math.floor(n / 2) - 1) * 4 + (n % 3), o = sd * (ROAD / 2 + CURB + 36 + (n % 3) * 13), [x, y] = at(OPEN ? Math.max(0, i) : (i + N) % N, o);
-    if (roadDist(x, y) < ROAD / 2 + CURB + 12) return;
-    CROWD.push({ x, y, img: im, s: .38, jump: 6 + Math.random() * 7, sp: 5 + Math.random() * 4, ph: Math.random() * 6, flip: sd > 0 });
+    const sd = n % 2 ? 1 : -1, i = li + 7, o = sd * (ROAD / 2 + CURB + 20), [x, y] = at(OPEN ? Math.max(0, i) : (i + N) % N, o);
+    CROWD.push({ x, y, img: im, s: .46, jump: 6 + Math.random() * 7, sp: 5 + Math.random() * 4, ph: Math.random() * 6, flip: sd > 0 });
   });
 }
 function placeObjects() {
