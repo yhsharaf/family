@@ -509,8 +509,10 @@ function loadTrack(key) {
   OUT = T.theme.out ? hexABGR(T.theme.out) : OUT0; HAZE = T.theme.haze || HAZE0;
   const F = OPEN ? (fr => Math.round(Math.max(0, Math.min(1, fr)) * (N - 1))) : (fr => Math.round((((fr % 1) + 1) % 1) * N) % N);
   const f = T.build(F);
-  if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key];   // 🔀 the other maps' short cuts (found once with autoFork, kept here)
-    f.fork = { a, b, via, width: T.cup === "zakum" ? 54 : 64, style: T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble", pads: [{ t: "boost", j: .45, len: 6, o: 0, w: 40 }], coins: true }; }   // every other map gets a short cut where its road loops back near itself
+  if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key], w = T.cup === "zakum" ? 42 : 44;   // 🔀 the other maps' short cuts: a narrow zig-zag you have to earn
+    const extra = { sleepy: [{ t: "mud", j: .47, len: 7, o: 0, w }], elnath: [{ t: "ice", j: .47, len: 8, o: 0, w }], ludi: [{ t: "slime", j: .47, len: 6, o: w / 4, w: w / 2 }], zakum: [] }[T.cup] || [];
+    f.fork = { a, b, via: zigzag(a, b, via, w), width: w, style: T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble", coins: true,
+      pads: [{ t: "rock", j: .27, len: 7, o: w / 4, w: w / 2 }, ...extra, { t: "rock", j: .64, len: 7, o: -w / 4, w: w / 2 }, { t: "boost", j: .84, len: 5, o: 0, w: w * .8 }] }; }   // every other map gets a short cut where its road loops back near itself
   if (f.fork) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
@@ -528,6 +530,21 @@ function loadTrack(key) {
 const SHORTCUTS = { en1: [271, 501, [[1310, 609], [1323, 903]]], en2: [211, 473, [[1183, 528], [1429, 792]]], en3: [57, 277, [[542, 698], [851, 614]]],
   sw1: [219, 437, [[1275, 388], [1441, 578]]], sw2: [349, 575, [[1254, 513], [1359, 783]]], sw3: [223, 427, [[1434, 492], [1528, 728]]],
   zk2: [1104, 1294, [[648, 741], [701, 1038]]], ld1: [59, 299, [[610, 808], [944, 657]]], ld2: [839, 1111, [[1175, 1020], [1032, 1170]]], ld3: [111, 341, [[897, 524], [1228, 655]]] };
+// the short cut's line turned into tight S-bends (each bend pushed sideways as far as it can go without coming near the main road)
+function zigzag(a, b, via, w) {
+  const poly = [PTS[a], ...via, PTS[b]], seg = [], out = []; let tot = 0;
+  for (let q = 1; q < poly.length; q++) { const d = Math.hypot(poly[q][0] - poly[q - 1][0], poly[q][1] - poly[q - 1][1]); seg.push(d); tot += d; }
+  const P = u => { let d = u * tot, q = 0; while (q < seg.length - 1 && d > seg[q]) { d -= seg[q]; q++; } const A = poly[q], B2 = poly[q + 1], f = Math.min(1, d / seg[q]);
+    return [A[0] + (B2[0] - A[0]) * f, A[1] + (B2[1] - A[1]) * f, Math.atan2(B2[1] - A[1], B2[0] - A[0])]; };
+  const n = Math.max(4, Math.min(8, Math.round(tot / 110))), need = ROAD / 2 + CURB + w / 2 + 4;
+  for (let k = 1; k <= n; k++) {
+    const [x, y, ang] = P(k / (n + 1)), nx = -Math.sin(ang), ny = Math.cos(ang), side = k % 2 ? 1 : -1;
+    let pt = [x, y];
+    for (const amp of [52, 40, 28, 16]) { const c = [x + nx * amp * side, y + ny * amp * side]; if (nearest(c[0], c[1]).d >= need) { pt = c; break; } }
+    out.push(pt);
+  }
+  return out;
+}
 // a short cut for a map that doesn't have one: where the road loops back near itself, a narrow path across saves real time
 // (35-60% of that stretch). Its line must stay well clear of every other part of the road (and of water). Over lava it's a plank bridge.
 function autoFork(f) {
@@ -639,6 +656,12 @@ function paintTrack() {
       if (t > .85) { g.fillStyle = st === "moss" ? "#5f7a3a" : "#d8d0c2"; g.fillRect(x - 3, y - 3, 3, 2); }
     }
   } };
+  if (AN && SHORTCUTS[TRACK_KEY] && T.cup !== "zakum") {   // what you fall into if you slip off the short cut
+    const H = { sleepy: ["#24413a", "#3a6a5a"], ludi: ["#1c1038", "#ffe9a8"], elnath: ["#f8fbff", "#c4d6ee"] }[T.cup];
+    if (H) { apath(); g.strokeStyle = H[0]; g.lineWidth = ALT_ROAD + 170; g.stroke();
+      for (let j = 0; j < AN; j++) for (let q = 0; q < 3; q++) { const o = (rnd() - .5) * (ALT_ROAD + 160), [x, y] = altAt(j, o); g.fillStyle = H[1];
+        if (T.cup === "ludi") g.fillRect(x, y, 2, 2); else { g.beginPath(); g.ellipse(x, y, 6 + rnd() * 12, 3 + rnd() * 4, rnd() * 3, 0, 7); g.fill(); } } }
+  }
   curbs(path, ROAD, PTS, tangent, !OPEN); if (AN) curbs(apath, ALT_ROAD, ALT, altTan, false);
   edge(path, ROAD); edge(apath, ALT_ROAD); surface(path, ROAD, RS); surface(apath, ALT_ROAD, ALT_STYLE === "planks" ? "planks" : RS);   // the market path's road paints over the main curbs where they meet
   cobbles(N, i => PTS[i], tangent, ROAD, RS); cobbles(AN, j => ALT[j], altTan, ALT_ROAD, ALT_STYLE === "planks" ? "planks" : RS);
@@ -652,7 +675,13 @@ function paintTrack() {
   path(); g.strokeStyle = th.line || "rgba(255,255,255,.8)"; g.lineWidth = 3; g.setLineDash([20, 28]); g.stroke(); g.setLineDash([]);
   apath(); g.strokeStyle = "rgba(255,226,140,.85)"; g.lineWidth = 3; g.setLineDash([12, 18]); g.stroke(); g.setLineDash([]);
   // the market path's boost arrows
-  for (const p of ALTPADS) for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {
+  for (const p of ALTPADS) if (p.t !== "boost") for (let k = 0; k < p.len * (p.t === "rock" ? 5 : 3); k++) {   // the short cut's rocks, mud, black ice and slime
+    const jj = p.j * (AN - 1) + rnd() * p.len, [x, y] = altAt(jj, p.o + (rnd() - .5) * p.w * .9), z = p.t === "rock" ? 9 + rnd() * 8 : 7 + rnd() * 9;
+    g.fillStyle = p.t === "rock" ? "rgba(0,0,0,.35)" : "rgba(0,0,0,0)"; g.beginPath(); g.ellipse(x + 2, y + 2, z / 2, z * .4, 0, 0, 7); g.fill();
+    g.fillStyle = { rock: rnd() < .5 ? "#7d7466" : "#5e574c", mud: rnd() < .5 ? "#3e3a22" : "#5a5230", ice: rnd() < .5 ? "#a9d4f5" : "#d8eeff", slime: rnd() < .5 ? "#7c3fa0" : "#b65cd6" }[p.t];
+    g.beginPath(); g.ellipse(x, y, z / 2, z * .4, rnd() * 3, 0, 7); g.fill();
+  }
+  for (const p of ALTPADS) if (p.t === "boost") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {
     const jj = p.j * (AN - 1) + j, o1 = p.o - p.w / 2 + p.w * c / 10, o2 = o1 + p.w / 10 + .5, chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;
     const a = altAt(jj, o1), b = altAt(jj, o2), cc = altAt(jj + 1, o2), d = altAt(jj + 1, o1);
     g.fillStyle = chev ? "#ff7a12" : "#ffd84a"; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(cc[0], cc[1]); g.lineTo(d[0], d[1]); g.fill();
@@ -1362,6 +1391,10 @@ function step(dt) {
     if (k.lostT > 2.6 || k.wrong > 3) { rescue(k); return; }
   }
   const ground = under(near, k.x, k.y), L = ground.L;
+  if (racing && near.alt && k.z <= 0 && near.d > near.half + CURB + 4 && SHORTCUTS[TRACK_KEY] && T.cup !== "zakum") {   // 🔀 slipping off a short cut
+    if (T.cup === "elnath") { if (!k.deepSnow) flash("❄️ Deep snow!", 700); k.deepSnow = .25; }
+    else { k.altFallT = (k.altFallT || 0) + dt; if (k.altFallT > .12) { k.altFallT = 0; rescue(k, T.cup === "sleepy" ? "💦 Into the swamp!" : "🧸 Fell off the toy bridge!"); return; } }
+  } else k.altFallT = 0;
   if (MECH === "lava" && racing && k.z <= 0 && near.d > near.half + CURB + 8) {   // (on the plank bridge too: off its sides is lava)   // 🔥 Zakum: there's no safe edge, off the road is lava
     k.fallT = (k.fallT || 0) + dt; if (k.fallT > .12) { k.fallT = 0; rescue(k, "🔥 Fell into the lava!"); return; }
   } else k.fallT = 0;
@@ -1405,7 +1438,8 @@ function step(dt) {
   // speed: always accelerating (phone friendly), the brake slows / reverses; mesos raise the top speed a little
   const hb = k.hyper > 0;
   boostTick(k, dt);
-  const top = k.frozen > 0 ? 90 : hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
+  if (k.deepSnow > 0) k.deepSnow -= dt;
+  const top = k.frozen > 0 ? 90 : k.deepSnow > 0 ? 70 : hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
   if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
   else k.v += (k.v < top ? (k.extra > 5 ? 900 : k.v < 120 ? 210 : 120) : -260) * dt;   // boosts reach their speed almost at once
