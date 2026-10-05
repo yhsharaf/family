@@ -234,11 +234,12 @@ const TRACKS = {
       // in the air to land on the next one. They come in different sizes and heights, zig-zagging; miss and you fall.
       const g1a = I(1605, 560), g2a = I(1112, 228), g3a = I(437, 1028);
       const cap = (a, along, o, r, top, col) => ({ i: a + u(along), o, r, top, col });
+      const COL = ["r", "b", "g", "o", "n"];   // red, blue, green, orange, brown
       const G1 = { a: g1a, b: g1a + u(160), kind: "gorge", caps: [cap(g1a, 70, 0, 95, 0, "r")] };                                     // the first jump: one big mushroom
-      const G2 = { a: g2a, b: g2a + u(500), kind: "gorge", caps: [cap(g2a, 75, 0, 100, 0, "r"), cap(g2a, 185, 55, 68, 26, "g"), cap(g2a, 380, -45, 82, 12, "r")] };   // three down the gorge
-      const cave = [cap(g3a, 85, 0, 115, 0, "r")];   // the abyss: one wide mushroom in, then two rows (the middle is open: pick a side)
-      [[170, -70, 72, 18], [370, -52, 58, 34], [570, -78, 80, 8], [770, -50, 62, 28], [970, -68, 76, 14]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, k % 2 ? "r" : "g")));
-      [[170, 72, 60, 30], [370, 60, 84, 10], [570, 76, 56, 36], [770, 55, 80, 6], [970, 74, 66, 24]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, k % 2 ? "g" : "r")));
+      const G2 = { a: g2a, b: g2a + u(500), kind: "gorge", caps: [cap(g2a, 75, 0, 100, 0, "o"), cap(g2a, 185, 55, 68, 26, "b"), cap(g2a, 380, -45, 82, 12, "n")] };   // three down the gorge
+      const cave = [cap(g3a, 85, 0, 115, 0, "g")];   // the abyss: one wide mushroom in, then two rows (the middle is open: pick a side)
+      [[170, -70, 72, 18], [370, -52, 58, 34], [570, -78, 80, 8], [770, -50, 62, 28], [970, -68, 76, 14]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, COL[k % 5])));
+      [[170, 72, 60, 30], [370, 60, 84, 10], [570, 76, 56, 36], [770, 55, 80, 6], [970, 74, 66, 24]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, COL[(k + 2) % 5])));
       const G3 = { a: g3a, b: g3a + u(1055), kind: "gorge", caps: cave };
       row(I(1885, 1120), I(1900, 960), 5, 0);                             // up the cliffside
       row(I(1520, 160), I(1360, 120), 5, 40);                             // round the inside of the hook
@@ -1011,7 +1012,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=29"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=30"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1588,7 +1589,7 @@ function bounce(r, c) {
   }
   const t = HOP / (250 * SPD); r.hopUntil = performance.now() + t * 1000;
   r.v = 250; r.boost = 0; r.extra = 0; r.vz = 360 * t; r.z = Math.max(.1, c.top || 0); r.drift = 0; r.spin = 0;
-  if (r === K) { boingSound(); buzz(25); pop(c.r < 70 ? "🍄 Nice landing!" : "🍄 Boing!", c.col === "g" ? "#7ad06a" : "#ff8a6a", true); }
+  if (r === K) { boingSound(); buzz(25); pop(c.r < 70 ? "🍄 Nice landing!" : "🍄 Boing!", { g: "#7ad06a", b: "#6ab8ff", o: "#ffb04a", n: "#d8a46a" }[c.col] || "#ff8a6a", true); }
 }
 function spinOut(msg) {
   const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0 || k.hyper > 0) return;
