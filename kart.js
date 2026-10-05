@@ -98,7 +98,7 @@ const PROPS_ALL = ["tree", "bush", "redshrooms", "sunflower", "tallshroom", "sta
 const TRACKS = {
   // 1. Henesys Loop: the pig farm jump, the market path, the King Slime
   henesys: {
-    id: "henesys2", name: "Henesys Loop", sub: "pig farm · market path", icon: "🍄",
+    id: "henesys2", name: "Henesys Loop", sub: "pig farm · market path", icon: "🍄", music: "henesys",
     ctrl: [[400, 1450], [400, 900], [520, 520], [620, 240], [900, 130], [1300, 130], [1545, 185], [1380, 420], [1240, 575], [1110, 880],
       [900, 1050], [1000, 1260], [1400, 1250], [1590, 900], [1650, 470], [1850, 360], [1910, 800], [1850, 1400], [1650, 1750], [1100, 1860], [650, 1820], [430, 1720]],
     theme: { grass: ["#6cc04a", "#5cb03e"], flowers: 2200, road: "cobble" },
@@ -137,7 +137,7 @@ const TRACKS = {
   },
   // 2. Henesys Town Run: twisty S-bends between the mushroom houses, a market street, a tunnel through a tree house, snails crossing
   town: {
-    id: "town", name: "Henesys Town Run", sub: "market street · tree house tunnel · back alley · hospital loop", icon: "🏘️",
+    id: "town", music: "town", name: "Henesys Town Run", sub: "market street · tree house tunnel · back alley · hospital loop", icon: "🏘️",
     ctrl: [[300, 1700], [300, 1100], [450, 800], [700, 700], [850, 900], [1050, 1000], [1200, 800], [1150, 550], [950, 400], [1000, 200], [1350, 180],
       [1650, 300], [1800, 550], [1650, 800], [1500, 1000], [1300, 1150], [1000, 1250], [800, 1450], [1100, 1600], [1450, 1450], [1700, 1250],
       [1850, 1500], [1720, 1810], [1150, 1865], [600, 1860], [380, 1810]],
@@ -172,7 +172,7 @@ const TRACKS = {
   },
   // 3. Mushroom Forest: fast and wild; a narrow wooden bridge over a lake (fall in and you splash), hopping mushrooms, Mushmom, a big downhill jump
   forest: {
-    id: "forest", name: "Mushroom Forest", sub: "bridge shortcut · S-bends · Mushmom · big jump", icon: "🌲",
+    id: "forest", music: "forest", name: "Mushroom Forest", sub: "bridge shortcut · S-bends · Mushmom · big jump", icon: "🌲",
     ctrl: [[350, 1500], [350, 900], [480, 480], [850, 260], [1400, 260], [1760, 500], [1800, 950], [1580, 1250], [1200, 1150], [990, 1255], [1105, 1405],
       [965, 1550], [1085, 1690], [1420, 1700], [1750, 1820], [1450, 1945], [800, 1905], [480, 1800]],
     theme: { grass: ["#4f9a3c", "#478f35"], flowers: 900, road: "dirt" },
@@ -879,7 +879,11 @@ function render() {
   };
   for (const r of RIV) addDraw(r.x, r.y, (sx, gy, sc, fz) => drawRival(r, sx, gy, sc, fz));
   if (mode !== "tt") for (const b of BOXES) if (b.t <= 0) addDraw(b.x, b.y, (sx, gy, sc) => drawBox(sx, gy, sc, tt));
-  if (mode === "tt" && ghost && state !== "menu") {   // 👻 your best run, see-through
+  if (mode === "tt" && topGhost && state !== "menu") {   // 🏆 the guild's #1, see-through and gold
+    const gs = ghostAt(K.t, topGhost.data);
+    if (gs) addDraw(gs.x, gs.y, (sx, gy, sc, fz) => drawRival({ name: `🏆 ${topGhost.name}`, img: topGhost.img, color: "#e8b43a", steer: 0, z: gs.z, spin: 0, squash: 0, inv: 0, ghost: true }, sx, gy, sc, fz));
+  }
+  if (mode === "tt" && ghost && state !== "menu" && !(topGhost && topGhost.name === me)) {   // 👻 your best run, see-through
     const gs = ghostAt(K.t); if (gs) addDraw(gs.x, gs.y, (sx, gy, sc, fz) => drawRival({ name: "👻 Your best", img: IMG.me, color: "#c8232c", steer: 0, z: gs.z, spin: 0, squash: 0, inv: 0, ghost: true }, sx, gy, sc, fz));
   }
   for (const d of DROPS) add(d.x, d.y, IMG.slime, .32, 0, false, .5);
@@ -1031,11 +1035,23 @@ function drawKart(k) {
   ctx.restore(); ctx.globalAlpha = 1;
 }
 // a rival's kart: same shape as yours in their colour, their character picture sharp when close, their name above
-function ghostAt(t) {
-  if (!ghost || !ghost.length) return null;
-  let lo = 0, hi = ghost.length - 1; if (t >= ghost[hi][0]) return null;
-  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (ghost[m][0] <= t) lo = m; else hi = m; }
-  const a = ghost[lo], b = ghost[hi], f = (t - a[0]) / Math.max(1, b[0] - a[0]);
+// 🏆 the #1 guild member's Time Trial ghost on this track: everyone races it (it comes from the guild board)
+let topGhost = null;
+async function fetchTop() {
+  topGhost = null; const my = raceId;
+  if (DEV && DEV.topGhost) { topGhost = DEV.topGhost; return; }
+  const sb = await B.client(); if (!sb) return;
+  const { data } = await sb.from("kart_times").select("player,race_ms,ghost").eq("track", TRACK_ID).not("ghost", "is", null).order("race_ms").limit(1);
+  if (my !== raceId || !data || !data[0]) return;
+  let g; try { g = JSON.parse(data[0].ghost); } catch (e) { return; }
+  const img = new Image(); img.src = spriteOf(data[0].player);
+  topGhost = { name: data[0].player, ms: data[0].race_ms, data: g, img };
+}
+function ghostAt(t, gh = ghost) {
+  if (!gh || !gh.length) return null;
+  let lo = 0, hi = gh.length - 1; if (t >= gh[hi][0]) return null;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (gh[m][0] <= t) lo = m; else hi = m; }
+  const a = gh[lo], b = gh[hi], f = (t - a[0]) / Math.max(1, b[0] - a[0]);
   return { x: a[1] + (b[1] - a[1]) * f, y: a[2] + (b[2] - a[2]) * f, z: a[4] + (b[4] - a[4]) * f };
 }
 function drawRival(r, sx, gy, sc, fz) {
@@ -1153,7 +1169,8 @@ async function start() {
   K = freshKart(); finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; makeRivals(mode === "gp" ? gp.names : null); if (mode === "gp") gp.names = RIV.map(r => r.name);
   if (mode === "tt") { K.item = "triple"; K.itemN = 3; }
   B.musicRate(1);
-  state = "wait"; B.music("henesys"); syncMusicBtn();
+  state = "wait"; B.music(T.music); syncMusicBtn();
+  if (mode === "tt") fetchTop();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   await waitLandscape(); if (!alive() || state !== "wait") return; fit(); state = "count";
   countAt = performance.now(); COINS.forEach(c => c.got = false);
@@ -1209,6 +1226,7 @@ function finish() {
     if (mode === "tt") {
       html = `<h3>⏱️ ${fmt(total)}</h3>${laps}
         <p>${newRace ? "🎉 New personal best! Your ghost will race you next time 👻" : `Your best: ${fmt(best.race)}`}${newLap ? "<br>⚡ New best lap!" : ""}</p>
+        ${topGhost ? `<p class="k-rank">${topGhost.name === me ? "🏆 You hold the guild record here" : total < topGhost.ms ? `👑 You beat ${esc(topGhost.name)}'s record (${fmt(topGhost.ms)})!` : `🏆 ${esc(topGhost.name)}: ${fmt(topGhost.ms)} · you +${((total - topGhost.ms) / 1000).toFixed(3)}s`}</p>` : ""}
         <p class="k-rank" id="kRank">${guildOf(me) ? "Saving your time…" : "Guests aren't on the guild board."}</p>
         <div class="row"><button class="sk-btn bd-play" data-a="again">Try again</button><button class="sk-btn sk-private" data-a="back">Back</button></div>`;
     } else {
@@ -1251,12 +1269,14 @@ function quit() {
 async function submit(laps) {
   if (DEV) return { r: "dev" };   // local test races never touch the real board
   const sb = await B.client(); if (!sb) return null;
-  const { data } = await sb.rpc("kart_submit", { p_track: TRACK_ID, p_name: me, p_laps: laps.map(Math.round) });
+  const { data } = await sb.rpc("kart_submit", { p_track: TRACK_ID, p_name: me, p_laps: laps.map(Math.round), p_ghost: JSON.stringify(ghostRec) });
   loadBoard(); return data;
 }
 async function loadBoard() {
   const sb = await B.client(); if (!sb) return;
   const { data } = await sb.from("kart_times").select("player,race_ms,lap_ms").eq("track", TRACKS[mode === "gp" ? "henesys" : track].id).order("race_ms").limit(10);
+  if (mode === "tt") $k("#kModeNote").textContent = data && data[0] ? `You'll race 🏆 ${data[0].player}'s ghost (${fmt(data[0].race_ms)}), the guild record. Only Time Trial times go on the board.`
+    : "Alone with 3 Elixirs. No guild record yet on this track: set the first one and everyone will race your ghost!";
   $k("#kBoard").innerHTML = (data || []).length ? data.map((r, i) => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>
     <span>${fmt(r.race_ms)}</span><small>lap ${fmt(r.lap_ms)}</small></li>`).join("") : `<p class="bd-none">No times yet. Be the first!</p>`;
 }
