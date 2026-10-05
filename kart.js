@@ -401,7 +401,7 @@ let sky = null;
 // 7 computer racers (real guild members), rows of item boxes, and the MapleStory items: Elixir, 3 Elixirs, Slime drop, Arrow, Zakum's Arm
 // modes: a 3-race Grand Prix with points and a podium, a single race, or a Time Trial alone against your ghost (only Time Trial
 // times go on the guild board, like Mario Kart's leaderboards, since races with rivals depend on luck)
-const MODES = { gp: "🏆 Grand Prix", race: "🏁 Single race", tt: "⏱️ Time Trial" };
+const MODES = { gp: "🏆 Grand Prix", race: "🏁 Single race", tt: "⏱️ Time Trial", mp: "👥 Multiplayer" };
 let mode = MODES[store.get("kart_mode")] ? store.get("kart_mode") : "gp";
 let track = TRACKS[store.get("kart_track")] ? store.get("kart_track") : "henesys";   // picked track for Race and Time Trial
 const GP_RACES = 3, GP_PTS = [10, 8, 6, 4, 3, 2, 1, 0];
@@ -421,8 +421,52 @@ const progOf = r => (r.done ? 1e6 - r.finish : 0) + r.lap * N + (r.cps === 0 && 
 const racers = () => [K, ...RIV];
 function rankOf(r) { const p = progOf(r); return 1 + racers().filter(o => o !== r && progOf(o) > p).length; }
 function gridSpot(slot) { const row = Math.floor(slot / 2), col = slot % 2, i = N - 6 - row * 9 - col * 3; return { i, o: col ? 24 : -24 }; }
+// ------------------------------------------------------------------ multiplayer (rooms of 2-8, the first one in is the host)
+// Everyone drives their own kart; positions go out ~12 times a second over Realtime broadcast, other players are drawn from those.
+// Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
+const MP = { code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
+const mpOn = () => mode === "mp" && !!MP.code;
+function mpSend(event, payload) { if (MP.ch) MP.ch.send({ type: "broadcast", event, payload: { ...payload, n: MP.me, rc: MP.raceNo } }); }
+function mpByName(n) { return n === MP.me ? K : RIV.find(r => r.name === n); }
+function mpOnPos(p) {
+  if (!p || p.rc !== MP.raceNo || !K) return;
+  const r = RIV.find(o => o.name === p.n); if (!r) return;
+  r.net = { x: p.x, y: p.y, a: p.a, v: p.v, t: performance.now() };
+  r.z = p.z || 0; r.steer = p.s || 0; r.spin = p.sp || 0; r.small = p.sm || 0; r.hyper = p.hy || 0; r.extra = p.ex || 0; r.squash = p.sq || 0;
+  r.lap = p.lap; r.cps = p.cps; r.idx = p.idx; r.holding = !!p.ho; r.item = p.it || null; r.ink = p.ik || 0;
+  if (p.dn && !r.done) { r.done = true; r.finishT = p.ft; r.finish = ++finishers; }
+}
+function mpOnItem(p) {
+  if (!p || p.rc !== MP.raceNo || !K || state === "menu") return;
+  const by = RIV.find(o => o.name === p.n); if (!by) return;
+  if (p.k === "drop") DROPS.push({ x: p.x, y: p.y, t: 40, by, grace: .3 });
+  if (p.k === "shot") SHOTS.push({ x: p.x, y: p.y, a: p.a, v: p.v, tgt: p.tgt ? mpByName(p.tgt) || null : null, by, life: 4 });
+  if (p.k === "arm" && p.tgt === MP.me) { ARMS.push({ tgt: K, t: 2.6, by }); armCD = 20; }
+  if (p.k === "thunder") {
+    thunderCD = 25; thunderFx = .35; thunderSound();
+    if (!K.done && !(K.rescue > 0) && !(K.hyper > 0)) { if (K.holding || HOLDABLE(K.item)) { K.item = null; K.holding = false; } K.small = 3.2; K.inv = 0; K.z = 0; K.vz = 0; spinOut(`⚡ Thunder from ${by.name}!`); K.shake = .3; }
+  }
+  if (p.k === "splat") { bloopCD = 14; if (!K.done && progOf(K) > p.p && !(K.bloopSafe > 0) && !(K.hyper > 0)) { K.ink = 4; K.bloopSafe = 12; makeInk(); flash(`🐙 Splat from ${by.name}!`, 1000); splatSound(); } }
+}
+// other players' karts: glide toward where their last message says they are (with a little prediction)
+function remoteStep(r, dt) {
+  if (!r.net) return;
+  const age = Math.min(.3, (performance.now() - r.net.t) / 1000), px = r.net.x + Math.cos(r.net.a) * r.net.v * age, py = r.net.y + Math.sin(r.net.a) * r.net.v * age;
+  const f = Math.min(1, dt * 12); r.x += (px - r.x) * f; r.y += (py - r.y) * f; r.v = r.net.v;
+  let d = r.net.a - r.a; d = Math.atan2(Math.sin(d), Math.cos(d)); r.a += d * f;
+  r.gone = performance.now() - r.net.t > 6000;
+}
 function makeRivals(keep) {
   if (mode === "tt") { RIV = []; DROPS = []; SHOTS = []; ARMS = []; return; }
+  if (mode === "mp") {   // the other players in the room, on the grid in the order they joined
+    const order = MP.players.map(p => p.name), others = order.filter(n => n !== MP.me);
+    RIV = others.map((name, n) => {
+      const g = gridSpot(order.indexOf(name)), [x, y] = at(g.i, g.o), img = new Image(); img.src = spriteOf(name);
+      return { name, img, color: RIVAL_COLORS[n % RIVAL_COLORS.length], x, y, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0, finishT: 0,
+        remote: true, net: null, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0, extra: 0, item: null, itemN: 0, itemT: 0, skill: VMAX, lane: 0, laneT: 9 };
+    });
+    DROPS = []; SHOTS = []; ARMS = []; BOXES.forEach(b => b.t = 0); return;
+  }
   const pool = [...(typeof D !== "undefined" ? [...D.founders, ...D.members] : [])].map(p => p.name).filter((n, i, a) => n && /^[A-Za-z0-9]{2,13}$/.test(n) && n !== me && a.indexOf(n) === i);
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   const names = keep || pool.slice(0, 7); while (names.length < 7) names.push(["Orange Mushroom", "Blue Snail", "Slime", "Pig", "Stump", "Green Mushroom", "Ribbon Pig"][names.length]);
@@ -464,6 +508,7 @@ function boostTick(r, dt) {
   else { r.extra = (r.extra || 0) * Math.pow(.94, dt * 60); if (r.extra < 2) r.extra = 0; r.boostPow = 0; }
 }
 function hit(r, msg) {
+  if (r.remote) return;   // another player's own game decides their hits
   if (r.hyper > 0) return;   // 💪 Hyper Body: nothing can hurt you
   if (r === K) { spinOut(msg); return; }
   if (r.spin <= 0 && r.inv <= 0 && r.z <= 0) { r.spin = .9; r.inv = 1.6; r.boost = 0; r.extra = 0; if (r.holding) { r.item = null; r.holding = false; } }
@@ -475,13 +520,14 @@ function useItem(r) {
   else r.item = null;
   if (it === "elixir") giveBoost(r, 1.5, 120);
   if (it === "hyper") { r.hyper = 7; r.spin = 0; r.small = 0; r.ink = 0; if (r === K) { flash("💪 HYPER BODY!", 1000); hyperSound(); } }
-  if (it === "slime") DROPS.push({ x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5 });
+  if (it === "slime") { const d = { x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5 }; DROPS.push(d); if (r === K && mpOn()) mpSend("it", { k: "drop", x: d.x, y: d.y }); }
   if (it === "arrow") {
     const p = progOf(r), ahead = racers().filter(o => o !== r && progOf(o) > p && progOf(o) - p < N * .5).sort((a, b) => progOf(a) - progOf(b))[0];
-    SHOTS.push({ x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4 });
+    const sh = { x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4 }; SHOTS.push(sh);
+    if (r === K && mpOn()) mpSend("it", { k: "shot", x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? ahead.name : null });
   }
   if (it === "splat") {   // like the Blooper: inks everyone ahead of whoever uses it
-    bloopCD = 14;
+    bloopCD = 14; if (r === K && mpOn()) mpSend("it", { k: "splat", p: progOf(K) });
     const p = progOf(r), from = r === K ? "" : ` from ${r.name}`;
     const hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0) && !(o.bloopSafe > 0) && !(o.ink > 0) && !(o.hyper > 0));
     for (const o of hitList) {
@@ -491,7 +537,7 @@ function useItem(r) {
     if (r === K) flash(hitList.length ? `🐙 Inked ${hitList.length} racer${hitList.length > 1 ? "s" : ""} ahead!` : "Nobody ahead of you!", 1000);
   }
   if (it === "thunder") {   // ⚡ like Mario Kart's Lightning: strikes every other racer; they spin, shrink and drop what they hold. Nothing blocks it.
-    thunderCD = 25; thunderFx = .35; thunderSound();
+    thunderCD = 25; thunderFx = .35; thunderSound(); if (r === K && mpOn()) mpSend("it", { k: "thunder" });
     const from = r === K ? "" : ` from ${r.name}`;
     for (const o of racers()) {
       if (o === r || o.done || o.rescue > 0 || o.hyper > 0) continue;
@@ -503,12 +549,13 @@ function useItem(r) {
   }
   if (it === "arm") {
     const leader = racers().filter(o => o !== r && !o.done).sort((a, b) => progOf(b) - progOf(a))[0];
-    if (leader) { ARMS.push({ tgt: leader, t: 2.6, by: r }); armCD = 20; }
+    if (leader) { ARMS.push({ tgt: leader, t: 2.6, by: r }); armCD = 20; if (r === K && mpOn()) mpSend("it", { k: "arm", tgt: leader.name }); }
   }
   if (r === K) itemSound();
 }
 // one computer racer: follows the road in its own lane, dodges slime puddles, keeps races close (rubber band), uses items
 function rivalStep(r, dt, tt) {
+  if (r.remote) { remoteStep(r, dt); return; }
   if (rescueStep(r, dt)) return;
   const near = nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
@@ -582,7 +629,7 @@ function worldStep(dt, tt) {
         if (!K.item && K.roll <= 0) { K.roll = 1.1; K.pending = rollItem(K); boxSound(); }
         else if (!K.item2 && !(K.roll2 > 0)) { K.roll2 = 1.1; K.pending2 = rollItem(K); boxSound(); }   // a second item waits in the small slot
       }
-      else if (!r.item && !(r.noItem > 0) && Math.random() < DIFF().pick) { r.item = rollItem(r, true); r.itemN = r.item === "triple" ? 3 : 0; r.itemT = 1.5 + Math.random() * 3; r.holding = HOLDABLE(r.item); }
+      else if (!r.remote && !r.item && !(r.noItem > 0) && Math.random() < DIFF().pick) { r.item = rollItem(r, true); r.itemN = r.item === "triple" ? 3 : 0; r.itemT = 1.5 + Math.random() * 3; r.holding = HOLDABLE(r.item); }
       break;
     }
   }
@@ -616,7 +663,9 @@ function worldStep(dt, tt) {
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {   // karts bump each other
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
     if (d > 0 && d < 15 && Math.abs(a.z - b.z) < 12) {
-      const push = (15 - d) / 2, nx = dx / d, ny = dy / d; a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push;
+      const push = (15 - d) / 2, nx = dx / d, ny = dy / d;
+      if (a.remote || b.remote) { const s2 = a === K ? -1 : 1; K.x += nx * push * 2 * s2; K.y += ny * push * 2 * s2; }   // you can only move yourself
+      else { a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
       const fast = a.v > b.v ? a : b; fast.v *= .9;
       if ((a.hyper > 0) !== (b.hyper > 0)) { const v = a.hyper > 0 ? b : a; hit(v, "💪 Rammed by Hyper Body!"); if (v.spin > 0) { v.v *= .4; if (v === K || a === K || b === K) slamSound(0); } }
       else if ((a.small > 0) !== (b.small > 0)) { const tiny = a.small > 0 ? a : b; hit(tiny, "👟 Flattened!"); tiny.squash = .8; }
@@ -631,7 +680,7 @@ let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack }) : null;
 function freshKart() {
-  const g = gridSpot(4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
+  const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
     t: 0, lapStart: 0, laps: [], wrong: 0, prog: 0, off: false, bump: 0, z: 0, vz: 0, trick: false, flip: 0, spin: 0, inv: 0, squash: 0,
     shake: 0, stall: 0, mesos: 0, held: null, lastPad: null, prevDrift: false, prevItem: false, kingWas: 0 };
@@ -877,7 +926,7 @@ function render() {
     if (sx < -80 || sx > W + 80) return;
     vis.push({ fz, sx, draw });
   };
-  for (const r of RIV) addDraw(r.x, r.y, (sx, gy, sc, fz) => drawRival(r, sx, gy, sc, fz));
+  for (const r of RIV) if (!r.gone) addDraw(r.x, r.y, (sx, gy, sc, fz) => drawRival(r, sx, gy, sc, fz));
   if (mode !== "tt") for (const b of BOXES) if (b.t <= 0) addDraw(b.x, b.y, (sx, gy, sc) => drawBox(sx, gy, sc, tt));
   if (mode === "tt" && topGhost && state !== "menu") {   // 🏆 the guild's #1, see-through and gold
     const gs = ghostAt(K.t, topGhost.data);
@@ -1145,6 +1194,12 @@ function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
   const rot = upright(); $k("#kRotate").hidden = !rot; $k("#kFull").hidden = !wantFull();
   if (TEX && K && state !== "loading") { if (!rot) step(dt); render(); hud(); engine(); }
+  if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 80) {
+    MP.sendAt = now; const k = K;
+    mpSend("p", { x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(3), v: Math.round(k.v), z: Math.round(k.z), s: +k.steer.toFixed(2), sp: k.spin > 0 ? +k.spin.toFixed(2) : 0,
+      sm: k.small > 0 ? 1 : 0, hy: k.hyper > 0 ? 1 : 0, ex: Math.round(k.extra || 0), sq: k.squash > 0 ? 1 : 0, lap: k.lap, cps: k.cps, idx: k.idx, ho: k.holding ? 1 : 0, it: k.holding ? k.item : null,
+      ik: k.ink > 0 ? 1 : 0, dn: state === "done" ? 1 : 0, ft: state === "done" ? Math.round(k.laps.reduce((a, b) => a + b, 0)) : 0 });
+  }
   raf = requestAnimationFrame(loop);
 }
 let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
@@ -1154,13 +1209,14 @@ async function start() {
   if (n.length < 2) { $k("#kErr").textContent = "Type your character name first."; return; }
   $k("#kErr").textContent = "";
   const g = guildOf(n); me = g ? g.name : n; if (g) store.set("family_me", g.name);
+  if (mode === "mp") { if (!MP.code) return; me = MP.me; MP.finished = false; MP.results = null; }
   try { best = JSON.parse(store.get(bestKey())) || null; } catch (e) { best = null; }
   $k("#kMenu").hidden = true; $k("#kResult").hidden = true; $k("#kGame").hidden = false;
   $k("#kart").classList.add("racing"); document.body.classList.add("bd-playing");
   window.getAC && window.getAC(); fullTries = 0; goLandscape();
   state = "loading";
   if (mode === "gp" && (!gp || gp.over)) gp = { race: 1, names: null, pts: {} };
-  const key = mode === "gp" ? CUP[gp.race - 1] : track;
+  const key = mode === "gp" ? CUP[gp.race - 1] : mode === "mp" ? MP.track : track;
   if (!assetsReady || TRACK_KEY !== key) { $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); $k("#kLoad").hidden = true; }
   IMG.me = await loadImg(spriteOf(me)); if (!alive()) return; fit();
   
@@ -1173,16 +1229,17 @@ async function start() {
   if (mode === "tt") fetchTop();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   await waitLandscape(); if (!alive() || state !== "wait") return; fit(); state = "count";
-  countAt = performance.now(); COINS.forEach(c => c.got = false);
-  for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) setTimeout(() => { if (alive() && state === "count") { flash(t, 900); beep(440); } }, d);
+  const goIn = mode === "mp" ? Math.max(0, MP.goAt - performance.now()) : 3000;   // a room race starts at the server's time
+  countAt = performance.now() + goIn - 3000; COINS.forEach(c => c.got = false);
+  for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) if (goIn - 3000 + d >= 0) setTimeout(() => { if (alive() && state === "count") { flash(t, 900); beep(440); } }, goIn - 3000 + d);
   setTimeout(() => {
     if (!alive() || state !== "count") return; state = "race"; beep(880);
     const h = K.held;
     if (h != null && h >= 950) { giveBoost(K, 1.2, 110); flash("🚀 ROCKET START!", 1000); }
     else if (h != null) { K.stall = .9; flash("💨 Too early!", 1000); bumpSound(); }
     else flash("GO!", 900);
-    RIV.forEach(r => { if (Math.random() < .35) giveBoost(r, 1, 90); });
-  }, 3000);
+    RIV.forEach(r => { if (!r.remote && Math.random() < .35) giveBoost(r, 1, 90); });
+  }, goIn);
 }
 let assetsReady = false;
 async function prepare() {
@@ -1197,6 +1254,7 @@ async function prepare() {
 const ordinal = n => n + (["", "st", "nd", "rd"][n] || "th");
 let TRACK_LEN = 0;
 function finish() {
+  if (mode === "mp") return mpFinish();
   const k = K; state = "done"; B.musicRate(1);
   if (!TRACK_LEN) for (let i = 0; i < N; i++) TRACK_LEN += Math.hypot(PTS[(i + 1) % N][0] - PTS[i][0], PTS[(i + 1) % N][1] - PTS[i][1]);
   const total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
@@ -1243,6 +1301,125 @@ function finish() {
       el.innerHTML = r.r === "ok" ? `🏆 You're <b>#${r.rank}</b> on the guild board` : r.r === "laps" ? "That time looks impossible, so it wasn't saved 🤔" : r.r === "dev" ? "(test race, not saved)" : "Couldn't save your time this time."; });
   }, 1400);
 }
+function mpFinish() {
+  const k = K; state = "done"; B.musicRate(1); MP.finished = true;
+  const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
+  B.sound(place <= 3 ? "win" : "lose"); flash(place === 1 ? "🏆 1st PLACE!" : "🏁 FINISH!", 1600);
+  B.client().then(sb => sb && sb.rpc("kart_room_finish", { p_code: MP.code, p_tok: MP.token, p_ms: total })).then(() => mpPoll());
+  const my = raceId;
+  setTimeout(() => { if (my === raceId && state === "done" && !MP.results) mpShowWaiting(total); }, 1400);
+}
+function mpShowWaiting(total) {
+  const rows = racers().slice().sort((a, b) => progOf(b) - progOf(a));
+  $k("#kResult").innerHTML = `<h3>🏁 ${fmt(total)}</h3><p class="k-diff">Waiting for the others to finish… (at most 60 s)</p>
+    <table class="k-table">${rows.map((r, i) => `<tr class="${r === K ? "you" : ""}"><td>${ordinal(i + 1)}</td><td><img src="${spriteOf(r === K ? me : r.name)}" alt=""></td><td>${esc(r === K ? me : r.name)}</td>
+    <td>${r === K ? fmt(total) : r.done ? fmt(r.finishT) : "racing…"}</td></tr>`).join("")}</table>`;
+  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
+}
+function mpShowResults(res) {
+  if (state !== "done" || !res) return;
+  const mine = res.find(r => r.name === MP.me);
+  $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
+    <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[MP.track].name)}</p>
+    <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${spriteOf(r.name)}" alt=""></td><td>${esc(r.name)}</td>
+      <td>${r.ms ? fmt(r.ms) : "DNF"}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
+    <p class="k-rank">Points go on the guild 🏆 Points board (guild members only).</p>
+    <div class="row"><button class="sk-btn bd-play" data-a="room">👥 Back to the room</button></div>`;
+  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
+  if (mine && mine.place <= 3) confetti();
+}
+// ----- rooms: create / join / poll / start / leave
+const roomFromHash = () => { const m = location.hash.match(/^#kart\/([A-Z0-9]{4,8})$/); return m ? m[1] : null; };
+async function mpJoin(code) {
+  const n = $k("#kName").value.trim().slice(0, 20);
+  if (n.length < 2) { $k("#kErr").textContent = "Type your character name first, then join."; return; }
+  const sb = await B.client(); if (!sb) { $k("#kErr").textContent = "Multiplayer needs the database connection."; return; }
+  code = code.toUpperCase(); const g = guildOf(n), nm = g ? g.name : n;
+  let tok = null; try { tok = store.get("kart_room_tok:" + code); } catch (e) {}
+  const { data, error } = await sb.rpc("kart_room_join", { p_code: code, p_name: nm, p_tok: tok });
+  if (error || !data) { $k("#kErr").textContent = "Couldn't reach the room, try again."; return; }
+  const why = { name: "Type your name first.", taken: "Someone in that room already has your name.", full: "That room is full (8 players).",
+    running: "That room is racing right now. Try again when the race ends.", busy: "Too many rooms right now, try again soon.", code: "That room code doesn't look right." }[data.r];
+  if (why) { $k("#kErr").textContent = why; return; }
+  $k("#kErr").textContent = "";
+  store.set("kart_room_tok:" + code, data.token);
+  Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null });
+  if (MP.ch) sb.removeChannel(MP.ch);
+  MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
+    .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
+    .on("broadcast", { event: "go" }, () => mpPoll())
+    .subscribe();
+  if (location.hash !== "#kart/" + code) history.replaceState(null, "", "#kart/" + code);
+  clearInterval(MP.poll); MP.poll = setInterval(mpPoll, 1500); await mpPoll(true);
+}
+async function mpPoll(first) {
+  if (!MP.code || MP.polling) return; MP.polling = true;
+  try {
+    const sb = await B.client(); const { data } = await sb.rpc("kart_room_state", { p_code: MP.code, p_tok: MP.token });
+    if (!data) return;
+    if (data.r === "gone") { mpLeave(true); $k("#kErr").textContent = "You left that room."; return; }
+    Object.assign(MP, { host: data.host, players: data.players || [], status: data.status, track: data.track });
+    MP.slot = Math.max(0, MP.players.findIndex(p => p.name === MP.me));
+    if (first) MP.raceNo = data.status === "racing" ? data.race_no : data.race_no;   // don't jump into a race that's already running
+    if (data.status === "racing" && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in > -4) {
+      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null;
+      if (mode !== "mp") { mode = "mp"; drawMode(); }
+      start();
+    }
+    if (data.status === "lobby" && data.results && MP.finished && !MP.results) { MP.results = data.results; mpShowResults(data.results); loadBoard(); }
+    if (!$k("#kMenu").hidden) drawRoom();
+  } finally { MP.polling = false; }
+}
+async function mpStart() {
+  const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: track });
+  if (!data || data.r !== "ok") { $k("#kErr").textContent = { few: "You need at least 2 players to start.", host: "Only the host can start.", running: "Already racing!" }[data && data.r] || "Couldn't start, try again."; return; }
+  MP.ch && MP.ch.send({ type: "broadcast", event: "go", payload: {} });
+  mpPoll();
+}
+async function mpLeave(silent) {
+  const sb = await B.client();
+  if (MP.code && !silent) { sb.rpc("kart_room_leave", { p_code: MP.code, p_tok: MP.token }); try { store.del("kart_room_tok:" + MP.code); } catch (e) {} }
+  clearInterval(MP.poll); if (MP.ch) sb.removeChannel(MP.ch);
+  Object.assign(MP, { code: null, token: null, ch: null, players: [], host: null, status: null });
+  if (location.hash.startsWith("#kart/")) history.replaceState(null, "", "#kart");
+  drawRoom();
+}
+function drawRoom() {
+  const box = $k("#kRoomBox"); box.hidden = mode !== "mp";
+  if (mode !== "mp") return;
+  const host = MP.host === MP.me;
+  $k("#kGo").hidden = !MP.code || !host;
+  $k("#kTrackPick").hidden = !MP.code || !host;
+  if (!MP.code) {
+    box.innerHTML = `<button class="sk-btn sk-private" id="kCreate">➕ Create a room</button>
+      <div class="kt-join"><input id="kCode" placeholder="Room code" maxlength="8" autocapitalize="characters"><button class="sk-small" id="kJoin">Join</button></div>
+      <p class="kt-modenote">Rooms are for 2–8 players. Whoever enters first is the host 👑 and starts the race.</p>`;
+    return;
+  }
+  const link = location.href.split("#")[0] + "#kart/" + MP.code;
+  box.innerHTML = `<div class="kt-roomhead"><b>👥 Room ${MP.code}</b> · ${MP.players.length}/8 · ${esc(TRACKS[MP.track] ? TRACKS[MP.track].name : "")}</div>
+    <div class="bd-inv"><input id="kInvite" readonly value="${esc(link)}"><button class="sk-small" id="kCopy">Copy</button></div>
+    <div class="kt-plist">${MP.players.map(p => `<div class="kt-pl${p.name === MP.me ? " me" : ""}"><img src="${spriteOf(p.name)}" alt=""><b>${esc(p.name)}</b>${p.name === MP.host ? " 👑" : ""}</div>`).join("")}</div>
+    <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? "Waiting for at least one more player… share the link!" : "You're the host 👑: pick a track and start!") : `Waiting for ${esc(MP.host || "the host")} 👑 to start…`}</p>
+    <button class="sk-small" id="kRoomLeave">🚪 Leave the room</button>`;
+  $k("#kGo").textContent = "🏁 Start the race!"; $k("#kGo").disabled = MP.players.length < 2;
+}
+$k("#kRoomBox").addEventListener("click", e => {
+  if (e.target.id === "kCreate") mpJoin(Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join(""));
+  if (e.target.id === "kJoin") { const c = ($k("#kCode").value || "").trim().toUpperCase(); if (c) mpJoin(c); }
+  if (e.target.id === "kRoomLeave") mpLeave();
+  if (e.target.id === "kCopy") { const i = $k("#kInvite"); i.select(); try { navigator.clipboard.writeText(i.value); } catch (er) { document.execCommand("copy"); } e.target.textContent = "Copied!"; setTimeout(() => e.target.textContent = "Copy", 1200); }
+});
+function hashRoom() {
+  const c = roomFromHash(); if (!c) return;
+  document.querySelectorAll("section").forEach(sec => sec.classList.toggle("on", sec.id === "kart"));
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#kart"));
+  if (mode !== "mp") { mode = "mp"; drawMode(); drawTrack(); }
+  if (MP.code !== c) { if ($k("#kName").value.trim().length >= 2) mpJoin(c); else $k("#kErr").textContent = `Type your name, then press Join to enter room ${c}.`, drawRoom(), $k("#kCode") && ($k("#kCode").value = c); }
+}
+addEventListener("hashchange", hashRoom);
+setTimeout(hashRoom, 60);
 // the Grand Prix podium: top 3 on the steps, a trophy for you, confetti
 function podium() {
   const order = Object.entries(gp.pts).sort((a, b) => b[1] - a[1]), myPlace = order.findIndex(([n]) => n === me) + 1;
@@ -1272,8 +1449,18 @@ async function submit(laps) {
   const { data } = await sb.rpc("kart_submit", { p_track: TRACK_ID, p_name: me, p_laps: laps.map(Math.round), p_ghost: JSON.stringify(ghostRec) });
   loadBoard(); return data;
 }
+let boardView = "time";   // the guild board shows Time Trial times by default; Points (from multiplayer races) on request
 async function loadBoard() {
   const sb = await B.client(); if (!sb) return;
+  document.querySelectorAll("#kBoardTabs [data-b]").forEach(b => b.classList.toggle("on", b.dataset.b === boardView));
+  if (boardView === "points") {
+    $k("#kBoardHead").textContent = "🏆 Points · multiplayer races";
+    const { data } = await sb.from("kart_points").select("player,points,races,wins").order("points", { ascending: false }).order("wins", { ascending: false }).limit(10);
+    $k("#kBoard").innerHTML = (data || []).length ? data.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>
+      <span>${r.points} pts</span><small>${r.wins} 🥇 · ${r.races} races</small></li>`).join("") : `<p class="bd-none">No points yet. Win a multiplayer race to get on the board!</p>`;
+    return;
+  }
+  $k("#kBoardHead").textContent = `⏱️ Times · ${TRACKS[mode === "gp" ? "henesys" : track].name} (Time Trial)`;
   const { data } = await sb.from("kart_times").select("player,race_ms,lap_ms").eq("track", TRACKS[mode === "gp" ? "henesys" : track].id).order("race_ms").limit(10);
   if (mode === "tt") $k("#kModeNote").textContent = data && data[0] ? `You'll race 🏆 ${data[0].player}'s ghost (${fmt(data[0].race_ms)}), the guild record. Only Time Trial times go on the board.`
     : "Alone with 3 Elixirs. No guild record yet on this track: set the first one and everyone will race your ghost!";
@@ -1287,24 +1474,27 @@ function showBest() {
   let b = null; try { b = JSON.parse(store.get(key)); } catch (e) {}
   $k("#kMine").innerHTML = b && b.race ? `🏆 Your best: race <b>${fmt(b.race)}</b> · lap <b>${fmt(b.lap)}</b>` : "No time yet on this track. Go set one!";
 }
-$k("#kGo").onclick = start;
+$k("#kGo").onclick = () => mode === "mp" ? mpStart() : start();
 function drawTrack() {
   const t = TRACKS[mode === "gp" ? "henesys" : track];
-  $k("#kTrackPick").hidden = mode === "gp";
+  $k("#kTrackPick").hidden = mode === "gp" || (mode === "mp" && (!MP.code || MP.host !== MP.me));
   document.querySelectorAll("#kTrackPick [data-t]").forEach(b => b.classList.toggle("on", b.dataset.t === track));
   $k("#kTrackCard").innerHTML = mode === "gp" ? `<b>🏆 Henesys Cup</b><small>${CUP.map(c => TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}</small>`
     : `<b>${t.icon} ${t.name}</b><small>3 laps · ${t.sub}</small>`;
   $k("#kBoardName").textContent = t.name;
   showBest(); loadBoard();
 }
+$k("#kBoardTabs").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (!b) return; boardView = b.dataset.b; loadBoard(); });
 $k("#kTrackPick").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; track = b.dataset.t; store.set("kart_track", track); drawTrack(); });
 function drawMode() {
   document.querySelectorAll("#kMode [data-m]").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
-  $k("#kDiff").hidden = mode === "tt"; $k("#kGo").textContent = { gp: "🏆 Start the Henesys Cup!", race: "🏁 Start race!", tt: "⏱️ Start Time Trial!" }[mode];
-  $k("#kModeNote").textContent = { gp: "3 races against the same 7 rivals: 10-8-6-4-3-2-1-0 points, then the podium.", race: "One race against 7 guild members.",
-    tt: "Alone with 3 Elixirs against your ghost. Only Time Trial times go on the guild board." }[mode];
+  $k("#kDiff").hidden = mode === "tt" || mode === "mp"; $k("#kGo").textContent = { gp: "🏆 Start the Henesys Cup!", race: "🏁 Start race!", tt: "⏱️ Start Time Trial!", mp: "🏁 Start the race!" }[mode];
+  $k("#kGo").hidden = false; $k("#kGo").disabled = false;
+  $k("#kModeNote").textContent = { gp: "3 races against the same 7 computer rivals (cup points only, nothing on the board).", race: "One race against 7 computer rivals (no board points).",
+    tt: "Alone with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race real guild members live. Multiplayer races are the only way to earn 🏆 board points." }[mode];
+  drawRoom();
 }
-$k("#kMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; mode = b.dataset.m; store.set("kart_mode", mode); gp = null; drawMode(); drawTrack(); });
+$k("#kMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; if (mode === "mp" && b.dataset.m !== "mp" && MP.code) mpLeave(); mode = b.dataset.m; store.set("kart_mode", mode); gp = null; drawMode(); drawTrack(); });
 drawMode(); drawTrack();
 function drawDiff() { document.querySelectorAll("#kDiff [data-d]").forEach(b => b.classList.toggle("on", b.dataset.d === diff)); }
 $k("#kDiff").addEventListener("click", e => { const b = e.target.closest("[data-d]"); if (!b) return; diff = b.dataset.d; store.set("kart_diff", diff); drawDiff(); });
@@ -1320,6 +1510,7 @@ $k("#kResult").addEventListener("click", e => {
   if (a.dataset.a === "next") { gp.race++; start(); }
   if (a.dataset.a === "podium") podium();
   if (a.dataset.a === "back") { gp = null; quit(); }
+  if (a.dataset.a === "room") quit();
 });
 const syncMusicBtn = () => { $k("#kMusic").textContent = B.musicOn && B.musicOn() ? "🔊" : "🔇"; };
 $k("#kMusic").onclick = () => { B.toggleMusic(); syncMusicBtn(); };

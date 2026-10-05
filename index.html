@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=12">
+<link rel="stylesheet" href="kart.css?v=13">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -495,8 +495,9 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="sk-panel">
       <div class="sk-name"><input id="kName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go"></div>
       <div class="kt-track"><img src="media/duel/bg_henesys.webp?v=9" alt=""><div id="kTrackCard"></div></div>
-      <div class="kt-modes" id="kMode"><button type="button" data-m="gp">🏆 Grand Prix</button><button type="button" data-m="race">🏁 Race</button><button type="button" data-m="tt">⏱️ Time Trial</button></div>
+      <div class="kt-modes" id="kMode"><button type="button" data-m="gp">🏆 Grand Prix</button><button type="button" data-m="race">🏁 Race</button><button type="button" data-m="tt">⏱️ Time Trial</button><button type="button" data-m="mp">👥 Multiplayer</button></div>
       <div class="kt-modenote" id="kModeNote"></div>
+      <div class="kt-room" id="kRoomBox" hidden></div>
       <div class="kt-trackpick" id="kTrackPick"><button type="button" data-t="henesys">🍄 Loop</button><button type="button" data-t="town">🏘️ Town Run</button><button type="button" data-t="forest">🌲 Forest</button></div>
       <div class="kt-diff" id="kDiff"><span>Rivals:</span><button type="button" data-d="easy">🌱 Easy</button><button type="button" data-d="normal">🏁 Normal</button><button type="button" data-d="hard">🔥 Hard</button></div>
       <div class="kt-mine" id="kMine"></div>
@@ -518,7 +519,9 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <p>🟨 Boost arrows · 🟦 ramps (tap Drift in the air for a trick boost) · 🪙 mesos raise your top speed.
         ⚠️ Slime puddles, wandering pigs, rocky patches and the stomping <b>King Slime</b>.</p>
       <p>⌨️ Computer: <b>← →</b> steer, <b>Space</b> drift, <b>↑</b> use item, <b>↓</b> brake. 📱 Phone: joystick, item, Brake and Drift.</p>
-      <h3>🏆 Guild board · <span id="kBoardName">Henesys Loop</span> <small style="font-weight:500;color:var(--muted)">(Time Trial)</small></h3>
+      <h3>🏆 Guild board</h3>
+      <div class="kt-boardtabs" id="kBoardTabs"><button type="button" data-b="time">⏱️ Times</button><button type="button" data-b="points">🏆 Points</button></div>
+      <div class="kt-boardhead" id="kBoardHead"></div><span id="kBoardName" hidden></span>
       <ol class="dboard kt-board" id="kBoard"></ol>
       <p class="kt-soon">🚧 More tracks coming: El Nath, Ludibrium, Sleepywood and Zakum.</p>
     </div>
@@ -868,7 +871,7 @@ show();
 <script src="duel-songs.js?v=2"></script>
 <script src="duel.js?v=31"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=37"></script>
+<script src="kart.js?v=38"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>
