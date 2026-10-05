@@ -509,9 +509,10 @@ function loadTrack(key) {
   OUT = T.theme.out ? hexABGR(T.theme.out) : OUT0; HAZE = T.theme.haze || HAZE0;
   const F = OPEN ? (fr => Math.round(Math.max(0, Math.min(1, fr)) * (N - 1))) : (fr => Math.round((((fr % 1) + 1) % 1) * N) % N);
   const f = T.build(F);
-  if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key], w = T.cup === "zakum" ? 48 : 54;   // 🔀 the other maps' short cuts: a few S-bends, one thing to dodge, two boosts
+  if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key], w = 46;   // 🔀 the other maps' short cuts: each its own shape, one thing to dodge, two boosts
     const dodge = { sleepy: "mud", elnath: "ice", ludi: "slime", zakum: "rock" }[T.cup] || "rock";
-    f.fork = { a, b, via: zigzag(a, b, via, w), width: w, style: T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble", coins: true,
+    const ww = SHORTCUTS[key][3] === "straight" ? 40 : 46;
+    f.fork = { a, b, via, width: ww, style: T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble", coins: true,
       pads: [{ t: "rock", j: .28, len: 7, o: w / 4, w: w / 2 }, { t: "boost", j: .45, len: 5, o: 0, w: w * .7 }, { t: dodge, j: .63, len: 7, o: -w / 4, w: w / 2 }, { t: "boost", j: .84, len: 5, o: 0, w: w * .8 }] }; }   // every other map gets a short cut where its road loops back near itself
   if (f.fork) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
@@ -525,25 +526,59 @@ function loadTrack(key) {
   paintTrack(); placeObjects(); if (MECH === "lava") lavaMap();
 }
 
-// 🔀 each map's short cut: [from track point, to track point, the two bends in between]. Found with autoFork below (run it again with
-// __kart.autoFork() on localhost if a track's shape ever changes). Zakum's zig-zag climbs (zk1, zk3) have no room for one.
-const SHORTCUTS = { en1: [271, 501, [[1310, 609], [1323, 903]]], en2: [211, 473, [[1183, 528], [1429, 792]]], en3: [57, 277, [[542, 698], [851, 614]]],
-  sw1: [219, 437, [[1275, 388], [1441, 578]]], sw2: [349, 575, [[1254, 513], [1359, 783]]], sw3: [223, 427, [[1434, 492], [1528, 728]]],
-  zk2: [1104, 1294, [[648, 741], [701, 1038]]], ld1: [59, 299, [[610, 808], [944, 657]]], ld2: [839, 1111, [[1175, 1020], [1032, 1170]]], ld3: [111, 341, [[897, 524], [1228, 655]]] };
-// the short cut's line turned into tight S-bends (each bend pushed sideways as far as it can go without coming near the main road)
-function zigzag(a, b, via, w) {
-  const poly = [PTS[a], ...via, PTS[b]], seg = [], out = []; let tot = 0;
+// 🔀 each map's short cut, every one a different shape: [from track point, to track point, its bends, the shape]. Each was placed where that
+// shape fits at full size with grass + curbs between it and the road (found with __kart.findShape(kind, width) on localhost; run again if a track changes).
+const SHORTCUTS = {
+  en1: [502, 721, [[1328, 1291], [1356, 1366], [1319, 1446], [1355, 1540]], "camel"],
+  en2: [544, 775, [[1151, 1014], [1091, 1096], [1059, 1187], [1055, 1288]], "arc"],
+  en3: [616, 760, [[1624, 560], [1681, 493], [1727, 490], [1786, 527]], "bulge"],
+  sw1: [283, 460, [[1373, 278], [1412, 375], [1374, 471], [1413, 568], [1374, 665], [1413, 761]], "slalom"],
+  sw2: [142, 283, [[753, 741], [772, 723], [887, 723], [906, 705], [910, 590], [928, 572]], "zigzag"],
+  sw3: [670, 820, [[1431, 1459], [1416, 1498], [1430, 1607], [1473, 1638], [1488, 1747], [1475, 1786]], "steps"],
+  zk1: [137, 275, [[1651, 1803], [1526, 1705]], "scurve"],
+  zk2: [1088, 1289, [[636, 550], [671, 630], [641, 712], [676, 792], [646, 874], [681, 954], [651, 1036], [686, 1116], [656, 1198]], "snake"],
+  zk3: [1334, 1424, [[1832, 540], [1800, 453], [1830, 388]], "swoop"],
+  ld1: [115, 334, [[505, 624], [588, 628], [675, 610], [757, 615], [832, 658], [907, 702], [990, 707], [1077, 688], [1159, 693]], "wave"],
+  ld2: [859, 1078, [], "straight"],
+  ld3: [388, 565, [[1227, 948], [1238, 1026], [1185, 1096], [1199, 1195]], "camel"] };
+// every short cut has its own shape: offsets sideways from the short cut's centre line, at fractions u of its length.
+// "f" offsets are a fraction of the length (big sweeps), plain numbers are world units (small, sharp moves).
+const SHORTCUT_SHAPE = { en1: "arc", en2: "chicane", en3: "slalom", sw1: "scurve", sw2: "zigzag", sw3: "dogleg", zk2: "straight", ld1: "bulge", ld2: "wave", ld3: "steps" };
+const SHAPES = {
+  arc: { f: 1, pts: [[.2, .1], [.4, .16], [.6, .16], [.8, .1]] },                      // one big sweeping curve
+  chicane: { pts: [[.38, 0], [.46, 46], [.54, -46], [.62, 0]] },                         // straight, a sharp left-right jink, straight
+  slalom: { pts: [[.15, 24], [.29, -24], [.43, 24], [.57, -24], [.71, 24], [.85, -24]] }, // lots of small wiggles
+  scurve: { f: 1, pts: [[.3, .12], [.7, -.12]] },                                          // one long S
+  zigzag: { pts: [[.22, 40], [.28, 40], [.47, -40], [.53, -40], [.72, 40], [.78, 40]] },   // sharp corners (pairs of points make the corners crisp)
+  dogleg: { f: 1, pts: [[.5, 0], [.68, .1], [.84, .1]] },                                  // straight, then it bends away near the end
+  straight: { pts: [] },                                                                     // a narrow plank bridge, dead straight
+  bulge: { f: 1, pts: [[.25, .05], [.45, .2], [.58, .18], [.72, .04]] },                   // swings wide on one side, lopsided
+  wave: { pts: [.1, .2, .3, .4, .5, .6, .7, .8, .9].map(u => [u, 30 * Math.sin(u * Math.PI * 4)]) },   // a long rolling wave
+  steps: { pts: [[.2, 0], [.27, 34], [.48, 34], [.55, -30], [.76, -30], [.83, 0]] },       // side-steps, like a staircase
+  kink: { pts: [[.42, 0], [.49, 40], [.53, 40], [.6, 0]] },                                // one sharp bump
+  camel: { f: 1, pts: [[.22, .09], [.38, .02], [.56, .09], [.76, 0]] },                   // two humps on the same side
+  snake: { pts: [.12, .21, .3, .39, .48, .57, .66, .75, .84].map((u, i) => [u, i % 2 ? -16 : 16]) },   // lots of tiny wiggles
+  swoop: { f: 1, pts: [[.25, -.06], [.55, .14], [.8, .05]] },                              // dips one way, then swings wide the other
+};
+function shapeCut(a, b, via, w, kind) {
+  const poly = [PTS[a], ...via, PTS[b]], seg = []; let tot = 0;
   for (let q = 1; q < poly.length; q++) { const d = Math.hypot(poly[q][0] - poly[q - 1][0], poly[q][1] - poly[q - 1][1]); seg.push(d); tot += d; }
   const P = u => { let d = u * tot, q = 0; while (q < seg.length - 1 && d > seg[q]) { d -= seg[q]; q++; } const A = poly[q], B2 = poly[q + 1], f = Math.min(1, d / seg[q]);
     return [A[0] + (B2[0] - A[0]) * f, A[1] + (B2[1] - A[1]) * f, Math.atan2(B2[1] - A[1], B2[0] - A[0])]; };
-  const n = Math.max(3, Math.min(5, Math.round(tot / 170))), need = ROAD / 2 + CURB + w / 2 + 4;   // a few soft S-bends
-  for (let k = 1; k <= n; k++) {
-    const [x, y, ang] = P(k / (n + 1)), nx = -Math.sin(ang), ny = Math.cos(ang), side = k % 2 ? 1 : -1;
-    let pt = [x, y];
-    for (const amp of [30, 22, 14]) { const c = [x + nx * amp * side, y + ny * amp * side]; if (nearest(c[0], c[1]).d >= need) { pt = c; break; } }
-    out.push(pt);
-  }
-  return out;
+  const S = SHAPES[kind] || SHAPES.scurve, need = ROAD / 2 + CURB + w / 2 + 4, roadLen = (b - a + 20) * SPC;
+  const build = (side, k) => S.pts.map(([u, off]) => { const [x, y, ang] = P(u), o = (S.f ? off * tot : off) * side * k; return [x - Math.sin(ang) * o, y + Math.cos(ang) * o]; });
+  const fits = pts => { const all = [PTS[a], ...pts, PTS[b]]; let len = 0;
+    for (let q = 1; q < all.length; q++) len += Math.hypot(all[q][0] - all[q - 1][0], all[q][1] - all[q - 1][1]);
+    let walked = 0;
+    for (let q = 1; q < all.length; q++) { const d = Math.hypot(all[q][0] - all[q - 1][0], all[q][1] - all[q - 1][1]);
+      for (let s2 = 0; s2 < d; s2 += 20) { const t = s2 / d, at2 = walked + s2; if (at2 < 110 || at2 > len - 110) continue;   // the whole line every 20 units (its two ends join the road, of course)
+        const x = all[q - 1][0] + (all[q][0] - all[q - 1][0]) * t, y = all[q - 1][1] + (all[q][1] - all[q - 1][1]) * t;
+        if (nearest(x, y).d < need || x < 60 || y < 60 || x > WORLD - 60 || y > WORLD - 60) return false; }
+      walked += d; }
+    return roadLen - len * 1.08 > 320; };   // (the spline is a little longer than the straight pieces) still worth taking
+  if (shapeCut.search) { for (const k of [1, .8, .6, .45]) for (const side of [1, -1]) { const pts = build(side, k); if (fits(pts)) { shapeCut.k = k; return pts; } } return null; }   // (searching: the biggest size that fits)
+  for (let k = 1; k > .15; k *= .8) for (const side of [1, -1]) { const pts = build(side, k); if (fits(pts)) return pts; }
+  return via;   // nothing fitted: keep the plain short cut
 }
 // a short cut for a map that doesn't have one: where the road loops back near itself, a narrow path across saves real time
 // (35-60% of that stretch). Its line must stay well clear of every other part of the road (and of water). Over lava it's a plank bridge.
@@ -1313,7 +1348,11 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), get floorMs() { return floorMs; } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
+    for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
+      const A = PTS[a], Bp = PTS[b], dl = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), dt = (b - a) * SPC; if (dl < 260 || dl > 1100 || dt - dl < 450 || dt - dl > 1100) continue;
+      const pts = shapeCut(a, b, [], w, kind); if (!pts) continue; const score = shapeCut.k * 2000 - Math.abs(dt - dl - 750); if (!best || score > best.score) best = { a, b, pts: pts.map(p => p.map(Math.round)), score, k: shapeCut.k }; }
+    shapeCut.search = false; return best; }, get floorMs() { return floorMs; } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
