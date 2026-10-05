@@ -1931,7 +1931,7 @@ function mpShowResults(res) {
     <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[String(MP.track).split("@")[0]] ? TRACKS[String(MP.track).split("@")[0]].name : "")} · ${CCS[raceCC].label}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${spriteOf(r.name)}" alt=""></td><td>${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
-    <p class="k-rank">Board points go to guild members only.</p>
+    <p class="k-rank">${res[0] && res[0].counted === false ? `⚠️ Only races with 4 or more racers count: no points or times saved this time (${res[0].n} racers).` : "🏆 Points and times saved (guild members only)."}</p>
     <div id="kNext">${mpNextHtml()}</div>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide"); chatMount($k("#kResult"));
   if (mine && mine.place <= 3) confetti();
@@ -2037,7 +2037,7 @@ function drawRoom() {
     box.innerHTML = `<div class="kt-create"><button class="sk-btn bd-play" id="kCreatePub">🌍 Public room</button><button class="sk-btn sk-private" id="kCreate">🔒 Private room</button></div>
       <div class="kt-open"><b>🌍 Open rooms</b><div id="kOpenRooms">${openRoomsHtml()}</div></div>
       <div class="kt-join"><input id="kCode" placeholder="Private room code" maxlength="8" autocapitalize="characters"><button class="sk-small" id="kJoin">Join</button></div>
-      <p class="kt-modenote">Public rooms show up in the list for everyone, private rooms are joined with their link or code. 2–8 players; whoever enters first is the host 👑.</p>`;
+      <p class="kt-modenote">Public rooms show up in the list for everyone, private rooms are joined with their link or code. 2–8 players; whoever enters first is the host 👑. Points and race times only count with 4 or more racers.</p>`;
     loadOpenRooms();
     return;
   }
@@ -2050,6 +2050,7 @@ function drawRoom() {
     ${!host && MP.status !== "racing" ? readyBtn(R.mine) : ""}
     ${!host && MP.status !== "racing" ? `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the race</b>
       <small>Next up: ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</small></div></div>` : ""}
+    ${MP.players.length >= 2 && MP.players.length < 4 ? `<p class="kt-modenote">ℹ️ ${MP.players.length} racers: this race won't count for points or times (needs 4+).</p>` : ""}
     <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? (MP.pub ? "Waiting for at least one more player… they can join from the Open rooms list." : "Waiting for at least one more player… share the link!") : R.all ? "Everyone's ready ✅ Pick a cup and track below, then start!" : `You're the host 👑: pick a cup and track below. Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋`) : R.mine ? "You're ready ✅ The race starts when the host presses Start." : "Press ✋ Ready so the host can start the race."}</p>
     <button class="sk-small" id="kRoomLeave">🚪 Leave the room</button>`;
   chatMount(box);
@@ -2163,10 +2164,18 @@ async function loadBoard() {
   const sb = await B.client(); if (!sb) return;
   document.querySelectorAll("#kBoardTabs [data-b]").forEach(b => b.classList.toggle("on", b.dataset.b === boardView));
   if (boardView === "points") {
-    $k("#kBoardHead").textContent = "🏆 Points · multiplayer races";
+    $k("#kBoardHead").textContent = "🏆 Points · guild races with 4+ racers";
     const { data } = await sb.from("kart_points").select("player,points,races,wins").order("points", { ascending: false }).order("wins", { ascending: false }).limit(10);
     $k("#kBoard").innerHTML = (data || []).length ? data.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>
       <span>${r.points} pts</span><small>${r.wins} 🥇 · ${r.races} races</small></li>`).join("") : `<p class="bd-none">No points yet. Win a multiplayer race to get on the board!</p>`;
+    return;
+  }
+  if (boardView === "race") {   // 🏁 best finishing times from guild races (only races with 4+ racers count)
+    const t = TRACKS[track];
+    $k("#kBoardHead").textContent = `🏁 Race times · ${t.name} · ${CCS[cc].label} (guild races, 4+ racers)`;
+    const { data } = await sb.from("kart_race_times").select("player,best_ms,races").eq("track", cc === 150 ? track : `${track}_${cc}`).order("best_ms").limit(10);
+    $k("#kBoard").innerHTML = (data || []).length ? data.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>
+      <span>${fmt(r.best_ms)}</span><small>${r.races} race${r.races === 1 ? "" : "s"}</small></li>`).join("") : `<p class="bd-none">No race times here yet. Race it in a room with 4 or more players!</p>`;
     return;
   }
   const bt = TRACKS[mode === "gp" ? CUPS[cup].tracks[0] : track];
@@ -2219,7 +2228,7 @@ function drawMode() {
   $k("#kGo").textContent = { gp: `🏆 Start the ${CUPS[cup].name}!`, race: "🏁 Start race!", tt: "⏱️ Start Time Trial!", mp: "🏁 Start the race!" }[mode];
   $k("#kGo").hidden = false; $k("#kGo").disabled = false;
   $k("#kModeNote").textContent = { gp: "3 races against the same 7 computer rivals (cup points only, nothing on the board).", race: "One race against 7 computer rivals (no board points).",
-    tt: "Alone at 🔥 150cc with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race real guild members live. Multiplayer races are the only way to earn 🏆 board points." }[mode];
+    tt: "Alone at 🔥 150cc with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race real guild members live. Races with 4 or more racers earn 🏆 points and save your 🏁 race time." }[mode];
   drawRoom();
 }
 $k("#kMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; if (mode === "mp" && b.dataset.m !== "mp" && MP.code) mpLeave(); mode = b.dataset.m; store.set("kart_mode", mode); gp = null; drawMode(); drawTrack(); });
