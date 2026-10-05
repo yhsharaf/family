@@ -452,7 +452,7 @@ async function loadBoard() {
   if (!CFG.supabaseUrl) return;
   if (!window.supabase) return setTimeout(loadBoard, 1500);
   sb = sb || window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
-  const { data } = await sb.from("draw_scores").select("player,points,guessed,drew").order("points", { ascending: false }).limit(15);
+  const { data } = await sb.from("draw_scores").select("player,points,guessed,drew").order("points", { ascending: false }).limit(30);
   $d("#drawBoard").innerHTML = (data || []).filter(r => r.points > 0).map((r, i) => {
     const s = spriteOf(r.player);
     return `<li>${s ? `<img src="${s}" alt="">` : ""}<b>${esc(r.player)}</b><span>${r.points.toLocaleString()} pts · ${r.guessed} guessed · ${r.drew} drawn</span></li>`;
