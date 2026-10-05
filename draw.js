@@ -227,6 +227,8 @@ function adopt(s, mine) {
   if (key !== seen) {
     seen = key;
     if (S.phase === "choosing" && S.drawer === myId) offerWords();
+    // the turn's points are saved on the server: refresh the Hall of Fame so everyone sees the new totals
+    if ((S.phase === "reveal" || S.phase === "end") && prevPhase !== S.phase) setTimeout(loadBoard, 1200);
     if (S.phase === "drawing" && prevPhase !== "drawing") sys(`${esc(S.names[S.drawer] || "?")} is drawing now!`, "info");
     if (S.phase === "reveal" && S.word) sys(`The word was <b>${esc(S.word)}</b>`, "info");
     if (S.phase === "choosing" || S.phase === "lobby") { ops = []; redraw(); }
@@ -457,4 +459,6 @@ async function loadBoard() {
   }).join("") || "<li>No scores yet. Be the first artist!</li>";
 }
 if (location.hash.startsWith("#draw")) loadBoard();
+// and keep it fresh for people just watching the page (other rooms' games count too)
+setInterval(() => { if (location.hash.startsWith("#draw") && !document.hidden) loadBoard(); }, 60000);
 })();
