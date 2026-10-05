@@ -8,7 +8,7 @@ const { esc, store, spriteOf, guildOf } = B;
 
 // ------------------------------------------------------------------ tracks
 // Three Henesys tracks (the Henesys Cup). Each one has its own loop, theme, hazards and props; loadTrack() switches between them.
-const WORLD = 2048, ROAD = 124, CURB = 12, LAPS = 3;
+const WORLD = 2048, ROAD = 160, CURB = 12, LAPS = 3, VMAX = 270;   // road ~8 karts wide; base top speed
 // closed Catmull-Rom spline -> evenly spaced points every ~4 world units
 function loopPts(ctrl) {
   const raw = [], n = ctrl.length;
@@ -99,7 +99,7 @@ const TRACKS = {
   // 1. Henesys Loop: the pig farm jump, the market path, the King Slime
   henesys: {
     id: "henesys2", name: "Henesys Loop", sub: "pig farm · market path", icon: "🍄",
-    ctrl: [[400, 1450], [400, 900], [520, 520], [620, 240], [900, 130], [1300, 130], [1580, 200], [1440, 400], [1260, 560], [1110, 880],
+    ctrl: [[400, 1450], [400, 900], [520, 520], [620, 240], [900, 130], [1300, 130], [1545, 185], [1380, 420], [1240, 575], [1110, 880],
       [900, 1050], [1000, 1260], [1400, 1250], [1590, 900], [1650, 470], [1850, 360], [1910, 800], [1850, 1400], [1650, 1750], [1100, 1860], [650, 1820], [430, 1720]],
     theme: { grass: ["#6cc04a", "#5cb03e"], flowers: 2200, road: "cobble" },
     near: ["sunflower", "redshrooms", "bush", "hay", "posts", "tallshroom", "stall", "stall2", "haypile", "tree", "shroomtower", "shroomhouse"],
@@ -122,12 +122,12 @@ const TRACKS = {
           { t: "boost", i: R(874), len: 14, o: -28, w: 54 }, { t: "boost", i: I(800, 165), len: 12, o: 0, w: 60 },
           { t: "ramp", i: R(703), len: 9, o: 0, w: ROAD }, { t: "bigramp", i: I(950, 130), len: 7, o: 0, w: ROAD }, { t: "hay", i: I(1262, 131), len: 4, o: 0, w: 46 },
           { t: "rock", i: I(1525, 290), len: 30, o: 0, w: ROAD }, { t: "rock", i: R(578), len: 30, o: 0, w: ROAD },
-          { t: "slime", i: R(325), len: 8, o: -38, w: 36 }, { t: "slime", i: R(455), len: 8, o: 38, w: 36 }, { t: "slime", i: R(795), len: 8, o: -38, w: 36 },
-          { t: "slime", i: R(958), len: 8, o: 38, w: 36 }],
+          { t: "slime", i: R(325), len: 8, o: -52, w: 40 }, { t: "slime", i: R(455), len: 8, o: 52, w: 40 }, { t: "slime", i: R(795), len: 8, o: -52, w: 40 },
+          { t: "slime", i: R(958), len: 8, o: 52, w: 40 }],
         coins,
         pigs: [{ i: R(262), ph: 0, k: "pig" }, { i: R(470), ph: 2, k: "pig" }, { i: R(845), ph: 4.2, k: "pig" }],
         king: { i: R(905), T: 3, k: "king_slime", s: .5, name: "King Slime" },
-        boxes: [...boxRow(R(118), [-42, -14, 14, 42]), ...boxRow(R(425), [-40, -13, 13, 40]), ...boxRow(R(772), [-42, -14, 14, 42])],
+        boxes: [...boxRow(R(118), [-56, -19, 19, 56]), ...boxRow(R(425), [-54, -18, 18, 54]), ...boxRow(R(772), [-56, -19, 19, 56])],
         extra(push, PROPS) {
           for (let i = pen.a; i <= pen.b; i += 4) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 8)); push(x, y, "posts", .32, 6); }
           for (const [x, y, k] of [[1090, 40, "haypile"], [1180, 228, "haypile"], [985, 225, "hay"], [1120, 222, "redshrooms"]]) push(x, y, k);
@@ -137,9 +137,10 @@ const TRACKS = {
   },
   // 2. Henesys Town Run: twisty S-bends between the mushroom houses, a market street, a tunnel through a tree house, snails crossing
   town: {
-    id: "town", name: "Henesys Town Run", sub: "market street · tree house tunnel · back alley", icon: "🏘️",
+    id: "town", name: "Henesys Town Run", sub: "market street · tree house tunnel · back alley · hospital loop", icon: "🏘️",
     ctrl: [[300, 1700], [300, 1100], [450, 800], [700, 700], [850, 900], [1050, 1000], [1200, 800], [1150, 550], [950, 400], [1000, 200], [1350, 180],
-      [1650, 300], [1800, 550], [1650, 800], [1500, 1000], [1700, 1250], [1850, 1500], [1720, 1810], [1150, 1865], [600, 1860], [380, 1810]],
+      [1650, 300], [1800, 550], [1650, 800], [1500, 1000], [1300, 1150], [1000, 1250], [800, 1450], [1100, 1600], [1450, 1450], [1700, 1250],
+      [1850, 1500], [1720, 1810], [1150, 1865], [600, 1860], [380, 1810]],
     theme: { grass: ["#74c552", "#68b847"], flowers: 3200, road: "cobble" },
     near: ["shroomhouse", "shroomtower", "stall", "stall2", "hay", "haypile", "sunflower", "posts", "redshrooms", "bush"],
     far: ["shroomhouse", "shroomtower", "tree", "shroomhouse", "bush"], mobs: ["snail", "blue_snail", "red_snail", "orange_mushroom"],
@@ -148,20 +149,22 @@ const TRACKS = {
       return {
         tunnel: { a: t0, b: t1 },
         // the back alley: a narrow short cut through the S-bends, behind the mushroom houses
-        fork: { a: I(855, 905), b: I(1195, 805), via: [[960, 880], [1090, 858]], width: 58, style: "cobble", pads: [], coins: true },
+        fork: { a: I(855, 905), b: I(1195, 805), via: [[960, 848], [1090, 832]], width: 58, style: "cobble", pads: [], coins: true },
         pads: [
-          { t: "boost", i: I(300, 1420), len: 14, o: 0, w: 60 }, { t: "boost", i: I(1400, 182), len: 12, o: -24, w: 54 }, { t: "boost", i: I(1560, 1080), len: 12, o: 22, w: 52 },
+          { t: "boost", i: I(300, 1420), len: 14, o: 0, w: 60 }, { t: "boost", i: I(1400, 182), len: 12, o: -24, w: 54 }, { t: "boost", i: I(1150, 1205), len: 12, o: 22, w: 52 }, { t: "boost", i: I(1300, 1535), len: 12, o: -20, w: 52 },
           { t: "boost", i: I(1300, 1858), len: 12, o: 0, w: 56 },
           { t: "ramp", i: I(1790, 1380), len: 9, o: 0, w: ROAD },
-          { t: "slime", i: I(1100, 1862), len: 8, o: 38, w: 36 }, { t: "slime", i: I(700, 712), len: 8, o: -38, w: 36 }, { t: "slime", i: I(1730, 520), len: 8, o: 38, w: 36 }],
-        coins: [...coinRow(I(300, 1350), I(300, 1150), 6, 0), ...coinRow(m0, m1, 8, j => (j & 1 ? 22 : -22)), ...coinRow(I(1000, 220), I(1050, 200), 3, 0), ...coinRow(I(1680, 790), I(1540, 960), 6, -18)],
+          { t: "slime", i: I(1100, 1862), len: 8, o: 52, w: 40 }, { t: "slime", i: I(700, 712), len: 8, o: -52, w: 40 }, { t: "slime", i: I(1730, 520), len: 8, o: 52, w: 40 }, { t: "slime", i: I(880, 1360), len: 8, o: -52, w: 40 }],
+        coins: [...coinRow(I(300, 1350), I(300, 1150), 6, 0), ...coinRow(m0, m1, 8, j => (j & 1 ? 22 : -22)), ...coinRow(I(1000, 220), I(1050, 200), 3, 0), ...coinRow(I(1680, 790), I(1540, 960), 6, -18), ...coinRow(I(860, 1520), I(1040, 1590), 6, 0)],
         pigs: [{ i: I(450, 820), ph: 0, k: "snail", sp: .5 }, { i: I(1640, 820), ph: 2.2, k: "blue_snail", sp: .5 }],
-        boxes: [...boxRow(I(300, 1560), [-42, -14, 14, 42]), ...boxRow(I(965, 300), [-40, -13, 13, 40]), ...boxRow(I(1790, 1680), [-42, -14, 14, 42])],
+        boxes: [...boxRow(I(300, 1560), [-56, -19, 19, 56]), ...boxRow(I(965, 300), [-54, -18, 18, 54]), ...boxRow(I(1790, 1680), [-56, -19, 19, 56])],
         extra(push) {
           for (let i = m0; i <= m1; i += 6) for (const side of [-1, 1]) {   // the market street: stalls and hay on both sides
             const [x, y] = at(i, side * (ROAD / 2 + CURB + 26)); push(x, y, ["stall", "stall2", "haypile", "hay"][(i / 6 + (side > 0 ? 1 : 0)) & 3]);
           }
           const [ex, ey] = at(t0 - 2, 0); push(ex, ey, "treehouse", .62, 0);   // the tree house you drive through
+          push(1120, 1420, "hospital", .55, 40);   // the hospital mushroom in the middle of the loop
+          for (const [x, y, k] of [[1010, 1400, "sunflower"], [1240, 1380, "shroomtower"], [1180, 1480, "redshrooms"], [960, 1470, "stall2"]]) push(x, y, k);
           for (let i = t0; i <= t1; i += 5) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 14)); push(x, y, i % 2 ? "tree" : "bush", .42, 14); }
         },
       };
@@ -171,7 +174,7 @@ const TRACKS = {
   forest: {
     id: "forest", name: "Mushroom Forest", sub: "bridge shortcut · S-bends · Mushmom · big jump", icon: "🌲",
     ctrl: [[350, 1500], [350, 900], [480, 480], [850, 260], [1400, 260], [1760, 500], [1800, 950], [1580, 1250], [1200, 1150], [990, 1255], [1105, 1405],
-      [965, 1550], [1085, 1690], [1420, 1720], [1750, 1820], [1450, 1930], [800, 1900], [480, 1800]],
+      [965, 1550], [1085, 1690], [1420, 1700], [1750, 1820], [1450, 1945], [800, 1905], [480, 1800]],
     theme: { grass: ["#4f9a3c", "#478f35"], flowers: 900, road: "dirt" },
     near: ["tree", "tree", "bush", "tallshroom", "redshrooms", "bush", "tree", "tallshroom"],
     far: ["tree", "tree", "tree", "bush"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom"],
@@ -184,13 +187,13 @@ const TRACKS = {
           { t: "boost", i: I(350, 1250), len: 14, o: 0, w: 60 }, { t: "boost", i: I(1250, 262), len: 12, o: 24, w: 54 }, { t: "boost", i: I(1300, 1690), len: 12, o: -22, w: 52 },
           { t: "bigramp", i: I(860, 1903), len: 7, o: 0, w: ROAD },
           { t: "rock", i: I(1560, 1760), len: 22, o: 0, w: ROAD },
-          { t: "slime", i: I(600, 340), len: 8, o: -38, w: 36 }, { t: "slime", i: I(1050, 1335), len: 8, o: 38, w: 36 }],
+          { t: "slime", i: I(600, 340), len: 8, o: -52, w: 40 }, { t: "slime", i: I(1050, 1335), len: 8, o: 52, w: 40 }],
         coins: [...coinRow(I(350, 1150), I(350, 950), 6, 0), ...coinRow(I(1000, 255), I(1200, 258), 6, j => (j & 1 ? 24 : -24)), ...coinRow(I(1150, 1700), I(1350, 1715), 6, 0),
           ...[0, 1, 2, 3, 4].map(n => { const [x, y] = at(I(860, 1903) + 12 + n * 5, 0); return { x, y, z: 60, got: false }; })],
         pigs: [{ i: I(420, 700), ph: 0, k: "orange_mushroom", hop: true }, { i: I(1785, 700), ph: 1.5, k: "green_mushroom", hop: true },
           { i: I(1300, 1712), ph: 3, k: "orange_mushroom", hop: true }],
         king: { i: I(1120, 262), T: 3.2, k: "mushmom", s: .9, name: "Mushmom" },
-        boxes: [...boxRow(I(350, 1080), [-42, -14, 14, 42]), ...boxRow(I(1660, 400), [-40, -13, 13, 40]), ...boxRow(I(1150, 1695), [-42, -14, 14, 42])],
+        boxes: [...boxRow(I(350, 1080), [-56, -19, 19, 56]), ...boxRow(I(1660, 400), [-54, -18, 18, 54]), ...boxRow(I(1150, 1695), [-56, -19, 19, 56])],
         extra() {},
       };
     },
@@ -231,7 +234,7 @@ function paintTrack() {
   const curbs = (p, wd) => {
     p(); g.strokeStyle = "#2f6e2a"; g.lineWidth = wd + CURB * 2 + 8; g.stroke();                 // dark edge where grass meets the curb
     p(); g.strokeStyle = "#ffffff"; g.lineWidth = wd + CURB * 2; g.stroke();                       // chequered red/white curb
-    p(); g.strokeStyle = "#e0453a"; g.setLineDash([16, 16]); g.stroke(); g.setLineDash([]);
+    p(); g.strokeStyle = "#e0453a"; g.setLineDash([12, 12]); g.stroke(); g.setLineDash([]);
   };
   const edge = (p, wd) => { p(); g.strokeStyle = "#6e6558"; g.lineWidth = wd + 4; g.stroke(); };
   const surface = (p, wd, st) => { p(); g.strokeStyle = st === "planks" ? "#8a5a2e" : st === "dirt" ? "#b98b5a" : "#bdb3a2"; g.lineWidth = wd; g.stroke(); };
@@ -255,6 +258,12 @@ function paintTrack() {
   curbs(path, ROAD); curbs(apath, ALT_ROAD);
   edge(path, ROAD); edge(apath, ALT_ROAD); surface(path, ROAD, dirt ? "dirt" : "cobble"); surface(apath, ALT_ROAD, ALT_STYLE === "planks" ? "planks" : dirt ? "dirt" : "cobble");   // the market path's road paints over the main curbs where they meet
   cobbles(N, i => PTS[i], tangent, ROAD, dirt ? "dirt" : "cobble"); cobbles(AN, j => ALT[j], altTan, ALT_ROAD, ALT_STYLE === "planks" ? "planks" : dirt ? "dirt" : "cobble");
+  { let acc = 0;   // speed bands
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N, d = Math.hypot(PTS[j][0] - PTS[i][0], PTS[j][1] - PTS[i][1]); acc += d;
+      if (Math.floor(acc / 20) % 2) { const a1 = at(i, -ROAD / 2), b1 = at(i, ROAD / 2), c1 = at(j, ROAD / 2), d1 = at(j, -ROAD / 2);
+        g.fillStyle = dirt ? "rgba(70,40,10,.09)" : "rgba(40,30,20,.075)"; g.beginPath(); g.moveTo(a1[0], a1[1]); g.lineTo(b1[0], b1[1]); g.lineTo(c1[0], c1[1]); g.lineTo(d1[0], d1[1]); g.fill(); }
+    } }
   path(); g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = 3; g.setLineDash([20, 28]); g.stroke(); g.setLineDash([]);
   apath(); g.strokeStyle = "rgba(255,226,140,.85)"; g.lineWidth = 3; g.setLineDash([12, 18]); g.stroke(); g.setLineDash([]);
   // the market path's boost arrows
@@ -317,7 +326,7 @@ function paintTrack() {
 
 // roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
 // s = world units per picture pixel, r = how solid it is
-const PROPS = { treehouse: [.62, 0], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
+const PROPS = { treehouse: [.62, 0], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
   hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10] };
 const MOBS = ["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom", "snail", "blue_snail", "red_snail", "slime", "pig", "ribbon_pig", "king_slime", "mushmom"];
 const IMG = {};
@@ -330,10 +339,10 @@ function placeObjects() {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   OBJS = [];
   const push = (x, y, k, sc, r) => OBJS.push({ x, y, k, s: sc != null ? sc : PROPS[k][0], r: r != null ? r : PROPS[k][1] });
-  for (let s = 20; s < N; s += 26) {
+  for (let s = 20; s < N; s += 16) {
     for (const side of [-1, 1]) {
-      if (rnd() < .3) continue;
-      const a = tangent(s), off = ROAD / 2 + CURB + 22 + rnd() * 80, x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
+      if (rnd() < .22) continue;
+      const a = tangent(s), off = ROAD / 2 + CURB + 18 + rnd() * 60, x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
       if (roadDist(x, y) < ROAD / 2 + CURB + 16 || inLake(x, y) || x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
       if (rnd() < .18) { OBJS.push({ x, y, k: T.mobs[Math.floor(rnd() * T.mobs.length)], s: .42, r: 10, mob: true }); continue; }
       push(x, y, T.near[Math.floor(rnd() * T.near.length)]);
@@ -382,7 +391,7 @@ let gp = null;   // { race, names, pts: { name: points } }
 let ghost = null, ghostRec = [];   // your best Time Trial run, sampled 10 times a second: [t, x, y, a, z]
 const ghostKey = () => `kart_ghost:${TRACK_ID}:${me}`;
 // difficulty, picked before the race: rival speed, how hard they catch up, how often they grab items
-const DIFFS = { easy: { skill: .88, band: .07, pick: .4, label: "Easy" }, normal: { skill: 1.04, band: .15, pick: .6, label: "Normal" }, hard: { skill: 1.06, band: .18, pick: .8, label: "Hard" } };
+const DIFFS = { easy: { skill: .95, band: .07, pick: .4, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .6, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: .8, label: "Hard" } };
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
 const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
@@ -424,17 +433,29 @@ function rollItem(r, rival) {
   return "elixir";
 }
 const HOLDABLE = it => it === "slime" || it === "arrow";
+// boosts (like SRB2Kart / SuperTuxKart): the speed jumps up at once, the strongest active boost wins, and when it ends the extra
+// speed fades out over ~0.8 s instead of stopping dead. Also a camera kick for you.
+function giveBoost(r, dur, pow) {
+  r.boostPow = r.boost > 0 ? Math.max(r.boostPow || 0, pow) : pow;
+  r.boost = Math.max(r.boost || 0, dur); r.extra = Math.max(r.extra || 0, r.boostPow);
+  r.v = Math.max(r.v, (r === K ? VMAX : r.skill * DIFF().skill) + pow * .6);
+  if (r === K) { K.kick = Math.max(K.kick || 0, Math.min(1, pow / 110)); burstSound(pow); }
+}
+function boostTick(r, dt) {
+  if (r.boost > 0) r.extra = Math.max(r.extra || 0, r.boostPow || 0);
+  else { r.extra = (r.extra || 0) * Math.pow(.94, dt * 60); if (r.extra < 2) r.extra = 0; r.boostPow = 0; }
+}
 function hit(r, msg) {
   if (r.hyper > 0) return;   // 💪 Hyper Body: nothing can hurt you
   if (r === K) { spinOut(msg); return; }
-  if (r.spin <= 0 && r.inv <= 0 && r.z <= 0) { r.spin = .9; r.inv = 1.6; r.boost = 0; if (r.holding) { r.item = null; r.holding = false; } }
+  if (r.spin <= 0 && r.inv <= 0 && r.z <= 0) { r.spin = .9; r.inv = 1.6; r.boost = 0; r.extra = 0; if (r.holding) { r.item = null; r.holding = false; } }
 }
 function useItem(r) {
   const it = r.item; if (!it) return;
   r.holding = false;
-  if (it === "triple") { r.boost = Math.max(r.boost, 1.2); if (--r.itemN <= 0) r.item = null; }
+  if (it === "triple") { giveBoost(r, 1.2, 120); if (--r.itemN <= 0) r.item = null; }
   else r.item = null;
-  if (it === "elixir") r.boost = Math.max(r.boost, 1.3);
+  if (it === "elixir") giveBoost(r, 1.5, 120);
   if (it === "hyper") { r.hyper = 7; r.spin = 0; r.small = 0; r.ink = 0; if (r === K) { flash("💪 HYPER BODY!", 1000); hyperSound(); } }
   if (it === "slime") DROPS.push({ x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5 });
   if (it === "arrow") {
@@ -473,12 +494,12 @@ function rivalStep(r, dt, tt) {
   if (rescueStep(r, dt)) return;
   const near = nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
-  if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) r.boost = Math.max(r.boost, .8); } }
+  if (r.z > 0 || r.vz > 0) { r.vz -= 720 * dt; r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; if (Math.random() < .5) giveBoost(r, .8, 90); } }
   const air = r.z > 0;
   for (const key of ["spin", "inv", "squash", "boost", "itemT", "small", "ink", "bloopSafe", "noItem", "hyper"]) if (r[key] > 0) r[key] -= dt;
   const lost = near.d > near.half + 110 || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
-  if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 76; r.laneT = 1.5 + Math.random() * 3; }
+  if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 100; r.laneT = 1.5 + Math.random() * 3; }
   for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
   for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
   r.lane = Math.max(-ROAD / 2 + 14, Math.min(ROAD / 2 - 14, r.lane));
@@ -490,12 +511,13 @@ function rivalStep(r, dt, tt) {
   if (r.spin <= 0) r.a += turn * dt * Math.min(1, r.v / 80) * (r.ink > 0 ? .5 : 1);
   const gap = (progOf(K) - progOf(r)) / N;   // + when you're ahead of them
   const band = 1 + Math.max(-.13, Math.min(DIFF().band, gap * .7));
-  const top = r.done ? 140 : r.hyper > 0 ? 320 : (!air && inPen(r.idx, L) ? 80 : off && !air ? 110 : r.skill * DIFF().skill * band * (r.small > 0 ? .72 : 1) * (r.ink > 0 ? .95 : 1)) + (r.boost > 0 ? 90 : 0);
-  if (r.spin > 0) r.v *= Math.pow(.3, dt); else r.v += (r.v < top ? (r.v < 120 ? 190 : 110) : -220) * dt;
+  boostTick(r, dt);
+  const top = r.done ? 140 : r.hyper > 0 ? VMAX + 50 : (!air && inPen(r.idx, L) ? 80 : off && !air ? 110 : r.skill * DIFF().skill * band * (r.small > 0 ? .72 : 1) * (r.ink > 0 ? .95 : 1)) + (r.extra || 0);
+  if (r.spin > 0) r.v *= Math.pow(.3, dt); else r.v += (r.v < top ? (r.extra > 5 ? 800 : r.v < 120 ? 190 : 110) : -220) * dt;
   r.x += Math.cos(r.a) * r.v * dt; r.y += Math.sin(r.a) * r.v * dt;
   const pad = air ? null : ground.pad;
   if (pad && pad !== r.lastPad) {
-    if (pad.t === "boost") r.boost = Math.max(r.boost, 1);
+    if (pad.t === "boost") giveBoost(r, 1, 110);
     if (pad.t === "ramp" && r.v > 60) { r.vz = 160 + r.v * .22; r.z = .1; }
     if (pad.t === "bigramp" && r.v > 60) { r.vz = 300 + r.v * .3; r.z = .1; }
     if (pad.t === "hay") { r.vz = 230; r.z = .1; }
@@ -611,13 +633,16 @@ function input() {
 }
 function spinOut(msg) {
   const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0 || k.hyper > 0) return;
-  k.spin = .9; k.inv = 1.9; k.drift = 0; k.charge = 0; k.boost = 0; spinSound();
+  k.spin = .9; k.inv = 1.9; k.drift = 0; k.charge = 0; k.boost = 0; k.extra = 0; k.hitFlash = .09; k.shake = Math.max(k.shake, .25); spinSound();
   if (k.holding) { k.item = null; k.holding = false; }   // you drop what you were holding
   const lose = Math.min(3, k.mesos); k.mesos -= lose;   // getting hit drops mesos, like coins in Mario Kart
   for (let i = 0; i < lose; i++) COINFX.push({ x: (Math.random() - .5) * 10, y: 0, vx: (Math.random() - .5) * 90, vy: -120 - Math.random() * 60, t: 1 });
   flash(lose ? `${msg} −${lose} mesos` : msg, 1000);
 }
 const COINFX = [];
+// screen-space effects around your kart (sparks, streaks, dust, sparkles) and fire trails left on the road (world space)
+let PFX = [], FIRE = [], fxClock = 0, fxSpawn = 0, fireSpawn = 0;
+const sparkCol = (c, t) => c > 2.6 ? `hsl(${(t * 900) % 360},100%,65%)` : c > 1.7 ? (Math.random() < .5 ? "#ff5a2e" : "#ffb02e") : c > .8 ? (Math.random() < .5 ? "#4aa8ff" : "#c8ecff") : "#ffffff";
 let INK = [];   // 🐙 ink splats on your screen (screen coordinates)
 function makeInk() {
   INK = [];
@@ -631,7 +656,7 @@ function makeInk() {
 // 📜 Return Scroll: wrong way, lost far off the road or stuck for a few seconds -> lifted out and put back on the road facing forward
 function rescue(r, msg) {
   if (r.rescue > 0) return;
-  r.rescue = 1.4; r.rescueAt = (r.idx - 4 + N) % N; r.rescueAlt = r.onAlt ? Math.max(1, (r.altJ || 0) - 5) : null; r.drift = 0; r.charge = 0; r.boost = 0; r.spin = 0;
+  r.rescue = 1.4; r.rescueAt = (r.idx - 4 + N) % N; r.rescueAlt = r.onAlt ? Math.max(1, (r.altJ || 0) - 5) : null; r.drift = 0; r.charge = 0; r.boost = 0; r.extra = 0; r.spin = 0;
   if (r === K) { flash(msg || "📜 Return Scroll!", 1200); msg ? splatSound() : scrollSound(); }
 }
 function rescueStep(r, dt) {   // true while being rescued (no driving)
@@ -648,6 +673,11 @@ function rescueStep(r, dt) {   // true while being rescued (no driving)
 }
 function step(dt) {
   const k = K, inp = input(), racing = state === "race", tt = performance.now() / 1000;
+  for (let i = FIRE.length - 1; i >= 0; i--) if ((FIRE[i].t -= dt) <= 0) FIRE.splice(i, 1);
+  if (k.extra > 20 && k.z <= 0 && state === "race" && (fireSpawn -= dt) <= 0) {   // fire left on the road behind a boost
+    fireSpawn = .03; for (const side of [-1, 1]) FIRE.push({ x: k.x - Math.cos(k.a) * 12 - Math.sin(k.a) * 7 * side, y: k.y - Math.sin(k.a) * 12 + Math.cos(k.a) * 7 * side, t: .4 });
+  }
+  if (k.hitFlash > 0) k.hitFlash -= dt;
   for (let i = COINFX.length - 1; i >= 0; i--) { const c = COINFX[i]; c.t -= dt; c.vy += 320 * dt; c.x += c.vx * dt; c.y += c.vy * dt; if (c.t <= 0) COINFX.splice(i, 1); }
   if (rescueStep(k, dt)) { if (racing) { k.t += dt * 1000; worldStep(dt, tt); } return; }
   const near = nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6; k.onAlt = near.alt; k.altJ = near.j;
@@ -660,7 +690,7 @@ function step(dt) {
   // in the air (ramps): gravity, and a trick on the way up/down gives a boost when you land
   if (k.z > 0 || k.vz > 0) {
     k.vz -= 720 * dt; k.z += k.vz * dt;
-    if (k.z <= 0) { k.z = 0; k.vz = 0; k.hop = .14; if (k.trick) { k.boost = Math.max(k.boost, .9); flash("✨ Trick boost!", 700); boostSound(); } else bumpSound(); k.trick = false; }
+    if (k.z <= 0) { k.z = 0; k.vz = 0; k.hop = .14; if (k.trick) { giveBoost(k, .9, 95); flash("✨ Trick boost!", 700); } else bumpSound(); k.trick = false; }
   }
   const air = k.z > 0;
   if (air && inp.drift && !k.prevDrift && !k.trick) { k.trick = true; k.flip = .4; hopSound(); }
@@ -671,7 +701,7 @@ function step(dt) {
   // what's under the wheels
   const pad = air ? null : ground.pad;
   if (pad && pad !== k.lastPad) {
-    if (pad.t === "boost") { k.boost = Math.max(k.boost, 1); padSound(); }
+    if (pad.t === "boost") { giveBoost(k, 1, 110); padSound(); }
     if (pad.t === "ramp" && k.v > 60) { k.vz = 160 + k.v * .22; k.z = .1; k.drift = 0; jumpSound(); if (!k.tricked) { k.tricked = true; flash("Tap Drift in the air! ✨", 900); } }
     if (pad.t === "bigramp" && k.v > 60) { k.vz = 300 + k.v * .3; k.z = .1; k.drift = 0; jumpSound(); setTimeout(jumpSound, 120); flash(PEN ? (k.v > 200 ? "🐷 Fly over the pig farm!" : "Uh oh… 🐷") : "🚀 Big jump!", 900); }
     if (pad.t === "hay") { k.vz = 230; k.z = .1; k.mesos = Math.min(10, k.mesos + 2); flash("🌾 Boing! +2 mesos", 900); hopSound(); coinSound(); }
@@ -686,10 +716,12 @@ function step(dt) {
   if (!air && !k.off && Math.abs(L) > near.half - 2 && k.v > 100) k.shake = Math.max(k.shake, .04);   // rumble on the curbs
   // speed: always accelerating (phone friendly), the brake slows / reverses; mesos raise the top speed a little
   const hb = k.hyper > 0;
-  const top = hb ? 330 + k.mesos * 3 : ((mud ? 80 : k.off && !air ? 105 : rocky && k.boost <= 0 ? 185 : 250 + k.mesos * 3) + (k.boost > 0 ? 90 : 0)) * (k.small > 0 ? .72 : 1);
+  boostTick(k, dt);
+  const top = hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
   if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
-  else k.v += (k.v < top ? (k.v < 120 ? 210 : 120) : -260) * dt;
+  else k.v += (k.v < top ? (k.extra > 5 ? 900 : k.v < 120 ? 210 : 120) : -260) * dt;   // boosts reach their speed almost at once
+  if (k.kick > 0) k.kick = Math.max(0, k.kick - dt * 1.4);
   for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "small", "ink", "bloopSafe", "hyper", "roll2"]) if (k[key] > 0) k[key] -= dt;
   // items from the boxes: the slot spins like a slot machine for a second, then it's yours to use
   if (k.roll > 0) { k.roll -= dt; if (k.roll <= 0) { k.item = k.pending; k.itemN = k.item === "triple" ? 3 : 0; flash(`${ITEM_NAME[k.item]}!`, 700); } }
@@ -705,7 +737,8 @@ function step(dt) {
   // drifting: hold drift while turning, the longer you hold the bigger the boost when you let go
   if (racing && !air && k.spin <= 0 && inp.drift && !k.drift && Math.abs(inp.steer) > .25 && k.v > 140) { k.drift = Math.sign(inp.steer); k.charge = 0; k.hop = .18; hopSound(); }
   if (k.drift && (!inp.drift || k.v < 90)) {
-    if (k.charge > 2.6) { k.boost = 1.5; boostSound(); flash("💜 Ultra boost!", 600); } else if (k.charge > 1.7) { k.boost = 1; boostSound(); } else if (k.charge > .8) { k.boost = .55; boostSound(); }
+    if (k.charge > 2.6) { giveBoost(k, 2.5, 100); flash("🌈 Ultra boost!", 600); } else if (k.charge > 1.7) giveBoost(k, 1.2, 80); else if (k.charge > .8) giveBoost(k, .6, 60);
+    if (k.charge > .8) whooshSound();
     k.drift = 0; k.charge = 0;
   }
   let turn = k.steer * 2.1 * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? .5 : 1);
@@ -731,7 +764,7 @@ function step(dt) {
     if (fwd > 12 && fwd < 110 && Math.abs(side) < 20) { tuck = true; break; }
   }
   k.slip = tuck ? (k.slip || 0) + dt : Math.max(0, (k.slip || 0) - dt * 2);
-  if (k.slip > .9) { k.slip = 0; k.boost = Math.max(k.boost, .8); flash("💨 Slipstream!", 600); padSound(); }
+  if (k.slip > .9) { k.slip = 0; giveBoost(k, .8, 80); flash("💨 Slipstream!", 600); }
   // mesos, pigs and the King Slime
   for (const c of COINS) if (!c.got && Math.abs(k.z - (c.z || 0)) < 30 && Math.hypot(k.x - c.x, k.y - c.y) < 18) { c.got = true; k.mesos = Math.min(10, k.mesos + 1); k.v = Math.min(k.v + 22, 360); coinSound(); }
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < 17) spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : "🍄 Bonk!"); }
@@ -769,12 +802,15 @@ function step(dt) {
 }
 
 // ------------------------------------------------------------------ drawing
+let CD = CAMD;   // camera distance behind you (eased)
 function render() {
   const k = K, ca = Math.cos(k.a), sa = Math.sin(k.a);
+  const over = Math.max(0, Math.min(1, (k.v - VMAX) / 110));
+  CD += (CAMD * (1 + .28 * over + .22 * (k.kick || 0)) - CD) * .1;
   // boosts widen the view a little (the camera "pulls back"), which makes the speed feel bigger
   k.fov = (k.fov || 0) + (((k.boost > 0 || k.hyper > 0) ? 1 : 0) - (k.fov || 0)) * .12;
-  const FO = FOCAL * (1 - .14 * k.fov);
-  const cx = k.x - ca * CAMD, cy = k.y - sa * CAMD;
+  const FO = FOCAL * (1 - .19 * k.fov);
+  const cx = k.x - ca * CD, cy = k.y - sa * CD;
   // sky: Henesys hills and clouds, then the town panorama on the horizon, scrolling as you turn (sharp layer)
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxc.width, fxc.height); ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true;
   ctx.fillStyle = "#8fd0ff"; ctx.fillRect(0, 0, W, HOR + 1);
@@ -828,6 +864,10 @@ function render() {
     const gs = ghostAt(K.t); if (gs) addDraw(gs.x, gs.y, (sx, gy, sc, fz) => drawRival({ name: "👻 Your best", img: IMG.me, color: "#c8232c", steer: 0, z: gs.z, spin: 0, squash: 0, inv: 0, ghost: true }, sx, gy, sc, fz));
   }
   for (const d of DROPS) add(d.x, d.y, IMG.slime, .32, 0, false, .5);
+  for (const f of FIRE) addDraw(f.x, f.y, (sx, gy, sc) => { const a = f.t / .4, h = 5.5 * sc * (.5 + a * .7) * (.85 + Math.random() * .3), w2 = 2.2 * sc;
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a * .75;
+    const g3 = ctx.createLinearGradient(0, gy - h, 0, gy); g3.addColorStop(0, "rgba(255,80,20,0)"); g3.addColorStop(.5, "#ff7a1e"); g3.addColorStop(1, "#ffe08a");
+    ctx.fillStyle = g3; ctx.beginPath(); ctx.ellipse(sx, gy - h / 2, w2, h / 2, 0, 0, 7); ctx.fill(); ctx.restore(); });
   for (const sh of SHOTS) addDraw(sh.x, sh.y, (sx, gy, sc) => { const im = IMG.arrowIcon; if (!im) return; const w = 26 * sc; ctx.save(); ctx.translate(sx, gy - 12 * sc);
     ctx.fillStyle = "rgba(255,240,120,.5)"; ctx.beginPath(); ctx.arc(0, 0, w * .6, 0, 7); ctx.fill(); ctx.drawImage(im, -w / 2, -w / 2, w, w); ctx.restore(); });
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
@@ -840,7 +880,7 @@ function render() {
   vis.sort((a, b) => b.fz - a.fz);
   let kartDrawn = false;
   for (const v of vis) {
-    if (!kartDrawn && v.fz < CAMD) { ctx.globalAlpha = 1; drawKart(k); kartDrawn = true; }   // things between the camera and you go in front of your kart
+    if (!kartDrawn && v.fz < CD) { ctx.globalAlpha = 1; drawKart(k); kartDrawn = true; }   // things between the camera and you go in front of your kart
     if (v.draw) { ctx.globalAlpha = 1; v.draw(v.sx, HOR + CH * FO / v.fz, FO / v.fz, v.fz); continue; }
     const { im, fz, sx, z, flip, shadow } = v, sc = FO / fz * v.sc, w = im.width * sc, h = im.height * sc, gy = HOR + CH * FO / fz;
     if (w < .6) continue;
@@ -852,16 +892,11 @@ function render() {
   }
   ctx.globalAlpha = 1;
   if (!kartDrawn) drawKart(k);
+  if (k.hitFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(.7, k.hitFlash * 8)})`; ctx.fillRect(0, 0, W, H); }
   // inside the tree house tunnel: dark, with a warm glow ahead
   if (TUNNEL && k.idx >= TUNNEL.a && k.idx <= TUNNEL.b) {
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .7);
     g2.addColorStop(0, "rgba(255,200,120,.08)"); g2.addColorStop(1, "rgba(18,10,4,.72)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
-  }
-  // speed lines from the edges while boosting
-  if (k.fov > .15 && state === "race") {
-    const t2 = performance.now() / 1000; ctx.strokeStyle = `rgba(255,255,255,${.5 * k.fov})`; ctx.lineWidth = 1.2;
-    for (let i = 0; i < 14; i++) { const ang = i / 14 * Math.PI * 2 + i * 1.7, ph = (t2 * 3 + i * .37) % 1, r0 = W * (.32 + ph * .3), r1 = r0 + W * .08;
-      const cxs = W / 2, cys = HOR + (H - HOR) * .35; ctx.beginPath(); ctx.moveTo(cxs + Math.cos(ang) * r0, cys + Math.sin(ang) * r0 * .6); ctx.lineTo(cxs + Math.cos(ang) * r1, cys + Math.sin(ang) * r1 * .6); ctx.stroke(); }
   }
   // ⚡ Thunder: a white flash and lightning bolts
   if (thunderFx > 0) {
@@ -893,23 +928,39 @@ function render() {
   }
 }
 function drawKart(k) {
-  const CH = CAMH + Math.min(k.z, 130) * .35, gy = HOR + CH * FOCAL / CAMD, gy0 = HOR + CAMH * FOCAL / CAMD, sc = FOCAL / CAMD, x = W / 2 + k.steer * 4;
+  const CH = CAMH + Math.min(k.z, 130) * .35, gy = HOR + CH * FOCAL / CD, gy0 = HOR + CAMH * FOCAL / CD, sc = FOCAL / CD, x = W / 2 + k.steer * 4;
   const hop = k.hop > 0 ? Math.sin((k.hop / .18) * Math.PI) * 6 : 0, rumble = k.off && k.v > 40 ? (Math.random() - .5) * 2 : 0;
-  const y = gy0 - hop + rumble - Math.min(k.z * sc * .45, H * .2), tilt = (k.drift ? k.drift * .16 : 0) + k.steer * .06 + (k.flip > 0 ? (1 - k.flip / .4) * Math.PI * 2 : 0);
+  const jitter = k.v > 150 && k.z <= 0 ? (Math.random() - .5) * 1.3 * k.v / VMAX : 0;
+  const y = gy0 - hop + rumble + jitter - Math.min(k.z * sc * .45, H * .2), tilt = (k.drift ? k.drift * .16 : 0) + k.steer * .06 + (k.flip > 0 ? (1 - k.flip / .4) * Math.PI * 2 : 0);
   const w = 20 * sc, t = performance.now() / 1000;
   ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(x, gy + 2, w * .55 / (1 + k.z / 80), 4, 0, 0, 7); ctx.fill();
   cv.style.transform = fxc.style.transform = k.shake > 0 ? `translate(${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px, ${(Math.random() - .5) * 6 * Math.min(1, k.shake * 6)}px)` : "";
-  if (k.slip > .2) {   // wind lines while you're in someone's slipstream
-    ctx.strokeStyle = `rgba(255,255,255,${Math.min(.8, k.slip)})`; ctx.lineWidth = 1;
-    for (let i = 0; i < 8; i++) { const lx = W * (.2 + .6 * ((i * 37 + t * 900) % 100) / 100), ly = H * .3 + ((i * 53 + t * 400) % (H * .5)); ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + (lx - W / 2) * .08, ly + 14); ctx.stroke(); }
+  // effects: spawn (about 60 a second), move and draw the screen-space particles
+  const now = performance.now() / 1000, fdt = Math.min(.05, now - (fxClock || now)); fxClock = now;
+  if ((fxSpawn -= fdt) <= 0) {
+    fxSpawn = .02;
+    if (k.drift && k.charge > .2) for (const side of [-1, 1]) for (let n = 0; n < 2; n++)   // drift sparks from the rear wheels
+      PFX.push({ x: x + side * w * .42, y: y - 2, vx: side * (30 + Math.random() * 70) - k.drift * 20, vy: 20 + Math.random() * 70, t: .15, life: .15, size: 1.4 + Math.random() * 1.4, col: sparkCol(k.charge, now), kind: "spark" });
+    if (k.fov > .2 && state === "race") for (let n = 0; n < 2; n++) {   // speed streaks rushing past
+      const ang = Math.random() * Math.PI * 2, r0 = W * (.22 + Math.random() * .25), cxs = W / 2, cys = HOR + (H - HOR) * .32;
+      PFX.push({ x: cxs + Math.cos(ang) * r0, y: cys + Math.sin(ang) * r0 * .55, vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 230, t: .14, life: .14, size: 1, col: "#ffffff", kind: "streak" });
+    }
+    if (k.off && k.v > 60 && k.z <= 0) { const side = Math.random() < .5 ? -1 : 1;   // dust off the road
+      PFX.push({ x: x + side * w * .4 + (Math.random() - .5) * 6, y: y - 2, vx: side * 18 + (Math.random() - .5) * 20, vy: 25 + Math.random() * 25, t: .45, life: .45, size: 3 + Math.random() * 2, col: T && T.theme.road === "dirt" ? "120,90,50" : "110,95,60", kind: "dust" }); }
+    if (k.hyper > 0) PFX.push({ x: x + (Math.random() - .5) * w * 1.2, y: y - Math.random() * w * .8, vx: (Math.random() - .5) * 40, vy: 40, t: .35, life: .35, size: 2.5, col: `hsl(${Math.random() * 360},100%,65%)`, kind: "star" });
   }
-  // drift sparks and dust
-  if (k.drift && k.charge > .2) {
-    const col = k.charge > 2.6 ? ["#c86bff", "#f0c8ff"] : k.charge > 1.7 ? ["#ff9a2e", "#ffd34d"] : k.charge > .8 ? ["#5ab4ff", "#c8ecff"] : ["#ffffff", "#dddddd"];
-    for (let i = 0; i < 6; i++) { ctx.fillStyle = col[i & 1]; const sx = x + (i < 3 ? -1 : 1) * w * .42 + (Math.random() - .5) * 10, sy = y - Math.random() * 8;
-      ctx.fillRect(sx, sy, 2, 2); }
+  for (let i = PFX.length - 1; i >= 0; i--) {
+    const p = PFX[i]; p.t -= fdt; if (p.t <= 0) { PFX.splice(i, 1); continue; }
+    p.x += p.vx * fdt; p.y += p.vy * fdt; const a = p.t / p.life;
+    if (p.kind === "spark") { ctx.globalAlpha = a > .6 ? 1 : a > .3 ? .8 : .5; ctx.fillStyle = p.col; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
+    else if (p.kind === "streak") { ctx.globalAlpha = a * .8; ctx.strokeStyle = p.col; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * .035, p.y - p.vy * .035); ctx.stroke(); }
+    else if (p.kind === "dust") { ctx.globalAlpha = a * .5; ctx.fillStyle = `rgb(${p.col})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.6 - a * .6), 0, 7); ctx.fill(); }
+    else { ctx.globalAlpha = a; ctx.fillStyle = p.col; ctx.font = `${p.size * 3}px sans-serif`; ctx.textAlign = "center"; ctx.fillText("✦", p.x, p.y); }
   }
-  if (k.off && k.v > 60) for (let i = 0; i < 4; i++) { ctx.fillStyle = "rgba(120,90,50,.6)"; ctx.fillRect(x + (Math.random() - .5) * w, y - Math.random() * 6, 3, 3); }
+  ctx.globalAlpha = 1;
+  // a coloured glow under the kart while a drift is charged or a boost is on
+  const glow = k.drift && k.charge > .8 ? (k.charge > 2.6 ? `hsla(${(now * 900) % 360},100%,60%,` : k.charge > 1.7 ? "rgba(255,110,30," : "rgba(70,160,255,") : (k.extra || 0) > 20 ? "rgba(255,140,40," : null;
+  if (glow) { const g4 = ctx.createRadialGradient(x, gy, 2, x, gy, w * .9); g4.addColorStop(0, glow + ".55)"); g4.addColorStop(1, glow + "0)"); ctx.fillStyle = g4; ctx.fillRect(x - w, gy - w * .5, w * 2, w); }
   if (IMG.meso) for (const c of COINFX) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(IMG.meso[Math.floor(c.t * 16) % 4], x + c.x - 6.5, y - 30 + c.y, 13, 12); ctx.restore(); }
   let lift = 0;
   if (k.rescue > 0) { const p = k.rescue > .7 ? (1.4 - k.rescue) / .7 : k.rescue / .7; lift = p * 40; ctx.globalAlpha = Math.max(0, 1 - p);
@@ -949,8 +1000,15 @@ function drawKart(k) {
   ctx.fillStyle = "#ffffff"; for (const px of [-cw * .55, 0, cw * .55]) { ctx.beginPath(); ctx.arc(px, cy0 - (px ? cw * .58 : cw * .72), cw * .08, 0, 7); ctx.fill(); }
   ctx.fillStyle = "#ffd75e"; ctx.strokeStyle = "#5a0d10"; ctx.lineWidth = 1.6; ctx.font = `900 ${Math.round(bh * .42)}px Ubuntu, sans-serif`; ctx.textAlign = "center";
   ctx.strokeText("F", 0, cy0 + bh * .33); ctx.fillText("F", 0, cy0 + bh * .33);
-  if (k.boost > 0) for (const sx of [-bw * .16, bw * .16]) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e"; ctx.beginPath();
-    ctx.moveTo(sx - 3, -bh * .2); ctx.lineTo(sx + 3, -bh * .2); ctx.lineTo(sx, -bh * .2 + 6 + Math.random() * 6); ctx.fill(); }
+  if ((k.extra || 0) > 5) {   // boost flames out of the exhausts, as big as the kart and flickering
+    const pw = Math.min(1, k.extra / 100); ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for (const sx of [-bw * .18, bw * .18]) {
+      const fl = bw * (.45 + .35 * pw) * (.8 + Math.random() * .4), fw = bw * .16 * (.85 + Math.random() * .3);
+      const g5 = ctx.createLinearGradient(0, -bh * .25, 0, -bh * .25 + fl); g5.addColorStop(0, "#fffbe0"); g5.addColorStop(.3, "#ffd23f"); g5.addColorStop(.7, "#ff6a1e"); g5.addColorStop(1, "rgba(255,40,20,0)");
+      ctx.fillStyle = g5; ctx.beginPath(); ctx.moveTo(sx - fw, -bh * .25); ctx.quadraticCurveTo(sx - fw * 1.1, -bh * .25 + fl * .55, sx, -bh * .25 + fl); ctx.quadraticCurveTo(sx + fw * 1.1, -bh * .25 + fl * .55, sx + fw, -bh * .25); ctx.fill();
+    }
+    ctx.restore();
+  }
   ctx.restore(); ctx.globalAlpha = 1;
 }
 // a rival's kart: same shape as yours in their colour, their character picture sharp when close, their name above
@@ -985,7 +1043,8 @@ function drawRival(r, sx, gy, sc, fz) {
   ctx.fillStyle = "#2d2832"; rr(-w * .36, -bh * .8, w * .72, bh * .65, Math.max(1, 3 * sc / 2)); ctx.fill();
   ctx.fillStyle = r.color; rr(-w * .34, -bh * .8, w * .68, bh * .48, Math.max(1, 3 * sc / 2)); ctx.fill();
   ctx.fillStyle = "#fff"; ctx.fillRect(-w * .34, -bh * .4, w * .68, Math.max(.5, sc));
-  if (r.boost > 0) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e"; ctx.fillRect(-w * .1, -bh * .2, w * .2, bh * .4 + Math.random() * bh * .4); }
+  if ((r.extra || 0) > 5) { ctx.save(); ctx.globalCompositeOperation = "lighter"; for (const sx of [-w * .18, w * .18]) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e";
+    const fl = w * (.4 + Math.random() * .25); ctx.beginPath(); ctx.moveTo(sx - w * .1, -bh * .25); ctx.lineTo(sx + w * .1, -bh * .25); ctx.lineTo(sx, -bh * .25 + fl); ctx.fill(); } ctx.restore(); }
   if (r.holding && r.item) { const hi = r.item === "arrow" ? IMG.arrowIcon : IMG.slime; if (hi) { const hs = 9 * sc; ctx.drawImage(hi, -hs / 2, -hs * .3, hs, hs * hi.height / hi.width); } }
   ctx.restore(); ctx.globalAlpha = 1;
   if (r.ink > 0 && fz < 500) { ctx.fillStyle = "rgba(10,10,18,.75)"; ctx.beginPath(); ctx.arc(sx + w * .1, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc * .7, w * .22, 0, 7); ctx.fill(); }
@@ -1019,6 +1078,7 @@ function hud() {
   $k("#kWarn").hidden = !warn;
   if (warn && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
   const bag = state === "menu" ? "" : `${k.mesos}/10`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${bag}` : ""; }
+  if ((k.roll > 0 || k.roll2 > 0) && performance.now() - rollTick > 85) { rollTick = performance.now(); tone([660, 740, 830, 880, 990, 880, 830, 740][rollN++ % 8], .05, "square", .035); }
   const keys = Object.keys(ITEM_ICON), spinIcon = () => ITEM_ICON[keys[Math.floor(performance.now() / 80) % keys.length]];
   const icon = k.roll > 0 ? spinIcon() : k.item ? ITEM_ICON[k.item] : "";
   const icon2 = k.roll2 > 0 ? spinIcon() : k.item2 ? ITEM_ICON[k.item2] : "";
@@ -1070,7 +1130,7 @@ async function start() {
   IMG.me = await loadImg(spriteOf(me)); if (!alive()) return; fit();
   
   try { ghost = mode === "tt" ? JSON.parse(store.get(ghostKey())) : null; } catch (e) { ghost = null; }
-  ghostRec = [];
+  ghostRec = []; PFX = []; FIRE = [];
   K = freshKart(); finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; makeRivals(mode === "gp" ? gp.names : null); if (mode === "gp") gp.names = RIV.map(r => r.name);
   if (mode === "tt") { K.item = "triple"; K.itemN = 3; }
   B.musicRate(1);
@@ -1082,10 +1142,10 @@ async function start() {
   setTimeout(() => {
     if (!alive() || state !== "count") return; state = "race"; beep(880);
     const h = K.held;
-    if (h != null && h >= 950) { K.boost = 1.2; K.v = 160; flash("🚀 ROCKET START!", 1000); boostSound(); }
+    if (h != null && h >= 950) { giveBoost(K, 1.2, 110); flash("🚀 ROCKET START!", 1000); }
     else if (h != null) { K.stall = .9; flash("💨 Too early!", 1000); bumpSound(); }
     else flash("GO!", 900);
-    RIV.forEach(r => { if (Math.random() < .35) { r.boost = 1; r.v = 120; } });
+    RIV.forEach(r => { if (Math.random() < .35) giveBoost(r, 1, 90); });
   }, 3000);
 }
 let assetsReady = false;
@@ -1262,19 +1322,46 @@ const wantFull = () => TOUCH && state !== "menu" && !upright() && !document.full
 
 // ------------------------------------------------------------------ sounds (made in the browser)
 let eng = null;
+// engine: SuperTuxKart's fake gearbox (the pitch climbs, drops at 1/3 and 2/3 of top speed like gear changes, and keeps rising
+// in a boost), plus wind noise that grows with speed, a tyre screech while drifting and a crunch on the grass
+let noiseBuf = null;
+function noise(ac) {
+  if (!noiseBuf) { noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  return noiseBuf;
+}
+let screechAt = 0, crunchAt = 0;
 function engine() {
   const ac = window.getAC && window.getAC(); if (!ac || state === "menu") return;
   if (!eng) {
     const o = ac.createOscillator(), o2 = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
-    o.type = "sawtooth"; o2.type = "square"; f.type = "lowpass"; f.frequency.value = 600; g.gain.value = 0;
-    o.connect(f); o2.connect(f); f.connect(g).connect(ac.destination); o.start(); o2.start(); eng = { o, o2, g };
+    o.type = "sawtooth"; o2.type = "square"; f.type = "lowpass"; f.frequency.value = 700; g.gain.value = 0;
+    o.connect(f); o2.connect(f); f.connect(g).connect(ac.destination); o.start(); o2.start();
+    const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();   // wind
+    n.buffer = noise(ac); n.loop = true; nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .6; ng.gain.value = 0;
+    n.connect(nf).connect(ng).connect(ac.destination); n.start();
+    eng = { o, o2, g, n, ng, nf };
   }
-  const v = Math.abs(K.v), base = 55 + v * .55 + (K.boost > 0 ? 40 : 0);
-  eng.o.frequency.setTargetAtTime(base, ac.currentTime, .05); eng.o2.frequency.setTargetAtTime(base * .5, ac.currentTime, .05);
-  eng.g.gain.setTargetAtTime(state === "done" ? 0 : .025 + Math.min(.03, v / 8000), ac.currentTime, .1);
+  const v = Math.abs(K.v); let f = v / VMAX; f = f > 1 ? 1 + (1 - 1 / f) : f;
+  const gear = .6 + .35 * (.9 * f + 3 * ((Math.min(f, 1) % (1 / 3)))), base = 105 * gear * (f > 1 ? f : 1);
+  eng.o.frequency.setTargetAtTime(base, ac.currentTime, .04); eng.o2.frequency.setTargetAtTime(base * .5, ac.currentTime, .04);
+  eng.g.gain.setTargetAtTime(state === "done" ? 0 : .022 + Math.min(.03, v / 9000), ac.currentTime, .1);
+  eng.ng.gain.setTargetAtTime(state === "race" ? Math.min(.05, (v / VMAX) ** 2 * .035) : 0, ac.currentTime, .15);
+  eng.nf.frequency.setTargetAtTime(700 + v * 2.5, ac.currentTime, .2);
+  const t = ac.currentTime;
+  if (K.drift && state === "race" && t - screechAt > .17) { screechAt = t; noiseHit(2600, .12, .035, 8); }   // tyre screech
+  if (K.off && v > 60 && K.z <= 0 && state === "race" && t - crunchAt > .1) { crunchAt = t; noiseHit(300, .08, .05, 1.5); }   // grass crunch
 }
+function noiseHit(freq, dur, vol, q = 1, sweep) {
+  const ac = window.getAC && window.getAC(); if (!ac) return;
+  const n = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(), t = ac.currentTime;
+  n.buffer = noise(ac); f.type = "bandpass"; f.frequency.setValueAtTime(freq, t); f.Q.value = q; if (sweep) f.frequency.exponentialRampToValueAtTime(sweep, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  n.connect(f).connect(g).connect(ac.destination); n.start(t, Math.random() * .5); n.stop(t + dur + .02);
+}
+const burstSound = pow => { const v = .05 + pow / 2400; tone(180, .35, "sawtooth", v, 900); noiseHit(800, .4, v * 1.4, .8, 3500); };   // boost: a rising roar + a whoosh
+const whooshSound = () => noiseHit(1500, .25, .05, 1, 400);   // letting go of a drift
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopEngine(); });
-function stopEngine() { if (eng) { try { eng.o.stop(); eng.o2.stop(); } catch (e) {} eng = null; } }
+function stopEngine() { if (eng) { try { eng.o.stop(); eng.o2.stop(); eng.n.stop(); } catch (e) {} eng = null; } }
 function tone(f, dur, type = "square", vol = .08, f2) {
   const ac = window.getAC && window.getAC(); if (!ac) return;
   const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t);
@@ -1291,7 +1378,8 @@ const jumpSound = () => tone(200, .3, "triangle", .1, 700);
 const itemSound = () => { tone(520, .1, "square", .06); setTimeout(() => tone(780, .25, "sawtooth", .06, 1200), 80); };
 const spinSound = () => { for (let i = 0; i < 4; i++) setTimeout(() => tone(600 - i * 90, .12, "square", .06, 300 - i * 50), i * 110); };
 const slamSound = d => tone(90, .5, "square", Math.max(.03, .16 - d / 2500), 35);
-const boxSound = () => { for (let i = 0; i < 8; i++) setTimeout(() => tone(700 + (i % 3) * 180, .06, "square", .04), i * 120); };
+const boxSound = () => {};   // the roulette rattles in hud() while the slot spins
+let rollTick = 0, rollN = 0;
 const scrollSound = () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, .14, "triangle", .07), i * 90)); };
 const thunderSound = () => { tone(1800, .08, "sawtooth", .08, 200); setTimeout(() => tone(70, .7, "square", .1, 30), 60); };
 const splatSound = () => { tone(180, .25, "square", .09, 50); tone(90, .35, "sawtooth", .06, 40); };
