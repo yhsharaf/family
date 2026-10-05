@@ -199,7 +199,9 @@ const TRACKS = {
     },
   },
 };
-const CUP = ["henesys", "town", "forest"];   // the Henesys Cup, in order
+const CUP = ["henesys", "town", "forest"];
+// road look: "classic" (busy cobbles and specks) or "clean" (smooth road with faint large stones, fewer flowers; easier to read at speed)
+let roadLook = store.get("kart_road") === "classic" ? "classic" : "clean";   // the Henesys Cup, in order
 function loadTrack(key) {
   if (TRACK_KEY === key) return;
   T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; PTS = loopPts(T.ctrl); N = PTS.length; TRACK_LEN = 0;
@@ -227,7 +229,8 @@ function paintTrack() {
   for (let k = -WORLD; k < WORLD * 2; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 32, 0); g.lineTo(k + 32 - WORLD, WORLD); g.lineTo(k - WORLD, WORLD); g.fill(); }
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const flowers = ["#ffe066", "#ffffff", "#ff8fb8", "#ffb347"];
-  for (let k = 0; k < th.flowers; k++) { const x = rnd() * WORLD, y = rnd() * WORLD; g.fillStyle = "#3f8a34"; g.fillRect(x + 1, y + 4, 3, 3); g.fillStyle = flowers[k % 4]; g.fillRect(x, y, 5, 5); }
+  const CLEAN = roadLook === "clean";
+  for (let k = 0; k < th.flowers * (CLEAN ? .35 : 1); k++) { const x = rnd() * WORLD, y = rnd() * WORLD; g.fillStyle = "#3f8a34"; g.fillRect(x + 1, y + 4, 3, 3); g.fillStyle = flowers[k % 4]; g.fillRect(x, y, 5, 5); }
   const pathOf = (pts, closed) => () => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); if (closed) g.closePath(); };
   const path = pathOf(PTS, true), apath = pathOf(ALT, false);
   g.lineJoin = g.lineCap = "round";
@@ -237,13 +240,19 @@ function paintTrack() {
     p(); g.strokeStyle = "#e0453a"; g.setLineDash([12, 12]); g.stroke(); g.setLineDash([]);
   };
   const edge = (p, wd) => { p(); g.strokeStyle = "#6e6558"; g.lineWidth = wd + 4; g.stroke(); };
-  const surface = (p, wd, st) => { p(); g.strokeStyle = st === "planks" ? "#8a5a2e" : st === "dirt" ? "#b98b5a" : "#bdb3a2"; g.lineWidth = wd; g.stroke(); };
+  const surface = (p, wd, st) => { p(); g.strokeStyle = st === "planks" ? "#8a5a2e" : st === "dirt" ? (CLEAN ? "#bf9462" : "#b98b5a") : (CLEAN ? "#c3bbad" : "#bdb3a2"); g.lineWidth = wd; g.stroke(); };
   if (LAKE) {   // the forest lake (the wooden bridge crosses it)
     g.fillStyle = "#2f6e2a"; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx + 10, LAKE.ry + 10, 0, 0, 7); g.fill();
     g.fillStyle = "#3d8de0"; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx, LAKE.ry, 0, 0, 7); g.fill();
     g.fillStyle = "#5aa8f0"; for (let k = 0; k < 40; k++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * .85; g.fillRect(LAKE.cx + Math.cos(a) * LAKE.rx * r, LAKE.cy + Math.sin(a) * LAKE.ry * r, 14, 3); }
   }
   const cobbles = (n, pt, tan, wd, st) => { for (let i = 0; i < n; i++) {   // rows of flat cobbles across the road (or dirt specks, or planks)
+    if (CLEAN && st !== "planks") {   // clean look: just a few faint, large stone shapes
+      if (i % 4) continue;
+      const a = tan(i), o = (rnd() - .5) * wd * .8, x = pt(i)[0] - Math.sin(a) * o, y = pt(i)[1] + Math.cos(a) * o, r = 9 + rnd() * 12;
+      g.fillStyle = st === "dirt" ? (rnd() < .5 ? "rgba(120,80,40,.10)" : "rgba(255,230,190,.10)") : (rnd() < .5 ? "rgba(80,70,60,.07)" : "rgba(255,255,255,.10)");
+      g.beginPath(); g.ellipse(x, y, r, r * .6, a, 0, 7); g.fill(); continue;
+    }
     if (st === "planks") { if (i % 2) continue; const a = tan(i), ca = Math.cos(a), sa = Math.sin(a), x = pt(i)[0], y = pt(i)[1];
       g.strokeStyle = i % 4 ? "#a36c38" : "#6b4423"; g.lineWidth = 3; g.beginPath(); g.moveTo(x + sa * wd / 2, y - ca * wd / 2); g.lineTo(x - sa * wd / 2, y + ca * wd / 2); g.stroke(); continue; }
     if (st === "dirt") { for (let k = 0; k < 3; k++) { const a = tan(i), o = (rnd() - .5) * wd * .9, x = pt(i)[0] - Math.sin(a) * o, y = pt(i)[1] + Math.cos(a) * o;
@@ -360,17 +369,20 @@ function placeObjects() {
 // ------------------------------------------------------------------ screen
 // fixed 320 px wide; the height follows the screen's shape (tall on phones), with the camera raised to match
 const W = 320, FOCAL = 170, CAMD = 84;
-let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1;
+let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1, FW = 320, FH = 134;
 const cv = $k("#kCanvas"), bctx = cv.getContext("2d");
 const fxc = $k("#kFx"), ctx = fxc.getContext("2d");   // sky, town, props, karts and the minimap, drawn sharp at screen resolution
 function fit() {
   const r = $k(".kt-screen").getBoundingClientRect();
   const h = r.width > 0 ? Math.round(W * r.height / r.width) : 192;
   H = Math.max(130, Math.min(640, h)); HOR = Math.round(H * .27); CAMH = (H * .8 - HOR) * CAMD / FOCAL;
-  cv.width = W; cv.height = H; bctx.imageSmoothingEnabled = false;
-  floor = bctx.createImageData(W, H - HOR); F32 = new Uint32Array(floor.data.buffer);
-  FOG = []; for (let y = 0; y < H - HOR; y++) FOG[y] = y < 8 ? Math.round(150 * (1 - y / 8)) : 0;   // only a thin blend into the horizon
   const dpr = Math.min(2, window.devicePixelRatio || 1), pw = Math.min(1800, Math.round((r.width || W) * dpr));
+  // the floor: 320 px wide in the Classic look (chunky pixels); in the Clean look about half the screen's real resolution, smoothly scaled
+  FW = roadLook === "clean" ? Math.max(W, Math.min(matchMedia("(pointer: coarse)").matches ? 520 : 720, Math.round(pw / 2))) : W;   // phones: a bit lower, to stay smooth
+  const fk = FW / W; FH = Math.round((H - HOR) * fk);
+  cv.width = FW; cv.height = Math.round(H * fk); bctx.imageSmoothingEnabled = false; cv.style.imageRendering = roadLook === "clean" ? "auto" : "";
+  floor = bctx.createImageData(FW, FH); F32 = new Uint32Array(floor.data.buffer);
+  FOG = []; for (let y = 0; y < FH; y++) { const yl = y / fk; FOG[y] = yl < 8 ? Math.round(150 * (1 - yl / 8)) : 0; }   // only a thin blend into the horizon
   fxc.width = pw; fxc.height = Math.round(pw * H / W); S = pw / W;
 }
 fit();
@@ -611,7 +623,7 @@ function worldStep(dt, tt) {
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
-  get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack }) : null;
+  get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack, setLook(l) { roadLook = l; const k = TRACK_KEY; TRACK_KEY = null; loadTrack(k); fit(); } }) : null;
 function freshKart() {
   const g = gridSpot(4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -828,20 +840,36 @@ function render() {
   }
   // floor, one row at a time (the camera rises a little when you jump, so big jumps feel like flying)
   const CH = CAMH + Math.min(k.z, 130) * .35;
-  for (let y = 0; y < H - HOR; y++) {
-    const z = CH * FO / (y + 1), half = z * (W / 2) / FO;
+  const fk = FW / W, smooth = roadLook === "clean";
+  for (let y = 0; y < FH; y++) {
+    const yl = (y + .5) / fk, z = CH * FO / (yl + .5), half = z * (W / 2) / FO;
     let wx = cx + ca * z + sa * half, wy = cy + sa * z - ca * half;   // left end of the row
-    const stx = -sa * 2 * half / W, sty = ca * 2 * half / W, f = FOG[y], nf = 256 - f;
+    const stx = -sa * 2 * half / FW, sty = ca * 2 * half / FW, f = FOG[y], nf = 256 - f;
     const hr = HAZE[0] * f, hg = HAZE[1] * f, hb = HAZE[2] * f;
-    let o = y * W;
-    for (let x = 0; x < W; x++, wx += stx, wy += sty, o++) {
-      const ix = wx | 0, iy = wy | 0;
-      let c = (ix >= 0 && iy >= 0 && ix < WORLD && iy < WORLD) ? TEX[iy * WORLD + ix] : OUT;
+    const bil = smooth && 2 * half / FW < .9;   // near the camera one texel covers several pixels: blend the 4 nearest (no blocky edges)
+    let o = y * FW;
+    for (let x = 0; x < FW; x++, wx += stx, wy += sty, o++) {
+      let c;
+      if (bil) {
+        const fx = wx - .5, fy = wy - .5, ix = Math.floor(fx), iy = Math.floor(fy);
+        if (ix >= 0 && iy >= 0 && ix < WORLD - 1 && iy < WORLD - 1) {
+          const u = ((fx - ix) * 256) | 0, v = ((fy - iy) * 256) | 0, i0 = iy * WORLD + ix;
+          const a = TEX[i0], b = TEX[i0 + 1], cc = TEX[i0 + WORLD], d = TEX[i0 + WORLD + 1], iu = 256 - u, iv = 256 - v;
+          const w0 = iu * iv, w1 = u * iv, w2 = iu * v, w3 = u * v;   // weights (sum 65536)
+          const B = (((a >>> 16) & 255) * w0 + ((b >>> 16) & 255) * w1 + ((cc >>> 16) & 255) * w2 + ((d >>> 16) & 255) * w3) >>> 16;
+          const G = (((a >>> 8) & 255) * w0 + ((b >>> 8) & 255) * w1 + ((cc >>> 8) & 255) * w2 + ((d >>> 8) & 255) * w3) >>> 16;
+          const Rr = ((a & 255) * w0 + (b & 255) * w1 + (cc & 255) * w2 + (d & 255) * w3) >>> 16;
+          c = 0xff000000 | B << 16 | G << 8 | Rr;
+        } else c = OUT;
+      } else {
+        const ix = wx | 0, iy = wy | 0;
+        c = (ix >= 0 && iy >= 0 && ix < WORLD && iy < WORLD) ? TEX[iy * WORLD + ix] : OUT;
+      }
       if (f) c = 0xff000000 | ((((c >>> 16) & 255) * nf + hb) >> 8) << 16 | ((((c >>> 8) & 255) * nf + hg) >> 8) << 8 | (((c & 255) * nf + hr) >> 8);
-      F32[o] = c;
+      F32[o] = c >>> 0;
     }
   }
-  bctx.putImageData(floor, 0, HOR);
+  bctx.putImageData(floor, 0, Math.round(HOR * fk));
   // billboards, far to near: scenery, mesos, pigs and the King Slime (with a shadow when it's up in the air)
   const tt = performance.now() / 1000, vis = [];
   const add = (x, y, im, sc, z, flip, shadow) => {
@@ -1249,6 +1277,9 @@ function showBest() {
   $k("#kMine").innerHTML = b && b.race ? `🏆 Your best: race <b>${fmt(b.race)}</b> · lap <b>${fmt(b.lap)}</b>` : "No time yet on this track. Go set one!";
 }
 $k("#kGo").onclick = start;
+function drawRoadLook() { document.querySelectorAll("#kRoad [data-r]").forEach(b => b.classList.toggle("on", b.dataset.r === roadLook)); }
+$k("#kRoad").addEventListener("click", e => { const b = e.target.closest("[data-r]"); if (!b) return; roadLook = b.dataset.r; store.set("kart_road", roadLook); TRACK_KEY = null; drawRoadLook(); fit(); });
+drawRoadLook();
 function drawTrack() {
   const t = TRACKS[mode === "gp" ? "henesys" : track];
   $k("#kTrackPick").hidden = mode === "gp";
