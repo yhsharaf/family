@@ -168,7 +168,7 @@ function zakumBuild(F, o) {
 const HEN_ART = { sky: "media/duel/bg_henesys.webp?v=9", strip: "media/kart/henesys_strip.webp?v=1" };
 const TRACKS = {
   // 1. Henesys Circuit (laid out like a Mario Kart Tour circuit): a long start straight, a sweeping climb to the pig farm where a ramp on the
-  // crest jumps you over the pen, a downhill hairpin, the market S-bend, a valley U-turn with a short cut inside it, and a rolling back straight.
+  // crest jumps you over the pen, a downhill hairpin, the market S-bend, a valley U-turn round a mushroom tower, and a rolling back straight.
   // The third number of each point is the road's height (the 3D view's hills).
   henesys: {
     id: "henesys3", cup: "henesys", art: HEN_ART, name: "Henesys Circuit", sub: "farm jump · market S-bend · valley turn", icon: "🍄", music: "henesys",
@@ -187,9 +187,7 @@ const TRACKS = {
       row(sA + 6, sB - 6, 6, j => Math.sin(j * .5) * 40);                  // a snake of mesos through the S-bend
       row(I(1300, 1878), I(1120, 1868), 6, -26); row(I(980, 1866), I(820, 1878), 6, 26);
       return {
-        pen, lake: { cx: 760, cy: 1090, rx: 190, ry: 130 },
-        // the valley short cut: a narrow path across the inside of the U-turn, with a boost in the middle
-        fork: { a: I(1560, 1345), b: I(1470, 1878), via: [[1620, 1520], [1630, 1700]], width: 72, style: "cobble", pads: [{ t: "boost", j: .45, len: 6, o: 0, w: 44 }], coins: true },
+        pen, lake: { cx: 760, cy: 1090, rx: 190, ry: 130 },   // (no short cut: a second road crossing the first never looks clean)
         pads: [
           { t: "boost", i: I(700, 300), len: 14, o: 0, w: 60 },            // out of turn 1
           { t: "boost", i: I(1440, 712), len: 14, o: -20, w: 56 },         // out of the hairpin
@@ -198,8 +196,6 @@ const TRACKS = {
           { t: "boost", i: I(450, 1830), len: 12, o: 0, w: 56 },           // onto the start straight
           { t: "bigramp", i: I(1120, 280), len: 7, o: 0, w: ROAD },        // the crest jump over the pig pen
           { t: "ramp", i: I(1080, 1866), len: 9, o: 0, w: ROAD },          // a hop over the back-straight hill
-          { t: "rock", i: I(1795, 470), len: 26, o: -52, w: 56 },          // gravel on the outside of the hairpin
-          { t: "rock", i: I(1835, 1600), len: 24, o: -52, w: 56 },         // and of the valley turn
           { t: "slime", i: I(1085, 930), len: 8, o: 50, w: 40 }, { t: "slime", i: I(1700, 1415), len: 8, o: 48, w: 40 }, { t: "slime", i: I(640, 1875), len: 8, o: -50, w: 40 }],
         coins,
         pigs: [{ i: I(1250, 1878), ph: 0, k: "pig" }, { i: I(600, 1868), ph: 2, k: "pig" }, { i: I(1600, 300), ph: 4.2, k: "pig" }],
@@ -209,7 +205,7 @@ const TRACKS = {
           for (let i = pen.a; i <= pen.b; i += 4) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 8)); push(x, y, "posts", .32, 6); }
           for (const [x, y, k] of [[1150, 150, "haypile"], [1300, 150, "haypile"], [1330, 450, "redshrooms"]]) push(x, y, k);
           for (let i = sA + 10; i <= sB - 10; i += 26) { const [x, y] = at(i, -(ROAD / 2 + CURB + 70)); push(x, y, i % 52 < 26 ? "stall" : "stall2"); }   // a few market stalls, set back from the road
-          for (const [x, y, k] of [[720, 760, "shroomtower"], [900, 1380, "shroomhouse"], [600, 1420, "shroomhouse"], [660, 560, "shroomhouse"]]) push(x, y, k);
+          for (const [x, y, k] of [[720, 760, "shroomtower"], [900, 1380, "shroomhouse"], [600, 1420, "shroomhouse"], [660, 560, "shroomhouse"], [1640, 1640, "shroomtower"]]) push(x, y, k);
         },
       };
     },
