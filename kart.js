@@ -512,8 +512,11 @@ function loadTrack(key) {
   if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key], w = 46;   // 🔀 the other maps' short cuts: each its own shape, one thing to dodge, two boosts
     const dodge = { sleepy: "mud", elnath: "ice", ludi: "slime", zakum: "rock" }[T.cup] || "rock";
     const ww = SHORTCUTS[key][3] === "straight" ? 40 : 46;
+    const heavy = HEAVY_CUTS.includes(key);   // the short cuts that save the most get heavier traps (and no boost halfway)
     f.fork = { a, b, via, width: ww, style: T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble", coins: true,
-      pads: [{ t: "rock", j: .28, len: 7, o: w / 4, w: w / 2 }, { t: "boost", j: .45, len: 5, o: 0, w: w * .7 }, { t: dodge, j: .63, len: 7, o: -w / 4, w: w / 2 }, { t: "boost", j: .84, len: 5, o: 0, w: w * .8 }] }; }   // every other map gets a short cut where its road loops back near itself
+      pads: heavy ? [{ t: "rock", j: .2, len: 8, o: w / 4, w: w / 2 }, { t: "slime", j: .38, len: 6, o: 0, w: w * .55 }, { t: "rock", j: .5, len: 8, o: -w / 4, w: w / 2 },
+          ...(T.cup === "elnath" ? [{ t: "ice", j: .6, len: 12, o: 0, w }] : []), { t: dodge, j: .7, len: 7, o: w / 4, w: w / 2 }, { t: "boost", j: .88, len: 5, o: 0, w: w * .8 }]
+        : [{ t: "rock", j: .28, len: 7, o: w / 4, w: w / 2 }, { t: "boost", j: .45, len: 5, o: 0, w: w * .7 }, { t: dodge, j: .63, len: 7, o: -w / 4, w: w / 2 }, { t: "boost", j: .84, len: 5, o: 0, w: w * .8 }] }; }   // every other map gets a short cut where its road loops back near itself
   if (f.fork) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
@@ -528,6 +531,7 @@ function loadTrack(key) {
 
 // 🔀 each map's short cut, every one a different shape: [from track point, to track point, its bends, the shape]. Each was placed where that
 // shape fits at full size with grass + curbs between it and the road (found with __kart.findShape(kind, width) on localhost; run again if a track changes).
+const HEAVY_CUTS = ["en1", "en2"];   // El Nath's two big short cuts save the most time, so they're the most dangerous
 const SHORTCUTS = {
   en1: [502, 721, [[1328, 1291], [1356, 1366], [1319, 1446], [1355, 1540]], "camel"],
   en2: [544, 775, [[1151, 1014], [1091, 1096], [1059, 1187], [1055, 1288]], "arc"],
@@ -1138,8 +1142,10 @@ function setupHazards() {
   HAZ.lanes = []; HAZ.ice = []; HAZ.rocks = []; HAZ.rockT = 4; HAZ.pap = null;
   const F = f => OPEN ? Math.round(START_I + (N - FIN_OFF - START_I) * f) : Math.round(N * f) % N;
   if (T.cup === "elnath") [.24, .52, .79].forEach((f, n) => HAZ.lanes.push({ i: F(f), side: n % 2 ? 1 : -1, period: 5.5 + n * .4, phase: n * 1.9, shot: -1, warn: 0 }));
+  if (T.cup === "elnath" && AN && HEAVY_CUTS.includes(TRACK_KEY)) HAZ.lanes.push({ alt: true, j: Math.round(AN * .5), side: 1, period: 4, phase: .7, shot: -1, warn: 0 });   // one guards the short cut
   if (TRACK_KEY === "ld3") HAZ.pap = { charge: 0, fx: 0, last: -1 };
 }
+const lanePos = (L, side) => L.alt ? altAt(L.j, side * (ALT_ROAD / 2 + CURB + 24)) : at(L.i, side * (ROAD / 2 + CURB + 34));   // a frost turret beside the road (or the short cut)
 function freeze(r) {
   if (r.frozen > 0 || r.hyper > 0 || r.z > 20 || r.rescue > 0 || r.done) return;
   r.frozen = 1.1; r.v *= .45; r.drift = 0; r.charge = 0;
@@ -1153,7 +1159,7 @@ function hazardStep(dt, all) {
     const cyc = Math.floor((t + L.phase) / L.period), ph = (t + L.phase) % L.period;
     L.warn = t > 4 && ph > L.period - .8 ? 1 - (L.period - ph) / .8 : 0;
     if (t > 4 && cyc !== L.shot && L.shot !== -1) {
-      const [x0, y0] = at(L.i, L.side * (ROAD / 2 + CURB + 34)), [x1, y1] = at(L.i, -L.side * (ROAD / 2 + CURB + 34)), d = Math.hypot(x1 - x0, y1 - y0);
+      const [x0, y0] = lanePos(L, L.side), [x1, y1] = lanePos(L, -L.side), d = Math.hypot(x1 - x0, y1 - y0);
       HAZ.ice.push({ x: x0, y: y0, a: Math.atan2(y1 - y0, x1 - x0), v: 430, life: d / 430 }); if (Math.hypot(K.x - x0, K.y - y0) < 500) tone(2400, .12, "triangle", .04, 1200);
     }
     L.shot = cyc;
@@ -1675,7 +1681,7 @@ function render() {
     for (let b = 0; b < 4; b++) { const ph = (tt * .9 + b * .27 + p.i * .1) % 1, bx = sx + Math.sin(b * 2.3 + p.i) * rx * .6, by = gy - ph * 10 * sc; ctx.globalAlpha = 1 - ph; ctx.fillStyle = "#ffe08a"; ctx.beginPath(); ctx.arc(bx, by, Math.max(.6, (1.2 + ph * 2) * sc), 0, 7); ctx.fill(); }
     ctx.restore(); }); }
   // ❄️ frost turrets (an ice crystal that glints before it fires) and their ice arrows
-  for (const L of HAZ.lanes) { const [lx, ly] = at(L.i, L.side * (ROAD / 2 + CURB + 34)); addDraw(lx, ly, (sx, gy, sc) => {
+  for (const L of HAZ.lanes) { const [lx, ly] = lanePos(L, L.side); addDraw(lx, ly, (sx, gy, sc) => {
     const h = 26 * sc, w = 11 * sc; ctx.save(); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(sx, gy, w * .9, w * .25, 0, 0, 7); ctx.fill();
     const g = ctx.createLinearGradient(sx - w, 0, sx + w, 0); g.addColorStop(0, "#9ad4ff"); g.addColorStop(.5, "#ffffff"); g.addColorStop(1, "#5aa8e8");
     ctx.fillStyle = g; ctx.strokeStyle = "#2e6fb0"; ctx.lineWidth = Math.max(.6, sc * .8); ctx.beginPath(); ctx.moveTo(sx, gy - h); ctx.lineTo(sx + w, gy - h * .45); ctx.lineTo(sx + w * .5, gy); ctx.lineTo(sx - w * .5, gy); ctx.lineTo(sx - w, gy - h * .45); ctx.closePath(); ctx.fill(); ctx.stroke();
