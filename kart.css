@@ -346,3 +346,15 @@ kbd.w { min-width: 54px; }
 .kt-stick.on i { transition: none; }
 .hd-phone .j { width: 46px; height: 46px; border-radius: 50%; justify-self: start; gap: 0; font-size: 7px; }
 .kt-credit { grid-column: 1 / -1; margin: 2px 0 0; font-size: 11.5px; color: var(--muted); } .kt-credit a { color: inherit; }
+/* phones held upright: the race is turned 90° so it's already sideways (no "turn your phone" message); people just turn the phone */
+@media (pointer: coarse) {
+  .kt.racing.rot .kt-game { position: fixed; top: 0; left: 100vw; width: 100vh; width: 100dvh; height: 100vw; transform-origin: 0 0; transform: rotate(90deg); z-index: 50;
+    max-width: none; min-height: 0; margin: 0; padding: 0; border-radius: 0; gap: 0; box-shadow: none; background: #000; touch-action: none; }
+  .kt.racing.rot .kt-screen { position: absolute; inset: 0; width: auto; margin: 0; border: 0; border-radius: 0; aspect-ratio: auto; flex: none; min-height: 0; }
+  .kt.racing.rot .kt-speed { left: 50%; transform: translateX(-50%); bottom: 12px; }
+  .kt.racing.rot .kt-pad { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; z-index: 3; background: none; pointer-events: none; }
+  .kt.racing.rot .kt-pad > * { pointer-events: auto; }
+  .kt.racing.rot .kt-time { font-size: 22px; } .kt.racing.rot .kt-lap { font-size: 16px; } .kt.racing.rot .kt-pos { font-size: 32px; }
+  .kt.racing.rot .kt-item { width: 44px; height: 44px; } .kt.racing.rot .kt-item img { width: 30px; height: 30px; }
+  .kt.racing.rot .kt-best { display: none; }
+}

@@ -784,7 +784,7 @@ let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1, FW 
 const cv = $k("#kCanvas"), bctx = cv.getContext("2d");
 const fxc = $k("#kFx"), ctx = fxc.getContext("2d");   // sky, town, props, karts and the minimap, drawn sharp at screen resolution
 function fit() {
-  const r = $k(".kt-screen").getBoundingClientRect();
+  const el = $k(".kt-screen"), r = { width: el.offsetWidth, height: el.offsetHeight };   // layout size, not the on-screen box (the game may be turned sideways)
   const h = r.width > 0 ? Math.round(W * r.height / r.width) : 192;
   H = Math.max(130, Math.min(640, h)); HOR = Math.round(H * .27); CAMH = (H * .8 - HOR) * CAMD / FOCAL;
   const dpr = Math.min(2, window.devicePixelRatio || 1), pw = Math.min(1800, Math.round((r.width || W) * dpr));
@@ -1474,7 +1474,7 @@ function render() {
   // minimap (Sleepywood has none: remember the road)
   if (mini && MECH !== "dark") {
     ctx.imageSmoothingEnabled = true;
-    const side = TOUCH && !upright(), mx = side ? 4 : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
+    const side = TOUCH, mx = side ? 4 : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
     ctx.globalAlpha = .85; ctx.drawImage(mini, mx, my, 50, 50); ctx.globalAlpha = 1;
     for (const sh of SHOTS) { ctx.fillStyle = sh.tgt === k ? "#ff2a2a" : "#ffe08a"; ctx.beginPath(); ctx.arc(mx + sh.x * 128 / WORLD * s, my + sh.y * 128 / WORLD * s, 2, 0, 7); ctx.fill(); }
     for (const r of RIV) { ctx.fillStyle = r.color; ctx.fillRect(mx + r.x * 128 / WORLD * s - 1.5, my + r.y * 128 / WORLD * s - 1.5, 3, 3); }
@@ -1735,11 +1735,19 @@ function leaveLandscape() {
   try { screen.orientation.unlock(); } catch (e) {}
   try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
 }
-const waitLandscape = () => new Promise(res => { const my = raceId, chk = () => { if (!upright() || my !== raceId) { removeEventListener("resize", chk); res(); } }; addEventListener("resize", chk); chk(); });
+const waitLandscape = () => Promise.resolve();   // no "turn your phone" message any more: an upright phone shows the game turned sideways
+// phones held upright: the race is drawn turned 90° (landscape), so people just turn the phone; if they do, it switches to the normal sideways view
+let rotWas = null;
+function syncRot() {
+  const r = TOUCH && state !== "menu" && innerHeight > innerWidth;
+  if (r !== rotWas) { rotWas = r; $k("#kart").classList.toggle("rot", r); requestAnimationFrame(() => { if (state !== "menu") fit(); }); }
+  return r;
+}
+addEventListener("resize", () => { if (state !== "menu") syncRot(); });
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
-  const rot = upright(); $k("#kRotate").hidden = !rot; $k("#kFull").hidden = !wantFull();
-  if (TEX && K && state !== "loading") { if (!rot) step(dt); render(); hud(); engine(); }
+  syncRot(); $k("#kFull").hidden = !wantFull();
+  if (TEX && K && state !== "loading") { step(dt); render(); hud(); engine(); }
   if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 80) {
     MP.sendAt = now; const k = K;
     mpSend("p", { x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(3), v: Math.round(k.v), z: Math.round(k.z), s: +k.steer.toFixed(2), sp: k.spin > 0 ? +k.spin.toFixed(2) : 0,
@@ -2114,7 +2122,7 @@ function confetti() {
     box.appendChild(c); setTimeout(() => c.remove(), 4500); }
 }
 function quit() {
-  raceId++; state = "menu"; B.musicRate(1); leaveLandscape(); $k("#kRotate").hidden = true; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
+  raceId++; state = "menu"; B.musicRate(1); leaveLandscape(); $k("#kRotate").hidden = true; $k("#kart").classList.remove("rot"); rotWas = null; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
   $k("#kGame").hidden = true; $k("#kMenu").hidden = false; $k("#kResult").hidden = true;
   $k("#kart").classList.remove("racing"); document.body.classList.remove("bd-playing"); showBest();
 }
@@ -2273,6 +2281,7 @@ document.querySelectorAll("#kPad [data-k]").forEach(b => {
 // the knob follows your thumb all round, only left / right steers: a small dead zone, gentle near the middle, full lock at the edge
 const stick = $k("#kStick"), knob = stick.querySelector("i");
 let stickId = null, stickX0 = 0, stickY0 = 0, knob0 = [0, 0];
+const gameXY = (x, y) => rotWas ? [y, -x] : [x, y];   // screen movement -> the game's own left/right and up/down
 const stickRange = () => stick.clientWidth * .3;
 function stickSet(v, px = 0, py = 0) {
   const a = Math.abs(v), dz = .1; touch.x = a < dz ? 0 : Math.sign(v) * Math.pow((a - dz) / (1 - dz), 1.35);
@@ -2281,12 +2290,12 @@ function stickSet(v, px = 0, py = 0) {
 const knobClamp = (x, y) => { const lim = stick.clientWidth / 2 - 26, d = Math.hypot(x, y); return d > lim ? [x / d * lim, y / d * lim] : [x, y]; };
 stick.addEventListener("pointerdown", e => {
   e.preventDefault(); stickId = e.pointerId; try { stick.setPointerCapture(e.pointerId); } catch (er) {}
-  const r = stick.getBoundingClientRect(); stickX0 = e.clientX; stickY0 = e.clientY; knob0 = knobClamp(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+  const r = stick.getBoundingClientRect(), [gx, gy] = gameXY(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)); stickX0 = e.clientX; stickY0 = e.clientY; knob0 = knobClamp(gx, gy);
   stick.classList.add("on"); stickSet(0, ...knob0);
 });
 function stickMove(e) {
   if (e.pointerId !== stickId) return;
-  const R = stickRange(), dx = e.clientX - stickX0, dy = e.clientY - stickY0;
+  const R = stickRange(), [dx, dy] = gameXY(e.clientX - stickX0, e.clientY - stickY0);
   stickSet(Math.max(-1, Math.min(1, dx / R)), ...knobClamp(knob0[0] + dx, knob0[1] + dy));
 }
 stick.addEventListener("pointermove", stickMove);
@@ -2295,7 +2304,7 @@ const stickEnd = e => { if (e.pointerId !== stickId) return; stickId = null; sti
 stick.addEventListener("contextmenu", e => e.preventDefault());
 // after turning the phone sideways, the first touch goes fullscreen (browsers only allow it right after a tap)
 let fullTries = 0;
-const wantFull = () => TOUCH && state !== "menu" && !upright() && !document.fullscreenElement && !!document.documentElement.requestFullscreen && fullTries < 3;
+const wantFull = () => TOUCH && state !== "menu" && !document.fullscreenElement && !!document.documentElement.requestFullscreen && fullTries < 3;
 ["pointerup", "touchend"].forEach(ev => $k("#kGame").addEventListener(ev, () => { if (wantFull()) { fullTries++; goLandscape(); } }, true));
 
 // ------------------------------------------------------------------ sounds (made in the browser)
