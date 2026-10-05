@@ -287,9 +287,10 @@ kbd.w { min-width: 54px; }
 .k-flash.intro.on { animation: kIntro 1.3s ease-out both; }
 .k-flash.num { top: 26%; font-size: clamp(70px, 15vw, 130px); color: #ffd75e; -webkit-text-stroke: 4px #7a1418; text-shadow: 0 7px 0 #7a1418, 0 0 30px rgba(255,120,40,.8); }
 .k-flash.num.on { animation: kNum .9s ease-out both; }
-.k-flash.go { top: 24%; font-size: clamp(44px, 9vw, 92px); -webkit-text-stroke: 3px #3b1f00; text-shadow: 0 6px 0 #3b1f00, 0 0 26px rgba(255,255,255,.9);
-  background: linear-gradient(90deg, #ff5a5a, #ffd23f, #6eea6e, #5ac8ff, #c87aff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.k-flash.go.on { animation: kGo 1.3s ease-out both; }
+/* "Go Family!!!": solid gold letters with a red outline (the see-through rainbow trick drew wrong on iPhones), the glow cycles colours */
+.k-flash.go { top: 24%; font-size: clamp(44px, 9vw, 92px); color: #ffe14a; -webkit-text-stroke: 3px #7a1418; paint-order: stroke fill; text-shadow: 0 6px 0 #7a1418, 0 0 24px #ff5a5a; }
+.k-flash.go.on { animation: kGo 1.3s ease-out both, kGoGlow .45s linear infinite; }
+@keyframes kGoGlow { 0% { text-shadow: 0 6px 0 #7a1418, 0 0 24px #ff5a5a; } 33% { text-shadow: 0 6px 0 #7a1418, 0 0 24px #ffd23f; } 66% { text-shadow: 0 6px 0 #7a1418, 0 0 24px #5ac8ff; } 100% { text-shadow: 0 6px 0 #7a1418, 0 0 24px #ff5a5a; } }
 @keyframes kIntro { 0% { opacity: 0; transform: translateY(-30px) scale(.7) rotate(-4deg); } 18% { opacity: 1; transform: translateY(0) scale(1.08) rotate(2deg); } 30% { transform: scale(1) rotate(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: scale(1.05); } }
 @keyframes kNum { 0% { opacity: 0; transform: scale(2.4); } 25% { opacity: 1; transform: scale(.92); } 40% { transform: scale(1.04); } 75% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.6); } }
 @keyframes kGo { 0% { opacity: 0; transform: scale(.3) rotate(-8deg); } 20% { opacity: 1; transform: scale(1.18) rotate(3deg); } 35% { transform: scale(1) rotate(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1.6); } }

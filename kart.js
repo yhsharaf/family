@@ -745,13 +745,19 @@ function placeStart(push) {
 // Yumeko and Voze cheering and jumping by the start arch
 async function makeCrowd() {
   CROWD = [];
-  if (T.cup !== "henesys" || typeof ROSTER === "undefined") return;
-  const pool = ["Yumeko", "Voze"], li = OPEN ? START_I : 0;   // just these two cheer at the start (one on each side of the arch)
-  const imgs = await Promise.all(pool.map(n => loadImg(spriteOf(n))));
-  imgs.forEach((im, n) => { if (!im) return; im.px = true;
-    const sd = n % 2 ? 1 : -1, i = li + 7, o = sd * (ROAD / 2 + CURB + 20), [x, y] = at(OPEN ? Math.max(0, i) : (i + N) % N, o);
-    CROWD.push({ x, y, img: im, s: .46, jump: 6 + Math.random() * 7, sp: 5 + Math.random() * 4, ph: Math.random() * 6, flip: sd > 0 });
+  const li = OPEN ? START_I : 0, idx = i => OPEN ? Math.max(0, Math.min(N - 1, i)) : ((i % N) + N) % N;
+  const cheer = (name, i, sd, tag) => loadImg(spriteOf(name)).then(im => { if (!im) return; im.px = true;
+    const [x, y] = at(idx(i), sd * (ROAD / 2 + CURB + 20));
+    if (inLake(x, y)) return;
+    CROWD.push({ x, y, img: im, s: .46, jump: 6 + Math.random() * 7, sp: 5 + Math.random() * 4, ph: Math.random() * 6, flip: sd > 0, tag });
   });
+  // Yumeko and Voze by the start arch, one on each side
+  const jobs = [cheer("Yumeko", li + 7, -1), cheer("Voze", li + 7, 1)];
+  // 1 or 2 of the Founders and Core Family cheering somewhere along the track: different people, different spots every race
+  const fam = (typeof D !== "undefined" ? D.founders : []).filter(p => p && p.name && !p.traitor && !p.grave).sort(() => Math.random() - .5).slice(0, Math.random() < .5 ? 1 : 2);
+  fam.forEach((p, n) => { const span = OPEN ? N - FIN_OFF - START_I : N, i = li + Math.round(span * (.15 + (n + Math.random()) * .35));
+    jobs.push(cheer(p.name, i, Math.random() < .5 ? -1 : 1, `${p.founder ? "👑" : "⭐"} ${p.name}`)); });
+  await Promise.all(jobs);
 }
 function placeObjects() {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -767,7 +773,7 @@ function placeObjects() {
     }
   }
   T.extraFn(push);
-  if (T.cup === "henesys") placeStart(push);
+  placeStart(push);   // the FAMILY arch and balloons on every map
   for (let k = 0; k < 170; k++) {   // woods and houses further out
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
     if (d < ROAD / 2 + 130 || inLake(x, y)) continue;
@@ -1118,7 +1124,7 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get floorMs() { return floorMs; } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, get floorMs() { return floorMs; } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -1310,7 +1316,7 @@ function step(dt) {
   k.t += dt * 1000;
   if (mode === "tt" && (!ghostRec.length || k.t - ghostRec[ghostRec.length - 1][0] >= 100)) ghostRec.push([Math.round(k.t), Math.round(k.x), Math.round(k.y), +k.a.toFixed(2), Math.round(k.z)]);
   if (lapTick(k)) {
-    k.laps.push(k.t - k.lapStart); k.lapStart = k.t; lapSound(); if (T.cup === "henesys") cheerSound();
+    k.laps.push(k.t - k.lapStart); k.lapStart = k.t; lapSound(); cheerSound();
     COINS.forEach(c => c.got = false);   // mesos come back every lap (the 10 max stays)
     if (k.lap >= LAPS) finish();
     else if (k.lap === LAPS - 1) { flash("🏁 FINAL LAP!", 1600); finalSound(); B.musicRate(1.15); fireworks(3); }   // fanfare, and the music speeds up
@@ -1420,7 +1426,14 @@ function render() {
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
   for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + Math.sin(tt * 2 + ob.x) * ob.bob : ob.z || 0);
-  for (const c of CROWD) if (c.img) add(c.x, c.y, c.img, c.s, Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump, c.flip);
+  for (const c of CROWD) if (c.img) addDraw(c.x, c.y, (sx, gy, sc) => {   // cheering (jumping) fans; founders get a name tag with a crown
+    const im = c.img, w = im.width * sc * c.s, h = im.height * sc * c.s, top = gy - h - Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump * sc;
+    if (w < .6) return;
+    ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(sx, gy, w * .35, h * .06 + .5, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.imageSmoothingEnabled = false; if (c.flip) { ctx.translate(sx, 0); ctx.scale(-1, 1); ctx.drawImage(im, -w / 2, top, w, h); } else ctx.drawImage(im, sx - w / 2, top, w, h); ctx.restore();
+    if (c.tag && sc > .35) { const fs = Math.max(5, Math.min(10, 6 * sc)); ctx.font = `900 ${fs}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(1.5, fs / 4);
+      ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }
+  });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
   for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
@@ -1444,7 +1457,7 @@ function render() {
   ctx.globalAlpha = 1;
   if (!kartDrawn) { lightsOut(); drawKart(k); }
   if (T.theme.snow) snowfall(T.theme.snow);
-  if (T.cup === "henesys") petals();
+  if (!T.theme.snow) petals(T.cup);   // petals in Henesys, fireflies in Sleepywood, embers at Zakum, confetti in Ludibrium (El Nath has its snow)
   if (LAVA && state !== "menu" && !k.done) { const near = Math.max(0, 1 - (k.idx - LAVA.i) * SPC / 640); if (near > 0) {   // the screen glows red as the lava closes in
     const gr = ctx.createRadialGradient(W / 2, H * .6, H * .2, W / 2, H * .6, W * .75); gr.addColorStop(0, "rgba(255,60,0,0)"); gr.addColorStop(1, `rgba(255,60,0,${near * .5})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); } }
   if (k.hitFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(.7, k.hitFlash * 8)})`; ctx.fillRect(0, 0, W, H); }
@@ -1490,14 +1503,25 @@ function darkness() {
 }
 // 🌸 Henesys: petals and leaves drifting past the camera
 let PETALS = [];
-function petals() {
-  if (PETALS.length < 26 && Math.random() < .3) PETALS.push({ x: Math.random() * W * 1.4 - W * .2, y: -6, v: 10 + Math.random() * 16, r: Math.random() * 6, vr: (Math.random() - .5) * 4, ph: Math.random() * 6,
-    s: 1.4 + Math.random() * 1.8, c: ["#ffc8de", "#ffffff", "#ff9fc4", "#ffe08a", "#8fd46a"][Math.floor(Math.random() * 5)] });
-  const t = performance.now() / 1000, sw = (K ? K.steer : 0) * 26 + (K ? K.v : 0) * .02;
-  for (let i = PETALS.length - 1; i >= 0; i--) { const p = PETALS[i]; p.y += p.v / 60; p.x += (Math.sin(t * 1.3 + p.ph) * 9 - sw) / 60; p.r += p.vr / 60;
-    if (p.y > H || p.x < -W * .3 || p.x > W * 1.3) { PETALS.splice(i, 1); continue; }
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.scale(1, Math.abs(Math.cos(t * 2 + p.ph)) * .8 + .2); ctx.fillStyle = p.c; ctx.globalAlpha = .9;
-    ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * .6, 0, 0, 7); ctx.fill(); ctx.restore(); }
+const PART = {
+  henesys: { cols: ["#ffc8de", "#ffffff", "#ff9fc4", "#ffe08a", "#8fd46a"], up: false, glow: false, shape: "petal" },
+  sleepy: { cols: ["#d8ff7a", "#fff3a0", "#9fffd0"], up: false, glow: true, shape: "dot", slow: true },
+  zakum: { cols: ["#ff7a1e", "#ffb02e", "#ff4a1a", "#ffe08a"], up: true, glow: true, shape: "dot" },
+  ludi: { cols: ["#ff5a8a", "#ffd23f", "#5ac8ff", "#8aff7a", "#c87aff"], up: false, glow: false, shape: "square" },
+};
+function petals(cup) {
+  const P = PART[cup] || PART.henesys, t = performance.now() / 1000, sw = (K ? K.steer : 0) * 26 + (K ? K.v : 0) * .02;
+  if (PETALS.length < 26 && Math.random() < .3) PETALS.push({ x: Math.random() * W * 1.4 - W * .2, y: P.up ? H + 6 : -6, v: (P.slow ? 4 : 10) + Math.random() * (P.slow ? 6 : 16), r: Math.random() * 6, vr: (Math.random() - .5) * 4,
+    ph: Math.random() * 6, s: 1.2 + Math.random() * 1.8, c: P.cols[Math.floor(Math.random() * P.cols.length)] });
+  if (P.glow) { ctx.save(); ctx.globalCompositeOperation = "lighter"; }
+  for (let i = PETALS.length - 1; i >= 0; i--) { const p = PETALS[i]; p.y += (P.up ? -p.v : p.v) / 60; p.x += (Math.sin(t * 1.3 + p.ph) * 9 - sw) / 60; p.r += p.vr / 60;
+    if (p.y > H + 8 || p.y < -8 || p.x < -W * .3 || p.x > W * 1.3) { PETALS.splice(i, 1); continue; }
+    ctx.fillStyle = p.c;
+    if (P.shape === "dot") { ctx.globalAlpha = .55 + .45 * Math.sin(t * 5 + p.ph); ctx.beginPath(); ctx.arc(p.x, p.y, p.s * .7, 0, 7); ctx.fill(); ctx.globalAlpha *= .35; ctx.beginPath(); ctx.arc(p.x, p.y, p.s * 2, 0, 7); ctx.fill(); continue; }
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.scale(1, Math.abs(Math.cos(t * 2 + p.ph)) * .8 + .2); ctx.globalAlpha = .9;
+    if (P.shape === "square") ctx.fillRect(-p.s, -p.s * .6, p.s * 2, p.s * 1.2); else { ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * .6, 0, 0, 7); ctx.fill(); }
+    ctx.restore(); }
+  if (P.glow) ctx.restore();
   ctx.globalAlpha = 1;
 }
 // 🎆 fireworks over the horizon (final lap, finish line)
