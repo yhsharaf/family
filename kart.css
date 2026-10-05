@@ -14,7 +14,7 @@
 .kt-time { flex: 1; font: 800 18px ui-monospace, Menlo, Consolas, monospace; }
 .kt-best { font-size: 12px; color: var(--muted); font-weight: 700; white-space: nowrap; }
 .kt-screen { position: relative; border-radius: 14px; overflow: hidden; border: 3px solid #3b2f22; background: #8fd0ff; aspect-ratio: 5 / 3; }
-#kCanvas, #kFx { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+#kCanvas, #k3d, #kFx { position: absolute; inset: 0; display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
 .kt-speed { position: absolute; left: 8px; bottom: 6px; font: 900 16px Ubuntu, sans-serif; color: #fff; text-shadow: 0 2px 0 #000, 0 0 4px #000; }
 .k-flash { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font: 900 54px Ubuntu, sans-serif; color: #ffe066;
   -webkit-text-stroke: 3px #3b2f22; text-shadow: 0 5px 0 #3b2f22; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .2s; pointer-events: none; }
