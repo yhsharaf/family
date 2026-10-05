@@ -742,7 +742,7 @@ function placeStart(push) {
   for (let n = 0; n < 10; n++) { const sd = n % 2 ? 1 : -1, [x, y] = at(li + (n >> 1) - 2, sd * (half + 6 + (n % 3) * 7));
     OBJS.push({ x, y, k: "balloon" + (n % 6), s: .7, r: 0, z: 78 + (n % 4) * 9, bob: 4 }); }
 }
-// Yumeko and Voze cheering and jumping by the start arch
+// Founders and Core Family cheering along the track
 async function makeCrowd() {
   CROWD = [];
   const li = OPEN ? START_I : 0, idx = i => OPEN ? Math.max(0, Math.min(N - 1, i)) : ((i % N) + N) % N;
@@ -751,8 +751,7 @@ async function makeCrowd() {
     if (inLake(x, y)) return;
     CROWD.push({ x, y, img: im, s: .46, jump: 6 + Math.random() * 7, sp: 5 + Math.random() * 4, ph: Math.random() * 6, flip: sd > 0, tag });
   });
-  // Yumeko and Voze by the start arch, one on each side
-  const jobs = [cheer("Yumeko", li + 7, -1), cheer("Voze", li + 7, 1)];
+  const jobs = [];
   // 1 or 2 of the Founders and Core Family cheering somewhere along the track: different people, different spots every race
   const fam = (typeof D !== "undefined" ? D.founders : []).filter(p => p && p.name && !p.traitor && !p.grave).sort(() => Math.random() - .5).slice(0, Math.random() < .5 ? 1 : 2);
   fam.forEach((p, n) => { const span = OPEN ? N - FIN_OFF - START_I : N, i = li + Math.round(span * (.15 + (n + Math.random()) * .35));
