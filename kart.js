@@ -764,7 +764,8 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 // modes: a 3-race Grand Prix with points and a podium, a single race, or a Time Trial alone against your ghost (only Time Trial
 // times go on the guild board, like Mario Kart's leaderboards, since races with rivals depend on luck)
 const MODES = { gp: "🏆 Grand Prix", race: "🏁 Single race", tt: "⏱️ Time Trial", mp: "👥 Multiplayer" };
-let mode = MODES[store.get("kart_mode")] ? store.get("kart_mode") : "gp";
+const SHOWN_MODES = ["tt", "mp"];   // Grand Prix and Race are hidden for now
+let mode = SHOWN_MODES.includes(store.get("kart_mode")) ? store.get("kart_mode") : "tt";
 let cup = CUPS[store.get("kart_cup")] ? store.get("kart_cup") : "henesys";   // picked cup (the Grand Prix races all 3 of its tracks)
 let track = TRACKS[store.get("kart_track")] ? store.get("kart_track") : "henesys";   // picked track for Race and Time Trial
 if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
@@ -1975,8 +1976,8 @@ async function loadBoard() {
   const bt = TRACKS[mode === "gp" ? CUPS[cup].tracks[0] : track];
   $k("#kBoardHead").textContent = `⏱️ Times · ${bt.name} · ${CCS[cc].label} (Time Trial)`;
   const { data } = await sb.from("kart_times").select("player,race_ms,lap_ms").eq("track", ccId(bt.id, cc)).order("race_ms").limit(10);
-  if (mode === "tt") $k("#kModeNote").textContent = data && data[0] ? `You'll race 🏆 ${data[0].player}'s ghost (${fmt(data[0].race_ms)}), the guild record. Only Time Trial times go on the board.`
-    : "Alone with 3 Elixirs. No guild record yet on this track: set the first one and everyone will race your ghost!";
+  if (mode === "tt") $k("#kModeNote").textContent = data && data[0] ? `🔥 150cc. You'll race 🏆 ${data[0].player}'s ghost (${fmt(data[0].race_ms)}), the guild record. Only Time Trial times go on the board.`
+    : "Alone at 🔥 150cc with 3 Elixirs. No guild record yet on this track: set the first one and everyone will race your ghost!";
   $k("#kBoard").innerHTML = (data || []).length ? data.map((r, i) => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>
     <span>${fmt(r.race_ms)}</span><small>${bt.open ? "" : `lap ${fmt(r.lap_ms)}`}</small></li>`).join("") : `<p class="bd-none">No times yet. Be the first!</p>`;
 }
@@ -1999,7 +2000,7 @@ function drawTrack(light) {
   $k("#kCupPick").hidden = pickHidden;
   $k("#kTrackPick").innerHTML = CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("");
   $k("#kTrackPick").hidden = mode === "gp" || pickHidden;
-  $k("#kCC").hidden = pickHidden;
+  $k("#kCC").hidden = pickHidden || mode === "tt";   // Time Trial is always 150cc
   const rule = C.rule ? `<small class="kt-rule">${C.rule}</small>` : "";
   $k("#kPickHead").hidden = !(mode === "mp" && (!inRoom || MP.host === MP.me));
   $k("#kPickHead").textContent = inRoom ? "👑 Pick the cup and track for this race" : "Pick the cup and track for your room";
@@ -2015,12 +2016,14 @@ $k("#kBoardTabs").addEventListener("click", e => { const b = e.target.closest("[
 $k("#kTrackPick").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; track = b.dataset.t; store.set("kart_track", track); drawTrack(); });
 $k("#kCupPick").addEventListener("click", e => { const b = e.target.closest("[data-c]"); if (!b) return; cup = b.dataset.c; store.set("kart_cup", cup); track = CUPS[cup].tracks[0]; store.set("kart_track", track); gp = null; drawTrack(); });
 function drawMode() {
+  cc = mode === "tt" ? 150 : CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 100;   // Time Trial is always 150cc; Multiplayer keeps your pick
+  document.querySelectorAll("#kCC [data-cc], #kResult [data-cc]").forEach(b => b.classList.toggle("on", +b.dataset.cc === cc));
   document.querySelectorAll("#kMode [data-m]").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
   $k("#kDiff").hidden = mode === "tt" || mode === "mp"; $k("#kMine").hidden = mode === "mp";   // your best time is about solo tracks, not rooms
   $k("#kGo").textContent = { gp: `🏆 Start the ${CUPS[cup].name}!`, race: "🏁 Start race!", tt: "⏱️ Start Time Trial!", mp: "🏁 Start the race!" }[mode];
   $k("#kGo").hidden = false; $k("#kGo").disabled = false;
   $k("#kModeNote").textContent = { gp: "3 races against the same 7 computer rivals (cup points only, nothing on the board).", race: "One race against 7 computer rivals (no board points).",
-    tt: "Alone with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race real guild members live. Multiplayer races are the only way to earn 🏆 board points." }[mode];
+    tt: "Alone at 🔥 150cc with 3 Elixirs against your ghost. Only Time Trial times go on the guild board.", mp: "Race real guild members live. Multiplayer races are the only way to earn 🏆 board points." }[mode];
   drawRoom();
 }
 $k("#kMode").addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b) return; if (mode === "mp" && b.dataset.m !== "mp" && MP.code) mpLeave(); mode = b.dataset.m; store.set("kart_mode", mode); gp = null; drawMode(); drawTrack(); });
