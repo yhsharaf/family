@@ -1118,7 +1118,7 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get floorMs() { return floorMs; } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get floorMs() { return floorMs; } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -2300,32 +2300,63 @@ const wantFull = () => TOUCH && state !== "menu" && !upright() && !document.full
 
 // ------------------------------------------------------------------ sounds (made in the browser)
 let eng = null;
-// engine: SuperTuxKart's fake gearbox (the pitch climbs, drops at 1/3 and 2/3 of top speed like gear changes, and keeps rising
-// in a boost), plus wind noise that grows with speed, a tyre screech while drifting and a crunch on the grass
 let noiseBuf = null;
 function noise(ac) {
   if (!noiseBuf) { noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
   return noiseBuf;
 }
 let screechAt = 0, crunchAt = 0;
+// 🏎️ the engine: a modelled V8 (like a Dodge Charger) instead of a buzzing oscillator. Each loop is real combustion pulses:
+// 8 cylinders firing with the cross-plane V8's uneven rhythm (that's the muscle-car burble), every pulse ringing through
+// exhaust-pipe resonances, then a little saturation. Two loops (low and high rpm) blend as the revs climb; on top a quiet
+// turbo whistle (Supra style) rises with speed. Made once in the browser, nothing downloaded.
+const ENGBUF = {};
+function engineLoop(ac, fire) {
+  const key = fire + ":" + ac.sampleRate; if (ENGBUF[key]) return ENGBUF[key];
+  const sr = ac.sampleRate, n = 32, len = Math.round(n / fire * sr), d = new Float32Array(len), per = sr / fire;
+  const amp = [1, .62, .9, .55, .97, .7, .84, .6], jit = [0, .07, -.04, .09, -.02, .06, -.07, .03];   // uneven V8 firing
+  const RES = [[fire * 1.0, .034, 1], [fire * 2.02, .02, .8], [235, .016, .7], [610, .008, .38], [1450, .0035, .1]];   // pipe + body resonances [Hz, decay s, level]
+  let seed = 9; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < n; k++) {
+    const t0 = (k + jit[k % 8] * .5) * per, A = amp[k % 8] * (.92 + rnd() * .16), ph = RES.map(() => rnd() * 6.28), plen = Math.round(.09 * sr);
+    for (let i = 0; i < plen; i++) {
+      const t = i / sr; let v = 0;
+      for (let r = 0; r < RES.length; r++) { const [f, dc, lv] = RES[r]; v += lv * Math.exp(-t / dc) * Math.sin(6.2832 * f * t + ph[r]); }
+      v += (rnd() * 2 - 1) * .2 * Math.exp(-t / .004);   // the bang itself
+      d[(Math.round(t0) + i) % len] += A * v;
+    }
+  }
+  let peak = 0; for (let i = 0; i < len; i++) { d[i] = Math.tanh(d[i] * .9); peak = Math.max(peak, Math.abs(d[i])); }
+  for (let i = 0; i < len; i++) d[i] /= peak || 1;
+  const buf = ac.createBuffer(1, len, sr); buf.getChannelData(0).set(d); return (ENGBUF[key] = buf);
+}
 function engine() {
   const ac = window.getAC && window.getAC(); if (!ac || state === "menu") return;
   if (!eng) {
-    const o = ac.createOscillator(), o2 = ac.createOscillator(), o3 = ac.createOscillator(), g3 = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain();
-    o.type = "sawtooth"; o2.type = "square"; o3.type = "sawtooth"; f.type = "lowpass"; f.frequency.value = 1400; g.gain.value = 0; g3.gain.value = .55;
-    o.connect(f); o2.connect(f); o3.connect(g3).connect(f); f.connect(g).connect(ac.destination); o.start(); o2.start(); o3.start();   // o3: a growl an octave up, so phone speakers play it too
+    const mk = fire => { const src = ac.createBufferSource(), g = ac.createGain(); src.buffer = engineLoop(ac, fire); src.loop = true; g.gain.value = 0; src.connect(g); src.start(); return { src, g }; };
+    const lo = mk(40), hi = mk(120), f = ac.createBiquadFilter(), g = ac.createGain();
+    f.type = "lowpass"; f.frequency.value = 1800; f.Q.value = .7; g.gain.value = 0;
+    lo.g.connect(f); hi.g.connect(f); f.connect(g).connect(ac.destination);
+    const tb = ac.createOscillator(), tg = ac.createGain(); tb.type = "sine"; tg.gain.value = 0; tb.connect(tg).connect(ac.destination); tb.start();   // turbo
     const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();   // wind
     n.buffer = noise(ac); n.loop = true; nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .6; ng.gain.value = 0;
     n.connect(nf).connect(ng).connect(ac.destination); n.start();
-    eng = { o, o2, o3, g, n, ng, nf };
+    eng = { lo, hi, f, g, tb, tg, n, ng, nf, lastV: 0 };
   }
   const v = Math.abs(K.v); let f = v / VMAX; f = f > 1 ? 1 + (1 - 1 / f) : f;
-  const gear = .6 + .35 * (.9 * f + 3 * ((Math.min(f, 1) % (1 / 3)))), base = 105 * gear * (f > 1 ? f : 1);
-  eng.o.frequency.setTargetAtTime(base, ac.currentTime, .04); eng.o2.frequency.setTargetAtTime(base * .5, ac.currentTime, .04); eng.o3.frequency.setTargetAtTime(base * 2.01, ac.currentTime, .04);
-  eng.g.gain.setTargetAtTime(state === "done" ? 0 : .05 + Math.min(.055, v / 4500), ac.currentTime, .1);
-  eng.ng.gain.setTargetAtTime(state === "race" ? Math.min(.05, (v / VMAX) ** 2 * .035) : 0, ac.currentTime, .15);
-  eng.nf.frequency.setTargetAtTime(700 + v * 2.5, ac.currentTime, .2);
-  const t = ac.currentTime;
+  // revs: climb through each gear, drop at 1/3 and 2/3 of top speed like gear changes, and keep rising in a boost
+  const gear = .6 + .35 * (.9 * f + 3 * ((Math.min(f, 1) % (1 / 3)))), fire = (40 + Math.max(0, gear - .6) * 560) * (f > 1 ? f : 1), t = ac.currentTime;
+  const mix = Math.max(0, Math.min(1, (fire - 85) / 70));   // low loop -> high loop
+  eng.lo.src.playbackRate.setTargetAtTime(Math.min(3.2, fire / 40), t, .05); eng.hi.src.playbackRate.setTargetAtTime(Math.max(.6, fire / 120), t, .05);
+  eng.lo.g.gain.setTargetAtTime(1 - mix, t, .08); eng.hi.g.gain.setTargetAtTime(mix, t, .08);
+  const on = state !== "done", thr = state === "race" && K.v > 0 ? 1 : .55;   // on the gas it's louder and brighter
+  eng.g.gain.setTargetAtTime(on ? (.16 + Math.min(.12, v / 2600)) * thr : 0, t, .1);
+  eng.f.frequency.setTargetAtTime(520 + fire * 9 * thr, t, .1);
+  eng.tb.frequency.setTargetAtTime(1800 + v * 11, t, .2); eng.tg.gain.setTargetAtTime(state === "race" ? Math.min(.012, (v / VMAX) ** 2 * .01) : 0, t, .2);
+  if (state === "race" && eng.lastV > 200 && (v < eng.lastV - 60 || K.spin > 0) && t - (eng.bov || 0) > 1.2) { eng.bov = t; noiseHit(2400, .35, .06, 1.2, 900); }   // blow-off valve "pssh" when you lose speed fast
+  eng.lastV = eng.lastV * .9 + v * .1;
+  eng.ng.gain.setTargetAtTime(state === "race" ? Math.min(.05, (v / VMAX) ** 2 * .035) : 0, t, .15);
+  eng.nf.frequency.setTargetAtTime(700 + v * 2.5, t, .2);
   if (K.drift && state === "race" && t - screechAt > .17) { screechAt = t; noiseHit(2600, .12, .035, 8); }   // tyre screech
   if (K.off && v > 60 && K.z <= 0 && state === "race" && t - crunchAt > .1) { crunchAt = t; noiseHit(300, .08, .05, 1.5); }   // grass crunch
 }
@@ -2339,7 +2370,7 @@ function noiseHit(freq, dur, vol, q = 1, sweep) {
 const burstSound = pow => { const v = .05 + pow / 2400; tone(180, .35, "sawtooth", v, 900); noiseHit(800, .4, v * 1.4, .8, 3500); };   // boost: a rising roar + a whoosh
 const whooshSound = () => noiseHit(1500, .25, .05, 1, 400);   // letting go of a drift
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopEngine(); });
-function stopEngine() { if (eng) { try { eng.o.stop(); eng.o2.stop(); eng.o3.stop(); eng.n.stop(); } catch (e) {} eng = null; } }
+function stopEngine() { if (eng) { try { eng.lo.src.stop(); eng.hi.src.stop(); eng.tb.stop(); eng.n.stop(); } catch (e) {} eng = null; } }
 function tone(f, dur, type = "square", vol = .08, f2) {
   const ac = window.getAC && window.getAC(); if (!ac) return;
   const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t);
