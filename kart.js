@@ -788,7 +788,7 @@ function gridSpot(slot) { const row = Math.floor(slot / 2), col = slot % 2, i = 
 // ------------------------------------------------------------------ multiplayer (rooms of 2-8, the first one in is the host)
 // Everyone drives their own kart; positions go out ~12 times a second over Realtime broadcast, other players are drawn from those.
 // Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
-const MP = { endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
+const MP = { tally: {}, tallied: null, pick: null, endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
 const mpOn = () => mode === "mp" && !!MP.code;
 function mpSend(event, payload) { if (MP.ch) MP.ch.send({ type: "broadcast", event, payload: { ...payload, n: MP.me, rc: MP.raceNo } }); }
 function mpByName(n) { return n === MP.me ? K : RIV.find(r => r.name === n); }
@@ -1066,7 +1066,7 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -1778,15 +1778,31 @@ function mpShowWaiting(total) {
 function mpShowResults(res) {
   if (state !== "done" || !res) return;
   const mine = res.find(r => r.name === MP.me);
+  if (MP.tallied !== MP.raceNo) { MP.tallied = MP.raceNo; for (const r of res) MP.tally[r.name] = (MP.tally[r.name] || 0) + (GP_PTS[r.place - 1] || 0); }   // this room's own standings, for everyone
   $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
     <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[MP.track].name)}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${spriteOf(r.name)}" alt=""></td><td>${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
-    <p class="k-rank">Points go on the guild 🏆 Points board (guild members only).</p>
-    <div class="row"><button class="sk-btn bd-play" data-a="room">👥 Back to the room</button></div>`;
+    <p class="k-rank">Board points go to guild members only.</p>
+    <div id="kNext">${mpNextHtml()}</div>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
   if (mine && mine.place <= 3) confetti();
 }
+// after a room race: the host picks the next cup and track right here; everyone else watches the room standings (and a dancing Balrog)
+function mpNextHtml() {
+  const host = MP.host === MP.me, rk = roomTrack(), t = TRACKS[rk], here = new Set(MP.players.map(p => p.name));
+  const order = Object.entries(MP.tally).filter(([n]) => here.has(n)).sort((a, b) => b[1] - a[1]);
+  const stand = order.length ? `<div class="k-stand"><b>🏆 Room standings</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${spriteOf(n)}" alt="">${esc(n)} <em>${p}</em></span>`).join("")}</div>` : "";
+  const pick = host ? `<p class="kt-pickhead">👑 You're the host: pick the next race</p>
+      <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("")}</div>
+      <div class="kt-trackpick">${CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("")}</div>
+      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${MP.players.length < 2 ? "disabled" : ""}>🏁 Race ${t.icon} ${esc(t.name)}!</button></div>
+      ${MP.players.length < 2 ? `<p class="k-diff">Everyone else left… waiting for someone to join.</p>` : ""}`
+    : `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the next race</b>
+      <small>Next up: ${t.icon} ${esc(t.name)}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
+  return `${stand}${pick}<div class="row"><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
+}
+function mpRedrawNext() { const el = $k("#kNext"); if (el && !$k("#kResult").hidden) el.innerHTML = mpNextHtml(); }
 // ----- rooms: create / join / poll / start / leave
 const roomFromHash = () => { const m = location.hash.match(/^#kart\/([A-Z0-9]{4,8})$/); return m ? m[1] : null; };
 async function mpJoin(code, pub) {
@@ -1802,13 +1818,13 @@ async function mpJoin(code, pub) {
   if (why) { $k("#kErr").textContent = why; return; }
   $k("#kErr").textContent = "";
   store.set("kart_room_tok:" + code, data.token);
-  Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null });
+  Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null, tally: {}, tallied: null });
   if (MP.ch) sb.removeChannel(MP.ch);
   MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
     .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
     .on("broadcast", { event: "go" }, () => mpPoll())
-    .on("broadcast", { event: "tr" }, ({ payload }) => { if (payload && TRACKS[payload.t] && MP.pick !== payload.t) { MP.pick = payload.t; if (!$k("#kMenu").hidden) drawRoom(); } })
+    .on("broadcast", { event: "tr" }, ({ payload }) => { if (payload && TRACKS[payload.t] && MP.pick !== payload.t) { MP.pick = payload.t; if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); } })
     .subscribe();
   if (location.hash !== "#kart/" + code) history.replaceState(null, "", "#kart/" + code);
   clearInterval(MP.poll); MP.poll = setInterval(mpPoll, 1500); await mpPoll(true);
@@ -1831,12 +1847,12 @@ async function mpPoll(first) {
       start();
     }
     if (data.status === "lobby" && data.results && MP.finished && !MP.results) { MP.results = data.results; mpShowResults(data.results); loadBoard(); }
-    if (!$k("#kMenu").hidden) drawRoom();
+    if (!$k("#kMenu").hidden) drawRoom(); else if (MP.results) { mpRedrawNext(); if (MP.host === MP.me && MP.ch) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track } }); }
   } finally { MP.polling = false; }
 }
 async function mpStart() {
   const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: track });
-  if (!data || data.r !== "ok") { $k("#kErr").textContent = { few: "You need at least 2 players to start.", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track." }[data && data.r] || "Couldn't start, try again."; return; }
+  if (!data || data.r !== "ok") { if (state === "done") { flash("Couldn't start, try again", 1200); const b = $k("[data-a=mpgo]"); if (b) b.disabled = false; } $k("#kErr").textContent = { few: "You need at least 2 players to start.", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track." }[data && data.r] || "Couldn't start, try again."; return; }
   MP.ch && MP.ch.send({ type: "broadcast", event: "go", payload: {} });
   mpPoll();
 }
@@ -1867,7 +1883,9 @@ function drawRoom() {
     ${MP.pub ? `<p class="kt-modenote">Anyone can join from the Open rooms list on the Family Kart page.</p>` : ""}
     <div class="bd-inv"><input id="kInvite" readonly value="${esc(link)}"><button class="sk-small" id="kCopy">Copy</button></div>
     <div class="kt-plist">${MP.players.map(p => `<div class="kt-pl${p.name === MP.me ? " me" : ""}"><img src="${spriteOf(p.name)}" alt=""><b>${esc(p.name)}</b>${p.name === MP.host ? " 👑" : ""}</div>`).join("")}</div>
-    <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? (MP.pub ? "Waiting for at least one more player… they can join from the Open rooms list." : "Waiting for at least one more player… share the link!") : "You're the host 👑: pick a cup and track below, then start!") : `Waiting for ${esc(MP.host || "the host")} 👑 to start…`}</p>
+    ${!host && MP.status !== "racing" ? `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the race</b>
+      <small>Next up: ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)}</small></div></div>` : ""}
+    <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? (MP.pub ? "Waiting for at least one more player… they can join from the Open rooms list." : "Waiting for at least one more player… share the link!") : "You're the host 👑: pick a cup and track below, then start!") : "The race starts as soon as the host presses Start."}</p>
     <button class="sk-small" id="kRoomLeave">🚪 Leave the room</button>`;
   $k("#kGo").textContent = "🏁 Start the race!"; $k("#kGo").disabled = MP.players.length < 2;
 }
@@ -1966,21 +1984,16 @@ const roomTrack = () => MP.host === MP.me ? track : TRACKS[MP.pick] ? MP.pick : 
 function drawTrack(light) {
   if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
   const inRoom = mode === "mp" && !!MP.code, rk = inRoom ? roomTrack() : track, C = CUPS[inRoom ? cupOf(rk) : cup];
-  const t = TRACKS[mode === "gp" ? C.tracks[0] : rk], pickHidden = mode === "mp" && (!MP.code || MP.host !== MP.me);
+  const t = TRACKS[mode === "gp" ? C.tracks[0] : rk], pickHidden = mode === "mp" && !!MP.code && MP.host !== MP.me;
   $k("#kCupPick").innerHTML = Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("");
   $k("#kCupPick").hidden = pickHidden;
   $k("#kTrackPick").innerHTML = CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("");
   $k("#kTrackPick").hidden = mode === "gp" || pickHidden;
   const rule = C.rule ? `<small class="kt-rule">${C.rule}</small>` : "";
-  $k("#kPickHead").hidden = !(inRoom && MP.host === MP.me);
-  if (mode === "mp" && !inRoom) {
-    $k("#kTrackCard").innerHTML = `<b>👥 Multiplayer</b><small>Join an open room or make one. The host 👑 picks the cup and track.</small>`;
-    $k(".kt-track img").src = HEN_ART.sky;
-    if (!light) { showBest(); loadBoard(); }
-    return;
-  }
+  $k("#kPickHead").hidden = !(mode === "mp" && (!inRoom || MP.host === MP.me));
+  $k("#kPickHead").textContent = inRoom ? "👑 Pick the cup and track for this race" : "Pick the cup and track for your room";
   $k("#kTrackCard").innerHTML = mode === "gp" ? `<b>🏆 ${C.name}</b><small>${C.tracks.map(c => TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}</small>${rule}`
-    : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : "3 laps"} · ${t.sub}</small>${rule}`;
+    : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : "3 laps"} · ${t.sub}</small>${rule}${mode === "mp" && !inRoom ? `<small>Make a room and you're the host 👑: this is the first race.</small>` : ""}`;
   $k(".kt-track img").src = (t.art || HEN_ART).sky;
   if (mode === "gp") $k("#kGo").textContent = `🏆 Start the ${C.name}!`;
   $k("#kBoardName").textContent = t.name;
@@ -2043,6 +2056,15 @@ $k("#kResult").addEventListener("click", e => {
   if (a.dataset.a === "podium") podium();
   if (a.dataset.a === "back") { gp = null; quit(); }
   if (a.dataset.a === "room") quit();
+  if (a.dataset.a === "mpgo") { a.disabled = true; mpStart(); }
+  if (a.dataset.a === "mpleave") { mpLeave(); quit(); }
+});
+$k("#kResult").addEventListener("click", e => {   // the host's cup / track pick on the results screen
+  const c = e.target.closest("[data-c]"), t = e.target.closest("[data-t]"); if (!c && !t) return;
+  if (c) { cup = c.dataset.c; track = CUPS[cup].tracks[0]; } else track = t.dataset.t;
+  store.set("kart_cup", cup); store.set("kart_track", track);
+  if (MP.ch && MP.host === MP.me) MP.ch.send({ type: "broadcast", event: "tr", payload: { t: track } });
+  mpRedrawNext();
 });
 const syncMusicBtn = () => { $k("#kMusic").textContent = B.musicOn && B.musicOn() ? "🔊" : "🔇"; };
 $k("#kMusic").onclick = () => { B.toggleMusic(); syncMusicBtn(); };

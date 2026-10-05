@@ -238,3 +238,16 @@ kbd.w { min-width: 54px; }
 .kt-oroom em { font-style: normal; font-weight: 800; font-size: 13px; color: #c8232c; white-space: nowrap; }
 .kt-pickhead { font: 800 13px Ubuntu, sans-serif; color: #c8232c; text-align: center; margin-bottom: -2px; }
 .kt-pickhead[hidden] { display: none; }
+/* multiplayer: after a race */
+.k-stand { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: center; background: #fff8e6; border: 1px solid #e8d4a0; border-radius: 10px; padding: 6px 8px; margin: 6px 0; font-size: 13px; }
+.k-stand > b { width: 100%; text-align: center; }
+.k-stand span { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
+.k-stand span.you { color: #c8232c; }
+.k-stand img { width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; }
+.k-stand em { font-style: normal; color: #b07a12; font-weight: 900; }
+.k-wait { display: flex; align-items: center; gap: 10px; background: #2d2832; color: #fff; border-radius: 12px; padding: 8px 12px; margin: 6px 0; text-align: left; }
+.k-wait b { display: block; font-size: 14px; } .k-wait small { color: #ffd75e; font-size: 12px; }
+.k-dance { width: 70px; height: 70px; object-fit: contain; image-rendering: pixelated; animation: kDance .9s ease-in-out infinite; transform-origin: 50% 90%; flex: none; }
+@keyframes kDance { 0%, 100% { transform: rotate(-10deg) translateY(0) scaleX(1); } 25% { transform: rotate(0) translateY(-8px) scaleX(-1); } 50% { transform: rotate(10deg) translateY(0) scaleX(-1); } 75% { transform: rotate(0) translateY(-8px) scaleX(1); } }
+.kt-result .kt-cuppick, .kt-result .kt-trackpick { margin: 6px 0; }
+.kt-result .kt-pickhead { margin: 6px 0 0; }
