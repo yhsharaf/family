@@ -967,7 +967,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = WORLD; paintTrack(c); return c; } });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=19"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=21"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 

@@ -321,12 +321,12 @@ export function create(A) {
     const a = k.a || 0;
     if (cam.yaw == null || o.snap) cam.yaw = a;
     let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * 7);   // the camera swings round a moment after the kart
-    const dist = 62 + 10 * (o.fov || 0), up = 23 + Math.min(k.z || 0, 120) * .65;
+    const dist = 58 + 9 * (o.fov || 0), up = 37 + Math.min(k.z || 0, 120) * .65;   // up high and looking down at the road, like Mario Kart Tour
     const gx = k.x - Math.cos(cam.yaw) * dist, gz = k.y - Math.sin(cam.yaw) * dist;
     const want = Math.max(h(k.x, k.y), h(gx, gz) - 6) + up;
     cam.y = o.snap || !cam.y ? want : cam.y + (want - cam.y) * Math.min(1, o.dt * 6);
     camera.position.set(gx, Math.max(cam.y, h(gx, gz) + 5), gz);
-    look.set(k.x + Math.cos(cam.yaw) * 40, h(k.x, k.y) + 9 + Math.min(k.z || 0, 120) * .65, k.y + Math.sin(cam.yaw) * 40);   // rises with you in a jump (no tilting up at the sky)
+    look.set(k.x + Math.cos(cam.yaw) * 56, h(k.x + Math.cos(cam.yaw) * 56, k.y + Math.sin(cam.yaw) * 56) * .5 + h(k.x, k.y) * .5 + 2 + Math.min(k.z || 0, 120) * .65, k.y + Math.sin(cam.yaw) * 56);   // rises with you in a jump (no tilting up at the sky)
     if (o.intro != null && o.intro < 1 && o.grid) {   // before the start: from in front of the grid (everyone facing you), swooping up and round to behind your kart
       const [qx, qy, qa] = o.grid, e = o.intro * o.intro * (3 - 2 * o.intro), fx = qx + Math.cos(qa) * 170, fz = qy + Math.sin(qa) * 170;
       tmp.set(fx, h(fx, fz) + 38, fz).lerp(camera.position, e); tmp.y += Math.sin(Math.PI * e) * 45; camera.position.copy(tmp);
@@ -335,7 +335,7 @@ export function create(A) {
     }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
     camera.lookAt(look);
-    camera.fov = 58 + 12 * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    camera.fov = 60 + 10 * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     camera.getWorldDirection(fwd);
     if (skyMesh) skyMesh.position.set(camera.position.x, camera.position.y + SKY_H / 2 - SKY_BELOW, camera.position.z);
   }
