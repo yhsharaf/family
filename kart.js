@@ -1475,7 +1475,7 @@ function render() {
   // minimap (Sleepywood has none: remember the road)
   if (mini && MECH !== "dark") {
     ctx.imageSmoothingEnabled = true;
-    const side = TOUCH && !upright(), mx = side ? 4 : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
+    const side = TOUCH && !upright(), mx = side ? 4 + safeL() : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
     ctx.globalAlpha = .85; ctx.drawImage(mini, mx, my, 50, 50); ctx.globalAlpha = 1;
     for (const sh of SHOTS) { ctx.fillStyle = sh.tgt === k ? "#ff2a2a" : "#ffe08a"; ctx.beginPath(); ctx.arc(mx + sh.x * 128 / WORLD * s, my + sh.y * 128 / WORLD * s, 2, 0, 7); ctx.fill(); }
     for (const r of RIV) { ctx.fillStyle = r.color; ctx.fillRect(mx + r.x * 128 / WORLD * s - 1.5, my + r.y * 128 / WORLD * s - 1.5, 3, 3); }
@@ -1716,9 +1716,19 @@ function hud() {
   $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + pop;
 }
 let flashT = null, warnAt = 0, lastRk = 0, posPop = null;
-function flash(t, ms, kind) { const f = $k("#kFlash"); f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
+function flash(t, ms, kind) { const f = $k("#kFlash"); if (kind === "intro") f.innerHTML = `<img class="k-crown" src="media/crown.png" alt="">` + esc(t); else f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
 // phones race sideways: go fullscreen + lock to landscape where the browser allows it (Android), otherwise ask to rotate and pause
 const TOUCH = matchMedia("(pointer: coarse)").matches;
+// iPhones sideways: how much of the left edge is under the notch, in game units (the page now reaches into those edges)
+let safeLc = null, safeLt = 0;
+const safeL = () => { const now = performance.now(); if (safeLc === null || now - safeLt > 1000) { safeLt = now; const px = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sal")) || 0, w = $k(".kt-screen").getBoundingClientRect().width || 1; safeLc = px * W / w; } return safeLc; };
+// while racing on a phone, pinches and double taps must not zoom the page (Safari ignores the CSS for this, so stop the gestures here)
+["gesturestart", "gesturechange", "dblclick"].forEach(ev => document.addEventListener(ev, e => { if (state !== "menu" && !$k("#kGame").hidden) e.preventDefault(); }, { passive: false }));
+let lastTouchEnd = 0;
+document.addEventListener("touchend", e => {
+  if (state === "menu" || $k("#kGame").hidden || (e.target.closest && e.target.closest("input, textarea, button, a, select, [data-a], [data-ready]"))) return;
+  const now = performance.now(); if (now - lastTouchEnd < 350) e.preventDefault(); lastTouchEnd = now;
+}, { passive: false });
 const upright = () => TOUCH && innerHeight > innerWidth;
 async function goLandscape() {
   if (!TOUCH) return;
@@ -1779,10 +1789,10 @@ async function start() {
   countAt = performance.now() + goIn - 3000; COINS.forEach(c => c.got = false);
   const at = (ms, fn) => { if (ms >= -200) setTimeout(() => { if (alive() && state === "count") fn(); }, Math.max(0, ms)); };
   { const introAt = Math.max(0, goIn - 4600), room = goIn - 3000 - introAt;   // skipped if a slow load ate the time for it
-    if (room >= 500) at(introAt, () => { flash("Family,\nare you Ready!", Math.min(1300, room - 100), "intro"); readySound(); }); }
-  for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) at(goIn - 3000 + d, () => { flash(t, 900, "num"); beep(440); });
+    if (room >= 500) at(introAt, () => { flash("Family,\nare you Ready!", Math.min(1300, room - 100), "intro"); readySound(); say("Family, are you ready?", 1.15); }); }
+  for (const [t, d, w] of [["3", 0, "Three"], ["2", 1000, "Two"], ["1", 2000, "One"]]) at(goIn - 3000 + d, () => { flash(t, 900, "num"); beep(440); say(w, 1.2); });
   setTimeout(() => {
-    if (!alive() || state !== "count") return; state = "race"; beep(880); goSound();
+    if (!alive() || state !== "count") return; state = "race"; whistle(); goSound(); setTimeout(() => say("Go Family!", 1.1), 150);
     const h = K.held;
     if (h != null && h >= 950) { giveBoost(K, 1.2, 110); flash("🚀 ROCKET START!\nGo Family!!!", 1300, "go"); }
     else if (h != null) { K.stall = .9; flash("💨 Too early!", 1000); bumpSound(); }
@@ -2263,24 +2273,25 @@ document.querySelectorAll("#kPad [data-k]").forEach(b => {
   ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, on(0)));
   b.addEventListener("contextmenu", e => e.preventDefault());
 });
-// steering joystick: put your thumb down anywhere on it and slide left or right from THERE (so touching it never turns you by itself);
-// a small dead zone, and gentle near the middle for fine steering, full lock at the end
+// steering joystick: a round stick. Put your thumb down anywhere on it and push from THERE (touching it never turns you by itself);
+// the knob follows your thumb all round, only left / right steers: a small dead zone, gentle near the middle, full lock at the edge
 const stick = $k("#kStick"), knob = stick.querySelector("i");
-let stickId = null, stickX0 = 0, knob0 = 0;
-const stickRange = () => stick.clientWidth * .26;
-function stickSet(v, px = 0) {
+let stickId = null, stickX0 = 0, stickY0 = 0, knob0 = [0, 0];
+const stickRange = () => stick.clientWidth * .3;
+function stickSet(v, px = 0, py = 0) {
   const a = Math.abs(v), dz = .1; touch.x = a < dz ? 0 : Math.sign(v) * Math.pow((a - dz) / (1 - dz), 1.35);
-  knob.style.transform = `translateX(${px}px)`;
+  knob.style.transform = `translate(${px}px, ${py}px)`;
 }
+const knobClamp = (x, y) => { const lim = stick.clientWidth / 2 - 26, d = Math.hypot(x, y); return d > lim ? [x / d * lim, y / d * lim] : [x, y]; };
 stick.addEventListener("pointerdown", e => {
   e.preventDefault(); stickId = e.pointerId; try { stick.setPointerCapture(e.pointerId); } catch (er) {}
-  const r = stick.getBoundingClientRect(), lim = r.width / 2 - 30; stickX0 = e.clientX; knob0 = Math.max(-lim, Math.min(lim, e.clientX - (r.left + r.width / 2)));
-  stick.classList.add("on"); stickSet(0, knob0);
+  const r = stick.getBoundingClientRect(); stickX0 = e.clientX; stickY0 = e.clientY; knob0 = knobClamp(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+  stick.classList.add("on"); stickSet(0, ...knob0);
 });
 function stickMove(e) {
   if (e.pointerId !== stickId) return;
-  const R = stickRange(), d = Math.max(-R, Math.min(R, e.clientX - stickX0)), lim = stick.clientWidth / 2 - 22;
-  stickSet(d / R, Math.max(-lim, Math.min(lim, knob0 + d)));
+  const R = stickRange(), dx = e.clientX - stickX0, dy = e.clientY - stickY0;
+  stickSet(Math.max(-1, Math.min(1, dx / R)), ...knobClamp(knob0[0] + dx, knob0[1] + dy));
 }
 stick.addEventListener("pointermove", stickMove);
 const stickEnd = e => { if (e.pointerId !== stickId) return; stickId = null; stick.classList.remove("on"); stickSet(0); };
@@ -2304,18 +2315,18 @@ let screechAt = 0, crunchAt = 0;
 function engine() {
   const ac = window.getAC && window.getAC(); if (!ac || state === "menu") return;
   if (!eng) {
-    const o = ac.createOscillator(), o2 = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
-    o.type = "sawtooth"; o2.type = "square"; f.type = "lowpass"; f.frequency.value = 700; g.gain.value = 0;
-    o.connect(f); o2.connect(f); f.connect(g).connect(ac.destination); o.start(); o2.start();
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), o3 = ac.createOscillator(), g3 = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = "sawtooth"; o2.type = "square"; o3.type = "sawtooth"; f.type = "lowpass"; f.frequency.value = 1400; g.gain.value = 0; g3.gain.value = .55;
+    o.connect(f); o2.connect(f); o3.connect(g3).connect(f); f.connect(g).connect(ac.destination); o.start(); o2.start(); o3.start();   // o3: a growl an octave up, so phone speakers play it too
     const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();   // wind
     n.buffer = noise(ac); n.loop = true; nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .6; ng.gain.value = 0;
     n.connect(nf).connect(ng).connect(ac.destination); n.start();
-    eng = { o, o2, g, n, ng, nf };
+    eng = { o, o2, o3, g, n, ng, nf };
   }
   const v = Math.abs(K.v); let f = v / VMAX; f = f > 1 ? 1 + (1 - 1 / f) : f;
   const gear = .6 + .35 * (.9 * f + 3 * ((Math.min(f, 1) % (1 / 3)))), base = 105 * gear * (f > 1 ? f : 1);
-  eng.o.frequency.setTargetAtTime(base, ac.currentTime, .04); eng.o2.frequency.setTargetAtTime(base * .5, ac.currentTime, .04);
-  eng.g.gain.setTargetAtTime(state === "done" ? 0 : .022 + Math.min(.03, v / 9000), ac.currentTime, .1);
+  eng.o.frequency.setTargetAtTime(base, ac.currentTime, .04); eng.o2.frequency.setTargetAtTime(base * .5, ac.currentTime, .04); eng.o3.frequency.setTargetAtTime(base * 2.01, ac.currentTime, .04);
+  eng.g.gain.setTargetAtTime(state === "done" ? 0 : .05 + Math.min(.055, v / 4500), ac.currentTime, .1);
   eng.ng.gain.setTargetAtTime(state === "race" ? Math.min(.05, (v / VMAX) ** 2 * .035) : 0, ac.currentTime, .15);
   eng.nf.frequency.setTargetAtTime(700 + v * 2.5, ac.currentTime, .2);
   const t = ac.currentTime;
@@ -2332,7 +2343,7 @@ function noiseHit(freq, dur, vol, q = 1, sweep) {
 const burstSound = pow => { const v = .05 + pow / 2400; tone(180, .35, "sawtooth", v, 900); noiseHit(800, .4, v * 1.4, .8, 3500); };   // boost: a rising roar + a whoosh
 const whooshSound = () => noiseHit(1500, .25, .05, 1, 400);   // letting go of a drift
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopEngine(); });
-function stopEngine() { if (eng) { try { eng.o.stop(); eng.o2.stop(); eng.n.stop(); } catch (e) {} eng = null; } }
+function stopEngine() { if (eng) { try { eng.o.stop(); eng.o2.stop(); eng.o3.stop(); eng.n.stop(); } catch (e) {} eng = null; } }
 function tone(f, dur, type = "square", vol = .08, f2) {
   const ac = window.getAC && window.getAC(); if (!ac) return;
   const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t);
@@ -2358,6 +2369,19 @@ const blockSound = () => { tone(1500, .08, "square", .06); tone(900, .15, "trian
 const oinkSound = () => { tone(260, .12, "sawtooth", .07, 180); setTimeout(() => tone(240, .16, "sawtooth", .07, 160), 140); };
 const finalSound = () => { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, i === 5 ? .4 : .13, "square", .08), i * 110)); };
 const hyperSound = () => { for (let i = 0; i < 8; i++) setTimeout(() => tone(400 + i * 90, .1, "square", .06), i * 60); };
+// the announcer (the phone's own voice, where there is one) and a referee's whistle for GO
+function say(text, rate = 1.05) {
+  try { const sp = window.speechSynthesis; if (!sp) return; const u = new SpeechSynthesisUtterance(text); u.rate = rate; u.pitch = 1.15; u.volume = 1; u.lang = "en-US"; sp.cancel(); sp.speak(u); } catch (e) {}
+}
+function whistle() {
+  const ac = window.getAC && window.getAC(); if (!ac) return;
+  const t = ac.currentTime, o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), g = ac.createGain();
+  o.type = "sine"; o.frequency.setValueAtTime(2900, t); lfo.type = "square"; lfo.frequency.value = 32; lg.gain.value = 260;   // the pea rattling inside
+  lfo.connect(lg).connect(o.frequency); o.connect(g).connect(ac.destination);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.14, t + .03); g.gain.setValueAtTime(.14, t + .55); g.gain.exponentialRampToValueAtTime(.001, t + .8);
+  o.start(t); lfo.start(t); o.stop(t + .85); lfo.stop(t + .85);
+  noiseHit(3000, .7, .05, 3);   // breath
+}
 const readySound = () => { [392, 523, 659].forEach((f, i) => setTimeout(() => tone(f, .16, "square", .06), i * 130)); setTimeout(() => tone(784, .4, "triangle", .07), 390); };
 const goSound = () => { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, i === 4 ? .5 : .1, "square", .07), i * 70)); };
 const lapSound = () => { tone(660, .12, "square", .07); setTimeout(() => tone(990, .2, "square", .07), 110); };

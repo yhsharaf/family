@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Family Guild</title>
 <link rel="icon" href="media/crown.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=23">
+<link rel="stylesheet" href="kart.css?v=25">
 <link rel="stylesheet" href="sf.css?v=7">
 <link rel="stylesheet" href="br.css?v=1">
 <link rel="stylesheet" href="extras.css?v=46">
@@ -23,6 +23,9 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+/* the page reaches the very edges of iPhones held sideways (viewport-fit=cover): keep the normal pages clear of the notch */
+:root { --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); }
+body { padding-left: var(--sal); padding-right: var(--sar); }
 body {
   margin: 0; color: var(--ink); font-family: Ubuntu, system-ui, sans-serif; font-weight: 500;
   background-color: var(--paper);
@@ -591,7 +594,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="bd-result kt-result" id="kResult" hidden></div>
     </div>
     <div class="kt-pad" id="kPad">
-      <div class="kt-stick" id="kStick" aria-label="Steering: slide left or right"><b>◀</b><i></i><b>▶</b></div>
+      <div class="kt-stick" id="kStick" aria-label="Steering: push left or right"><b class="l">◀</b><b class="r">▶</b><b class="u">▲</b><b class="d">▼</b><i></i></div>
       <button type="button" data-k="i" class="itm" aria-label="Use your item" disabled><img alt="" hidden><span>?</span></button>
       <button type="button" data-k="b" class="brk" aria-label="Brake">BRAKE</button>
       <button type="button" data-k="d" class="drf" aria-label="Drift"><small>💨</small>DRIFT</button>
@@ -996,7 +999,7 @@ show();
 <script src="kart-songs.js?v=1"></script>
 <script src="duel.js?v=31"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=54"></script>
+<script src="kart.js?v=56"></script>
 <script src="sf.js?v=16"></script>
 <script src="br.js?v=2"></script>
 <script src="extras.js?v=51"></script>

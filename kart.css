@@ -325,3 +325,26 @@ kbd.w { min-width: 54px; }
 .kt-pos.down { animation: kPosDown .5s ease-out; color: #ff7a7a !important; }
 @keyframes kPosUp { 0% { transform: scale(1); } 30% { transform: scale(1.45) rotate(-6deg); } 100% { transform: scale(1); } }
 @keyframes kPosDown { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+/* iPhones sideways: the race fills the whole screen edge to edge (no page showing at the sides to tap and zoom by mistake);
+   the buttons and HUD stay clear of the notch / rounded corners */
+@media (pointer: coarse) and (orientation: landscape) {
+  .kt.racing .kt-game { background: #1d1d22; touch-action: none; }
+  .kt.racing .kt-hud-l { left: calc(8px + var(--sal)); }
+  .kt.racing .kt-hud-r { right: calc(10px + var(--sar)); }
+  .kt.racing .kt-stick { left: calc(14px + var(--sal)); }
+  .kt.racing .kt-pad .drf { right: calc(14px + var(--sar)); }
+  .kt.racing .kt-pad .brk { right: calc(118px + var(--sar)); }
+  .kt.racing .kt-pad .itm { right: calc(84px + var(--sar)); }
+}
+/* the crown above "Family, are you Ready!" */
+.k-flash .k-crown { display: block; width: clamp(54px, 9vw, 90px); margin: 0 auto 4px; image-rendering: pixelated; filter: drop-shadow(0 4px 0 #7a1418) drop-shadow(0 0 12px rgba(255,215,94,.9)); animation: kCrown 1.3s ease-out both; }
+@keyframes kCrown { 0% { transform: translateY(-40px) rotate(-12deg) scale(.5); } 25% { transform: translateY(4px) rotate(6deg) scale(1.15); } 40% { transform: translateY(0) rotate(0) scale(1); } 100% { transform: translateY(-3px); } }
+/* the round joystick */
+.kt-stick { width: 132px; height: 132px; border-radius: 50%; padding: 0; display: block;
+  background: radial-gradient(circle, rgba(25,18,30,.25) 0 38%, rgba(25,18,30,.45) 39% 100%); }
+.kt-stick b { position: absolute; font-size: 13px; line-height: 1; }
+.kt-stick b.l { left: 9px; top: 50%; transform: translateY(-50%); } .kt-stick b.r { right: 9px; top: 50%; transform: translateY(-50%); }
+.kt-stick b.u { top: 7px; left: 50%; transform: translateX(-50%); font-size: 9px; opacity: .45; } .kt-stick b.d { bottom: 7px; left: 50%; transform: translateX(-50%); font-size: 9px; opacity: .45; }
+.kt-stick i { width: 60px; height: 60px; margin: -30px 0 0 -30px; transition: transform .06s; }
+.kt-stick.on i { transition: none; }
+.hd-phone .j { width: 46px; height: 46px; border-radius: 50%; justify-self: start; gap: 0; font-size: 7px; }
