@@ -916,7 +916,7 @@ function placeObjects() {
 // the world is laid out on a 320-unit-wide screen; the height follows the screen's shape (tall on phones), with the camera raised to match.
 // The floor is drawn QUAL times sharper than that (2-3x on most screens), and steps down by itself if the device can't keep up.
 const W = 320, FOCAL = 170, CAMD = 84;
-let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1, FW = 320, FH = 134, QMAX = 3, floorMs = 0;
+let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1, FW = 320, FH = 134, QMAX = matchMedia("(pointer: coarse)").matches ? 2 : 3, floorMs = 0;   // phones start one step less sharp, so they never hitch stepping down mid-race
 const cv = $k("#kCanvas"), bctx = cv.getContext("2d");
 const fxc = $k("#kFx"), ctx = fxc.getContext("2d");   // sky, town, props, karts and the minimap, drawn sharp at screen resolution
 function fit() {
@@ -1069,7 +1069,7 @@ function giveBoost(r, dur, pow) {
   r.boostPow = r.boost > 0 ? Math.max(r.boostPow || 0, pow) : pow;
   r.boost = Math.max(r.boost || 0, dur); r.extra = Math.max(r.extra || 0, r.boostPow);
   r.v = Math.max(r.v, (r === K ? VMAX : r.skill * DIFF().skill) + pow * .6);
-  if (r === K) { K.kick = Math.max(K.kick || 0, Math.min(1, pow / 110)); burstSound(pow); }
+  if (r === K) { K.kick = Math.max(K.kick || 0, Math.min(1, pow / 110)); burstSound(pow); buzz(20); }
 }
 function boostTick(r, dt) {
   if (r.boost > 0) r.extra = Math.max(r.extra || 0, r.boostPow || 0);
@@ -1138,6 +1138,7 @@ function explode(b, all) {
     if (r !== K && b.by === K && r.spin > 0 && !(was > 0)) flash(`💣 Blew up ${r.name}!`, 900);
   }
   if (dK < 140) K.hitFlash = Math.max(K.hitFlash || 0, .12 * (1 - dK / 140));
+  if (b.by !== K && dK > BOMB_R && dK < BOMB_R * 1.5) closeCall();   // just outside the blast
 }
 // ================================================================ map hazards
 // ❄️ El Nath: frost turrets beside the road fire an ice arrow straight across it every few seconds (a glint warns first); a hit freezes you for a moment.
@@ -1174,6 +1175,7 @@ function hazardStep(dt, all) {
     const a = HAZ.ice[i]; a.life -= dt; a.x += Math.cos(a.a) * a.v * dt; a.y += Math.sin(a.a) * a.v * dt;
     let gone = a.life <= 0;
     for (const r of all) if (!gone && r.z < 22 && Math.hypot(r.x - a.x, r.y - a.y) < 15) { freeze(r); gone = true; }
+    if (!gone && K.z < 22) nearMiss(a, Math.hypot(K.x - a.x, K.y - a.y), 34);
     if (gone) HAZ.ice.splice(i, 1);
   }
   // 🧸 Papulatus: every 24 s from 18 s in; 3.2 s of charging (the warning), then the shock
@@ -1192,6 +1194,7 @@ function hazardStep(dt, all) {
       const b = HAZ.rocks[j]; b.i -= b.v / SPC * dt; b.roll += b.v / b.R * dt;
       const i0 = Math.floor(b.i), f = b.i - i0, p = at(i0, b.o), q = at(i0 + 1, b.o); b.x = p[0] + (q[0] - p[0]) * f; b.y = p[1] + (q[1] - p[1]) * f;
       let gone = b.i < START_I || b.i < K.idx - 80 || (LAVA && b.i < LAVA.i);
+      if (!gone) nearMiss(b, Math.hypot(K.x - b.x, K.y - b.y), b.R + 30);
       for (const r of all) if (!gone && r.z < 20 && Math.hypot(r.x - b.x, r.y - b.y) < b.R + 8) { const was = r.spin; hit(r, "🪨 Boulder!"); if (r === K && !(was > 0) && K.spin > 0) { K.v *= .3; K.shake = Math.max(K.shake, .25); bumpSound(); } gone = true; }
       if (gone) HAZ.rocks.splice(j, 1);
     }
@@ -1322,6 +1325,7 @@ function worldStep(dt, tt) {
       r.item = null; r.holding = false; gone = true; blockSound();
       if (r === K) flash("🛡️ Blocked!", 800); else if (sh.by === K) flash(`🛡️ ${r.name} blocked it`, 900);
     }
+    if (!gone && sh.by !== K) nearMiss(sh, Math.hypot(K.x - sh.x, K.y - sh.y), 34);
     for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16) { hit(r, "🏹 Arrowed!"); gone = true; if (r !== K && sh.by === K) flash(`🏹 Got ${r.name}!`, 900); }
     if (gone) SHOTS.splice(i, 1);
   }
@@ -1358,7 +1362,7 @@ function worldStep(dt, tt) {
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, closeCall: () => closeCall(),
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
   get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
@@ -1385,8 +1389,27 @@ function input() {
   return { steer: (r ? 1 : 0) - (l ? 1 : 0) || touch.x, drift: !!(keys[" "] || keys.Shift || touch.d), brake: !!(keys.ArrowDown || keys.s || touch.b),
     item: !!(keys.ArrowUp || keys.w || keys.e || touch.i) };
 }
+// ✨ little rewards: text that pops up by your kart, a buzz on phones, and "close call" boosts
+let POPS = [], popT = 0, lastClose = 0;
+function pop(text, col = "#ffe14a", big = false) { POPS.push({ text, col, big, t: 1.1, dx: Math.random() * 10 }); if (POPS.length > 5) POPS.shift(); }
+const buzz = ms => { try { if (navigator.vibrate && matchMedia("(pointer: coarse)").matches) navigator.vibrate(ms); } catch (e) {} };
+function closeCall() {
+  const now = performance.now(); if (now - lastClose < 1500 || state !== "race" || K.spin > 0 || K.frozen > 0) return; lastClose = now;
+  pop("😮 Close call!", "#7ad8ff", true); giveBoost(K, .4, 50); tone(1200, .1, "triangle", .05, 1800); buzz(12);
+}
+// something came within `r` of you and then went past without hitting you
+function nearMiss(o, d, r) { if (d < r) o.near = 1; else if (o.near === 1 && d > r + 8) { o.near = 2; closeCall(); } }
+function drawPops(x, y) {
+  const now = performance.now() / 1000, dt = Math.min(.05, now - (popT || now)); popT = now;
+  ctx.save(); ctx.textAlign = "left"; ctx.lineJoin = "round";
+  for (let i = POPS.length - 1; i >= 0; i--) { const p = POPS[i]; p.t -= dt; if (p.t <= 0) { POPS.splice(i, 1); continue; }
+    const a = Math.min(1, p.t * 3), rise = (1.1 - p.t) * 34, fs = p.big ? 13 : 10; ctx.globalAlpha = a; ctx.font = `900 ${fs}px Ubuntu, sans-serif`;
+    ctx.lineWidth = 3; ctx.strokeStyle = "rgba(30,20,30,.85)"; ctx.strokeText(p.text, x + p.dx, y - rise); ctx.fillStyle = p.col; ctx.fillText(p.text, x + p.dx, y - rise); }
+  ctx.restore();
+}
 function spinOut(msg) {
   const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0 || k.hyper > 0) return;
+  buzz([50, 40, 70]);
   k.spin = .9; k.inv = 1.9; k.drift = 0; k.charge = 0; k.boost = 0; k.extra = 0; k.hitFlash = .09; k.shake = Math.max(k.shake, .25); spinSound();
   if (k.holding) { k.item = null; k.holding = false; }   // you drop what you were holding
   const lose = Math.min(3, k.mesos); k.mesos -= lose;   // getting hit drops mesos, like coins in Mario Kart
@@ -1541,7 +1564,13 @@ function step(dt) {
   k.slip = tuck ? (k.slip || 0) + dt : Math.max(0, (k.slip || 0) - dt * 2);
   if (k.slip > .9) { k.slip = 0; giveBoost(k, .8, 80); flash("💨 Slipstream!", 600); }
   // mesos, pigs and the King Slime
-  for (const c of COINS) if (!c.got && Math.abs(k.z - (c.z || 0)) < 30 && Math.hypot(k.x - c.x, k.y - c.y) < 18) { c.got = true; k.mesos = Math.min(10, k.mesos + 1); k.v = Math.min(k.v + 22, 360); coinSound(); }
+  for (const c of COINS) if (!c.got && Math.abs(k.z - (c.z || 0)) < 30 && Math.hypot(k.x - c.x, k.y - c.y) < 18) {
+    c.got = true; const was = k.mesos; k.mesos = Math.min(10, k.mesos + 1); k.v = Math.min(k.v + 22, 360); coinSound();
+    const now = performance.now(); k.comboN = now - (k.comboT || 0) < 1300 ? (k.comboN || 0) + 1 : 1; k.comboT = now;   // 💰 a chain of quick pick-ups climbs in pitch
+    if (k.comboN > 1) tone(1320 + k.comboN * 110, .06, "square", .04); pop(k.comboN > 1 ? `+1 ×${k.comboN}` : "+1", "#ffd23f"); buzz(6);
+    if (k.comboN === 5 || k.comboN === 10) pop(`💰 Meso streak ×${k.comboN}!`, "#ffe14a", true);
+    if (was < 10 && k.mesos === 10) { flash("💰 MAX MESOS!", 900); [988, 1319, 1568].forEach((f, i) => setTimeout(() => tone(f, .12, "square", .05), i * 80)); }
+  }
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < 17) spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : "🍄 Bonk!"); }
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
   for (const p of PENPIGS) {
@@ -1570,6 +1599,8 @@ function step(dt) {
     if (k.lap >= LAPS) finish();
     else if (k.lap === LAPS - 1) { flash("🏁 FINAL LAP!", 1600); finalSound(); B.musicRate(1.15); fireworks(3); }   // fanfare, and the music speeds up
     else flash(`Lap ${k.lap + 1}`, 1300);
+    if (k.lap < LAPS) { const lt = k.laps[k.laps.length - 1], pv = k.laps[k.laps.length - 2];   // ⏱️ this lap's time, and how it compares with the last one
+      pop(pv ? `${(lt / 1000).toFixed(2)}s  ${lt < pv ? "▼" : "▲"}${Math.abs((lt - pv) / 1000).toFixed(2)}` : `${(lt / 1000).toFixed(2)}s`, !pv ? "#ffffff" : lt < pv ? "#7dff8a" : "#ff9a9a", true); }
   }
   // wrong way: moving against the track direction for a moment
   const along = Math.cos(k.a - (k.onAlt && k.altJ != null ? altTan(k.altJ) : tangent(k.idx))) * k.v;   // on a short cut, "forward" is along the short cut
@@ -1891,6 +1922,8 @@ function drawKart(k) {
     }
     if (k.off && k.v > 60 && k.z <= 0) { const side = Math.random() < .5 ? -1 : 1;   // dust off the road
       PFX.push({ x: x + side * w * .4 + (Math.random() - .5) * 6, y: y - 2, vx: side * 18 + (Math.random() - .5) * 20, vy: 25 + Math.random() * 25, t: .45, life: .45, size: 3 + Math.random() * 2, col: T.theme.dust || (T.theme.road === "dirt" ? "120,90,50" : "110,95,60"), kind: "dust" }); }
+    if (k.slip > .25 && state === "race") for (let n = 0; n < 2; n++) { const sd = Math.random() < .5 ? -1 : 1;   // 💨 the draft charging: wind rushing past
+      PFX.push({ x: W / 2 + sd * W * (.12 + Math.random() * .3), y: y - Math.random() * H * .35, vx: sd * 40, vy: 300, t: .13, life: .13, size: 1, col: "#e8f6ff", kind: "streak" }); }
     if (k.hyper > 0) PFX.push({ x: x + (Math.random() - .5) * w * 1.2, y: y - Math.random() * w * .8, vx: (Math.random() - .5) * 40, vy: 40, t: .35, life: .35, size: 2.5, col: `hsl(${Math.random() * 360},100%,65%)`, kind: "star" });
   }
   if (k.boxBurst) { k.boxBurst = false; tone(1568, .08, "triangle", .05, 2093);
@@ -1957,6 +1990,7 @@ function drawKart(k) {
   }
   ctx.restore(); ctx.globalAlpha = 1;
   if (k.spin > 0 || k.squash > 0) dizzy(x, y - lift - w * 1.55, w * .55, t);   // 💫 seeing stars after a hit
+  if (POPS.length) drawPops(x + w * 1.25, y - lift - w * .5);   // beside the kart, clear of the big banner in the middle
   if (k.frozen > 0) iceBlock(x, y - lift, w, Math.min(1, k.frozen / .3));
 }
 // 🧊 a block of ice over a frozen kart (melting away at the end)
@@ -2080,7 +2114,8 @@ function hud() {
   $k("#kItemBoxN").textContent = k.item === "triple" ? k.itemN : ""; $k("#kItemBoxN").hidden = k.item !== "triple";
   const pb = $k("#kPad [data-k=i]"); pb.disabled = !k.item || k.roll > 0; const pi = pb.querySelector("img"); if (pi.dataset.src !== icon) { pi.dataset.src = icon; if (icon) pi.src = icon; pi.hidden = !icon; }
   const rk = state === "menu" || mode === "tt" ? 0 : state === "done" ? K.place : rankOf(k);
-  if (state === "race" && rk && lastRk && rk !== lastRk) { posPop = { up: rk < lastRk, at: performance.now() }; if (rk < lastRk) tone(988, .09, "square", .05, 1320); }
+  if (state === "race" && rk && lastRk && rk !== lastRk) { posPop = { up: rk < lastRk, at: performance.now() };
+    if (rk < lastRk) { tone(988, .09, "square", .05, 1320); buzz(10); const now = performance.now(); k.ovN = now - (k.ovT || 0) < 6000 ? (k.ovN || 0) + 1 : 1; k.ovT = now; if (k.ovN >= 2) pop(`🔥 ${k.ovN} overtakes!`, "#ff9a3a", true); } }
   if (state !== "race") posPop = null; lastRk = rk;
   const pop = posPop && performance.now() - posPop.at < 650 ? (posPop.up ? " up" : " down") : "";
   $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + pop;
@@ -2118,7 +2153,8 @@ addEventListener("resize", () => { if (state !== "menu") syncRot(); });
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
   syncRot(); $k("#kFull").hidden = !wantFull();
-  if (TEX && K && state !== "loading") { if (state === "watch") { watchStep(dt); render(); watchHud(); } else { step(dt); render(); hud(); engine(); } }
+  const t0 = performance.now();
+  if (TEX && K && state !== "loading") { if (state === "watch") { watchStep(dt); render(); watchHud(); } else { step(dt); const t1 = performance.now(); render(); hud(); engine(); if (DEV) { DEV.stepMs = (DEV.stepMs || 0) * .95 + (t1 - t0) * .05; DEV.drawMs = (DEV.drawMs || 0) * .95 + (performance.now() - t1) * .05; } } }
   if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 100) {
     MP.sendAt = now; const k = K;
     mpSend("p", { x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(3), v: Math.round(k.v), z: Math.round(k.z), s: +k.steer.toFixed(2), sp: k.spin > 0 ? +k.spin.toFixed(2) : 0,
@@ -2155,7 +2191,7 @@ async function start() {
   
   try { ghost = mode === "tt" ? JSON.parse(store.get(ghostKey())) : null; } catch (e) { ghost = null; }
   ghostRec = []; PFX = []; FIRE = [];
-  K = freshKart(); setupHazards(); PETALS = []; FWK = []; lastRk = 0; finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
+  K = freshKart(); setupHazards(); PETALS = []; POPS = []; FWK = []; lastRk = 0; finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
   LAVA = MECH === "lava" ? { i: START_I - 440 / SPC, v: 0, t: 0 } : null; makeRivals(mode === "gp" ? gp.names : null); if (mode === "gp") gp.names = RIV.map(r => r.name);
   if (mode === "tt") { K.item = "triple"; K.itemN = 3; }
   B.musicRate(1);
@@ -2212,7 +2248,7 @@ const ordinal = n => n + (["", "st", "nd", "rd"][n] || "th");
 let TRACK_LEN = 0;
 function finish() {
   if (mode === "mp") return mpFinish();
-  const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); fireworks(6);
+  const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); fireworks(6); buzz([40, 60, 120]);
   if (!TRACK_LEN) for (let i = 0; i < N; i++) TRACK_LEN += Math.hypot(PTS[(i + 1) % N][0] - PTS[i][0], PTS[(i + 1) % N][1] - PTS[i][1]);
   const total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
   // everyone's time: rivals who finished have theirs, the rest are estimated from how far they still have to go
@@ -2260,7 +2296,7 @@ function finish() {
   }, 1400);
 }
 function mpFinish() {
-  const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); MP.finished = true; fireworks(6); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
+  const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); MP.finished = true; fireworks(6); buzz([40, 60, 120]); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
   const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
   const sure = RIV.every(r => !r.remote || r.done || liveOK(r));   // not sure where someone is? don't claim a place: the results will say
   B.sound(place <= 3 ? "win" : "lose"); flash(sure && place === 1 ? "🏆 1st PLACE!" : sure ? `🏁 FINISH! ${ordinal(place)}` : "🏁 FINISH!", 1600);
