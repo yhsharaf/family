@@ -424,7 +424,7 @@ function gridSpot(slot) { const row = Math.floor(slot / 2), col = slot % 2, i = 
 // ------------------------------------------------------------------ multiplayer (rooms of 2-8, the first one in is the host)
 // Everyone drives their own kart; positions go out ~12 times a second over Realtime broadcast, other players are drawn from those.
 // Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
-const MP = { code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
+const MP = { endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
 const mpOn = () => mode === "mp" && !!MP.code;
 function mpSend(event, payload) { if (MP.ch) MP.ch.send({ type: "broadcast", event, payload: { ...payload, n: MP.me, rc: MP.raceNo } }); }
 function mpByName(n) { return n === MP.me ? K : RIV.find(r => r.name === n); }
@@ -434,7 +434,7 @@ function mpOnPos(p) {
   r.net = { x: p.x, y: p.y, a: p.a, v: p.v, t: performance.now() };
   r.z = p.z || 0; r.steer = p.s || 0; r.spin = p.sp || 0; r.small = p.sm || 0; r.hyper = p.hy || 0; r.extra = p.ex || 0; r.squash = p.sq || 0;
   r.lap = p.lap; r.cps = p.cps; r.idx = p.idx; r.holding = !!p.ho; r.item = p.it || null; r.ink = p.ik || 0;
-  if (p.dn && !r.done) { r.done = true; r.finishT = p.ft; r.finish = ++finishers; }
+  if (p.dn && !r.done) { r.done = true; r.finishT = p.ft; r.finish = ++finishers; if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = r.name; } }
 }
 function mpOnItem(p) {
   if (!p || p.rc !== MP.raceNo || !K || state === "menu") return;
@@ -1156,11 +1156,17 @@ function hud() {
   $k("#kBest").textContent = mode === "tt" ? (best && best.race ? `Best ${fmt(best.race)}` : "") : mode === "gp" && gp ? `Cup race ${gp.race}/${GP_RACES}` : T ? T.name : "";
   $k("#kSpeed").textContent = state === "race" ? `${Math.max(0, Math.round(k.v * .5))} km/h` : "";
   $k("#kWrong").hidden = !(state === "race" && k.wrong > .6);
+  let cd = "";   // multiplayer: someone finished, the rest have 10 seconds
+  if (mpOn() && MP.endAt && state === "race" && !MP.finished) {
+    const left = Math.ceil((MP.endAt - performance.now()) / 1000);
+    if (left <= 0) mpTimeUp();
+    else { cd = `🏁 ${MP.firstName || "Someone"} finished! ⏱️ ${left}s left`; if ($k("#kWarn").textContent !== cd && left <= 5) beep(left <= 3 ? 880 : 660); }
+  }
   const armIn = state === "race" && ARMS.some(a => a.tgt === k), shotIn = state === "race" && SHOTS.some(sh => sh.tgt === k);
-  const warn = armIn ? "🖐️ ZAKUM'S ARM IS COMING FOR YOU!" : shotIn ? (k.holding ? "⚠️🏹 Arrow behind you · your item will block it" : "⚠️🏹 Arrow behind you! Hold a Slime or Arrow to block") : "";
-  if ($k("#kWarn").textContent !== warn) { $k("#kWarn").textContent = warn; $k("#kWarn").className = "kt-warn" + (armIn ? " arm" : ""); }
+  const warn = cd ? cd : armIn ? "🖐️ ZAKUM'S ARM IS COMING FOR YOU!" : shotIn ? (k.holding ? "⚠️🏹 Arrow behind you · your item will block it" : "⚠️🏹 Arrow behind you! Hold a Slime or Arrow to block") : "";
+  if ($k("#kWarn").textContent !== warn) { $k("#kWarn").textContent = warn; $k("#kWarn").className = "kt-warn" + (armIn || cd ? " arm" : ""); }
   $k("#kWarn").hidden = !warn;
-  if (warn && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
+  if (warn && !cd && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
   const bag = state === "menu" ? "" : `${k.mesos}/10`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${bag}` : ""; }
   if ((k.roll > 0 || k.roll2 > 0) && performance.now() - rollTick > 85) { rollTick = performance.now(); tone([660, 740, 830, 880, 990, 880, 830, 740][rollN++ % 8], .05, "square", .035); }
   const keys = Object.keys(ITEM_ICON), spinIcon = () => ITEM_ICON[keys[Math.floor(performance.now() / 80) % keys.length]];
@@ -1302,18 +1308,23 @@ function finish() {
   }, 1400);
 }
 function mpFinish() {
-  const k = K; state = "done"; B.musicRate(1); MP.finished = true;
+  const k = K; state = "done"; B.musicRate(1); MP.finished = true; if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
   const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
   B.sound(place <= 3 ? "win" : "lose"); flash(place === 1 ? "🏆 1st PLACE!" : "🏁 FINISH!", 1600);
   B.client().then(sb => sb && sb.rpc("kart_room_finish", { p_code: MP.code, p_tok: MP.token, p_ms: total })).then(() => mpPoll());
   const my = raceId;
   setTimeout(() => { if (my === raceId && state === "done" && !MP.results) mpShowWaiting(total); }, 1400);
 }
+function mpTimeUp() {
+  if (state !== "race" || MP.finished) return;
+  state = "done"; MP.finished = true; B.musicRate(1); flash("⏱️ Time's up!", 1400); B.sound("lose"); mpPoll();
+  const my = raceId; setTimeout(() => { if (my === raceId && state === "done" && !MP.results) mpShowWaiting(null); }, 1200);
+}
 function mpShowWaiting(total) {
   const rows = racers().slice().sort((a, b) => progOf(b) - progOf(a));
-  $k("#kResult").innerHTML = `<h3>🏁 ${fmt(total)}</h3><p class="k-diff">Waiting for the others to finish… (at most 60 s)</p>
+  $k("#kResult").innerHTML = `<h3>${total == null ? "⏱️ Time's up!" : "🏁 " + fmt(total)}</h3><p class="k-diff">${total == null ? "Your place is where you were on the track. Getting the results…" : "Everyone else has 10 seconds to finish…"}</p>
     <table class="k-table">${rows.map((r, i) => `<tr class="${r === K ? "you" : ""}"><td>${ordinal(i + 1)}</td><td><img src="${spriteOf(r === K ? me : r.name)}" alt=""></td><td>${esc(r === K ? me : r.name)}</td>
-    <td>${r === K ? fmt(total) : r.done ? fmt(r.finishT) : "racing…"}</td></tr>`).join("")}</table>`;
+    <td>${r === K ? (total == null ? "—" : fmt(total)) : r.done ? fmt(r.finishT) : "racing…"}</td></tr>`).join("")}</table>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
 }
 function mpShowResults(res) {
@@ -1322,7 +1333,7 @@ function mpShowResults(res) {
   $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
     <p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[MP.track].name)}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${spriteOf(r.name)}" alt=""></td><td>${esc(r.name)}</td>
-      <td>${r.ms ? fmt(r.ms) : "DNF"}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
+      <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
     <p class="k-rank">Points go on the guild 🏆 Points board (guild members only).</p>
     <div class="row"><button class="sk-btn bd-play" data-a="room">👥 Back to the room</button></div>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
@@ -1356,14 +1367,17 @@ async function mpJoin(code) {
 async function mpPoll(first) {
   if (!MP.code || MP.polling) return; MP.polling = true;
   try {
-    const sb = await B.client(); const { data } = await sb.rpc("kart_room_state", { p_code: MP.code, p_tok: MP.token });
+    const racingNow = state === "race" && K && !MP.finished;
+    const prog = racingNow ? Math.max(0, Math.min(1, (K.lap * N + (K.cps === 0 && K.idx > N * .75 ? K.idx - N : K.idx)) / (LAPS * N))) : null;
+    const sb = await B.client(); const { data } = await sb.rpc("kart_room_state", { p_code: MP.code, p_tok: MP.token, p_prog: prog });
     if (!data) return;
     if (data.r === "gone") { mpLeave(true); $k("#kErr").textContent = "You left that room."; return; }
     Object.assign(MP, { host: data.host, players: data.players || [], status: data.status, track: data.track });
     MP.slot = Math.max(0, MP.players.findIndex(p => p.name === MP.me));
+    if (data.status === "racing" && data.ends_in != null && data.race_no === MP.raceNo) MP.endAt = performance.now() + data.ends_in * 1000;
     if (first) MP.raceNo = data.status === "racing" ? data.race_no : data.race_no;   // don't jump into a race that's already running
     if (data.status === "racing" && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in > -4) {
-      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null;
+      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null; MP.endAt = 0; MP.firstName = null;
       if (mode !== "mp") { mode = "mp"; drawMode(); }
       start();
     }
@@ -1499,10 +1513,38 @@ drawMode(); drawTrack();
 function drawDiff() { document.querySelectorAll("#kDiff [data-d]").forEach(b => b.classList.toggle("on", b.dataset.d === diff)); }
 $k("#kDiff").addEventListener("click", e => { const b = e.target.closest("[data-d]"); if (!b) return; diff = b.dataset.d; store.set("kart_diff", diff); drawDiff(); });
 drawDiff();
-$k("#kName").addEventListener("keydown", e => { if (e.key === "Enter") start(); });
-$k("#kName").addEventListener("input", showBest);
+// name search with pictures (like Bonk Duel), and your character shown big
+const ROSTER = (typeof D !== "undefined" ? [...D.founders, ...D.members] : []).filter((p, i, a) => p && p.name && a.findIndex(q => q.name === p.name) === i);
+function kShowFace() {
+  const n = $k("#kName").value.trim(), g = guildOf(n);
+  $k("#kFace").innerHTML = `<img src="${n ? spriteOf(g ? g.name : n) : B.M + "guest.png?v=2"}" alt="">`;
+  $k("#kGuest").hidden = !n || !!g;
+}
+let kSuggIdx = -1;
+function kSuggest() {
+  const q = $k("#kName").value.trim().toLowerCase(), box = $k("#kSugg");
+  if (!q) { box.hidden = true; return; }
+  const hits = ROSTER.filter(p => p.name.toLowerCase().includes(q))
+    .sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || a.name.length - b.name.length).slice(0, 8);
+  if (!hits.length || (hits.length === 1 && hits[0].name.toLowerCase() === q)) { box.hidden = true; return; }
+  kSuggIdx = -1;
+  box.innerHTML = hits.map(p => `<button type="button" data-n="${esc(p.name)}">${p.sprite ? `<img src="${p.sprite}" alt="">` : "<span style='width:34px'>👤</span>"} ${esc(p.name)}</button>`).join("");
+  box.hidden = false;
+}
+const kPick = n => { $k("#kName").value = n; $k("#kSugg").hidden = true; kShowFace(); showBest(); };
+$k("#kSugg").addEventListener("pointerdown", e => { const b = e.target.closest("button"); if (!b) return; e.preventDefault(); kPick(b.dataset.n); });
+$k("#kName").addEventListener("blur", () => setTimeout(() => $k("#kSugg").hidden = true, 150));
+$k("#kName").addEventListener("keydown", e => {
+  const items = [...$k("#kSugg").querySelectorAll("button")];
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && items.length && !$k("#kSugg").hidden) { e.preventDefault();
+    kSuggIdx = (kSuggIdx + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length; items.forEach((b, i) => b.classList.toggle("on", i === kSuggIdx)); }
+  if (e.key === "Enter") { e.preventDefault();
+    if (kSuggIdx >= 0 && items[kSuggIdx] && !$k("#kSugg").hidden) kPick(items[kSuggIdx].dataset.n);
+    else if (mode !== "mp") start(); }
+});
+$k("#kName").addEventListener("input", () => { showBest(); kShowFace(); kSuggest(); });
 $k("#kName").value = store.get("family_me") || "";
-showBest();
+showBest(); kShowFace();
 $k("#kLeave").onclick = quit;
 $k("#kResult").addEventListener("click", e => {
   const a = e.target.closest("[data-a]"); if (!a) return;
