@@ -970,7 +970,7 @@ const ITEM_ICON = { elixir: "media/duel/elixir.png", triple: "media/duel/elixir.
 const ITEM_NAME = { elixir: "Elixir", triple: "3 Elixirs", slime: "Slime drop", arrow: "Arrow", arm: "Zakum's Arm", thunder: "Thunder", splat: "Splat", hyper: "Hyper Body", bomb: "Pirate Bomb" };
 let RIV = [], DROPS = [], SHOTS = [], ARMS = [], BOMBS = [], BOOMS = [];
 const BOMB_R = 78;   // 💣 the Pirate Bomb's blast radius (world units; a kart is about 20 wide)
-const progOf = r => (r.done ? 1e6 - r.finish : 0) + (OPEN ? r.idx : r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx));
+const progOf = r => (r.done ? 1e6 - r.finish : 0) + (r.remote && !liveOK(r) && r.srvProg != null ? r.srvProg * (OPEN ? N : LAPS * N) : (OPEN ? r.idx : r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx)));
 const racers = () => [K, ...RIV];
 function rankOf(r) { const p = progOf(r); return 1 + racers().filter(o => o !== r && progOf(o) > p).length; }
 function gridSpot(slot) { const row = Math.floor(slot / 2), col = slot % 2, i = (OPEN ? START_I - 6 : N - 6) - row * 9 - col * 3; return { i, o: col ? 24 : -24 }; }
@@ -1006,7 +1006,13 @@ function mpOnItem(p) {
   if (p.k === "splat") { bloopCD = 14; if (!K.done && progOf(K) > p.p && !(K.bloopSafe > 0) && !(K.hyper > 0)) { K.ink = 4; K.bloopSafe = 12; makeInk(); flash(`🐙 Splat from ${by.name}!`, 1000); splatSound(); } }
 }
 // other players' karts: glide toward where their last message says they are (with a little prediction)
+const liveOK = r => r.net && performance.now() - r.net.t < 2500;   // fresh live position from this racer?
 function remoteStep(r, dt) {
+  if (!liveOK(r) && r.srvProg != null) {   // no live messages: follow the server's progress along the road (shown slightly see-through)
+    const i = OPEN ? Math.round(START_I + r.srvProg * (N - FIN_OFF - START_I)) : Math.round((r.srvProg * LAPS % 1) * N) % N, [x, y] = at(i, 0), f = Math.min(1, dt * 3);
+    r.x += (x - r.x) * f; r.y += (y - r.y) * f; r.a = tangent(i); r.idx = i; r.lap = OPEN ? 0 : Math.min(LAPS - 1, Math.floor(r.srvProg * LAPS)); r.cps = Math.floor((i / N) * 4) % 4; r.gone = false; r.ghost = true; return;
+  }
+  r.ghost = false;
   if (!r.net) return;
   const age = Math.min(.3, (performance.now() - r.net.t) / 1000), px = r.net.x + Math.cos(r.net.a) * r.net.v * SPD * age, py = r.net.y + Math.sin(r.net.a) * r.net.v * SPD * age;
   const f = Math.min(1, dt * 12); r.x += (px - r.x) * f; r.y += (py - r.y) * f; r.v = r.net.v;
@@ -2113,14 +2119,15 @@ function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
   syncRot(); $k("#kFull").hidden = !wantFull();
   if (TEX && K && state !== "loading") { if (state === "watch") { watchStep(dt); render(); watchHud(); } else { step(dt); render(); hud(); engine(); } }
-  if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 80) {
+  if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 100) {
     MP.sendAt = now; const k = K;
     mpSend("p", { x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(3), v: Math.round(k.v), z: Math.round(k.z), s: +k.steer.toFixed(2), sp: k.spin > 0 ? +k.spin.toFixed(2) : 0,
       sm: k.small > 0 ? 1 : 0, hy: k.hyper > 0 ? 1 : 0, ex: Math.round(k.extra || 0), sq: k.squash > 0 ? 1 : 0, lap: k.lap, cps: k.cps, idx: k.idx, ho: k.holding ? 1 : 0, it: k.holding ? k.item : null,
       ik: k.ink > 0 ? 1 : 0, dn: state === "done" ? 1 : 0, ft: state === "done" ? Math.round(k.laps.reduce((a, b) => a + b, 0)) : 0 });
-    for (const r of RIV) if (r.bot && !r.remote) mpSend("p", { n: r.name, x: Math.round(r.x), y: Math.round(r.y), a: +r.a.toFixed(3), v: Math.round(r.v), z: Math.round(r.z || 0), s: +(r.steer || 0).toFixed(2),
+    const bl = RIV.filter(r => r.bot && !r.remote).map(r => ({ n: r.name, x: Math.round(r.x), y: Math.round(r.y), a: +r.a.toFixed(3), v: Math.round(r.v), z: Math.round(r.z || 0), s: +(r.steer || 0).toFixed(2),
       sp: r.spin > 0 ? +r.spin.toFixed(2) : 0, sm: r.small > 0 ? 1 : 0, hy: r.hyper > 0 ? 1 : 0, ex: Math.round(r.extra || 0), sq: r.squash > 0 ? 1 : 0, lap: r.lap, cps: r.cps, idx: r.idx,
-      ho: r.holding ? 1 : 0, it: r.holding ? r.item : null, ik: r.ink > 0 ? 1 : 0, dn: r.done ? 1 : 0, ft: r.done ? Math.round(r.finishT) : 0 });
+      ho: r.holding ? 1 : 0, it: r.holding ? r.item : null, ik: r.ink > 0 ? 1 : 0, dn: r.done ? 1 : 0, ft: r.done ? Math.round(r.finishT) : 0 }));
+    if (bl.length) mpSend("pb", { list: bl });   // all the host's bots in one message
   }
   raf = requestAnimationFrame(loop);
 }
@@ -2255,7 +2262,8 @@ function finish() {
 function mpFinish() {
   const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); MP.finished = true; fireworks(6); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
   const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
-  B.sound(place <= 3 ? "win" : "lose"); flash(place === 1 ? "🏆 1st PLACE!" : "🏁 FINISH!", 1600);
+  const sure = RIV.every(r => !r.remote || r.done || liveOK(r));   // not sure where someone is? don't claim a place: the results will say
+  B.sound(place <= 3 ? "win" : "lose"); flash(sure && place === 1 ? "🏆 1st PLACE!" : sure ? `🏁 FINISH! ${ordinal(place)}` : "🏁 FINISH!", 1600);
   B.client().then(sb => sb && sb.rpc("kart_room_finish", { p_code: MP.code, p_tok: MP.token, p_ms: total })).then(() => mpPoll());
   const my = raceId;
   setTimeout(() => { if (my === raceId && state === "done" && !MP.results) mpShowWaiting(total); }, 1400);
@@ -2325,15 +2333,23 @@ async function mpJoin(code, pub) {
   $k("#kErr").textContent = "";
   store.set("kart_room_tok:" + code, data.token);
   Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null, tally: {}, tallied: null, chat: [], watching: false }); chatDraw();
+  mpChannel(sb, code);
+  await mpJoinedTail(code);
+}
+// the live channel for positions and items; if it drops (a phone switching apps, a network blip) it rejoins by itself
+function mpChannel(sb, code) {
   if (MP.ch) sb.removeChannel(MP.ch);
-  MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
+  const ch = MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "pb" }, ({ payload }) => { if (payload && Array.isArray(payload.list)) for (const q of payload.list) mpOnPos({ ...q, rc: payload.rc }); })
     .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
     .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
     .on("broadcast", { event: "go" }, () => mpPoll())
     .on("broadcast", { event: "rd" }, () => mpPoll())
     .on("broadcast", { event: "ch" }, ({ payload }) => { if (payload && chatAdd([{ id: payload.id, name: payload.name, msg: payload.msg }])) tone(880, .07, "triangle", .04); })
     .on("broadcast", { event: "tr" }, ({ payload }) => { if (payload && TRACKS[payload.t] && (MP.pick !== payload.t || MP.pickCC !== payload.cc)) { MP.pick = payload.t; MP.pickCC = CCS[payload.cc] ? +payload.cc : 150; if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); } })
-    .subscribe();
+    .subscribe(st => { if ((st === "CHANNEL_ERROR" || st === "TIMED_OUT" || st === "CLOSED") && MP.code === code && MP.ch === ch) setTimeout(() => { if (MP.code === code && MP.ch === ch) mpChannel(sb, code); }, 1500); });
+}
+async function mpJoinedTail(code) {
   if (location.hash !== "#kart/" + code) history.replaceState(null, "", "#kart/" + code);
   clearInterval(MP.poll); MP.poll = setInterval(mpPoll, 1500); await mpPoll(true);
 }
@@ -2350,6 +2366,11 @@ async function mpPoll(first) {
     if (data.r === "gone") { mpLeave(true); $k("#kErr").textContent = "You left that room."; return; }
     Object.assign(MP, { host: data.host, players: data.players || [], status: data.status, track: data.track, pub: !!data.public });
     if (data.chat) chatAdd(data.chat);
+    if (K && RIV.length && (state === "race" || state === "done" || state === "watch")) for (const p of MP.players) {   // the server's view of every racer (a fallback for live messages)
+      const r = RIV.find(o => o.name === p.name && o.remote); if (!r) continue;
+      if (p.prog != null) { r.srvProg = +p.prog; r.srvAt = performance.now(); }
+      if (p.finish != null && !r.done) { r.done = true; r.finishT = p.finish; r.finish = ++finishers; }
+    }
     MP.slot = Math.max(0, MP.players.findIndex(p => p.name === MP.me));
     if (data.status === "racing" && data.ends_in != null && data.race_no === MP.raceNo) MP.endAt = performance.now() + data.ends_in * 1000;
     if (first) MP.raceNo = data.status === "racing" ? data.race_no : data.race_no;   // don't jump into a race that's already running
