@@ -554,7 +554,7 @@ function loadTrack(key) {
   T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; OPEN = !!T.open; ROAD = T.road || 160; PTS = OPEN ? openPts(T.ctrl) : loopPts(T.ctrl); N = PTS.length; TRACK_LEN = 0;
   LAPS = OPEN ? 1 : 3; START_I = OPEN ? 44 : 0;
   { let L = 0; for (let i = 1; i < N; i++) L += Math.hypot(PTS[i][0] - PTS[i - 1][0], PTS[i][1] - PTS[i - 1][1]); SPC = L / (N - 1); }   // world units between track points
-  MECH = { elnath: "ice", sleepy: "dark", zakum: "lava", ludi: "flip" }[T.cup] || null;
+  MECH = { elnath: "ice" }[T.cup] || null;   // only El Nath keeps its own rule (slippery ice); the lights-out, swapped controls and lava chase made races annoying
   OUT = T.theme.out ? hexABGR(T.theme.out) : OUT0; HAZE = T.theme.haze || HAZE0;
   const F = OPEN ? (fr => Math.round(Math.max(0, Math.min(1, fr)) * (N - 1))) : (fr => Math.round((((fr % 1) + 1) % 1) * N) % N);
   const f = T.build(F);
@@ -1380,6 +1380,7 @@ function explode(b, all) {
 const HAZ = { lanes: [], ice: [], rocks: [], rockT: 3, pap: null };
 function setupHazards() {
   HAZ.lanes = []; HAZ.ice = []; HAZ.rocks = []; HAZ.rockT = 4; HAZ.pap = null;
+  return;   // (the frost turrets, boulders and Papulatus are switched off: each new track brings its own course features instead)
   const F = f => OPEN ? Math.round(START_I + (N - FIN_OFF - START_I) * f) : Math.round(N * f) % N;
   if (T.cup === "elnath") [.24, .52, .79].forEach((f, n) => HAZ.lanes.push({ i: F(f), side: n % 2 ? 1 : -1, period: 5.5 + n * .4, phase: n * 1.9, shot: -1, warn: 0 }));
   if (T.cup === "elnath" && AN && HEAVY_CUTS.includes(TRACK_KEY)) HAZ.lanes.push({ alt: true, j: Math.round(AN * .5), side: 1, period: 4, phase: .7, shot: -1, warn: 0 });   // one guards the short cut
