@@ -777,7 +777,7 @@ const DIFFS = { easy: { skill: .95, band: .07, pick: .4, label: "Easy" }, normal
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
 // speed classes like Mario Kart's: everything on the track moves slower (turning stays the same, so it's easier to steer)
 const CCS = { 50: { spd: .7, label: "🐢 50cc" }, 100: { spd: .85, label: "🏎️ 100cc" }, 150: { spd: 1, label: "🔥 150cc" } };
-let cc = CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 150, SPD = 1;   // SPD: the class of the race being driven right now
+let cc = CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 100, SPD = 1;   // 100cc unless you picked another class   // SPD: the class of the race being driven right now
 const ccId = (id, c) => c === 150 ? id : `${id}_${c}`;   // board / ghost / best ids: 150cc keeps the plain track id
 const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
