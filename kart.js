@@ -80,7 +80,7 @@ function nearAlt(x, y) { let best = 0, bd = 1e12; for (let j = 0; j < AN; j++) {
 // which road you're on: the main loop, or the second road when you're on it (or nearer to it)
 function nav(x, y, guess) {
   const m = nearest(x, y, guess);
-  if (!AN || m.i < FORK_A - 30 || m.i > FORK_B + 30) return { i: m.i, d: m.d, alt: false, half: ROAD / 2 };
+  if (!AN) return { i: m.i, d: m.d, alt: false, half: ROAD / 2 };   // (a short cut can pass near any part of the road, so always check it)
   const a = nearAlt(x, y);
   if (a.d < m.d && a.j > 0 && a.j < AN - 1) return { i: altIdx(a.j), d: a.d, alt: true, j: a.j, half: ALT_ROAD / 2 };
   return { i: m.i, d: m.d, alt: false, half: ROAD / 2 };
@@ -509,6 +509,8 @@ function loadTrack(key) {
   OUT = T.theme.out ? hexABGR(T.theme.out) : OUT0; HAZE = T.theme.haze || HAZE0;
   const F = OPEN ? (fr => Math.round(Math.max(0, Math.min(1, fr)) * (N - 1))) : (fr => Math.round((((fr % 1) + 1) % 1) * N) % N);
   const f = T.build(F);
+  if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key];   // 🔀 the other maps' short cuts (found once with autoFork, kept here)
+    f.fork = { a, b, via, width: T.cup === "zakum" ? 54 : 64, style: T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble", pads: [{ t: "boost", j: .45, len: 6, o: 0, w: 40 }], coins: true }; }   // every other map gets a short cut where its road loops back near itself
   if (f.fork) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
@@ -521,6 +523,41 @@ function loadTrack(key) {
   paintTrack(); placeObjects(); if (MECH === "lava") lavaMap();
 }
 
+// 🔀 each map's short cut: [from track point, to track point, the two bends in between]. Found with autoFork below (run it again with
+// __kart.autoFork() on localhost if a track's shape ever changes). Zakum's zig-zag climbs (zk1, zk3) have no room for one.
+const SHORTCUTS = { en1: [271, 501, [[1310, 609], [1323, 903]]], en2: [211, 473, [[1183, 528], [1429, 792]]], en3: [57, 277, [[542, 698], [851, 614]]],
+  sw1: [219, 437, [[1275, 388], [1441, 578]]], sw2: [349, 575, [[1254, 513], [1359, 783]]], sw3: [223, 427, [[1434, 492], [1528, 728]]],
+  zk2: [1104, 1294, [[648, 741], [701, 1038]]], ld1: [59, 299, [[610, 808], [944, 657]]], ld2: [839, 1111, [[1175, 1020], [1032, 1170]]], ld3: [111, 341, [[897, 524], [1228, 655]]] };
+// a short cut for a map that doesn't have one: where the road loops back near itself, a narrow path across saves real time
+// (35-60% of that stretch). Its line must stay well clear of every other part of the road (and of water). Over lava it's a plank bridge.
+function autoFork(f) {
+  const W2 = T.cup === "zakum" ? 54 : 64, lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25, CL = ROAD / 2 + CURB + W2 / 2 + 8;   // a strip of grass + curbs between it and the road
+  const wet = (x, y) => f.lake && f.lake.kind !== "ice" && ((x - f.lake.cx) / (f.lake.rx + 40)) ** 2 + ((y - f.lake.cy) / (f.lake.ry + 40)) ** 2 < 1;
+  let best = null;
+  for (let a = lo; a < hi; a += 2) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .42)); b += 2) {
+    const A = PTS[a], Bp = PTS[b], dl = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), dt = (b - a) * SPC;
+    if (dl < 200 || dl > 1150 || dl / dt > .78 || dl / dt < .2) continue;
+    const nx = -(Bp[1] - A[1]) / dl, ny = (Bp[0] - A[0]) / dl;
+    for (const bw of [.05, -.05, .15, -.15, .25, -.25, .35, -.35]) {   // a bendier path is longer: that keeps a big cut-through fair
+      const bow = dl * bw, via = [[A[0] + (Bp[0] - A[0]) / 3 + nx * bow, A[1] + (Bp[1] - A[1]) / 3 + ny * bow], [A[0] + (Bp[0] - A[0]) * 2 / 3 + nx * bow, A[1] + (Bp[1] - A[1]) * 2 / 3 + ny * bow]];
+      const poly = [A, ...via, Bp]; let len = 0; for (let q = 1; q < 4; q++) len += Math.hypot(poly[q][0] - poly[q - 1][0], poly[q][1] - poly[q - 1][1]);
+      const save = dt - len; if (save < 300 || save > 950) continue;   // worth taking (300+ saved), never more than ~3 s
+      let ok = true;
+      for (let k2 = 0; k2 < 3 && ok; k2++) for (let t = 0; t <= 1 && ok; t += .1) {
+        const u = (k2 + t) / 3; if (u < .16 || u > .84) continue;
+        const x = poly[k2][0] + (poly[k2 + 1][0] - poly[k2][0]) * t, y = poly[k2][1] + (poly[k2 + 1][1] - poly[k2][1]) * t;
+        if (x < 70 || y < 70 || x > WORLD - 70 || y > WORLD - 70 || nearest(x, y).d < CL || wet(x, y)) ok = false;
+      }
+      if (!ok) continue;
+      const score = Math.min(save, 650) - Math.max(0, save - 650) * .8 - Math.abs(bw) * 300;
+      if (!best || score > best.score) best = { a, b, via, score };
+      break;
+    }
+  }
+  if (!best) return null;
+  const style = T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble";
+  return { a: best.a, b: best.b, via: best.via, width: W2, style, pads: [{ t: "boost", j: .45, len: 6, o: 0, w: 40 }], coins: true };
+}
 // the track picture: grass in stripes, flowers, red/white curbs, a dirt road and a chequered start line
 const tex = document.createElement("canvas"); tex.width = tex.height = WORLD;
 let TEX = null, mini = null;
@@ -914,7 +951,7 @@ const botImg = name => `media/mobs/${BOT_IMG[name] || "orange_mushroom"}.png`;
 function makeRivals(keep) {
   if (mode === "tt") { RIV = []; DROPS = []; SHOTS = []; ARMS = []; return; }
   if (mode === "mp") {   // the other players in the room, on the grid in the order they joined
-    const order = MP.players.map(p => p.name), others = MP.players.filter(p => p.name !== MP.me), host = MP.host === MP.me;
+    const order = MP.players.filter(p => !p.spec).map(p => p.name), others = MP.players.filter(p => p.name !== MP.me && !p.spec), host = MP.host === MP.me && !MP.watching;
     RIV = others.map((p, n) => {
       const name = p.name, g = gridSpot(order.indexOf(name)), [x, y] = at(g.i, g.o), img = new Image(); img.src = p.bot ? botImg(name) : spriteOf(name);
       const r = { name, img, color: RIVAL_COLORS[n % RIVAL_COLORS.length], x, y, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0, finishT: 0,
@@ -1247,7 +1284,7 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get floorMs() { return floorMs; } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), get floorMs() { return floorMs; } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -1325,7 +1362,7 @@ function step(dt) {
     if (k.lostT > 2.6 || k.wrong > 3) { rescue(k); return; }
   }
   const ground = under(near, k.x, k.y), L = ground.L;
-  if (MECH === "lava" && racing && k.z <= 0 && !k.onAlt && near.d > near.half + CURB + 8) {   // 🔥 Zakum: there's no safe edge, off the road is lava
+  if (MECH === "lava" && racing && k.z <= 0 && near.d > near.half + CURB + 8) {   // (on the plank bridge too: off its sides is lava)   // 🔥 Zakum: there's no safe edge, off the road is lava
     k.fallT = (k.fallT || 0) + dt; if (k.fallT > .12) { k.fallT = 0; rescue(k, "🔥 Fell into the lava!"); return; }
   } else k.fallT = 0;
   // in the air (ramps): gravity, and a trick on the way up/down gives a boost when you land
@@ -1451,7 +1488,7 @@ function step(dt) {
     else flash(`Lap ${k.lap + 1}`, 1300);
   }
   // wrong way: moving against the track direction for a moment
-  const along = Math.cos(k.a - tangent(k.idx)) * k.v;
+  const along = Math.cos(k.a - (k.onAlt && k.altJ != null ? altTan(k.altJ) : tangent(k.idx))) * k.v;   // on a short cut, "forward" is along the short cut
   k.wrong = along < -20 ? k.wrong + dt : Math.max(0, k.wrong - dt * 2);
 }
 
@@ -1750,6 +1787,7 @@ function snowfall(n) {
     if (f.y > H) { FLAKES.splice(i, 1); continue; } ctx.fillRect(f.x, f.y, f.s, f.s); }
 }
 function drawKart(k) {
+  if (k.watch) return;   // watching: there's no kart of yours
   const CH = CAMH + Math.min(k.z, 130) * .35, gy = HOR + CH * FOCAL / CD, gy0 = HOR + CAMH * FOCAL / CD, sc = FOCAL / CD, x = W / 2 + k.steer * 4;
   const hop = k.hop > 0 ? Math.sin((k.hop / .18) * Math.PI) * 6 : 0, rumble = k.off && k.v > 40 ? (Math.random() - .5) * 2 : 0;
   const jitter = k.v > 150 && k.z <= 0 ? (Math.random() - .5) * 1.3 * k.v / VMAX : 0;
@@ -1996,7 +2034,7 @@ addEventListener("resize", () => { if (state !== "menu") syncRot(); });
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
   syncRot(); $k("#kFull").hidden = !wantFull();
-  if (TEX && K && state !== "loading") { step(dt); render(); hud(); engine(); }
+  if (TEX && K && state !== "loading") { if (state === "watch") { watchStep(dt); render(); watchHud(); } else { step(dt); render(); hud(); engine(); } }
   if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 80) {
     MP.sendAt = now; const k = K;
     mpSend("p", { x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(3), v: Math.round(k.v), z: Math.round(k.z), s: +k.steer.toFixed(2), sp: k.spin > 0 ? +k.spin.toFixed(2) : 0,
@@ -2208,7 +2246,7 @@ async function mpJoin(code, pub) {
   if (why) { $k("#kErr").textContent = why; return; }
   $k("#kErr").textContent = "";
   store.set("kart_room_tok:" + code, data.token);
-  Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null, tally: {}, tallied: null, chat: [] }); chatDraw();
+  Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null, tally: {}, tallied: null, chat: [], watching: false }); chatDraw();
   if (MP.ch) sb.removeChannel(MP.ch);
   MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
@@ -2237,7 +2275,10 @@ async function mpPoll(first) {
     MP.slot = Math.max(0, MP.players.findIndex(p => p.name === MP.me));
     if (data.status === "racing" && data.ends_in != null && data.race_no === MP.raceNo) MP.endAt = performance.now() + data.ends_in * 1000;
     if (first) MP.raceNo = data.status === "racing" ? data.race_no : data.race_no;   // don't jump into a race that's already running
-    if (data.status === "racing" && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in > -4) {
+    const meP = MP.players.find(p => p.name === MP.me), spec = !!(meP && meP.spec);
+    if (data.status === "racing" && spec && !MP.watching && state === "menu") mpWatch(data);   // 👀 joined mid-race: watch it
+    if (MP.watching && data.status !== "racing") stopWatch();
+    if (data.status === "racing" && !spec && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in > -4) {
       MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null; MP.endAt = 0; MP.firstName = null;
       if (mode !== "mp") { mode = "mp"; drawMode(); }
       start();
@@ -2360,9 +2401,9 @@ let openRooms = null, openRoomsT = 0;
 function openRoomsHtml() {
   if (!openRooms) return `<p class="bd-none">Looking for rooms…</p>`;
   if (!openRooms.length) return `<p class="bd-none">No open rooms right now. Make a public one and others can hop in!</p>`;
-  return openRooms.map(r => `<button type="button" class="kt-oroom" data-room="${esc(r.code)}" ${r.status === "racing" || r.n >= 8 ? "disabled" : ""}>
+  return openRooms.map(r => `<button type="button" class="kt-oroom" data-room="${esc(r.code)}" ${r.n >= 8 ? "disabled" : ""}>
     <img src="${spriteOf(r.host)}" alt=""><span><b>${esc(r.host)}'s room</b><small>${r.status === "racing" && TRACKS[r.track.split("@")[0]] ? `${TRACKS[r.track.split("@")[0]].icon} ${esc(TRACKS[r.track.split("@")[0]].name)}` : "👥 in the lobby"} · ${r.n}/8</small></span>
-    <em>${r.status === "racing" ? "🏁 racing" : r.n >= 8 ? "full" : "Join ▶"}</em></button>`).join("");
+    <em>${r.n >= 8 ? "full" : r.status === "racing" ? "👀 Watch" : "Join ▶"}</em></button>`).join("");
 }
 async function loadOpenRooms() {
   if (performance.now() - openRoomsT < 2500) return; openRoomsT = performance.now();
@@ -2380,6 +2421,48 @@ function hashRoom() {
 }
 addEventListener("hashchange", hashRoom);
 setTimeout(hashRoom, 60);
+// 👀 watching a room race you joined in the middle of: the camera follows one racer (tap or ← → to switch); you're in for the next race
+async function mpWatch(data) {
+  if (MP.watching) return; MP.watching = true; const my = ++raceId;
+  const [mk, mcc] = String(MP.track || "henesys").split("@"), key = TRACKS[mk] ? mk : "henesys";
+  raceCC = CCS[mcc] ? +mcc : 150; SPD = CCS[raceCC].spd; me = MP.me;
+  $k("#kMenu").hidden = true; $k("#kResult").hidden = true; $k("#kGame").hidden = false; $k("#kart").classList.add("racing", "watching"); document.body.classList.add("bd-playing");
+  state = "loading";
+  if (!assetsReady || TRACK_KEY !== key) { $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); $k("#kLoad").hidden = true; }
+  if (my !== raceId || !MP.watching) return;
+  fit(); K = freshKart(); K.watch = true; setupHazards(); PETALS = []; FWK = []; LAVA = null; makeRivals(); MP.watchI = 0;
+  MP.watchT0 = performance.now() + (data.starts_in || 0) * 1000;
+  state = "watch"; B.music(T.music); syncMusicBtn();
+  if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
+}
+function stopWatch() {
+  if (!MP.watching) return; MP.watching = false; quit();
+  $k("#kErr").textContent = "🏁 That race is over: you're in for the next one! Press ✋ Ready."; drawRoom();
+}
+const watchLive = () => RIV.filter(r => r.net && !r.gone);
+function watchStep(dt) {
+  for (const r of RIV) if (r.remote) remoteStep(r, dt);
+  for (let i = SHOTS.length - 1; i >= 0; i--) { const sh = SHOTS[i]; sh.life -= dt; sh.x += Math.cos(sh.a) * sh.v * dt * SPD; sh.y += Math.sin(sh.a) * sh.v * dt * SPD; if (sh.life <= 0) SHOTS.splice(i, 1); }
+  for (let i = BOMBS.length - 1; i >= 0; i--) { const b = BOMBS[i]; b.t += dt; b.vz -= 560 * dt; b.z += b.vz * dt; b.x += Math.cos(b.a) * b.v * dt * SPD; b.y += Math.sin(b.a) * b.v * dt * SPD;
+    if (b.z <= 0) { BOMBS.splice(i, 1); BOOMS.push({ x: b.x, y: b.y, t: 0, debris: [] }); } }
+  for (let i = BOOMS.length - 1; i >= 0; i--) if ((BOOMS[i].t += dt) > 1.6) BOOMS.splice(i, 1);
+  for (let i = DROPS.length - 1; i >= 0; i--) if ((DROPS[i].t -= dt) <= 0) DROPS.splice(i, 1);
+  const live = watchLive(); K.t = Math.max(0, performance.now() - MP.watchT0); if (!live.length) return;
+  MP.watchI = ((MP.watchI % live.length) + live.length) % live.length;
+  const t = live[MP.watchI]; Object.assign(K, { x: t.x, y: t.y, a: t.a, ma: t.a, v: t.v, z: t.z || 0, idx: t.idx || K.idx, steer: 0 });
+}
+function watchHud() {
+  const live = watchLive(), t = live[MP.watchI], order = live.slice().sort((a, b) => progOf(b) - progOf(a)), rk = t ? order.indexOf(t) + 1 : 0;
+  $k("#kLap").textContent = t ? (OPEN ? `🏔️ ${Math.min(100, Math.round(Math.max(0, (t.idx || 0) - START_I) / (N - FIN_OFF - START_I) * 100))}%` : `LAP ${Math.min((t.lap || 0) + 1, LAPS)}/${LAPS}`) : "";
+  $k("#kTime").textContent = fmt(K.t); $k("#kBest").textContent = t ? `👀 ${t.bot ? "🤖 " : ""}${t.name}` : "👀 Waiting for the racers…";
+  $k("#kPos").textContent = rk ? ordinal(rk) : ""; $k("#kPos").className = "kt-pos p" + rk;
+  $k("#kSpeed").textContent = t ? `${Math.max(0, Math.round(t.v * .5 * SPD))} km/h` : ""; $k("#kWrong").hidden = true; $k("#kItem2").hidden = true;
+  const w = "👀 Watching · tap the screen or ← → to switch racer · you're in for the next race";
+  if ($k("#kWarn").textContent !== w) { $k("#kWarn").textContent = w; $k("#kWarn").className = "kt-warn"; } $k("#kWarn").hidden = false;
+}
+const watchNext = d => { if (state === "watch") { MP.watchI += d; tone(660, .05, "triangle", .04); } };
+$k(".kt-screen").addEventListener("click", e => { if (state === "watch" && !e.target.closest("button, .kt-result")) watchNext(1); });
+addEventListener("keydown", e => { if (state !== "watch") return; if (e.key === "ArrowRight") watchNext(1); if (e.key === "ArrowLeft") watchNext(-1); });
 // the Grand Prix podium: top 3 on the steps, a trophy for you, confetti
 function podium() {
   const order = Object.entries(gp.pts).sort((a, b) => b[1] - a[1]), myPlace = order.findIndex(([n]) => n === me) + 1;
@@ -2399,7 +2482,7 @@ function confetti() {
     box.appendChild(c); setTimeout(() => c.remove(), 4500); }
 }
 function quit() {
-  raceId++; state = "menu"; B.musicRate(1); leaveLandscape(); $k("#kRotate").hidden = true; $k("#kart").classList.remove("rot"); rotWas = null; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
+  raceId++; state = "menu"; $k("#kart").classList.remove("watching"); B.musicRate(1); leaveLandscape(); $k("#kRotate").hidden = true; $k("#kart").classList.remove("rot"); rotWas = null; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
   $k("#kGame").hidden = true; $k("#kMenu").hidden = false; $k("#kResult").hidden = true;
   $k("#kart").classList.remove("racing"); document.body.classList.remove("bd-playing"); showBest();
 }
