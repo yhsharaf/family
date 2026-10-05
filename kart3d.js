@@ -174,12 +174,21 @@ export function create(A) {
     const t = new THREE.DataTexture(d, n, n); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true; return t; })();
   // the sky: the track's sky picture with its horizon panorama (the town) wrapped around a huge cylinder that travels with the camera
   const SKY_R = 3000, SKY_H = 1800, SKY_BELOW = 450;
+  // a picture that repeats without a visible join: its last part is faded over its start
+  function seamless(im) {
+    const iw = im.width, ih = im.height, ov = Math.round(iw * .22), L = iw - ov, c = canvas(L, ih), g = c.getContext("2d");
+    g.drawImage(im, 0, 0);
+    const e = canvas(ov, ih), ge = e.getContext("2d"); ge.drawImage(im, L, 0, ov, ih, 0, 0, ov, ih);
+    const gr = ge.createLinearGradient(0, 0, ov, 0); gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+    ge.globalCompositeOperation = "destination-in"; ge.fillStyle = gr; ge.fillRect(0, 0, ov, ih);
+    g.drawImage(e, 0, 0); return c;
+  }
   function buildSky(t) {
     const c = canvas(4096, 512), g = c.getContext("2d"), hor = Math.round(512 * (1 - SKY_BELOW / SKY_H));
     const pxU = 4096 / (2 * Math.PI * SKY_R) * 2, pyU = 512 / SKY_H, ax = pxU / pyU;   // 2 repeats around
     g.fillStyle = t.theme.sky || "#8fd0ff"; g.fillRect(0, 0, 4096, hor);
-    if (t.sky) { const sh = hor, n = Math.max(2, Math.round(4096 / (t.sky.width * sh / t.sky.height * ax) / 2) * 2), sw = 4096 / n;   // a whole, even number of tiles: no seam
-      for (let x = 0, i = 0; x < 4096; x += sw, i++) { if (i & 1) { g.save(); g.translate(x + sw, 0); g.scale(-1, 1); g.drawImage(t.sky, 0, 0, sw, sh); g.restore(); } else g.drawImage(t.sky, x, 0, sw, sh); } }
+    if (t.sky) { const tile = seamless(t.sky), sh = hor, n = Math.max(1, Math.round(4096 / (tile.width * sh / tile.height * ax))), sw = 4096 / n;   // the same way round every time (no mirrored copies), joins blended away
+      for (let i = 0; i < n; i++) g.drawImage(tile, i * sw, 0, sw + .5, sh); }
     if (t.strip) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
     g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, hor + 6, 4096, 512);
     const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.repeat.x = -2; map.anisotropy = aniso;
