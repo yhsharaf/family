@@ -545,6 +545,11 @@ function loadTrack(key) {
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null;
   GAPS = (f.gaps || []).map(g => { const G = { ...g }; G.caps = g.caps.map(c => { const [x, y] = at(c.i, c.o || 0); return { ...c, x, y, squash: 0, g: G }; }); return G; });
+  { const PAL = ["r", "b", "g", "o", "n"], all = GAPS.flatMap(g => g.caps); let k = 0;   // 🎨 no two mushrooms near each other share a colour
+    for (const c of all) { const near = all.filter(d => d !== c && d.colSet && Math.hypot(d.x - c.x, d.y - c.y) < 330).map(d => d.col);
+      let pick = null; for (let j = 0; j < PAL.length && !pick; j++) { const col = PAL[(k + j) % PAL.length]; if (!near.includes(col)) pick = col; }
+      if (!pick) { const cnt = col => near.filter(n => n === col).length; pick = PAL.slice().sort((p, q) => cnt(p) - cnt(q))[0]; }
+      c.col = pick; c.colSet = true; k++; } }
   { const g0 = gridSpot(7).i - 25, g1 = (OPEN ? START_I : N) + Math.round(400 / SPC), inStart = i => { const j = OPEN ? i : (i < N / 2 ? i + N : i); return j >= g0 && j <= g1; };
     f.pads = f.pads.filter(p => !(["boost", "ramp", "bigramp"].includes(p.t) && (inStart(p.i) || inStart(p.i + (p.len || 0))))); }
   PADS = f.pads; COINS = f.coins; PIGS = f.pigs || []; KING = f.king || null; BOXES = f.boxes || [];
@@ -1503,7 +1508,7 @@ function worldStep(dt, tt) {
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0, rkCand = 0, rkSince = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get GAPS() { return GAPS; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
     g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
   decal: () => trackData().decal(), get P2P() { return P2P; },
   echo: (delay = 150, jitter = 40) => {
