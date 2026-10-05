@@ -1037,10 +1037,17 @@ function mpOnHit(p) {
   HITS.add(p.id + "|" + p.v); const was = v.spin; hit(v, String(p.m || "💥 Hit!").slice(0, 60));
   if (p.k === "bomb" && v.spin > 0 && !(was > 0)) { v.vz = 230; v.z = .1; v.v *= .3; }
 }
-function mpOnPos(p) {
+function mpOnPos(p, lat) {
   if (!p || p.rc !== MP.raceNo || !K) return;
   const r = RIV.find(o => o.name === p.n); if (!r) return;
-  r.net = { x: p.x, y: p.y, a: p.a, v: p.v, t: performance.now() };
+  if (DEV && p.wt) { const L = DEV.lat || (DEV.lat = { p2p: [], server: [] }); (lat != null ? L.p2p : L.server).push(Date.now() - p.wt); }   // (testing) how long each route took
+  if (p.ts != null && r.net && r.net.ts != null && p.ts <= r.net.ts && p.ts > r.net.ts - 60000) return;   // an older message that arrived late: ignore it
+  const t = performance.now(), had = !!r.net;
+  r.net = { x: p.x, y: p.y, a: p.a, m: p.m != null ? p.m : p.a, v: p.v, u: p.u, w: p.w || 0, ts: p.ts, t, lat: Math.min(600, lat != null ? lat : (p.l != null ? p.l : 70) + (MP.ow || 70)) };   // lat: how old it already was on arrival
+  r.drift = p.d || 0;
+  if (had) { const [tx, ty, ta] = predictNet(r.net, t); r.off = { x: r.x - tx, y: r.y - ty, a: Math.atan2(Math.sin(r.a - ta), Math.cos(r.a - ta)) };   // keep drawing them where they are now; the difference fades away
+    if (Math.hypot(r.off.x, r.off.y) > 140) r.off = { x: 0, y: 0, a: 0 }; }   // a respawn or a long gap: just put them there
+  else { [r.x, r.y, r.a] = predictNet(r.net, t); r.off = { x: 0, y: 0, a: 0 }; }
   r.z = p.z || 0; r.steer = p.s || 0; r.spin = p.sp || 0; r.small = p.sm || 0; r.hyper = p.hy || 0; r.extra = p.ex || 0; r.squash = p.sq || 0;
   r.lap = p.lap; r.cps = p.cps; r.idx = p.idx; r.holding = !!p.ho; r.item = p.it || null; r.ink = p.ik || 0;
   if (p.dn && !r.done) { r.done = true; r.finishT = p.ft; r.finish = ++finishers; if (!MP.endAt && !r.bot) { MP.endAt = performance.now() + 10000; MP.firstName = r.name; } }   // bots don't start the 10 s clock
@@ -1058,7 +1065,14 @@ function mpOnItem(p) {
   }
   if (p.k === "splat") { bloopCD = 14; if (!K.done && progOf(K) > p.p && !(K.bloopSafe > 0) && !(K.hyper > 0)) { K.ink = 4; K.bloopSafe = 12; makeInk(); flash(`🐙 Splat from ${by.name}!`, 1000); splatSound(); } }
 }
-// other players' karts: glide toward where their last message says they are (with a little prediction)
+// other players' karts. A message is already old when it arrives (the trip through the server), so it's moved on by its age:
+// turning at the rate they were turning, at their speed (at most half a second ahead, so a lost message can't send them flying)
+function predictNet(n, now) {
+  const age = Math.min(.5, Math.max(0, (now - n.t + n.lat) / 1000)), steps = Math.max(1, Math.ceil(age / .04)), h = age / steps, sp = n.u != null ? n.u : n.v * SPD;
+  let x = n.x, y = n.y, m = n.m;
+  for (let i = 0; i < steps; i++) { m += n.w * h / 2; x += Math.cos(m) * sp * h; y += Math.sin(m) * sp * h; m += n.w * h / 2; }
+  return [x, y, n.a + (m - n.m)];   // the nose keeps its angle to the direction of travel
+}
 const liveOK = r => r.net && performance.now() - r.net.t < 2500;   // fresh live position from this racer?
 function remoteStep(r, dt) {
   if (!liveOK(r) && r.srvProg != null) {   // no live messages: follow the server's progress along the road (shown slightly see-through)
@@ -1067,9 +1081,12 @@ function remoteStep(r, dt) {
   }
   r.ghost = false;
   if (!r.net) return;
-  const age = Math.min(.3, (performance.now() - r.net.t) / 1000), px = r.net.x + Math.cos(r.net.a) * r.net.v * SPD * age, py = r.net.y + Math.sin(r.net.a) * r.net.v * SPD * age;
-  const f = Math.min(1, dt * 12); r.x += (px - r.x) * f; r.y += (py - r.y) * f; r.v = r.net.v;
-  let d = r.net.a - r.a; d = Math.atan2(Math.sin(d), Math.cos(d)); r.a += d * f;
+  if (DEV && DEV.oldNet) { const age = Math.min(.3, (performance.now() - r.net.t) / 1000), px = r.net.x + Math.cos(r.net.a) * r.net.v * SPD * age, py = r.net.y + Math.sin(r.net.a) * r.net.v * SPD * age;   // (testing) the old way, for comparison
+    const f = Math.min(1, dt * 12); r.x += (px - r.x) * f; r.y += (py - r.y) * f; r.v = r.net.v; let d = r.net.a - r.a; d = Math.atan2(Math.sin(d), Math.cos(d)); r.a += d * f; return; }
+  // where they are NOW: their last message, moved on by its full age along the curve they were driving, plus a fading correction
+  const [px, py, pa] = predictNet(r.net, performance.now()), off = r.off || (r.off = { x: 0, y: 0, a: 0 }), k = Math.exp(-dt / .12);
+  off.x *= k; off.y *= k; off.a *= k;
+  r.x = px + off.x; r.y = py + off.y; r.a = pa + off.a; r.v = r.net.v;
   r.gone = performance.now() - r.net.t > 6000;
 }
 // 🤖 computer racers in rooms are MapleStory monsters in karts
@@ -1402,7 +1419,7 @@ function worldStep(dt, tt) {
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), BR = PTS[0].length > 2 ? 21 : 15;   // 3D karts are bigger: they touch sooner
     if (d > 0 && d < BR && Math.abs(a.z - b.z) < 12) {
       const push = (BR - d) / 2, nx = dx / d, ny = dy / d;
-      if (a.remote && b.remote) continue;   // two other players' karts: their own games sort it out
+      if ((a.remote && b.remote) || a.noBump || b.noBump) continue;   // two other players' karts (or the test copy): their own games sort it out
       if (a.remote || b.remote) { const me2 = a.remote ? b : a, s2 = me2 === a ? -1 : 1; me2.x += nx * push * 2 * s2; me2.y += ny * push * 2 * s2; }   // only the kart this game drives is moved
       else { a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
       const fast = a.v > b.v ? a : b; fast.v *= .9;
@@ -1418,7 +1435,16 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0, rkCand = 0, rkSince = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
     g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
-  decal: () => trackData().decal(),
+  decal: () => trackData().decal(), get P2P() { return P2P; },
+  echo: (delay = 150, jitter = 40) => {
+    const r = { name: "ZzEcho", img: IMG.me, color: "#3a7bd5", x: K.x, y: K.y, a: K.a, v: 0, idx: K.idx, lap: 0, cps: 0, prog: 0, done: false, finish: 0, finishT: 0,
+      remote: true, noBump: true, net: null, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0, extra: 0, item: null, itemN: 0, skill: VMAX, lane: 0 };
+    RIV.push(r); const errs = [], rc = MP.raceNo;
+    const iv = setInterval(() => { const p = { n: "ZzEcho", rc, ...posMsg(K, performance.now()) }; setTimeout(() => mpOnPos(p), delay + Math.random() * jitter); }, 100);
+    const ev = setInterval(() => { if (r.net && state === "race") errs.push(Math.hypot(r.x - K.x, r.y - K.y)); }, 50);
+    return { stop() { clearInterval(iv); clearInterval(ev); RIV.splice(RIV.indexOf(r), 1); const s2 = errs.slice().sort((a, b) => a - b), q = f => Math.round(s2[Math.floor(f * (s2.length - 1))] || 0);
+      return { samples: s2.length, mean: Math.round(s2.reduce((a, b) => a + b, 0) / (s2.length || 1)), p50: q(.5), p90: q(.9), max: q(1) }; } };
+  },
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
   get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
@@ -2260,15 +2286,77 @@ function frame(now) {
   const t0 = performance.now();
   if (TEX && K && state !== "loading") { if (state === "watch") { watchStep(dt); render(); watchHud(); } else { step(dt); const t1 = performance.now(); render(); hud(); engine(); if (DEV) { DEV.stepMs = (DEV.stepMs || 0) * .95 + (t1 - t0) * .05; DEV.drawMs = (DEV.drawMs || 0) * .95 + (performance.now() - t1) * .05; } } }
   if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 100) {
-    MP.sendAt = now; const k = K;
-    mpSend("p", { x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(3), v: Math.round(k.v), z: Math.round(k.z), s: +k.steer.toFixed(2), sp: k.spin > 0 ? +k.spin.toFixed(2) : 0,
-      sm: k.small > 0 ? 1 : 0, hy: k.hyper > 0 ? 1 : 0, ex: Math.round(k.extra || 0), sq: k.squash > 0 ? 1 : 0, lap: k.lap, cps: k.cps, idx: k.idx, ho: k.holding ? 1 : 0, it: k.holding ? k.item : null,
-      ik: k.ink > 0 ? 1 : 0, dn: state === "done" ? 1 : 0, ft: state === "done" ? Math.round(k.laps.reduce((a, b) => a + b, 0)) : 0 });
-    const bl = RIV.filter(r => r.bot && !r.remote).map(r => ({ n: r.name, x: Math.round(r.x), y: Math.round(r.y), a: +r.a.toFixed(3), v: Math.round(r.v), z: Math.round(r.z || 0), s: +(r.steer || 0).toFixed(2),
-      sp: r.spin > 0 ? +r.spin.toFixed(2) : 0, sm: r.small > 0 ? 1 : 0, hy: r.hyper > 0 ? 1 : 0, ex: Math.round(r.extra || 0), sq: r.squash > 0 ? 1 : 0, lap: r.lap, cps: r.cps, idx: r.idx,
-      ho: r.holding ? 1 : 0, it: r.holding ? r.item : null, ik: r.ink > 0 ? 1 : 0, dn: r.done ? 1 : 0, ft: r.done ? Math.round(r.finishT) : 0 }));
-    if (bl.length) mpSend("pb", { list: bl });   // all the host's bots in one message
+    MP.sendAt = now;
+    const msg = posMsg(K, now), bl = RIV.filter(r => r.bot && !r.remote).map(r => ({ n: r.name, ...posMsg(r, now) }));
+    p2pSend({ e: "p", p: { n: MP.me, rc: MP.raceNo, ...msg } }); if (bl.length) p2pSend({ e: "pb", rc: MP.raceNo, list: bl });
+    if (!p2pAll() || now - (MP.bcAt || 0) > 300) {   // the server route: always for anyone not connected directly, else just as a backup
+      MP.bcAt = now; mpSend("p", msg);
+      if (bl.length) mpSend("pb", { list: bl });   // all the host's bots in one message
+    }
   }
+}
+// ------------------------------------------------------------------ direct connections (private rooms)
+// In a private room every pair of real players also connects straight to each other (WebRTC, like a video call), so positions
+// skip the trip through the server: on the same wifi it's almost instant. The server route keeps running as a backup, and
+// anyone a direct connection can't reach just uses it. Public rooms (strangers) never connect directly: that would show
+// each player's internet address to the others.
+const P2P = new Map(), P2P_ICE = new Map();   // name -> { pc, dc, open, ow, born, tries }; ICE candidates that came before their offer
+const ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
+const p2pOK = () => mpOn() && !MP.pub && typeof RTCPeerConnection !== "undefined" && store.get("kart_p2p") !== "0";
+const p2pHumans = () => (MP.players || []).filter(p => !p.bot && p.name !== MP.me).map(p => p.name);
+const p2pAll = () => { const h = p2pHumans(); return h.length > 0 && h.every(n => P2P.get(n) && P2P.get(n).open); };
+function p2pSend(m) { if (!P2P.size) return; const s2 = JSON.stringify(m); for (const c of P2P.values()) if (c.open) try { c.dc.send(s2); } catch (e) {} }
+function p2pDrop(n) { const c = P2P.get(n); if (!c) return; try { c.dc && c.dc.close(); c.pc.close(); } catch (e) {} P2P.delete(n); }
+function p2pClose() { for (const n of [...P2P.keys()]) p2pDrop(n); P2P_ICE.clear(); }
+function p2pSync() {
+  if (!p2pOK()) { p2pClose(); return; }
+  const want = new Set(p2pHumans()), now = performance.now();
+  for (const n of [...P2P.keys()]) if (!want.has(n)) p2pDrop(n);
+  for (const [n, c] of P2P) if (!c.open && now - c.born > 9000) { const t = c.tries; p2pDrop(n); if (t < 3 && MP.me < n) p2pStart(n, t + 1); }   // stuck: try again (a few times)
+  for (const n of want) if (!P2P.has(n) && MP.me < n && !(MP.p2pGaveUp || {})[n]) p2pStart(n, 0);   // one side (the earlier name) makes the call
+}
+function p2pPeer(n, tries) {
+  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS }), c = { pc, dc: null, open: false, ow: 0, born: performance.now(), tries: tries || 0 };
+  P2P.set(n, c);
+  pc.onicecandidate = e => { if (e.candidate) mpSend("rtc", { to: n, ice: e.candidate.toJSON() }); };
+  pc.onconnectionstatechange = () => { if (pc.connectionState === "failed" && P2P.get(n) === c) { p2pDrop(n); if (c.tries >= 2) (MP.p2pGaveUp || (MP.p2pGaveUp = {}))[n] = 1; } };
+  pc.ondatachannel = e => p2pWire(n, c, e.channel);
+  return c;
+}
+function p2pWire(n, c, dc) {
+  c.dc = dc; dc.onopen = () => { c.open = true; p2pPing(); }; dc.onclose = () => { c.open = false; };
+  dc.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (x) { return; }
+    if (m.e === "p" && m.p && m.p.n === n) mpOnPos(m.p, c.ow || 30);
+    else if (m.e === "pb" && Array.isArray(m.list) && MP.host === n) for (const q of m.list) mpOnPos({ ...q, rc: m.rc }, c.ow || 30);
+    else if (m.e === "ping") { try { dc.send(JSON.stringify({ e: "pong", t: m.t })); } catch (x) {} }
+    else if (m.e === "pong") { const ow = (performance.now() - m.t) / 2; if (ow >= 0 && ow < 2000) c.ow = c.ow ? c.ow * .7 + ow * .3 : ow; } };
+}
+function p2pPing() { const t = performance.now(); for (const c of P2P.values()) if (c.open) try { c.dc.send(JSON.stringify({ e: "ping", t })); } catch (e) {} }
+async function p2pStart(n, tries) {
+  const c = p2pPeer(n, tries);
+  p2pWire(n, c, c.pc.createDataChannel("kart", { ordered: false, maxRetransmits: 0 }));   // positions: the newest one matters, a lost one is never resent
+  try { await c.pc.setLocalDescription(await c.pc.createOffer()); mpSend("rtc", { to: n, sdp: c.pc.localDescription.toJSON() }); } catch (e) { p2pDrop(n); }
+}
+async function p2pOnSignal(p) {
+  if (!p || p.to !== MP.me || !p.n || !p2pOK()) return;
+  const n = p.n;
+  try {
+    if (p.sdp && p.sdp.type === "offer") { p2pDrop(n); const c = p2pPeer(n, 0); await c.pc.setRemoteDescription(p.sdp);
+      await c.pc.setLocalDescription(await c.pc.createAnswer()); mpSend("rtc", { to: n, sdp: c.pc.localDescription.toJSON() });
+      for (const ice of P2P_ICE.get(n) || []) await c.pc.addIceCandidate(ice).catch(() => {}); P2P_ICE.delete(n); }
+    else if (p.sdp && p.sdp.type === "answer") { const c = P2P.get(n); if (c && !c.pc.remoteDescription) await c.pc.setRemoteDescription(p.sdp); }
+    else if (p.ice) { const c = P2P.get(n); if (c && c.pc.remoteDescription) await c.pc.addIceCandidate(p.ice).catch(() => {}); else { const q = P2P_ICE.get(n) || []; q.push(p.ice); P2P_ICE.set(n, q.slice(-40)); } }
+  } catch (e) {}
+}
+// one kart's state as it goes out to the room (your kart, or one of the host's bots)
+function posMsg(r, now) {
+  const me = r === K, done = me ? state === "done" : r.done;
+  const m = r.ma != null ? r.ma : r.a;   // the direction it's actually moving (differs from where the nose points in a drift)
+  let w = 0; if (r._wt && now > r._wt) { let d = m - r._wa; d = Math.atan2(Math.sin(d), Math.cos(d)); w = d / ((now - r._wt) / 1000); } let u = null; if (r._ut && now - r._ut > 30) { u = Math.hypot(r.x - r._ux, r.y - r._uy) / ((now - r._ut) / 1000); if (u > 2000) u = null; } r._ux = r.x; r._uy = r.y; r._ut = now;   // how fast it really moves (world units/s, boosts and all)
+  r._wa = m; r._wt = now;   // how fast it's turning (rad/s)
+  return { ...(DEV ? { wt: Date.now() } : {}), m: +m.toFixed(3), u: u == null ? null : Math.round(u), ts: Math.round(now), l: Math.round(MP.ow || 70), w: +Math.max(-6, Math.min(6, w)).toFixed(2), d: r.drift ? Math.sign(r.drift) : 0, x: Math.round(r.x), y: Math.round(r.y), a: +r.a.toFixed(3), v: Math.round(r.v), z: Math.round(r.z || 0), s: +(r.steer || 0).toFixed(2), sp: r.spin > 0 ? +r.spin.toFixed(2) : 0,
+    sm: r.small > 0 ? 1 : 0, hy: r.hyper > 0 ? 1 : 0, ex: Math.round(r.extra || 0), sq: r.squash > 0 ? 1 : 0, lap: r.lap, cps: r.cps, idx: r.idx, ho: r.holding ? 1 : 0, it: r.holding ? r.item : null,
+    ik: r.ink > 0 ? 1 : 0, dn: done ? 1 : 0, ft: done ? Math.round(me ? r.laps.reduce((a, b) => a + b, 0) : r.finishT) : 0 };
 }
 let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
 async function start() {
@@ -2464,14 +2552,14 @@ async function mpJoin(code, pub) {
   if (n.length < 2) { needName("👆 Type your character name first, then press Join again."); return; }
   const sb = await B.client(); if (!sb) { $k("#kErr").textContent = "Multiplayer needs the database connection."; return; }
   code = code.toUpperCase(); const g = guildOf(n), nm = g ? g.name : n;
-  let tok = null; try { tok = store.get("kart_room_tok:" + code); } catch (e) {}
+  let tok = null; try { tok = store.get(tokKey(code)); } catch (e) {}
   const { data, error } = await sb.rpc("kart_room_join", { p_code: code, p_name: nm, p_tok: tok, p_public: !!pub });
   if (error || !data) { $k("#kErr").textContent = "Couldn't reach the room, try again."; return; }
   const why = { name: "Type your name first.", taken: "Someone in that room already has your name.", full: "That room is full (8 players).",
     running: "That room is racing right now. Try again when the race ends.", busy: "Too many rooms right now, try again soon.", code: "That room code doesn't look right." }[data.r];
   if (why) { $k("#kErr").textContent = why; return; }
   $k("#kErr").textContent = "";
-  store.set("kart_room_tok:" + code, data.token);
+  store.set(tokKey(code), data.token);
   Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null, tally: {}, tallied: null, chat: [], watching: false }); chatDraw();
   mpChannel(sb, code);
   await mpJoinedTail(code);
@@ -2484,6 +2572,7 @@ function mpChannel(sb, code) {
     .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
     .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
     .on("broadcast", { event: "hx" }, ({ payload }) => mpOnHit(payload))
+    .on("broadcast", { event: "rtc" }, ({ payload }) => p2pOnSignal(payload))
     .on("broadcast", { event: "go" }, () => mpPoll())
     .on("broadcast", { event: "rd" }, () => mpPoll())
     .on("broadcast", { event: "ch" }, ({ payload }) => { if (payload && chatAdd([{ id: payload.id, name: payload.name, msg: payload.msg }])) tone(880, .07, "triangle", .04); })
@@ -2499,13 +2588,15 @@ async function mpPoll(first) {
   try {
     const racingNow = state === "race" && K && !MP.finished;
     const prog = racingNow ? Math.max(0, Math.min(1, OPEN ? K.idx / N : (K.lap * N + (K.cps === 0 && K.idx > N * .75 ? K.idx - N : K.idx)) / (LAPS * N))) : null;
-    const sb = await B.client(); const { data } = await sb.rpc("kart_room_state", { p_code: MP.code, p_tok: MP.token, p_prog: prog });
+    const sb = await B.client(), q0 = performance.now(); const { data } = await sb.rpc("kart_room_state", { p_code: MP.code, p_tok: MP.token, p_prog: prog });
+    { const ow = (performance.now() - q0) / 2; if (ow > 0 && ow < 1500) MP.ow = MP.ow ? (ow < MP.ow ? MP.ow * .5 + ow * .5 : MP.ow * .92 + ow * .08) : ow; }
     const bots = (state === "race" || state === "done") && K && MP.host === MP.me ? RIV.filter(r => r.bot && !r.remote) : [];
     if (bots.length) { const d = {}; for (const r of bots) d[r.name] = r.done ? { p: 1, f: Math.round(r.finishT) } : { p: +Math.max(0, Math.min(1, OPEN ? r.idx / N : (r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx)) / (LAPS * N))).toFixed(3) };
       sb.rpc("kart_room_bots", { p_code: MP.code, p_tok: MP.token, p_data: d }).then(() => {}); }   // (.then: the request is only sent once something listens)
     if (!data) return;
     if (data.r === "gone") { mpLeave(true); $k("#kErr").textContent = "You left that room."; return; }
     Object.assign(MP, { host: data.host, players: data.players || [], status: data.status, track: data.track, pub: !!data.public });
+    p2pSync(); p2pPing();
     if (data.chat) chatAdd(data.chat);
     if (K && RIV.length && (state === "race" || state === "done" || state === "watch")) for (const p of MP.players) {   // the server's view of every racer (a fallback for live messages)
       const r = RIV.find(o => o.name === p.name && o.remote); if (!r) continue;
@@ -2536,10 +2627,11 @@ async function mpStart() {
   MP.ch && MP.ch.send({ type: "broadcast", event: "go", payload: {} });
   mpPoll();
 }
+const tokKey = code => "kart_room_tok:" + code + (location.hostname === "localhost" && new URLSearchParams(location.search).get("as") ? ":" + new URLSearchParams(location.search).get("as") : "");   // (testing: ?as=b is a second player)
 async function mpLeave(silent) {
   const sb = await B.client();
-  if (MP.code && !silent) { sb.rpc("kart_room_leave", { p_code: MP.code, p_tok: MP.token }).then(() => {}); try { store.del("kart_room_tok:" + MP.code); } catch (e) {} }
-  clearInterval(MP.poll); if (MP.ch) sb.removeChannel(MP.ch);
+  if (MP.code && !silent) { sb.rpc("kart_room_leave", { p_code: MP.code, p_tok: MP.token }).then(() => {}); try { store.del(tokKey(MP.code)); } catch (e) {} }
+  clearInterval(MP.poll); if (MP.ch) sb.removeChannel(MP.ch); p2pClose();
   Object.assign(MP, { code: null, token: null, ch: null, players: [], host: null, status: null, chat: [] });
   if (location.hash.startsWith("#kart/")) history.replaceState(null, "", "#kart");
   drawRoom();
