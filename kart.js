@@ -8,7 +8,8 @@ const { esc, store, spriteOf, guildOf } = B;
 
 // ------------------------------------------------------------------ tracks
 // Three Henesys tracks (the Henesys Cup). Each one has its own loop, theme, hazards and props; loadTrack() switches between them.
-const WORLD = 2048, ROAD = 160, CURB = 14, VMAX = 270;   // road ~8 karts wide; base top speed
+const WORLD = 2048, CURB = 14, VMAX = 270;   // base top speed
+let ROAD = 160;   // road width: ~8 karts; a track can set its own (Henesys Circuit: 200, ~10 karts like Mario Kart Tour's Mario Circuit)
 let LAPS = 3;   // 1 on the Zakum runs (one long climb, no laps)
 // closed Catmull-Rom spline -> evenly spaced points every ~4 world units
 function loopPts(ctrl) {
@@ -171,10 +172,10 @@ const TRACKS = {
   // crest jumps you over the pen, a downhill hairpin, the market S-bend, a valley U-turn round a mushroom tower, and a rolling back straight.
   // The third number of each point is the road's height (the 3D view's hills).
   henesys: {
-    id: "henesys3", cup: "henesys", art: HEN_ART, name: "Henesys Circuit", sub: "farm jump · market S-bend · valley turn", icon: "🍄", music: "henesys",
-    ctrl: [[380, 1580, 0], [380, 1150, 0], [380, 760, 8], [440, 470, 30], [620, 320, 50], [900, 280, 72], [1130, 280, 95], [1400, 285, 62], [1620, 300, 42],
+    id: "henesys3", road: 200, cup: "henesys", art: HEN_ART, name: "Henesys Circuit", sub: "farm jump · market S-bend · valley turn", icon: "🍄", music: "henesys",
+    ctrl: [[380, 1150, 0], [380, 760, 8], [440, 470, 30], [620, 320, 50], [900, 280, 72], [1130, 280, 95], [1400, 285, 62], [1620, 300, 42],   // the start line is the first point: the whole grid sits on the straight behind it
       [1790, 420, 32], [1760, 620, 26], [1560, 700, 20], [1290, 720, 18], [1080, 860, 14], [1090, 1080, 8], [1290, 1200, 2], [1520, 1330, -10],
-      [1760, 1440, -22], [1850, 1660, -16], [1720, 1840, -6], [1400, 1880, 10], [1050, 1865, 28], [750, 1880, 10], [470, 1840, 0]],
+      [1760, 1440, -22], [1850, 1660, -16], [1720, 1840, -6], [1400, 1880, 10], [1050, 1865, 28], [750, 1880, 10], [470, 1840, 0], [380, 1580, 0]],
     theme: { grass: ["#6cc04a", "#64b944"], flowers: 350, tufts: 9000, road: "pave" },
     near: ["sunflower", "redshrooms", "bush", "tallshroom", "tree", "shroomtower", "shroomhouse"],
     far: ["tree", "tree", "bush", "shroomhouse", "shroomtower"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom", "snail", "blue_snail", "slime", "pig"],
@@ -202,7 +203,7 @@ const TRACKS = {
         coins,
         pigs: [{ i: I(1250, 1878), ph: 0, k: "pig" }, { i: I(600, 1868), ph: 2, k: "pig" }, { i: I(1600, 300), ph: 4.2, k: "pig" }],
         king: { i: I(880, 1878), T: 3, k: "king_slime", s: .5, name: "King Slime" },
-        boxes: [...boxRow(I(380, 1000), [-56, -19, 19, 56]), ...boxRow(I(1520, 290), [-54, -18, 18, 54]), ...boxRow(I(1180, 790), [-54, -18, 18, 54]), ...boxRow(I(780, 1879), [-56, -19, 19, 56])],
+        boxes: [...boxRow(I(380, 1000), [-72, -24, 24, 72]), ...boxRow(I(1520, 290), [-72, -24, 24, 72]), ...boxRow(I(1180, 790), [-66, -22, 22, 66]), ...boxRow(I(780, 1879), [-72, -24, 24, 72])],
         extra(push) {
           for (let i = pen.a; i <= pen.b; i += 4) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 8)); push(x, y, "posts", .32, 6); }
           for (const [x, y, k] of [[1150, 150, "haypile"], [1300, 150, "haypile"], [1330, 450, "redshrooms"]]) push(x, y, k);
@@ -508,7 +509,7 @@ const CUPS = {
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
 function loadTrack(key) {
   if (TRACK_KEY === key) return;
-  T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; OPEN = !!T.open; PTS = OPEN ? openPts(T.ctrl) : loopPts(T.ctrl); N = PTS.length; TRACK_LEN = 0;
+  T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; OPEN = !!T.open; ROAD = T.road || 160; PTS = OPEN ? openPts(T.ctrl) : loopPts(T.ctrl); N = PTS.length; TRACK_LEN = 0;
   LAPS = OPEN ? 1 : 3; START_I = OPEN ? 44 : 0;
   { let L = 0; for (let i = 1; i < N; i++) L += Math.hypot(PTS[i][0] - PTS[i - 1][0], PTS[i][1] - PTS[i - 1][1]); SPC = L / (N - 1); }   // world units between track points
   MECH = { elnath: "ice", sleepy: "dark", zakum: "lava", ludi: "flip" }[T.cup] || null;
@@ -528,6 +529,8 @@ function loadTrack(key) {
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null;
+  { const g0 = gridSpot(7).i - 25, g1 = (OPEN ? START_I : N) + Math.round(400 / SPC), inStart = i => { const j = OPEN ? i : (i < N / 2 ? i + N : i); return j >= g0 && j <= g1; };
+    f.pads = f.pads.filter(p => !(["boost", "ramp", "bigramp"].includes(p.t) && (inStart(p.i) || inStart(p.i + (p.len || 0))))); }
   PADS = f.pads; COINS = f.coins; PIGS = f.pigs || []; KING = f.king || null; BOXES = f.boxes || [];
   if (f.fork && f.fork.coins) for (let q = .15; q <= .85; q += .07) { const [x, y] = altAt(q * (AN - 1), 0); COINS.push({ x, y, z: 0, got: false }); }
   PENPIGS = PEN ? [0, 1, 2, 3, 4, 5].map(n => ({ f: .12 + n * .15, o: (n % 3 - 1) * 34, ph: n * 1.7, k: n % 2 ? "ribbon_pig" : "pig", dx: 0, dy: 0 })) : [];
@@ -800,8 +803,10 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   // the starting grid (3D tracks): a painted bracket round each of the 8 spots, open towards the front, like Mario Kart Tour
   if (PTS[0].length > 2) for (let slot = 0; slot < 8; slot++) {
     const gs = gridSpot(slot), i = (gs.i + N) % N, a = tangent(i), [x, y] = at(i, gs.o);
-    g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = "rgba(244,226,184,.95)";
-    g.fillRect(-15, -17, 3.5, 34); g.fillRect(-15, -17, 14, 3.5); g.fillRect(-15, 13.5, 14, 3.5); g.restore(); }
+    g.save(); g.translate(x, y); g.rotate(a); g.lineJoin = "round"; g.lineCap = "round";
+    const br = () => { g.beginPath(); g.moveTo(1, -20); g.lineTo(-17, -20); g.lineTo(-17, 20); g.lineTo(1, 20); };   // a "[" round the spot, open towards the front
+    br(); g.strokeStyle = "rgba(60,50,40,.25)"; g.lineWidth = 7; g.stroke();   // a soft edge so it reads on any road
+    br(); g.strokeStyle = "#f6e7c4"; g.lineWidth = 4.5; g.stroke(); g.restore(); }
   // start line across the road at point 0
   for (const li of OPEN ? [START_I, N - FIN_OFF] : [0]) {
     const [sx, sy] = PTS[li], ta = tangent(li), nx = -Math.sin(ta), ny = Math.cos(ta), sq = 10;
@@ -1001,7 +1006,8 @@ const progOf = r => (r.done ? 1e6 - r.finish : 0) + (r.remote && !liveOK(r) && r
 const racers = () => [K, ...RIV];
 function rankOf(r) { const p = progOf(r); return 1 + racers().filter(o => o !== r && progOf(o) > p).length; }
 function gridSpot(slot) {
-  if (PTS[0] && PTS[0].length > 2) { const row = Math.floor(slot / 2), col = slot % 2, i = (OPEN ? START_I - 7 : N - 7) - row * 11 - col * 5; return { i, o: col ? 38 : -38 }; }   // 3D tracks: a roomy staggered grid
+  if (PTS[0] && PTS[0].length > 2) { const row = Math.floor(slot / 2), col = slot % 2, sp = 66 / SPC, i = Math.round((OPEN ? START_I : N) - 105 / SPC - row * sp * 1.15 - col * sp * .5);   // 3D tracks: the pole spot 105 units behind the line, a roomy staggered grid
+    return { i, o: (col ? 1 : -1) * ROAD * .24 }; }
   const row = Math.floor(slot / 2), col = slot % 2, i = (OPEN ? START_I - 6 : N - 6) - row * 9 - col * 3; return { i, o: col ? 24 : -24 }; }
 // ------------------------------------------------------------------ multiplayer (rooms of 2-8, the first one in is the host)
 // Everyone drives their own kart; positions go out ~12 times a second over Realtime broadcast, other players are drawn from those.
@@ -1409,8 +1415,8 @@ function worldStep(dt, tt) {
 
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
-let K = null, best = null, countAt = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
+let K = null, best = null, countAt = 0, rkCand = 0, rkSince = 0;
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
     g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
   decal: () => trackData().decal(),
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
@@ -2200,9 +2206,14 @@ function hud() {
   $k("#kItemBox").classList.toggle("empty", !k.item && k.roll <= 0);
   $k("#kItemBoxN").textContent = k.item === "triple" ? k.itemN : ""; $k("#kItemBoxN").hidden = k.item !== "triple";
   const pb = $k("#kPad [data-k=i]"); pb.disabled = !k.item || k.roll > 0; const pi = pb.querySelector("img"); if (pi.dataset.src !== icon) { pi.dataset.src = icon; if (icon) pi.src = icon; pi.hidden = !icon; }
-  const rk = state === "menu" || mode === "tt" ? 0 : state === "done" ? K.place : rankOf(k);
-  if (state === "race" && rk && lastRk && rk !== lastRk) { posPop = { up: rk < lastRk, at: performance.now() };
-    if (rk < lastRk) { tone(988, .09, "square", .05, 1320); buzz(10); const now = performance.now(); k.ovN = now - (k.ovT || 0) < 6000 ? (k.ovN || 0) + 1 : 1; k.ovT = now; if (k.ovN >= 2) pop(`🔥 ${k.ovN} overtakes!`, "#ff9a3a", true); } }
+  // your place: a change only counts once it has held for a moment (two karts side by side would otherwise flicker 7th-8th-7th…)
+  const rk0 = state === "menu" || mode === "tt" ? 0 : state === "done" ? K.place : rankOf(k), tNow = performance.now();
+  if (rk0 !== rkCand) { rkCand = rk0; rkSince = tNow; }
+  const rk = state !== "race" || !lastRk || tNow - rkSince > 350 ? rk0 : lastRk;
+  if (state === "race" && rk && lastRk && rk !== lastRk) { posPop = { up: rk < lastRk, at: tNow };
+    if (rk < lastRk) { tone(988, .09, "square", .05, 1320); buzz(10);
+      if (tNow - (k.ovT || 0) > 6000) { k.ovN = 0; k.ovMin = lastRk; }   // a streak = new best places within a few seconds of each other
+      if (rk < (k.ovMin || 99)) { k.ovN = (k.ovN || 0) + 1; k.ovMin = rk; k.ovT = tNow; if (k.ovN >= 2) pop(`🔥 ${k.ovN} overtakes!`, "#ff9a3a", true); } } }
   if (state !== "race") posPop = null; lastRk = rk;
   const posCls = posPop && performance.now() - posPop.at < 650 ? (posPop.up ? " up" : " down") : "";
   $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + posCls;
