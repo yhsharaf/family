@@ -47,17 +47,17 @@ export function create(A) {
     return E;
   }
   function buildGround(t) {
-    const E = profile(t), wsum = new Float64Array(GN * GN), hsum = new Float64Array(GN * GN), dmin = new Float32Array(GN * GN).fill(1e9);
+    const E = profile(t), wsum = new Float64Array(GN * GN), hsum = new Float64Array(GN * GN), dmin = new Float32Array(GN * GN).fill(1e9), near = new Int32Array(GN * GN).fill(-1);
     const R = 300, rc = Math.ceil(R / G);
-    const splat = (px, py, e) => {
+    const splat = (px, py, e, idx = -1) => {
       const ci = Math.round(px / G), cj = Math.round(py / G);
       for (let j = Math.max(0, cj - rc); j <= Math.min(GN - 1, cj + rc); j++) for (let i = Math.max(0, ci - rc); i <= Math.min(GN - 1, ci + rc); i++) {
         const dx = i * G - px, dy = j * G - py, d2 = dx * dx + dy * dy; if (d2 > R * R) continue;
-        const o = j * GN + i; if (d2 < dmin[o]) dmin[o] = d2;
+        const o = j * GN + i; if (d2 < dmin[o]) { dmin[o] = d2; near[o] = idx; }
         const q = d2 + 64, w = 1 / (q * q * q * q); wsum[o] += w; hsum[o] += w * e;
       }
     };
-    for (let i = 0; i < t.N; i++) splat(t.PTS[i][0], t.PTS[i][1], E[i]);
+    for (let i = 0; i < t.N; i++) splat(t.PTS[i][0], t.PTS[i][1], E[i], i);
     if (t.AN > 1 && t.FORK_A >= 0) { const ea = E[Math.max(0, Math.min(t.N - 1, t.FORK_A))], eb = E[Math.max(0, Math.min(t.N - 1, t.FORK_B))];
       for (let j = 0; j < t.AN; j++) splat(t.ALT[j][0], t.ALT[j][1], ea + (eb - ea) * j / (t.AN - 1)); }
     let mean = 0; for (const e of E) mean += e; mean /= E.length;
@@ -70,6 +70,8 @@ export function create(A) {
       HG[o] = hgt + (mean - hgt) * smooth(160, 0, be) * smooth(edge + 40, edge + 200, d);   // levels out to the open plain at the map's edge
     }
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
+    for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : 320;   // 🍄 a gorge (deep, misty) or the park pond
+      for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * smooth(520, 430, Math.sqrt(dmin[o]))); }
     // the terrain mesh, painted with the track picture, and a fine grain so it looks like a surface up close
     const pos = new Float32Array(GN * GN * 3), uv = new Float32Array(GN * GN * 2), idx = new Uint32Array((GN - 1) * (GN - 1) * 6);
     for (let j = 0, p = 0; j < GN; j++) for (let i = 0; i < GN; i++, p++) { pos.set([i * G, HG[p] - DIP[p], j * G], p * 3); uv.set([i / (GN - 1), 1 - j / (GN - 1)], p * 2); }
@@ -87,6 +89,7 @@ export function create(A) {
     for (const [cx, cz, w, d] of [[WORLD / 2, -F / 2, WORLD + 2 * F, F], [WORLD / 2, WORLD + F / 2, WORLD + 2 * F, F], [-F / 2, WORLD / 2, F, WORLD], [WORLD + F / 2, WORLD / 2, F, WORLD]]) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pm); m.rotation.x = -Math.PI / 2; m.position.set(cx, mean - .3, cz); plain.add(m); }
     scene.add(plain);
+    gapsBuilt = t.gaps || [];
     if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); terrain.material.map.dispose(); terrain.material.dispose(); }
     terrain = new THREE.Mesh(geo, mat); scene.add(terrain);
     buildRoad(t);
@@ -134,7 +137,8 @@ export function create(A) {
   const curbTex = cc => { const c = canvas(8, 64), g = c.getContext("2d"); g.fillStyle = cc[0]; g.fillRect(0, 0, 8, 32); g.fillStyle = cc[1]; g.fillRect(0, 32, 8, 32);
     g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(0, 30, 8, 2); g.fillRect(0, 62, 8, 2);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t; };
-  function ribbon(pts, closed, Wd, roadMat, curbMat, lift) {
+  function ribbon(pts, closed, Wd, roadMat, curbMat, lift, skip = []) {
+    const skipped = i => skip.some(g => i >= g.a && i < g.b);
     const n = pts.length, ang = i => { const a = pts[closed ? (i + n - 2) % n : Math.max(0, i - 2)], b = pts[closed ? (i + 2) % n : Math.min(n - 1, i + 2)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
     const L = [0]; for (let i = 1; i <= n; i++) { if (i === n && !closed) break; const p = pts[i % n], q = pts[i - 1]; L.push(L[i - 1] + Math.hypot(p[0] - q[0], p[1] - q[1])); }
     const tot = L[L.length - 1], rv = closed ? Math.max(1, Math.round(tot / 192)) / tot : 1 / 192, rc = closed ? Math.max(1, Math.round(tot / 32)) / tot : 1 / 32;
@@ -142,14 +146,14 @@ export function create(A) {
     // road surface
     const P = [], UV = [], I = [];
     for (let i = 0; i < rows; i++) for (let k = 0; k <= K; k++) { const [x, y] = at(i, -Wd / 2 + Wd * k / K); P.push(x, h(x, y) + lift, y); UV.push(k / K, L[i] * rv); }
-    for (let i = 0; i < rows - 1; i++) for (let k = 0; k < K; k++) { const a = i * (K + 1) + k, b = a + K + 1; I.push(a, a + 1, b, a + 1, b + 1, b); }   // wound so the surface faces up
+    for (let i = 0; i < rows - 1; i++) if (!skipped(i)) for (let k = 0; k < K; k++) { const a = i * (K + 1) + k, b = a + K + 1; I.push(a, a + 1, b, a + 1, b + 1, b); }   // wound so the surface faces up
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I); geo.computeVertexNormals();
     // curbs: a low red-and-white kerb each side, with a little wall down to the grass
     const CP = [], CU = [], CI = [], CUR = A.CURB || 14;
     for (const sd of [-1, 1]) {
       const base = CP.length / 3, prof = [[Wd / 2, lift], [Wd / 2, lift + 1.6], [Wd / 2 + CUR, lift + 1.6], [Wd / 2 + CUR + 1.5, -1.5]];
       for (let i = 0; i < rows; i++) for (const [o, dz] of prof) { const [x, y] = at(i, sd * o); CP.push(x, h(x, y) + dz, y); CU.push(.5, L[i] * rc); }
-      for (let i = 0; i < rows - 1; i++) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k, b = a + 4; CI.push(a, b, a + 1, a + 1, b, b + 1); }
+      for (let i = 0; i < rows - 1; i++) if (!skipped(i)) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k, b = a + 4; CI.push(a, b, a + 1, a + 1, b, b + 1); }
     }
     const cg = new THREE.BufferGeometry(); cg.setAttribute("position", new THREE.Float32BufferAttribute(CP, 3)); cg.setAttribute("uv", new THREE.Float32BufferAttribute(CU, 2)); cg.setIndex(CI);
     const road = new THREE.Mesh(geo, roadMat), curb = new THREE.Mesh(cg, curbMat); scene.add(road, curb); roadObjs.push(road, curb);
@@ -164,23 +168,46 @@ export function create(A) {
   }
   function buildRoad(t) {
     for (const o of roadObjs) { scene.remove(o); o.geometry.dispose(); } roadObjs = [];
+    for (const o of extraObjs) scene.remove(o); extraObjs = [];
     const th = t.theme, RS = th.road || "cobble", decal = new THREE.CanvasTexture(t.decal()); decal.colorSpace = THREE.SRGBColorSpace; decal.anisotropy = aniso;
     const cm = new THREE.MeshLambertMaterial({ map: curbTex(th.curb || ["#d8352d", "#f4f1ea"]), flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
-    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5);
+    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5, t.gaps || []);
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3); }
     // 🍄 bouncy mushroom caps on the road: spotted domes that squash when someone bounces on them
     caps = [];
+    for (const g of t.gaps || []) {
+      const depth = g.kind === "water" ? 70 : 320;
+      for (const c of g.caps) {
+        const top = h(c.x, c.y) + 1, grp = new THREE.Group(); grp.position.set(c.x, top, c.y);
+        const dome = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: 50, specular: 0x333333 })); dome.scale.set(c.r, 16, c.r); grp.add(dome);
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(c.r, c.r * .9, 6, 40), new THREE.MeshLambertMaterial({ color: c.col === "g" ? 0x2f7a2a : 0xa8321e })); rim.position.y = -2; grp.add(rim);
+        const under = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .88, c.r * .3, 14, 32), new THREE.MeshLambertMaterial({ color: 0xf2e2b8 })); under.position.y = -12; grp.add(under);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .17, c.r * .22, depth + 10, 20), new THREE.MeshLambertMaterial({ color: 0xf0d77a })); stem.position.y = -(depth + 10) / 2 - 12; grp.add(stem);
+        scene.add(grp); roadObjs.push(dome, rim, under, stem); extraObjs.push(grp); caps.push({ m: dome, pad: c, h: 16 });
+      }
+      // what's down there: drifting mist in the gorge, water in the pond
+      const p0 = g.caps[0], p1 = g.caps[g.caps.length - 1], mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2, base = h(mx, my);
+      const sheet = new THREE.Mesh(new THREE.PlaneGeometry(1100, 1100), g.kind === "water"
+        ? new THREE.MeshPhongMaterial({ color: 0x3d8de0, transparent: true, opacity: .85, shininess: 120, specular: 0xffffff })
+        : new THREE.MeshBasicMaterial({ map: mistTex(), transparent: true, opacity: .8, depthWrite: false, fog: false }));
+      sheet.rotation.x = -Math.PI / 2; sheet.position.set(mx, base - (g.kind === "water" ? 40 : 230), my); scene.add(sheet); roadObjs.push(sheet);
+    }
     for (const c of t.shrooms || []) {
       const m = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: 60, specular: 0x333333 }));
       m.scale.set(c.l / 2, 13, c.w / 2); m.rotation.y = -c.a; m.position.set(c.x, h(c.x, c.y) + .6, c.y); scene.add(m); roadObjs.push(m); caps.push({ m, pad: c.pad });
     }
   }
-  let caps = [], capT = 0;
+  let caps = [], capT = 0, gapsBuilt = [], extraObjs = [];
+  let mistT = null;
+  const mistTex = () => mistT || (mistT = (() => { const c = canvas(256, 256), g = c.getContext("2d");
+    for (let k = 0; k < 40; k++) { const x = 30 + Math.random() * 196, y = 30 + Math.random() * 196, r = 30 + Math.random() * 60, gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, "rgba(255,255,255,.55)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })());
   const CAP = new THREE.SphereGeometry(1, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2);
   const capTexs = {};
   function capTex(col) {
     if (capTexs[col]) return capTexs[col];
-    const C = { o: ["#e8742a", "#ffa040"], g: ["#3e9e34", "#7fd862"], b: ["#2f7cd0", "#7ab8ff"] }[col] || ["#e8742a", "#ffa040"], c = canvas(256, 128), g = c.getContext("2d");
+    const C = { o: ["#e8742a", "#ffa040"], g: ["#3e9e34", "#7fd862"], b: ["#2f7cd0", "#7ab8ff"], r: ["#b8281c", "#f04a32"] }[col] || ["#e8742a", "#ffa040"], c = canvas(256, 128), g = c.getContext("2d");
     const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, C[1]); gr.addColorStop(1, C[0]); g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
     g.fillStyle = "#fffaf0"; for (const [x, y, r] of [[30, 40, 16], [100, 70, 20], [170, 35, 14], [220, 85, 18], [65, 100, 11], [140, 108, 10], [250, 20, 9], [5, 80, 10]]) { g.beginPath(); g.ellipse(x, y, r, r * .8, 0, 0, 7); g.fill(); }
     g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(0, 118, 256, 10);   // a darker rim
@@ -374,7 +401,7 @@ export function create(A) {
     fadeBlockers();
     const nowS = performance.now() / 1000, cdt = Math.min(.05, nowS - (capT || nowS)); capT = nowS;
     for (const c of caps) { const p = c.pad; if (p.squash > 0) p.squash = Math.max(0, p.squash - cdt * 2.2); const q = p.squash || 0;
-      c.m.scale.y = 13 * (1 - .55 * q * Math.cos((1 - q) * 10)); }   // squash, then wobble back
+      c.m.scale.y = (c.h || 13) * (1 - .55 * q * Math.cos((1 - q) * 10)); }   // squash, then wobble back
     for (let i = pi; i < pool.length; i++) pool[i].visible = false;
     for (let i = bi; i < boxes.length; i++) boxes[i].visible = false;
     for (const [r, m] of karts) if (!m.used) { m.root.visible = false; if (r.gone || r.dead) { scene.remove(m.root); karts.delete(r); } }

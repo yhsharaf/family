@@ -60,6 +60,7 @@ function openPts(c) {
   return out;
 }
 // the current track (loadTrack fills these in)
+let GAPS = [];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
   ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null;
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
@@ -214,10 +215,10 @@ const TRACKS = {
     },
   },
   // 2. Mushroom Park (a beginner track like Mario Kart Tour's easy cups): it starts in the Henesys market, climbs past the pond to a
-  // row of giant bouncy mushrooms (orange, green, blue: everyone bounces), dips into the park valley and bounces out again, and runs
-  // home down a wide avenue where mushrooms hop across the road (they only bump you). Wide road, few props, gentle hills.
+  // gorge crossed on giant bouncy mushroom platforms (like Mushroom Gorge), dips into the park valley and bounces out over a pond the
+  // same way, and runs home down a wide avenue where mushrooms hop across the road (they only bump you). Wide road, few props.
   town: {
-    id: "park", road: 200, gate: "market", cup: "henesys", art: HEN_ART, music: "town", name: "Mushroom Park", sub: "bouncy mushrooms · park valley · market start", icon: "🌼",
+    id: "park", road: 200, gate: "market", cup: "henesys", art: HEN_ART, music: "town", name: "Mushroom Park", sub: "mushroom gorge · pond bounce · market start", icon: "🌼",
     ctrl: [[600, 1760, 0], [1000, 1760, 0], [1350, 1740, 4], [1620, 1620, 10], [1760, 1380, 22], [1780, 1080, 40], [1760, 800, 52], [1700, 520, 56], [1540, 330, 50], [1300, 260, 44],
       [1080, 330, 34], [990, 580, 22], [920, 860, 12], [740, 1000, 6], [580, 920, 10], [560, 660, 20], [530, 440, 28], [440, 290, 30], [290, 250, 30], [180, 350, 28],
       [170, 560, 24], [200, 860, 16], [240, 1220, 6], [330, 1620, 2]],
@@ -226,16 +227,17 @@ const TRACKS = {
     far: ["tree", "tree", "bush", "shroomhouse", "shroomtower"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom"],
     build() {
       const coins = [], row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      const B1 = I(1778, 1180), B2 = I(566, 800);   // the two rows of bouncy mushrooms
-      const shrooms = i => [["o", -66], ["g", 0], ["b", 66]].map(([col, o]) => ({ t: "shroom", col, i, len: 6, o, w: 64 }));
-      const arc = (b, n) => { for (let j = 0; j < n; j++) { const i = b + 10 + j * 7, [x, y] = at(i, 0); coins.push({ x, y, z: 30 + 70 * Math.sin(Math.PI * (j + .5) / n), got: false }); } };   // along the bounce's arc
-      arc(B1, 6); arc(B2, 6);
+      // 🍄 two crossings like Mario Kart's Mushroom Gorge: the road stops, giant mushroom platforms on tall stems carry you over (a bounce on each)
+      const u = d => Math.round(d / SPC), crossing = (a, kind, cols) => ({ a, b: a + u(400), kind, caps: [{ i: a + u(70), r: 125, col: cols[0] }, { i: a + u(262), r: 125, col: cols[1] }] });   // big enough to cover the whole road width
+      const G1 = crossing(I(1772, 1330), "gorge", ["r", "g"]), G2 = crossing(I(574, 905), "water", ["g", "r"]);
+      const arc = (from, to, n) => { for (let j = 0; j < n; j++) { const i = from + (to - from) * (j + .5) / n, [x, y] = at(i, 0); coins.push({ x, y, z: 15 + 60 * Math.sin(Math.PI * (j + .5) / n), got: false }); } };   // along the bounce's arc
+      for (const g of [G1, G2]) { arc(g.a, g.a + u(235), 4); arc(g.a + u(235), g.a + u(470), 4); }
       row(I(1590, 360), I(1420, 280), 5, 40);                            // the inside of the hilltop hairpin
       row(I(990, 600), I(780, 990), 6, j => Math.sin(j * 1.1) * 40);    // down into the valley
       row(I(210, 950), I(240, 1250), 5, 0);                              // the avenue
       return {
-        lake: { cx: 1300, cy: 1230, rx: 220, ry: 160 },
-        pads: [...shrooms(B1), ...shrooms(B2),
+        lake: { cx: 1300, cy: 1230, rx: 220, ry: 160 }, gaps: [G1, G2],
+        pads: [
           { t: "boost", i: I(1250, 272), len: 14, o: 0, w: 60 },         // out of the hilltop hairpin
           { t: "boost", i: I(176, 600), len: 14, o: 0, w: 60 },          // out of the top-left turn
           { t: "boost", i: I(1700, 1500), len: 12, o: 0, w: 60 }],       // up the climb to the first bounce
@@ -534,6 +536,7 @@ function loadTrack(key) {
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null;
+  GAPS = (f.gaps || []).map(g => ({ ...g, caps: g.caps.map(c => { const [x, y] = at(c.i, 0); return { ...c, x, y, squash: 0 }; }) }));
   { const g0 = gridSpot(7).i - 25, g1 = (OPEN ? START_I : N) + Math.round(400 / SPC), inStart = i => { const j = OPEN ? i : (i < N / 2 ? i + N : i); return j >= g0 && j <= g1; };
     f.pads = f.pads.filter(p => !(["boost", "ramp", "bigramp"].includes(p.t) && (inStart(p.i) || inStart(p.i + (p.len || 0))))); }
   PADS = f.pads; COINS = f.coins; PIGS = f.pigs || []; KING = f.king || null; BOXES = f.boxes || [];
@@ -809,6 +812,14 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       g.restore();
     }
   }
+  // 🍄 under a mushroom crossing the 3D view digs out a gorge (or the pond): paint that ground as rock and earth, not road and grass
+  if (!only) for (const gp of GAPS) {
+    const xs = [], ys = []; for (let i = gp.a; i <= gp.b; i++) { xs.push(PTS[i][0]); ys.push(PTS[i][1]); }
+    const x0 = Math.max(0, Math.min(...xs) - 540), x1 = Math.min(WORLD, Math.max(...xs) + 540), y0 = Math.max(0, Math.min(...ys) - 540), y1 = Math.min(WORLD, Math.max(...ys) + 540);
+    const pal = gp.kind === "water" ? ["#7a6440", "#6e5a3a", "#86704a"] : ["#7e6a58", "#6f5c4c", "#8c7764", "#5e4e42"];
+    for (let y = y0; y < y1; y += 8) for (let x = x0; x < x1; x += 8) { const m = nearest(x + 4, y + 4, gp.a); if (m.i < gp.a || m.i >= gp.b || m.d > 520) continue;
+      g.fillStyle = pal[(((x * 7 + y * 13) >> 3) ^ (x >> 5)) % pal.length & 3] || pal[0]; g.fillRect(x, y, 8.5, 8.5); }
+  }
   // the starting grid (3D tracks): a painted bracket round each of the 8 spots, open towards the front, like Mario Kart Tour
   if (PTS[0].length > 2) for (let slot = 0; slot < 8; slot++) {
     const gs = gridSpot(slot), i = (gs.i + N) % N, a = tangent(i), [x, y] = at(i, gs.o);
@@ -946,9 +957,10 @@ function placeObjects() {
       const [m, half, p] = t, want = half + CURB + o.r + 6, dx = o.x - p[0], dy = o.y - p[1], len = Math.hypot(dx, dy) || 1; o.x = p[0] + dx / len * want; o.y = p[1] + dy / len * want; }
     return !touching(o);
   });
+  if (GAPS.length) OBJS = OBJS.filter(o => { const m = nearest(o.x, o.y); return !(gapAt(m.i) && m.d < 520); });   // nothing stands over a gorge or pond
   for (let k = 0; k < (CLEAN ? 60 : 170); k++) {   // woods and houses further out
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
-    if (d < ROAD / 2 + (CLEAN ? 260 : 130) || inLake(x, y)) continue;
+    if (d < ROAD / 2 + (CLEAN ? 260 : 130) || inLake(x, y) || (GAPS.length && d < 560 && gapAt(nearest(x, y).i))) continue;
     const kk = T.far[Math.floor(rnd() * T.far.length)];
     push(x, y, kk, PROPS[kk][0] * 1.2);
   }
@@ -988,10 +1000,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = WORLD; paintTrack(c); return c; },
+  gaps: GAPS,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=27"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=28"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1358,7 +1371,7 @@ function rivalStep(r, dt, tt) {
     if (pad.t === "shroom" && r.v > 30) { r.vz = (330 + r.v * .25) / SPD; r.z = .1; giveBoost(r, .5, 60); shroomHit(pad); }
     if (pad.t === "slime" || pad.t === "lava") hit(r);
   }
-  r.lastPad = pad;
+  r.lastPad = pad; gapStep(r, air);
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(r.x - q.x, r.y - q.y) < 17) { if (p.soft) { if (!(r.bonk > 0)) { r.bonk = .8; r.v *= .6; r.vz = 120; r.z = .1; } } else hit(r); } }
   if (r.bonk > 0) r.bonk -= dt;
   if (KING) {
@@ -1540,6 +1553,18 @@ function drawPops(x, y) {
   ctx.restore();
 }
 function shroomHit(pad) { pad.squash = 1; }   // the cap squashes down and springs back (3D)
+const gapAt = idx => { for (const g of GAPS) if (idx >= g.a && idx <= g.b) return g; return null; };
+const capAt = (x, y) => { for (const g of GAPS) for (const c of g.caps) if (Math.hypot(x - c.x, y - c.y) < c.r) return c; return null; };
+function gapStep(r, air) {
+  if (!GAPS.length || r.rescue > 0) return;
+  if (air) { r.lastCap = null; return; }
+  const c = capAt(r.x, r.y);
+  if (c) { if (c !== r.lastCap) { r.lastCap = c; const t = 235 / (250 * SPD);   // a fixed hop of ~235 units (any speed class): exactly one platform on
+      r.v = 250; r.boost = 0; r.extra = 0; r.vz = 360 * t; r.z = .1; r.drift = 0; r.spin = 0; c.squash = 1;
+      if (r === K) { boingSound(); buzz(25); pop("🍄 Boing!", c.col === "g" ? "#7ad06a" : "#ff8a6a", true); } } return; }
+  r.lastCap = null;
+  const g = gapAt(r.idx); if (g) rescue(r, g.kind === "water" ? "💦 Splash! Into the pond" : "🍄 Into the gorge!");
+}
 function spinOut(msg) {
   const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0 || k.hyper > 0) return;
   buzz([50, 40, 70]);
@@ -1566,7 +1591,8 @@ function makeInk() {
 // 📜 Return Scroll: wrong way, lost far off the road or stuck for a few seconds -> lifted out and put back on the road facing forward
 function rescue(r, msg, lava) {
   if (r.rescue > 0) return;
-  r.rescue = 1.4; r.rescueAt = OPEN ? Math.max(START_I, r.idx - 4) : (r.idx - 4 + N) % N; r.rescueLava = !!lava; r.rescueAlt = r.onAlt ? Math.max(1, (r.altJ || 0) - 5) : null; r.drift = 0; r.charge = 0; r.boost = 0; r.extra = 0; r.spin = 0;
+  r.rescue = 1.4; r.rescueAt = OPEN ? Math.max(START_I, r.idx - 4) : (r.idx - 4 + N) % N;
+  { const g = gapAt(r.rescueAt) || gapAt(r.idx); if (g) r.rescueAt = Math.max(0, g.a - Math.round(60 / SPC)); }   // fell in: you're put back just before the gap, to bounce across again r.rescueLava = !!lava; r.rescueAlt = r.onAlt ? Math.max(1, (r.altJ || 0) - 5) : null; r.drift = 0; r.charge = 0; r.boost = 0; r.extra = 0; r.spin = 0;
   if (r === K) { flash(msg || "📜 Return Scroll!", 1200); msg ? splatSound() : scrollSound(); }
 }
 function rescueStep(r, dt) {   // true while being rescued (no driving)
@@ -1631,7 +1657,7 @@ function step(dt) {
     if (pad.t === "slime") spinOut("🫧 Slimed!");
     if (pad.t === "lava") { spinOut("🔥 Lava! Hot hot hot!"); k.shake = .3; }
   }
-  k.lastPad = pad;
+  k.lastPad = pad; gapStep(k, air);
   const icy = MECH === "ice" && !air && (pad && pad.t === "ice" || (LAKE && LAKE.kind === "ice" && inLake(k.x, k.y)));
   const muddy = !air && pad && pad.t === "mud";
   if (icy && !k.wasIcy && k.v > 120) flash("🧊 Ice!", 500);
