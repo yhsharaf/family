@@ -429,7 +429,7 @@ const TRACKS = {
     far: ["zk_gate", "zk_idol", "zk_ruins", "zk_vase", "zk_volcano", "zk_bones"], mobs: ["fire_boar", "dark_drake", "firebomb"],
     build(F) { return zakumBuild(F, { cross: ["dark_drake", "fire_boar", "firebomb"], lava: true, king: { k: "firebomb", s: .9, name: "Firebomb" }, edge: ["zk_vase", "zk_idol"], altar: true }); },
   },
-  // ---- Ludibrium Cup 🧸: no warning: every 15-30 seconds left and right swap, then swap back
+  // ---- Ludibrium Cup 🧸: every 15-30 seconds left and right swap, then swap back (with a ⚠️ warning before each)
   ld1: {
     id: "ludi1", cup: "ludi", music: "k_ludi1", name: "Ludibrium Town", sub: "toy houses · lollipop lane · Ratz", icon: "🏰",
     ctrl: [[300, 1650], [300, 1000], [450, 550], [800, 300], [1150, 290], [1300, 560], [1150, 850], [950, 950], [880, 1250], [1150, 1450], [1450, 1300], [1580, 950], [1600, 520],
@@ -497,7 +497,7 @@ const CUPS = {
   elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: your kart keeps sliding" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Every 15 s the lights go out for 3 s · no minimap" },
   zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Outrun the rising lava · one long climb, no laps" },
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 No warning: left and right swap now and then" },
+  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 Left and right swap now and then (⚠️ you get a warning first)" },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
 function loadTrack(key) {
@@ -1212,8 +1212,9 @@ function step(dt) {
   k.prevDrift = inp.drift;
   // countdown: hold Drift when the "2" shows for a rocket start (from the "3" is too early)
   if (state === "count") { if (inp.drift) { if (k.held == null) k.held = performance.now() - countAt; } else k.held = null; }
-  // 🧸 Ludibrium: without warning, every 15-30 seconds left and right swap (and swap back after another 15-30)
-  if (MECH === "flip" && racing) { k.flipT -= dt; if (k.flipT <= 0) { k.flipped = !k.flipped; k.flipT = 15 + Math.random() * 15; } }
+  // 🧸 Ludibrium: every 15-30 seconds left and right swap (and swap back after another 15-30); a ⚠️ warning counts down 3 seconds before each
+  if (MECH === "flip" && racing) { k.flipT -= dt; if (k.flipT <= 0) { k.flipped = !k.flipped; k.flipT = 15 + Math.random() * 15;
+    flash(k.flipped ? "🔀 Controls swapped!" : "✅ Controls back to normal", 1200); tone(k.flipped ? 330 : 660, .25, "square", .07, k.flipped ? 165 : 990); } }
   if (k.flipped && !(DEV && DEV.auto)) inp.steer = -inp.steer;
   k.steer += ((k.spin > 0 ? 0 : inp.steer) - k.steer) * Math.min(1, dt * 10);
   // what's under the wheels
@@ -1717,10 +1718,12 @@ function hud() {
     else { cd = `🏁 ${MP.firstName || "Someone"} finished! ⏱️ ${left}s left`; if ($k("#kWarn").textContent !== cd && left <= 5) beep(left <= 3 ? 880 : 660); }
   }
   const armIn = state === "race" && ARMS.some(a => a.tgt === k), shotIn = state === "race" && SHOTS.some(sh => sh.tgt === k);
-  const warn = cd ? cd : armIn ? "🖐️ ZAKUM'S ARM IS COMING FOR YOU!" : shotIn ? (k.holding ? "⚠️🏹 Arrow behind you · your item will block it" : "⚠️🏹 Arrow behind you! Hold a Slime or Arrow to block") : "";
-  if ($k("#kWarn").textContent !== warn) { $k("#kWarn").textContent = warn; $k("#kWarn").className = "kt-warn" + (armIn || cd ? " arm" : ""); }
+  const flipIn = MECH === "flip" && state === "race" && k.flipT < 3 ? Math.ceil(k.flipT) : 0;   // 🧸 Ludibrium: a swap (or the swap back) is coming
+  if (flipIn && flipIn !== flipWarnN) { flipWarnN = flipIn; tone(1040, .12, "square", .06); } if (!flipIn) flipWarnN = 0;
+  const warn = cd ? cd : flipIn ? `⚠️ Left ↔ right ${k.flipped ? "back to normal" : "SWAP"} in ${flipIn}…` : armIn ? "🖐️ ZAKUM'S ARM IS COMING FOR YOU!" : shotIn ? (k.holding ? "⚠️🏹 Arrow behind you · your item will block it" : "⚠️🏹 Arrow behind you! Hold a Slime or Arrow to block") : "";
+  if ($k("#kWarn").textContent !== warn) { $k("#kWarn").textContent = warn; $k("#kWarn").className = "kt-warn" + (armIn || cd || flipIn ? " arm" : ""); }
   $k("#kWarn").hidden = !warn;
-  if (warn && !cd && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
+  if (warn && !cd && !flipIn && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
   const bag = state === "menu" ? "" : `${k.mesos}/10`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${bag}` : ""; }
   if ((k.roll > 0 || k.roll2 > 0) && performance.now() - rollTick > 85) { rollTick = performance.now(); tone([660, 740, 830, 880, 990, 880, 830, 740][rollN++ % 8], .05, "square", .035); }
   const keys = Object.keys(ITEM_ICON), spinIcon = () => ITEM_ICON[keys[Math.floor(performance.now() / 80) % keys.length]];
@@ -1738,7 +1741,7 @@ function hud() {
   const pop = posPop && performance.now() - posPop.at < 650 ? (posPop.up ? " up" : " down") : "";
   $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + pop;
 }
-let flashT = null, warnAt = 0, lastRk = 0, posPop = null;
+let flipWarnN = 0, flashT = null, warnAt = 0, lastRk = 0, posPop = null;
 function flash(t, ms, kind) { const f = $k("#kFlash"); if (kind === "intro") f.innerHTML = `<img class="k-crown" src="media/crown.png" alt="">` + esc(t); else f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
 // phones race sideways: go fullscreen + lock to landscape where the browser allows it (Android), otherwise ask to rotate and pause
 const TOUCH = matchMedia("(pointer: coarse)").matches;
