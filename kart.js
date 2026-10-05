@@ -122,8 +122,8 @@ const TRACKS = {
           { t: "boost", i: R(874), len: 14, o: -28, w: 54 }, { t: "boost", i: I(800, 165), len: 12, o: 0, w: 60 },
           { t: "ramp", i: R(703), len: 9, o: 0, w: ROAD }, { t: "bigramp", i: I(950, 130), len: 7, o: 0, w: ROAD }, { t: "hay", i: I(1262, 131), len: 4, o: 0, w: 46 },
           { t: "rock", i: I(1525, 290), len: 30, o: 0, w: ROAD }, { t: "rock", i: R(578), len: 30, o: 0, w: ROAD },
-          { t: "slime", i: R(325), len: 8, o: -22, w: 44 }, { t: "slime", i: R(455), len: 8, o: 26, w: 44 }, { t: "slime", i: R(795), len: 8, o: -28, w: 44 },
-          { t: "slime", i: R(958), len: 8, o: 22, w: 44 }],
+          { t: "slime", i: R(325), len: 8, o: -38, w: 36 }, { t: "slime", i: R(455), len: 8, o: 38, w: 36 }, { t: "slime", i: R(795), len: 8, o: -38, w: 36 },
+          { t: "slime", i: R(958), len: 8, o: 38, w: 36 }],
         coins,
         pigs: [{ i: R(262), ph: 0, k: "pig" }, { i: R(470), ph: 2, k: "pig" }, { i: R(845), ph: 4.2, k: "pig" }],
         king: { i: R(905), T: 3, k: "king_slime", s: .5, name: "King Slime" },
@@ -137,23 +137,26 @@ const TRACKS = {
   },
   // 2. Henesys Town Run: twisty S-bends between the mushroom houses, a market street, a tunnel through a tree house, snails crossing
   town: {
-    id: "town", name: "Henesys Town Run", sub: "market street · tree house tunnel", icon: "🏘️",
+    id: "town", name: "Henesys Town Run", sub: "market street · tree house tunnel · back alley", icon: "🏘️",
     ctrl: [[300, 1700], [300, 1100], [450, 800], [700, 700], [850, 900], [1050, 1000], [1200, 800], [1150, 550], [950, 400], [1000, 200], [1350, 180],
-      [1650, 300], [1800, 550], [1650, 800], [1500, 1000], [1700, 1250], [1850, 1500], [1700, 1800], [1300, 1850], [1000, 1650], [700, 1850], [450, 1880]],
+      [1650, 300], [1800, 550], [1650, 800], [1500, 1000], [1700, 1250], [1850, 1500], [1720, 1810], [1150, 1865], [600, 1860], [380, 1810]],
     theme: { grass: ["#74c552", "#68b847"], flowers: 3200, road: "cobble" },
     near: ["shroomhouse", "shroomtower", "stall", "stall2", "hay", "haypile", "sunflower", "posts", "redshrooms", "bush"],
     far: ["shroomhouse", "shroomtower", "tree", "shroomhouse", "bush"], mobs: ["snail", "blue_snail", "red_snail", "orange_mushroom"],
     build() {
-      const t0 = I(1060, 196), t1 = I(1290, 184), m0 = I(1680, 1810), m1 = I(1320, 1848);
+      const t0 = I(1060, 196), t1 = I(1290, 184), m0 = I(1640, 1820), m1 = I(760, 1862);
       return {
         tunnel: { a: t0, b: t1 },
+        // the back alley: a narrow short cut through the S-bends, behind the mushroom houses
+        fork: { a: I(855, 905), b: I(1195, 805), via: [[960, 880], [1090, 858]], width: 58, style: "cobble", pads: [], coins: true },
         pads: [
           { t: "boost", i: I(300, 1420), len: 14, o: 0, w: 60 }, { t: "boost", i: I(1400, 182), len: 12, o: -24, w: 54 }, { t: "boost", i: I(1560, 1080), len: 12, o: 22, w: 52 },
+          { t: "boost", i: I(1300, 1858), len: 12, o: 0, w: 56 },
           { t: "ramp", i: I(1790, 1380), len: 9, o: 0, w: ROAD },
-          { t: "slime", i: I(1030, 1680), len: 8, o: 18, w: 46 }, { t: "slime", i: I(880, 920), len: 8, o: -20, w: 44 }, { t: "slime", i: I(1730, 520), len: 8, o: 24, w: 44 }],
-        coins: [...coinRow(I(300, 1350), I(300, 1150), 6, 0), ...coinRow(m0, m1, 6, j => (j & 1 ? 22 : -22)), ...coinRow(I(1000, 220), I(1050, 200), 3, 0), ...coinRow(I(1680, 790), I(1540, 960), 6, -18)],
-        pigs: [{ i: I(450, 820), ph: 0, k: "snail", sp: .7 }, { i: I(1640, 820), ph: 1.6, k: "blue_snail", sp: .75 }, { i: I(700, 1845), ph: 3, k: "red_snail", sp: .7 }],
-        boxes: [...boxRow(I(300, 1240), [-42, -14, 14, 42]), ...boxRow(I(1170, 640), [-40, -13, 13, 40]), ...boxRow(I(1760, 1600), [-42, -14, 14, 42])],
+          { t: "slime", i: I(1100, 1862), len: 8, o: 38, w: 36 }, { t: "slime", i: I(700, 712), len: 8, o: -38, w: 36 }, { t: "slime", i: I(1730, 520), len: 8, o: 38, w: 36 }],
+        coins: [...coinRow(I(300, 1350), I(300, 1150), 6, 0), ...coinRow(m0, m1, 8, j => (j & 1 ? 22 : -22)), ...coinRow(I(1000, 220), I(1050, 200), 3, 0), ...coinRow(I(1680, 790), I(1540, 960), 6, -18)],
+        pigs: [{ i: I(450, 820), ph: 0, k: "snail", sp: .5 }, { i: I(1640, 820), ph: 2.2, k: "blue_snail", sp: .5 }],
+        boxes: [...boxRow(I(300, 1560), [-42, -14, 14, 42]), ...boxRow(I(965, 300), [-40, -13, 13, 40]), ...boxRow(I(1790, 1680), [-42, -14, 14, 42])],
         extra(push) {
           for (let i = m0; i <= m1; i += 6) for (const side of [-1, 1]) {   // the market street: stalls and hay on both sides
             const [x, y] = at(i, side * (ROAD / 2 + CURB + 26)); push(x, y, ["stall", "stall2", "haypile", "hay"][(i / 6 + (side > 0 ? 1 : 0)) & 3]);
@@ -166,9 +169,9 @@ const TRACKS = {
   },
   // 3. Mushroom Forest: fast and wild; a narrow wooden bridge over a lake (fall in and you splash), hopping mushrooms, Mushmom, a big downhill jump
   forest: {
-    id: "forest", name: "Mushroom Forest", sub: "bridge shortcut · Mushmom · big jump", icon: "🌲",
-    ctrl: [[350, 1500], [350, 900], [480, 480], [850, 260], [1400, 260], [1760, 500], [1800, 950], [1580, 1250], [1200, 1150], [930, 1300], [980, 1620],
-      [1400, 1700], [1750, 1820], [1450, 1930], [800, 1900], [480, 1800]],
+    id: "forest", name: "Mushroom Forest", sub: "bridge shortcut · S-bends · Mushmom · big jump", icon: "🌲",
+    ctrl: [[350, 1500], [350, 900], [480, 480], [850, 260], [1400, 260], [1760, 500], [1800, 950], [1580, 1250], [1200, 1150], [990, 1255], [1105, 1405],
+      [965, 1550], [1085, 1690], [1420, 1720], [1750, 1820], [1450, 1930], [800, 1900], [480, 1800]],
     theme: { grass: ["#4f9a3c", "#478f35"], flowers: 900, road: "dirt" },
     near: ["tree", "tree", "bush", "tallshroom", "redshrooms", "bush", "tree", "tallshroom"],
     far: ["tree", "tree", "tree", "bush"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom"],
@@ -180,14 +183,14 @@ const TRACKS = {
         pads: [
           { t: "boost", i: I(350, 1250), len: 14, o: 0, w: 60 }, { t: "boost", i: I(1250, 262), len: 12, o: 24, w: 54 }, { t: "boost", i: I(1300, 1690), len: 12, o: -22, w: 52 },
           { t: "bigramp", i: I(860, 1903), len: 7, o: 0, w: ROAD },
-          { t: "rock", i: I(950, 1420), len: 26, o: 0, w: ROAD },
-          { t: "slime", i: I(600, 340), len: 8, o: -22, w: 44 }, { t: "slime", i: I(1700, 1250), len: 8, o: 24, w: 44 }],
-        coins: [...coinRow(I(350, 1150), I(350, 950), 6, 0), ...coinRow(I(1000, 255), I(1200, 258), 6, j => (j & 1 ? 24 : -24)), ...coinRow(I(1100, 1680), I(1250, 1690), 6, 0),
+          { t: "rock", i: I(1560, 1760), len: 22, o: 0, w: ROAD },
+          { t: "slime", i: I(600, 340), len: 8, o: -38, w: 36 }, { t: "slime", i: I(1050, 1335), len: 8, o: 38, w: 36 }],
+        coins: [...coinRow(I(350, 1150), I(350, 950), 6, 0), ...coinRow(I(1000, 255), I(1200, 258), 6, j => (j & 1 ? 24 : -24)), ...coinRow(I(1150, 1700), I(1350, 1715), 6, 0),
           ...[0, 1, 2, 3, 4].map(n => { const [x, y] = at(I(860, 1903) + 12 + n * 5, 0); return { x, y, z: 60, got: false }; })],
         pigs: [{ i: I(420, 700), ph: 0, k: "orange_mushroom", hop: true }, { i: I(1785, 700), ph: 1.5, k: "green_mushroom", hop: true },
-          { i: I(950, 1460), ph: 3, k: "orange_mushroom", hop: true }, { i: I(1600, 1760), ph: 4.4, k: "green_mushroom", hop: true }],
+          { i: I(1300, 1712), ph: 3, k: "orange_mushroom", hop: true }],
         king: { i: I(1120, 262), T: 3.2, k: "mushmom", s: .9, name: "Mushmom" },
-        boxes: [...boxRow(I(350, 1080), [-42, -14, 14, 42]), ...boxRow(I(1660, 400), [-40, -13, 13, 40]), ...boxRow(I(1000, 1550), [-42, -14, 14, 42])],
+        boxes: [...boxRow(I(350, 1080), [-42, -14, 14, 42]), ...boxRow(I(1660, 400), [-40, -13, 13, 40]), ...boxRow(I(1150, 1695), [-42, -14, 14, 42])],
         extra() {},
       };
     },
@@ -379,7 +382,7 @@ let gp = null;   // { race, names, pts: { name: points } }
 let ghost = null, ghostRec = [];   // your best Time Trial run, sampled 10 times a second: [t, x, y, a, z]
 const ghostKey = () => `kart_ghost:${TRACK_ID}:${me}`;
 // difficulty, picked before the race: rival speed, how hard they catch up, how often they grab items
-const DIFFS = { easy: { skill: .88, band: .07, pick: .4, label: "Easy" }, normal: { skill: 1, band: .15, pick: .6, label: "Normal" }, hard: { skill: 1.06, band: .18, pick: .8, label: "Hard" } };
+const DIFFS = { easy: { skill: .88, band: .07, pick: .4, label: "Easy" }, normal: { skill: 1.04, band: .15, pick: .6, label: "Normal" }, hard: { skill: 1.06, band: .18, pick: .8, label: "Hard" } };
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
 const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
@@ -725,10 +728,10 @@ function step(dt) {
   let tuck = false;
   if (racing && !air && k.v > 150) for (const r of RIV) {
     const dx = r.x - k.x, dy = r.y - k.y, fwd = dx * Math.cos(k.a) + dy * Math.sin(k.a), side = -dx * Math.sin(k.a) + dy * Math.cos(k.a);
-    if (fwd > 12 && fwd < 75 && Math.abs(side) < 13) { tuck = true; break; }
+    if (fwd > 12 && fwd < 110 && Math.abs(side) < 20) { tuck = true; break; }
   }
   k.slip = tuck ? (k.slip || 0) + dt : Math.max(0, (k.slip || 0) - dt * 2);
-  if (k.slip > 1) { k.slip = 0; k.boost = Math.max(k.boost, .8); flash("💨 Slipstream!", 600); padSound(); }
+  if (k.slip > .9) { k.slip = 0; k.boost = Math.max(k.boost, .8); flash("💨 Slipstream!", 600); padSound(); }
   // mesos, pigs and the King Slime
   for (const c of COINS) if (!c.got && Math.abs(k.z - (c.z || 0)) < 30 && Math.hypot(k.x - c.x, k.y - c.y) < 18) { c.got = true; k.mesos = Math.min(10, k.mesos + 1); k.v = Math.min(k.v + 22, 360); coinSound(); }
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < 17) spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : "🍄 Bonk!"); }
