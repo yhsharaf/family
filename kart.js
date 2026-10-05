@@ -407,7 +407,7 @@ let track = TRACKS[store.get("kart_track")] ? store.get("kart_track") : "henesys
 const GP_RACES = 3, GP_PTS = [10, 8, 6, 4, 3, 2, 1, 0];
 let gp = null;   // { race, names, pts: { name: points } }
 let ghost = null, ghostRec = [];   // your best Time Trial run, sampled 10 times a second: [t, x, y, a, z]
-const ghostKey = () => `kart_ghost:${TRACK_ID}:${me}`;
+const ghostKey = () => `kart_ghost2:${TRACK_ID}:${me}`;
 // difficulty, picked before the race: rival speed, how hard they catch up, how often they grab items
 const DIFFS = { easy: { skill: .95, band: .07, pick: .4, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .6, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: .8, label: "Hard" } };
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
@@ -686,7 +686,7 @@ function freshKart() {
     shake: 0, stall: 0, mesos: 0, held: null, lastPad: null, prevDrift: false, prevItem: false, kingWas: 0 };
 }
 const fmt = ms => ms == null ? "--" : `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(Math.floor(ms % 1000)).padStart(3, "0")}`;
-const bestKey = () => `kart_best:${TRACK_ID}:${me}`;
+const bestKey = () => `kart_best2:${TRACK_ID}:${me}`;
 
 function input() {
   if (DEV && DEV.auto && K) {   // local testing only: aim at a point further along the track
@@ -1484,7 +1484,7 @@ async function loadBoard() {
 if (location.hash === "#kart") loadBoard();
 addEventListener("hashchange", () => { if (location.hash === "#kart") loadBoard(); });
 function showBest() {
-  const n = ($k("#kName").value || "").trim(), g = n && guildOf(n), key = `kart_best:${TRACKS[mode === "gp" ? "henesys" : track].id}:${g ? g.name : n}`;
+  const n = ($k("#kName").value || "").trim(), g = n && guildOf(n), key = `kart_best2:${TRACKS[mode === "gp" ? "henesys" : track].id}:${g ? g.name : n}`;
   let b = null; try { b = JSON.parse(store.get(key)); } catch (e) {}
   $k("#kMine").innerHTML = b && b.race ? `🏆 Your best: race <b>${fmt(b.race)}</b> · lap <b>${fmt(b.lap)}</b>` : "No time yet on this track. Go set one!";
 }
