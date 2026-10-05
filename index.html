@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
 <link rel="stylesheet" href="kart.css?v=19">
+<link rel="stylesheet" href="sf.css?v=7">
+<link rel="stylesheet" href="br.css?v=1">
 <link rel="stylesheet" href="extras.css?v=46">
 <style>
 :root {
@@ -233,6 +235,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <a href="#ww" style="--r:2deg;background:#3b3561">Werewolf</a>
   <a href="#duel" style="--r:-2deg;background:#c0612b">Bonk Duel</a>
   <a href="#kart" style="--r:2deg;background:#1d1d22">Family Kart</a>
+  <a href="#sf" style="--r:-2deg;background:#7a4fc8">Star Force</a>
 </nav>
 
 <div class="smega" id="smega" hidden><span class="tag">📣</span><div class="track"><span id="smegaText"></span></div><button id="smegaX" aria-label="hide">×</button></div>
@@ -594,6 +597,82 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   </div>
 </section>
 
+<section id="sf" class="sf">
+  <h2 class="kt-h"><span class="word" style="background:#7a4fc8">Star</span><span class="word" style="background:var(--gold);--r:2deg">Force</span></h2>
+  <div class="sk-home">
+    <div class="sk-panel sf-main">
+      <div class="sk-name"><input id="sfName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20">
+        <div class="sk-sugg" id="sfSugg" hidden></div></div>
+      <div class="sk-warn" id="sfGuest" hidden>⚠️ This isn't a guild name: you can enhance as a guest, but you won't show on the guild leaderboard.</div>
+      <div class="sf-modes" id="sfMode"><button type="button" data-m="20">🔥 Start at 20★</button><button type="button" data-m="0">🌱 Start at 0★</button></div>
+      <div class="sf-items" id="sfItems"></div>
+      <div class="sf-stage" id="sfStage">
+        <div class="sf-stars" id="sfStars"></div>
+        <div class="sf-item"><div class="sf-glow"></div><img id="sfItemImg" src="media/sf/zakum_helmet.png" alt=""><div class="sf-fx" id="sfFx"></div></div>
+        <div class="sf-now" id="sfNow"></div>
+        <div class="sf-pity" id="sfPity"></div>
+        <div class="sf-flash" id="sfFlash"></div>
+      </div>
+      <div class="sf-fix" id="sfFix" hidden></div>
+      <div class="sf-mitig" id="sfMitig"><label><input type="checkbox" id="sfDec"> 🛡️ Decrease mitigation</label><label><input type="checkbox" id="sfDes"> 🛡️ Destruction mitigation</label></div>
+      <div class="sf-odds" id="sfOdds"></div>
+      <div class="sf-cost" id="sfCost"></div>
+      <div class="sf-btns">
+        <button class="sk-btn bd-play" id="sfGo">⭐ Enhance</button>
+        <button class="sk-btn sk-private" id="sfAuto">▶ Auto</button>
+      </div>
+      <div class="sf-autoopts"><label>Auto until <select id="sfStop"><option value="1">the next star</option><option value="15">15★</option><option value="20">20★</option><option value="22">22★</option><option value="25" selected>25★</option><option value="28">28★</option><option value="30">30★</option></select></label>
+        <label>If it booms: <select id="sfAfter"><option value="stop">stop</option><option value="12">restore to 12★</option><option value="13">restore to 13★</option><option value="14">restore to 14★</option><option value="15">restore to 15★</option><option value="16">restore to 16★</option><option value="17">restore to 17★</option><option value="18">restore to 18★</option><option value="19">restore to 19★</option><option value="20">restore to 20★</option></select></label><label><input type="checkbox" id="sfFast"> ⚡ fast</label></div>
+      <div class="sf-tally" id="sfTally"></div>
+      <div class="sf-score" id="sfScore"></div>
+      <a class="br-promo" href="#br">🃏 <b>Boom Roulette</b> · the multiplayer liar's game at a Kerning City table <span>Play ▶</span></a>
+      <div class="sk-err" id="sfErr"></div>
+    </div>
+    <div class="sk-panel sf-side">
+      <h3>📈 Tries to reach each star</h3>
+      <div class="sf-trials" id="sfTrials"></div>
+      <h3>🏆 Guild leaderboard</h3>
+      <div class="kt-boardtabs" id="sfBoardTabs"><button type="button" data-b="score" class="on">🏅 Score</button><button type="button" data-b="fast30">⚡ Fastest 30★</button><button type="button" data-b="lucky">🍀 Luckiest</button><button type="button" data-b="burned">📜 Most scrolls</button></div>
+      <p class="sf-note">🏅 Score = how hard your best star is × how lucky you got (the average cost of that star ÷ what you spent, square-rooted). Spending keeps counting after your best, so knowing when to stop and 📤 share is the strategy. Only shared results count.</p>
+      <ol class="kt-board sf-board" id="sfBoard"></ol>
+      <p class="sf-note">Rates, costs and stats are MapleStory Idle's (from <a href="https://mapleidle.gg/database/star-force" target="_blank" rel="noopener">mapleidle.gg</a>). From 20★ an item can be destroyed 💥: it falls back to 12★ with its effects off, and you restore it at 12★–20★ (higher costs more), just like the game. Two modes: 🔥 Start at 20★ (every item begins at 20★, straight into the scary part) or 🌱 Start at 0★; each has its own boards. Switching modes throws your results away unless you share them first. You enhance a set of 8 items (switch with the item buttons). Nothing counts until you press 📤 Share results: then your set is scored, goes on the board, and all 8 items start again from 0★ (🆕 New game also starts from 0★, without sharing). The score rewards high stars, but also luck and knowing when to stop: it compares what each item really cost with what that star costs on average. The Fastest 30★ board is one item, counted the moment it hits 30★. From 12★ each star has its own Enhancement Points gauge (fail +1, drop +2, boom +4, kept on that star even if you drop); when it's full the next try at that star can't fail. Mitigation (as in the game's Sept 3 patch notes, only from 20★ where the risks start): destruction mitigation halves the destroy chance, decrease mitigation removes the drop chance (halves it at 28★+); each costs one extra full set of scrolls and mesos (both = ×3). Scrolls here are unlimited, every try is rolled by the guild server so the board is fair.</p>
+    </div>
+  </div>
+</section>
+
+<section id="br" class="br">
+  <h2 class="kt-h"><span class="word" style="background:#2d2832">Boom</span><span class="word" style="background:#c8232c;--r:2deg">Roulette</span></h2>
+  <p class="br-sub">🃏 Liar's Edition · a Kerning City table for 3–6 players · <a href="#sf">⭐ back to Star Force</a></p>
+  <div id="brLobby" class="sk-home">
+    <div class="sk-panel">
+      <div class="sk-name"><input id="brName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20"></div>
+      <div class="kt-create"><button class="sk-btn bd-play" data-a="pub">🌍 Public table</button><button class="sk-btn sk-private" data-a="priv">🔒 Private table</button></div>
+      <div class="kt-open"><b>🌍 Open tables</b><div id="brRooms"></div></div>
+      <div class="kt-join"><input id="brCode" placeholder="Private table code" maxlength="8" autocapitalize="characters"><button class="sk-small" data-a="code">Join</button></div>
+      <div class="sk-err" id="brErr"></div>
+    </div>
+    <div class="sk-panel br-rules">
+      <h3>How to play</h3>
+      <div class="hd-tiles br-tiles">
+        <div><span>🎲</span><b>Enhance in secret</b><small>everyone starts at 20★ with real Star Force odds</small></div>
+        <div><span>🗣️</span><b>Claim anything</b><small>⭐ success · 😐 no change · ⬇️ drop · 💥 boom. True or a lie!</small></div>
+        <div><span>🤥</span><b>Call "Liar!"</b><small>2 calls each. Catch a liar and you get your call back</small></div>
+        <div><span>❤️</span><b>2 lives</b><small>admit a boom −1 · get caught lying −1</small></div>
+        <div><span>⭐</span><b>Claim 23★ to win</b><small>…but your REAL star is checked. Fake it and you're out 💀</small></div>
+        <div><span>🏆</span><b>Or be the last one standing</b><small>about 4–5 minutes a game</small></div>
+      </div>
+      <h3>🏆 Best liars of the guild</h3>
+      <ol class="kt-board" id="brBoard"></ol>
+    </div>
+  </div>
+  <div id="brGame" hidden>
+    <div class="br-room">
+      <div class="br-table" id="brTable"><div class="br-felt"><div class="br-center" id="brCenter"></div></div><div id="brSeats"></div></div>
+    </div>
+    <div class="sk-panel br-ctl" id="brCtl"></div>
+  </div>
+</section>
+
 <section id="guestbook">
   <h2><span class="word" style="background:var(--purple)">Guest</span><span class="word" style="background:var(--gold);--r:2deg">book</span></h2>
   <p class="lead">Everyone posts as a monster, so nobody knows who wrote what 👀 One post every 8 hours, after Professor CrtlAltDel's quiz. Give notes +Fame or −Fame: the best float to the top, the worst fade away.</p>
@@ -915,6 +994,8 @@ show();
 <script src="duel.js?v=31"></script>
 <script src="duel2.js?v=3"></script>
 <script src="kart.js?v=47"></script>
+<script src="sf.js?v=14"></script>
+<script src="br.js?v=1"></script>
 <script src="extras.js?v=51"></script>
 </body>
 </html>
