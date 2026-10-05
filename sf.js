@@ -21,6 +21,8 @@ const MAX = 30;
 // average "Star Force cost" to first reach each star with the real rules (1 = one scroll; 25,000 mesos = 1; 50 red diamonds = 1),
 // from 4,000 simulated climbs to 30★. The score compares what you spent with this.
 const AVG = {1: 2, 2: 4, 3: 8, 4: 14, 5: 22, 6: 33, 7: 48, 8: 67, 9: 91, 10: 122, 11: 170, 12: 225, 13: 286, 14: 378, 15: 490, 16: 586, 17: 749, 18: 990, 19: 1278, 20: 1623, 21: 2976, 22: 6428, 23: 11564, 24: 20339, 25: 42762, 26: 93176, 27: 263320, 28: 731716, 29: 2347536, 30: 7251198};
+// real-money price of Star Force scrolls: 12 scrolls cost $4.36
+const USD_PER_SCROLL = 4.36 / 12, usd = n => { const d = n * USD_PER_SCROLL; return "$" + (d < 100 ? d.toFixed(2) : Math.round(d).toLocaleString("en-US")); };
 const spentOf = s => (s.scrolls || 0) + (s.mesos || 0) / 25000 + (s.red || 0) / 50;
 const setTotals = cur => {   // the whole set, with the item on screen as it is right now
   const all = { ...(SET ? SET.items : {}) }; if (cur && (cur.attempts || all[item])) all[item] = cur;
@@ -90,7 +92,7 @@ function draw(s = shown || run || fresh()) {
     $s("#sfCost").innerHTML = `<div class="sf-price"><span><img src="media/sf/scroll.png" alt="">× ${r[4] * m.mult}</span><span><img src="media/sf/meso.png" alt="">${num(r[5] * m.mult)}</span><small>per try${m.mult > 1 ? ` (×${m.mult} with mitigation)` : ""}</small></div>
       <div class="sf-statup">${stat("Main stat", MAIN[st], MAIN[st + 1], "%")}${stat("Sub stat", SUB[st], SUB[st + 1], "%")}${stat("Final damage", FD[st], FD[st + 1], "%")}</div>`;
   }
-  $s("#sfTally").innerHTML = `<div><img src="media/sf/scroll.png" alt=""><b>${num(s.scrolls)}</b><small>scrolls used · ∞ left</small></div>
+  $s("#sfTally").innerHTML = `<div><img src="media/sf/scroll.png" alt=""><b>${num(s.scrolls)}</b><small>scrolls used · ${usd(s.scrolls)} 💰</small></div>
     <div><img src="media/sf/meso.png" alt=""><b>${short(s.mesos)}</b><small>mesos</small></div>
     <div><span>🔨</span><b>${num(s.attempts)}</b><small>tries</small></div>
     <div><span>💥</span><b>${num(s.booms)}</b><small>booms</small></div>
@@ -216,7 +218,7 @@ async function loadBoard() {
   if (boardView === "lucky") { $s("#sfBoard").innerHTML = rows.length ? rows.map(r => `${line(r)}<span class="sf-st">×${(+r.luck).toFixed(2)}</span><small>${r.best}★ for ${short(+r.spent)} (avg ${short(+r.avg)})</small></li>`).join("") : `<p class="bd-none">Share a ${mode ? "21" : "20"}★+ result to show up here.</p>`; return; }
   $s("#sfBoard").innerHTML = !rows.length ? `<p class="bd-none">Nobody on the board yet. Be the first!</p>` : boardView === "top"
     ? rows.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b><span class="sf-st">${r.best}★</span><small>${num(r.scr || 0)} scrolls · ${num(r.att || 0)} tries${r.bm ? ` · ${r.bm}💥` : ""}</small></li>`).join("")
-    : rows.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b><span>${num(r.scrolls)} 📜</span><small>${r.booms ? `${num(r.booms)}💥` : ""}</small></li>`).join("");
+    : rows.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b><span class="sf-st">${usd(r.scrolls)}</span><small>${num(r.scrolls)} 📜 in one game · best ${r.best}★${r.booms ? ` · ${num(r.booms)}💥` : ""}</small></li>`).join("");
 }
 $s("#sfBoardTabs").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (!b) return; boardView = b.dataset.b; loadBoard(); });
 
