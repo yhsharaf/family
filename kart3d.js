@@ -116,6 +116,13 @@ export function create(A) {
       for (let k = 0; k < 160; k++) { g.fillStyle = r() < .5 ? "rgba(95,122,58,.7)" : "rgba(120,150,70,.5)"; g.beginPath(); g.ellipse(r() * U, r() * 192, 1 + r() * 3, 1 + r() * 2, 0, 0, 7); g.fill(); } }
     else if (style === "basalt") { stones("#1c1719", ["#3a3236", "#463c40", "#2f282b"], "rgba(255,160,120,.12)", "rgba(0,0,0,.4)", 14);
       g.lineWidth = .8; for (let k = 0; k < 14; k++) { let x = r() * U, y = r() * 192; g.strokeStyle = r() < .5 ? "#ff7a2a" : "#d84a1a"; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (r() - .5) * 14; y += (r() - .5) * 14; g.lineTo(x, y); } g.stroke(); } }
+    else if (style === "farm") {   // Moo Moo Meadows' orange-tan country dirt, with tyre tracks worn into it
+      g.fillStyle = "#d6a35e"; g.fillRect(0, 0, U, 192);
+      for (let k = 0; k < 120; k++) { const x = r() * U, y = r() * 192, rad = 8 + r() * 18, gr = g.createRadialGradient(x, y, 0, x, y, rad), dk = r() < .5;
+        gr.addColorStop(0, dk ? "rgba(150,95,40,.13)" : "rgba(255,225,170,.12)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+      for (let k = 0; k < 9000; k++) { g.fillStyle = r() < .5 ? "rgba(120,78,36,.22)" : "rgba(255,236,196,.2)"; g.fillRect(r() * U, r() * 192, .5 + r() * .6, .5 + r() * .6); }
+      g.fillStyle = "rgba(140,90,40,.16)"; for (const x of [.22, .3, .7, .78]) g.fillRect(U * x - 3, 0, 6, 192);   // two pairs of wheel ruts
+    }
     else if (style === "dirt") { specks("#b98b5a", ["#a87a4a", "#c99d68", "#9c6e40", "#d2a878"], 2600, 1.6); g.fillStyle = "rgba(90,60,30,.18)"; for (const x of [.3, .7]) g.fillRect(U * x - 6, 0, 12, 192); }
     else if (style === "snow") { specks("#e3ebf6", ["#c9d6ea", "#f8fbff", "#d6e2f2"], 2400, 1.6); g.fillStyle = "rgba(150,170,205,.35)"; for (const x of [.28, .72]) g.fillRect(U * x - 5, 0, 10, 192); }
     else if (style === "toy") { const cols = ["#ffe39a", "#ffc8de", "#c4e8ff", "#cdf0bd"]; g.fillStyle = "#f4f0ff"; g.fillRect(0, 0, U, 192);
@@ -130,8 +137,8 @@ export function create(A) {
       for (let k = 0; k < 26000; k++) { g.fillStyle = r() < .5 ? "rgba(70,62,54,.16)" : "rgba(255,255,255,.14)"; g.fillRect(r() * U, r() * 192, .3, .3); }
       g.fillStyle = "rgba(60,50,40,.045)"; for (const x of [.3, .7]) g.fillRect(U * x - 10, 0, 20, 192); }
     else specks("#5d5d64", ["#555560", "#66666e", "#4f4f58"], 3000, 1.2);
-    if (style !== "planks" && style !== "toy") { g.fillStyle = "rgba(255,255,255,.88)"; g.fillRect(3, 0, 2.2, 192); g.fillRect(U - 5.2, 0, 2.2, 192); }   // edge lines
-    if (style !== "planks") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
+    if (style !== "planks" && style !== "toy" && style !== "farm") { g.fillStyle = "rgba(255,255,255,.88)"; g.fillRect(3, 0, 2.2, 192); g.fillRect(U - 5.2, 0, 2.2, 192); }   // edge lines
+    if (style !== "planks" && style !== "farm") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; t.anisotropy = aniso; t.minFilter = THREE.LinearMipmapLinearFilter; return t;
   }
   const curbTex = cc => { const c = canvas(8, 64), g = c.getContext("2d"); g.fillStyle = cc[0]; g.fillRect(0, 0, 8, 32); g.fillStyle = cc[1]; g.fillRect(0, 32, 8, 32);
@@ -275,10 +282,10 @@ export function create(A) {
     g.font = "900 92px Ubuntu, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 8; g.strokeStyle = "rgba(60,40,80,.55)"; g.strokeText("?", 64, 70); g.fillStyle = "#fff"; g.fillText("?", 64, 70);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
   const boxes = []; let bi = 0;
-  function box(x, y, tt, i) {
+  function box(x, y, tt, i, z = 0) {
     let b = boxes[bi++]; if (!b) { b = new THREE.Mesh(BOX, new THREE.MeshPhongMaterial({ map: qTex, transparent: true, opacity: .82, shininess: 90, emissive: 0x222222 })); scene.add(b); boxes.push(b); }
     b.visible = true; b.scale.setScalar(13); b.material.color.setHSL(((tt * .33 + i * .13) % 1), .85, .6);
-    b.position.set(x, h(x, y) + 11 + Math.sin(tt * 3 + i) * 1.6, y); b.rotation.set(.35, tt * 1.6 + i, .2);
+    b.position.set(x, h(x, y) + 11 + z + Math.sin(tt * 3 + i) * 1.6, y); b.rotation.set(.35, tt * 1.6 + i, .2);
   }
 
   // ---------------------------------------------------------------- karts
