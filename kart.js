@@ -509,10 +509,10 @@ function loadTrack(key) {
   OUT = T.theme.out ? hexABGR(T.theme.out) : OUT0; HAZE = T.theme.haze || HAZE0;
   const F = OPEN ? (fr => Math.round(Math.max(0, Math.min(1, fr)) * (N - 1))) : (fr => Math.round((((fr % 1) + 1) % 1) * N) % N);
   const f = T.build(F);
-  if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key], w = T.cup === "zakum" ? 42 : 44;   // 🔀 the other maps' short cuts: a narrow zig-zag you have to earn
-    const extra = { sleepy: [{ t: "mud", j: .47, len: 7, o: 0, w }], elnath: [{ t: "ice", j: .47, len: 8, o: 0, w }], ludi: [{ t: "slime", j: .47, len: 6, o: w / 4, w: w / 2 }], zakum: [] }[T.cup] || [];
+  if (!f.fork && SHORTCUTS[key]) { const [a, b, via] = SHORTCUTS[key], w = T.cup === "zakum" ? 48 : 54;   // 🔀 the other maps' short cuts: a few S-bends, one thing to dodge, two boosts
+    const dodge = { sleepy: "mud", elnath: "ice", ludi: "slime", zakum: "rock" }[T.cup] || "rock";
     f.fork = { a, b, via: zigzag(a, b, via, w), width: w, style: T.cup === "zakum" || T.cup === "sleepy" ? "planks" : "cobble", coins: true,
-      pads: [{ t: "rock", j: .27, len: 7, o: w / 4, w: w / 2 }, ...extra, { t: "rock", j: .64, len: 7, o: -w / 4, w: w / 2 }, { t: "boost", j: .84, len: 5, o: 0, w: w * .8 }] }; }   // every other map gets a short cut where its road loops back near itself
+      pads: [{ t: "rock", j: .28, len: 7, o: w / 4, w: w / 2 }, { t: "boost", j: .45, len: 5, o: 0, w: w * .7 }, { t: dodge, j: .63, len: 7, o: -w / 4, w: w / 2 }, { t: "boost", j: .84, len: 5, o: 0, w: w * .8 }] }; }   // every other map gets a short cut where its road loops back near itself
   if (f.fork) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
@@ -536,11 +536,11 @@ function zigzag(a, b, via, w) {
   for (let q = 1; q < poly.length; q++) { const d = Math.hypot(poly[q][0] - poly[q - 1][0], poly[q][1] - poly[q - 1][1]); seg.push(d); tot += d; }
   const P = u => { let d = u * tot, q = 0; while (q < seg.length - 1 && d > seg[q]) { d -= seg[q]; q++; } const A = poly[q], B2 = poly[q + 1], f = Math.min(1, d / seg[q]);
     return [A[0] + (B2[0] - A[0]) * f, A[1] + (B2[1] - A[1]) * f, Math.atan2(B2[1] - A[1], B2[0] - A[0])]; };
-  const n = Math.max(4, Math.min(8, Math.round(tot / 110))), need = ROAD / 2 + CURB + w / 2 + 4;
+  const n = Math.max(3, Math.min(5, Math.round(tot / 170))), need = ROAD / 2 + CURB + w / 2 + 4;   // a few soft S-bends
   for (let k = 1; k <= n; k++) {
     const [x, y, ang] = P(k / (n + 1)), nx = -Math.sin(ang), ny = Math.cos(ang), side = k % 2 ? 1 : -1;
     let pt = [x, y];
-    for (const amp of [52, 40, 28, 16]) { const c = [x + nx * amp * side, y + ny * amp * side]; if (nearest(c[0], c[1]).d >= need) { pt = c; break; } }
+    for (const amp of [30, 22, 14]) { const c = [x + nx * amp * side, y + ny * amp * side]; if (nearest(c[0], c[1]).d >= need) { pt = c; break; } }
     out.push(pt);
   }
   return out;
@@ -657,8 +657,8 @@ function paintTrack() {
     }
   } };
   if (AN && SHORTCUTS[TRACK_KEY] && T.cup !== "zakum") {   // what you fall into if you slip off the short cut
-    const H = { sleepy: ["#24413a", "#3a6a5a"], ludi: ["#1c1038", "#ffe9a8"], elnath: ["#f8fbff", "#c4d6ee"] }[T.cup];
-    if (H) { apath(); g.strokeStyle = H[0]; g.lineWidth = ALT_ROAD + 170; g.stroke();
+    const H = { sleepy: ["#33584a", "#4a7a66"], ludi: ["#d8c8f0", "#ffffff"], elnath: ["#f8fbff", "#c4d6ee"] }[T.cup];
+    if (H) { apath(); g.strokeStyle = H[0]; g.lineWidth = ALT_ROAD + 90; g.stroke();
       for (let j = 0; j < AN; j++) for (let q = 0; q < 3; q++) { const o = (rnd() - .5) * (ALT_ROAD + 160), [x, y] = altAt(j, o); g.fillStyle = H[1];
         if (T.cup === "ludi") g.fillRect(x, y, 2, 2); else { g.beginPath(); g.ellipse(x, y, 6 + rnd() * 12, 3 + rnd() * 4, rnd() * 3, 0, 7); g.fill(); } } }
   }
@@ -1391,10 +1391,9 @@ function step(dt) {
     if (k.lostT > 2.6 || k.wrong > 3) { rescue(k); return; }
   }
   const ground = under(near, k.x, k.y), L = ground.L;
-  if (racing && near.alt && k.z <= 0 && near.d > near.half + CURB + 4 && SHORTCUTS[TRACK_KEY] && T.cup !== "zakum") {   // 🔀 slipping off a short cut
-    if (T.cup === "elnath") { if (!k.deepSnow) flash("❄️ Deep snow!", 700); k.deepSnow = .25; }
-    else { k.altFallT = (k.altFallT || 0) + dt; if (k.altFallT > .12) { k.altFallT = 0; rescue(k, T.cup === "sleepy" ? "💦 Into the swamp!" : "🧸 Fell off the toy bridge!"); return; } }
-  } else k.altFallT = 0;
+  if (racing && near.alt && k.z <= 0 && near.d > near.half + CURB + 4 && SHORTCUTS[TRACK_KEY] && T.cup !== "zakum") {   // 🔀 off a short cut: you just bog down (Zakum's is lava)
+    if (!(k.deepSnow > 0)) flash({ elnath: "❄️ Deep snow!", sleepy: "💦 Shallow water!", ludi: "🧸 Squishy floor!" }[T.cup] || "Slow!", 700); k.deepSnow = .25;
+  }
   if (MECH === "lava" && racing && k.z <= 0 && near.d > near.half + CURB + 8) {   // (on the plank bridge too: off its sides is lava)   // 🔥 Zakum: there's no safe edge, off the road is lava
     k.fallT = (k.fallT || 0) + dt; if (k.fallT > .12) { k.fallT = 0; rescue(k, "🔥 Fell into the lava!"); return; }
   } else k.fallT = 0;
@@ -1439,7 +1438,7 @@ function step(dt) {
   const hb = k.hyper > 0;
   boostTick(k, dt);
   if (k.deepSnow > 0) k.deepSnow -= dt;
-  const top = k.frozen > 0 ? 90 : k.deepSnow > 0 ? 70 : hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
+  const top = k.frozen > 0 ? 90 : k.deepSnow > 0 ? 120 : hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
   if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
   else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
   else k.v += (k.v < top ? (k.extra > 5 ? 900 : k.v < 120 ? 210 : 120) : -260) * dt;   // boosts reach their speed almost at once
