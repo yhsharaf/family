@@ -2165,7 +2165,7 @@ async function loadBoard() {
   document.querySelectorAll("#kBoardTabs [data-b]").forEach(b => b.classList.toggle("on", b.dataset.b === boardView));
   if (boardView === "points") {
     $k("#kBoardHead").textContent = "🏆 Points · guild races with 4+ racers";
-    const { data } = await sb.from("kart_points").select("player,points,races,wins").order("points", { ascending: false }).order("wins", { ascending: false }).limit(10);
+    const { data } = await sb.from("kart_points").select("player,points,races,wins").gt("races", 0).order("points", { ascending: false }).order("wins", { ascending: false }).limit(10);
     $k("#kBoard").innerHTML = (data || []).length ? data.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>
       <span>${r.points} pts</span><small>${r.wins} 🥇 · ${r.races} races</small></li>`).join("") : `<p class="bd-none">No points yet. Win a multiplayer race to get on the board!</p>`;
     return;
