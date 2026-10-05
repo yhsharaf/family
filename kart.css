@@ -280,3 +280,48 @@ kbd.w { min-width: 54px; }
   #kMenu .sk-face img { max-height: 92px; transform: scale(1.15); }
   #kMenu .kt-track img { width: 72px; height: 44px; }
 }
+
+/* ===== the race intro: "Family, are you Ready!" · 3 · 2 · 1 · "Go Family!!!" ===== */
+.k-flash { white-space: pre-line; line-height: 1.05; z-index: 6; }
+.k-flash.intro { top: 22%; font-size: clamp(30px, 6.2vw, 58px); color: #fff; -webkit-text-stroke: 2px #7a1418; text-shadow: 0 4px 0 #7a1418, 0 0 18px rgba(255,215,94,.9); }
+.k-flash.intro.on { animation: kIntro 1.3s ease-out both; }
+.k-flash.num { top: 26%; font-size: clamp(70px, 15vw, 130px); color: #ffd75e; -webkit-text-stroke: 4px #7a1418; text-shadow: 0 7px 0 #7a1418, 0 0 30px rgba(255,120,40,.8); }
+.k-flash.num.on { animation: kNum .9s ease-out both; }
+.k-flash.go { top: 24%; font-size: clamp(44px, 9vw, 92px); -webkit-text-stroke: 3px #3b1f00; text-shadow: 0 6px 0 #3b1f00, 0 0 26px rgba(255,255,255,.9);
+  background: linear-gradient(90deg, #ff5a5a, #ffd23f, #6eea6e, #5ac8ff, #c87aff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.k-flash.go.on { animation: kGo 1.3s ease-out both; }
+@keyframes kIntro { 0% { opacity: 0; transform: translateY(-30px) scale(.7) rotate(-4deg); } 18% { opacity: 1; transform: translateY(0) scale(1.08) rotate(2deg); } 30% { transform: scale(1) rotate(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: scale(1.05); } }
+@keyframes kNum { 0% { opacity: 0; transform: scale(2.4); } 25% { opacity: 1; transform: scale(.92); } 40% { transform: scale(1.04); } 75% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.6); } }
+@keyframes kGo { 0% { opacity: 0; transform: scale(.3) rotate(-8deg); } 20% { opacity: 1; transform: scale(1.18) rotate(3deg); } 35% { transform: scale(1) rotate(0); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1.6); } }
+
+/* ===== rooms: Ready, player badges, chat, the name box asking for a name ===== */
+.kt-pl b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kt-pl em { font-style: normal; font-size: 11px; font-weight: 800; color: #9a6a10; white-space: nowrap; }
+.kt-pl.rdy { background: #eefbea; border-color: #6eaa64; } .kt-pl.rdy em { color: #2e7d32; }
+.kt-readybtn { width: 100%; font-size: 22px; padding: 12px; background: #46a05a; animation: ktReady 1s ease-in-out infinite alternate; }
+.kt-readybtn small { font-size: 13px; opacity: .85; }
+.kt-readybtn.on { background: #2e7d32; animation: none; box-shadow: inset 0 3px 0 rgba(0,0,0,.2); }
+@keyframes ktReady { from { transform: scale(1); } to { transform: scale(1.03); box-shadow: 0 0 0 4px rgba(110,170,100,.35); } }
+.kt-chat { display: flex; flex-direction: column; gap: 5px; background: #fff; border: 1px solid var(--edge); border-radius: 12px; padding: 8px; margin-top: 8px; text-align: left; }
+.kt-chathead { font-size: 14px; }
+.kt-chatlog { height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; font-size: 13px; overscroll-behavior: contain; }
+.kt-chatlog > div { display: flex; align-items: flex-start; gap: 5px; line-height: 1.3; word-break: break-word; }
+.kt-chatlog > div img { width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; flex: 0 0 auto; }
+.kt-chatlog > div b { flex: 0 0 auto; color: #7a1418; } .kt-chatlog > div.me b { color: #2e5fa0; }
+.kt-chatlog .bd-none { margin: auto; color: var(--muted); }
+.kt-chatin { display: flex; gap: 5px; margin: 0; }
+.kt-chatin input { flex: 1; min-width: 0; border: 2px solid var(--edge); border-radius: 10px; padding: 7px 9px; font: 600 14px Ubuntu, sans-serif; }
+.kt-result .kt-chat { margin-top: 10px; } .kt-result .kt-chatlog { height: 110px; }
+.sk-name input.need { border-color: #c8232c !important; box-shadow: 0 0 0 3px rgba(200,35,44,.25); animation: ktShake .45s; }
+.sk-name input.need::placeholder { color: #c8232c; font-weight: 700; }
+@keyframes ktShake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+/* phones: while racing nothing behind the game can scroll, bounce or be tapped by mistake */
+@media (pointer: coarse) {
+  html:has(body.bd-playing), body.bd-playing { overflow: hidden; overscroll-behavior: none; }
+  .kt.racing .kt-screen { touch-action: none; }
+}
+/* position changes: a green pop when you pass someone, a red shake when you're passed */
+.kt-pos.up { animation: kPosUp .65s ease-out; color: #7dff8a !important; }
+.kt-pos.down { animation: kPosDown .5s ease-out; color: #ff7a7a !important; }
+@keyframes kPosUp { 0% { transform: scale(1); } 30% { transform: scale(1.45) rotate(-6deg); } 100% { transform: scale(1); } }
+@keyframes kPosDown { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }

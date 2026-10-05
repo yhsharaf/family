@@ -533,6 +533,11 @@ function paintTrack() {
   else for (let k = -WORLD; k < WORLD * 2; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 32, 0); g.lineTo(k + 32 - WORLD, WORLD); g.lineTo(k - WORLD, WORLD); g.fill(); }   // mowed stripes
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const flowers = th.flowerCols || ["#ffe066", "#ffffff", "#ff8fb8", "#ffb347"], stem = th.stem === undefined ? "#3f8a34" : th.stem;
+  if (!th.checker) {   // grass tufts: little darker and lighter blades all over, so the ground isn't flat colour
+    const sh = (hex, d) => { const n = parseInt(hex.slice(1), 16), f = c => Math.max(0, Math.min(255, c + d)); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
+    const tuftCols = [sh(th.grass[0], -22), sh(th.grass[0], -12), sh(th.grass[0], 14), sh(th.grass[1], -18)];
+    for (let k = 0; k < (th.tufts || 26000); k++) { const x = rnd() * WORLD, y = rnd() * WORLD; g.fillStyle = tuftCols[k & 3]; g.fillRect(x, y, 1.5, 3); g.fillRect(x + 1.5, y + 1, 1.5, 2); }
+  }
   for (let k = 0; k < th.flowers; k++) { const x = rnd() * WORLD, y = rnd() * WORLD; if (stem) { g.fillStyle = stem; g.fillRect(x + 1, y + 4, 3, 3); } g.fillStyle = flowers[k % 4]; g.fillRect(x, y, 5, 5); }
   if (th.cracks) { g.lineWidth = 2; for (let k = 0; k < 260; k++) {   // glowing cracks in the rock
     let x = rnd() * WORLD, y = rnd() * WORLD; g.strokeStyle = rnd() < .5 ? "#ff6a1e" : "#c8321a"; g.beginPath(); g.moveTo(x, y);
@@ -712,7 +717,43 @@ const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () =
 function mesoFrames(strip) {   // the real gold meso from MapleStory (Item.wz 09000001), 4 spinning frames side by side
   return [0, 1, 2, 3].map(i => { const c = document.createElement("canvas"); c.width = 26; c.height = 24; c.getContext("2d").drawImage(strip, -i * 26, 0); c.px = true; return c; });
 }
-let OBJS = [];
+let OBJS = [], CROWD = [];
+// 🎉 the FAMILY start arch (a banner on two posts) and balloons, drawn once into little pictures
+function makeArchArt() {
+  const mk = (w, h, draw) => { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); return c; };
+  IMG.arch_post = mk(18, 150, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, "#7a5200"); gr.addColorStop(.45, "#ffd75e"); gr.addColorStop(1, "#8a5a10");
+    g.fillStyle = gr; g.fillRect(2, 0, w - 4, h); g.fillStyle = "#c8232c"; for (let y = 8; y < h; y += 26) g.fillRect(2, y, w - 4, 9); g.fillStyle = "#5a3a08"; g.fillRect(0, h - 10, w, 10); });
+  IMG.arch_banner = mk(420, 70, (g, w, h) => {
+    g.fillStyle = "#7a1418"; g.beginPath(); g.roundRect(0, 4, w, h - 8, 12); g.fill();
+    g.fillStyle = "#c8232c"; g.beginPath(); g.roundRect(4, 8, w - 8, h - 16, 10); g.fill();
+    g.strokeStyle = "#ffd75e"; g.lineWidth = 3; g.beginPath(); g.roundRect(9, 13, w - 18, h - 26, 8); g.stroke();
+    g.font = "900 38px Ubuntu, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 6; g.strokeStyle = "#5a0d10";
+    g.strokeText("👑 FAMILY KART 👑", w / 2, h / 2 + 2); g.fillStyle = "#ffe48a"; g.fillText("👑 FAMILY KART 👑", w / 2, h / 2 + 2); });
+  ["#ff5a5a", "#ffd23f", "#5ac8ff", "#ffffff", "#7ad06a", "#ff8fd0"].forEach((col, i) => IMG["balloon" + i] = mk(26, 60, (g) => {
+    g.strokeStyle = "rgba(60,40,20,.7)"; g.lineWidth = 1; g.beginPath(); g.moveTo(13, 30); g.quadraticCurveTo(9, 45, 14, 60); g.stroke();
+    g.fillStyle = col; g.beginPath(); g.ellipse(13, 15, 11, 14, 0, 0, 7); g.fill(); g.fillStyle = "rgba(255,255,255,.55)"; g.beginPath(); g.ellipse(9, 9, 3, 5, -.4, 0, 7); g.fill();
+    g.fillStyle = col; g.beginPath(); g.moveTo(10, 29); g.lineTo(16, 29); g.lineTo(13, 33); g.fill(); }));
+}
+function placeStart(push) {
+  if (!IMG.arch_post) makeArchArt();
+  const li = OPEN ? START_I : 0, half = ROAD / 2 + CURB + 10, [cx, cy] = at(li, 0);
+  for (const sd of [-1, 1]) { const [x, y] = at(li, sd * half); push(x, y, "arch_post", .62, 0); }
+  OBJS.push({ x: cx, y: cy, k: "arch_banner", s: (half * 2 + 14) / 420, r: 0, z: 70 });
+  for (let n = 0; n < 10; n++) { const sd = n % 2 ? 1 : -1, [x, y] = at(li + (n >> 1) - 2, sd * (half + 6 + (n % 3) * 7));
+    OBJS.push({ x, y, k: "balloon" + (n % 6), s: .7, r: 0, z: 78 + (n % 4) * 9, bob: 4 }); }
+}
+// the guild comes to watch: real Family members cheering and jumping along the start straight
+async function makeCrowd() {
+  CROWD = [];
+  if (T.cup !== "henesys" || typeof ROSTER === "undefined") return;
+  const pool = ROSTER.filter(p => p.sprite).map(p => p.name).sort(() => Math.random() - .5).slice(0, 18), li = OPEN ? START_I : 0;
+  const imgs = await Promise.all(pool.map(n => loadImg(spriteOf(n))));
+  imgs.forEach((im, n) => { if (!im) return; im.px = true;
+    const sd = n % 2 ? 1 : -1, i = li + (Math.floor(n / 2) - 1) * 4 + (n % 3), o = sd * (ROAD / 2 + CURB + 36 + (n % 3) * 13), [x, y] = at(OPEN ? Math.max(0, i) : (i + N) % N, o);
+    if (roadDist(x, y) < ROAD / 2 + CURB + 12) return;
+    CROWD.push({ x, y, img: im, s: .38, jump: 6 + Math.random() * 7, sp: 5 + Math.random() * 4, ph: Math.random() * 6, flip: sd > 0 });
+  });
+}
 function placeObjects() {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   OBJS = [];
@@ -727,6 +768,7 @@ function placeObjects() {
     }
   }
   T.extraFn(push);
+  if (T.cup === "henesys") placeStart(push);
   for (let k = 0; k < 170; k++) {   // woods and houses further out
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
     if (d < ROAD / 2 + 130 || inLake(x, y)) continue;
@@ -736,9 +778,10 @@ function placeObjects() {
 }
 
 // ------------------------------------------------------------------ screen
-// fixed 320 px wide; the height follows the screen's shape (tall on phones), with the camera raised to match
+// the world is laid out on a 320-unit-wide screen; the height follows the screen's shape (tall on phones), with the camera raised to match.
+// The floor is drawn QUAL times sharper than that (2-3x on most screens), and steps down by itself if the device can't keep up.
 const W = 320, FOCAL = 170, CAMD = 84;
-let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1, FW = 320, FH = 134;
+let H = 192, HOR = 58, CAMH = 30, floor = null, F32 = null, FOG = [], S = 1, FW = 320, FH = 134, QMAX = 3, floorMs = 0;
 const cv = $k("#kCanvas"), bctx = cv.getContext("2d");
 const fxc = $k("#kFx"), ctx = fxc.getContext("2d");   // sky, town, props, karts and the minimap, drawn sharp at screen resolution
 function fit() {
@@ -746,14 +789,19 @@ function fit() {
   const h = r.width > 0 ? Math.round(W * r.height / r.width) : 192;
   H = Math.max(130, Math.min(640, h)); HOR = Math.round(H * .27); CAMH = (H * .8 - HOR) * CAMD / FOCAL;
   const dpr = Math.min(2, window.devicePixelRatio || 1), pw = Math.min(1800, Math.round((r.width || W) * dpr));
-  FW = W; const fk = 1; FH = H - HOR;   // the floor is 320 px wide: chunky retro pixels
-  cv.width = FW; cv.height = H; bctx.imageSmoothingEnabled = false;
+  const fk = Math.max(1, Math.min(QMAX, Math.round(pw / W / 1.5))); FW = W * fk; FH = (H - HOR) * fk;
+  cv.width = FW; cv.height = H * fk; bctx.imageSmoothingEnabled = false; cv.style.imageRendering = fk > 1 ? "auto" : "";
   floor = bctx.createImageData(FW, FH); F32 = new Uint32Array(floor.data.buffer);
   FOG = []; for (let y = 0; y < FH; y++) { const yl = y / fk; FOG[y] = yl < 8 ? Math.round(150 * (1 - yl / 8)) : 0; }   // only a thin blend into the horizon
   fxc.width = pw; fxc.height = Math.round(pw * H / W); S = pw / W;
 }
 fit();
 addEventListener("resize", () => { if (state !== "menu") fit(); });
+// close-up grain (multiplied into the nearest rows of the floor): soft speckles so the road and grass look like a surface, not blur
+const DETAIL = new Uint16Array(64 * 64);
+{ let sd = 3; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < DETAIL.length; i++) DETAIL[i] = 256 - Math.round(r() * 26);
+  for (let k = 0; k < 120; k++) { const x = r() * 64 | 0, y = r() * 64 | 0; for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) DETAIL[((y + dy) & 63) * 64 + ((x + dx) & 63)] = 205 + (r() * 20 | 0); } }
 const OUT0 = 0xff2e7d32 >>> 0, HAZE0 = [214, 236, 255];   // beyond the map edge: dark forest (ABGR); the horizon haze
 const hexABGR = h => { const n = parseInt(h.slice(1), 16); return (0xff000000 | ((n & 255) << 16) | (n & 0xff00) | (n >> 16)) >>> 0; };
 const FIN_OFF = 14;   // an open track's finish line, this many points before its end
@@ -1071,7 +1119,7 @@ let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 
 let K = null, best = null, countAt = 0;
 const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); } }) : null;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get floorMs() { return floorMs; } }) : null;
 function freshKart() {
   const g = gridSpot(mode === "mp" ? MP.slot : 4), i = (g.i + N) % N, a = tangent(i), [x, y] = at(i, g.o);
   return { x, y, a, item: null, itemN: 0, roll: 0, pending: null, v: 0, steer: 0, drift: 0, charge: 0, boost: 0, hop: 0, idx: i, lap: 0, cps: 0,
@@ -1263,10 +1311,10 @@ function step(dt) {
   k.t += dt * 1000;
   if (mode === "tt" && (!ghostRec.length || k.t - ghostRec[ghostRec.length - 1][0] >= 100)) ghostRec.push([Math.round(k.t), Math.round(k.x), Math.round(k.y), +k.a.toFixed(2), Math.round(k.z)]);
   if (lapTick(k)) {
-    k.laps.push(k.t - k.lapStart); k.lapStart = k.t; lapSound();
+    k.laps.push(k.t - k.lapStart); k.lapStart = k.t; lapSound(); if (T.cup === "henesys") cheerSound();
     COINS.forEach(c => c.got = false);   // mesos come back every lap (the 10 max stays)
     if (k.lap >= LAPS) finish();
-    else if (k.lap === LAPS - 1) { flash("🏁 FINAL LAP!", 1600); finalSound(); B.musicRate(1.15); }   // fanfare, and the music speeds up
+    else if (k.lap === LAPS - 1) { flash("🏁 FINAL LAP!", 1600); finalSound(); B.musicRate(1.15); fireworks(3); }   // fanfare, and the music speeds up
     else flash(`Lap ${k.lap + 1}`, 1300);
   }
   // wrong way: moving against the track direction for a moment
@@ -1299,9 +1347,10 @@ function render() {
     const st = IMG.strip, sh = Math.min(HOR * .78, H * .2), sw = st.width * sh / st.height, off = ((turn * sw * 1.6) % sw + sw) % sw;
     for (let x = -off; x < W; x += sw) ctx.drawImage(st, x, HOR + 1.5 - sh, sw + .5, sh);
   }
+  skyFireworks();
   // floor, one row at a time (the camera rises a little when you jump, so big jumps feel like flying)
   const CH = CAMH + Math.min(k.z, 130) * .35;
-  const fk = FW / W, LV = MECH === "lava" && LAVA && PIDX ? Math.floor(LAVA.i) + 1 : 0, lvs = Math.floor(performance.now() / 70);
+  const fk = FW / W, LV = MECH === "lava" && LAVA && PIDX ? Math.floor(LAVA.i) + 1 : 0, lvs = Math.floor(performance.now() / 70), f0 = performance.now();
   for (let y = 0; y < FH; y++) {
     const yl = (y + .5) / fk, z = CH * FO / (yl + .5), half = z * (W / 2) / FO;
     let wx = cx + ca * z + sa * half, wy = cy + sa * z - ca * half;   // left end of the row
@@ -1315,6 +1364,17 @@ function render() {
       if (f) c = 0xff000000 | ((((c >>> 16) & 255) * nf + hb) >> 8) << 16 | ((((c >>> 8) & 255) * nf + hg) >> 8) << 8 | (((c & 255) * nf + hr) >> 8);
       F32[o] = c >>> 0;
     }
+    else if (stx * stx + sty * sty < .36) for (let x = 0; x < FW; x++, wx += stx, wy += sty, o++) {   // close up: blend the 4 nearest texture pixels (smooth, not blocky)
+      const fx = wx - .5, fy = wy - .5, ix = Math.floor(fx), iy = Math.floor(fy);
+      if (ix < 0 || iy < 0 || ix >= WORLD - 1 || iy >= WORLD - 1) { F32[o] = OUT; continue; }
+      const ax = fx - ix, ay = fy - iy, p = iy * WORLD + ix, c00 = TEX[p], c10 = TEX[p + 1], c01 = TEX[p + WORLD], c11 = TEX[p + WORLD + 1];
+      const w00 = (1 - ax) * (1 - ay) * 256 | 0, w10 = ax * (1 - ay) * 256 | 0, w01 = (1 - ax) * ay * 256 | 0, w11 = 256 - w00 - w10 - w01;
+      const r = ((c00 & 255) * w00 + (c10 & 255) * w10 + (c01 & 255) * w01 + (c11 & 255) * w11) >> 8,
+        g = (((c00 >>> 8) & 255) * w00 + ((c10 >>> 8) & 255) * w10 + ((c01 >>> 8) & 255) * w01 + ((c11 >>> 8) & 255) * w11) >> 8,
+        b = (((c00 >>> 16) & 255) * w00 + ((c10 >>> 16) & 255) * w10 + ((c01 >>> 16) & 255) * w01 + ((c11 >>> 16) & 255) * w11) >> 8;
+      const dt2 = DETAIL[(((fy * 3) | 0) & 63) * 64 + (((fx * 3) | 0) & 63)];
+      F32[o] = (0xff000000 | ((b * dt2) >> 8) << 16 | ((g * dt2) >> 8) << 8 | ((r * dt2) >> 8)) >>> 0;
+    }
     else for (let x = 0; x < FW; x++, wx += stx, wy += sty, o++) {
       const ix = wx | 0, iy = wy | 0;
       let c = (ix >= 0 && iy >= 0 && ix < WORLD && iy < WORLD) ? TEX[iy * WORLD + ix] : OUT;
@@ -1323,6 +1383,8 @@ function render() {
     }
   }
   bctx.putImageData(floor, 0, Math.round(HOR * fk));
+  floorMs += (performance.now() - f0 - floorMs) * .05;   // too slow for this device? draw the floor less sharp
+  if (floorMs > 11 && fk > 1 && state === "race") { QMAX = fk - 1; floorMs = 6; fit(); }
   if (T.theme.night) { ctx.fillStyle = `rgba(8,10,40,${T.theme.night})`; ctx.fillRect(0, 0, W, H); }
   // billboards, far to near: scenery, mesos, pigs and the King Slime (with a shadow when it's up in the air)
   const tt = performance.now() / 1000, vis = [];
@@ -1358,7 +1420,8 @@ function render() {
     ctx.fillStyle = "rgba(255,240,120,.5)"; ctx.beginPath(); ctx.arc(0, 0, w * .6, 0, 7); ctx.fill(); ctx.drawImage(im, -w / 2, -w / 2, w, w); ctx.restore(); });
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
-  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, 0);
+  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + Math.sin(tt * 2 + ob.x) * ob.bob : ob.z || 0);
+  for (const c of CROWD) if (c.img) add(c.x, c.y, c.img, c.s, Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump, c.flip);
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
   for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
@@ -1382,6 +1445,7 @@ function render() {
   ctx.globalAlpha = 1;
   if (!kartDrawn) { lightsOut(); drawKart(k); }
   if (T.theme.snow) snowfall(T.theme.snow);
+  if (T.cup === "henesys") petals();
   if (LAVA && state !== "menu" && !k.done) { const near = Math.max(0, 1 - (k.idx - LAVA.i) * SPC / 640); if (near > 0) {   // the screen glows red as the lava closes in
     const gr = ctx.createRadialGradient(W / 2, H * .6, H * .2, W / 2, H * .6, W * .75); gr.addColorStop(0, "rgba(255,60,0,0)"); gr.addColorStop(1, `rgba(255,60,0,${near * .5})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); } }
   if (k.hitFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(.7, k.hitFlash * 8)})`; ctx.fillRect(0, 0, W, H); }
@@ -1425,6 +1489,33 @@ function darkness() {
   const t = K.t / 1000; if (t < 15) return 0;
   const p = t % 15; return p < 3 ? Math.min(1, p / .25, (3 - p) / .4) : 0;
 }
+// 🌸 Henesys: petals and leaves drifting past the camera
+let PETALS = [];
+function petals() {
+  if (PETALS.length < 26 && Math.random() < .3) PETALS.push({ x: Math.random() * W * 1.4 - W * .2, y: -6, v: 10 + Math.random() * 16, r: Math.random() * 6, vr: (Math.random() - .5) * 4, ph: Math.random() * 6,
+    s: 1.4 + Math.random() * 1.8, c: ["#ffc8de", "#ffffff", "#ff9fc4", "#ffe08a", "#8fd46a"][Math.floor(Math.random() * 5)] });
+  const t = performance.now() / 1000, sw = (K ? K.steer : 0) * 26 + (K ? K.v : 0) * .02;
+  for (let i = PETALS.length - 1; i >= 0; i--) { const p = PETALS[i]; p.y += p.v / 60; p.x += (Math.sin(t * 1.3 + p.ph) * 9 - sw) / 60; p.r += p.vr / 60;
+    if (p.y > H || p.x < -W * .3 || p.x > W * 1.3) { PETALS.splice(i, 1); continue; }
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.scale(1, Math.abs(Math.cos(t * 2 + p.ph)) * .8 + .2); ctx.fillStyle = p.c; ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * .6, 0, 0, 7); ctx.fill(); ctx.restore(); }
+  ctx.globalAlpha = 1;
+}
+// 🎆 fireworks over the horizon (final lap, finish line)
+let FWK = [], fwkT = 0;
+function fireworks(n) { for (let b = 0; b < n; b++) setTimeout(() => {
+  const x = W * (.12 + Math.random() * .76), y = HOR * (.2 + Math.random() * .5), hue = Math.random() * 360;
+  for (let i = 0; i < 34; i++) { const a = i / 34 * Math.PI * 2, sp = 26 + Math.random() * 22; FWK.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 1.3, c: `hsl(${hue + Math.random() * 40},100%,${60 + Math.random() * 20}%)` }); }
+  if (state !== "menu") tone(140 + Math.random() * 60, .25, "sawtooth", .03, 60);
+}, b * 380); }
+function skyFireworks() {
+  const now = performance.now() / 1000, dt = Math.min(.05, now - (fwkT || now)); fwkT = now; if (!FWK.length) return;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.beginPath(); ctx.rect(0, 0, W, HOR + 2); ctx.clip();
+  for (let i = FWK.length - 1; i >= 0; i--) { const p = FWK[i]; p.t -= dt; if (p.t <= 0) { FWK.splice(i, 1); continue; }
+    p.vy += 22 * dt; p.vx *= .985; p.x += p.vx * dt; p.y += p.vy * dt; ctx.globalAlpha = Math.min(1, p.t); ctx.fillStyle = p.c; ctx.fillRect(p.x - .8, p.y - .8, 1.6, 1.6); }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+const cheerSound = () => { noiseHit(1800, .9, .05, .6, 900); [784, 988, 1175].forEach((f, i) => setTimeout(() => tone(f, .12, "triangle", .05), 120 + i * 90)); };
 // El Nath: snow falling past the camera
 let FLAKES = [];
 function snowfall(n) {
@@ -1619,10 +1710,13 @@ function hud() {
   $k("#kItemBoxN").textContent = k.item === "triple" ? k.itemN : ""; $k("#kItemBoxN").hidden = k.item !== "triple";
   const pb = $k("#kPad [data-k=i]"); pb.disabled = !k.item || k.roll > 0; const pi = pb.querySelector("img"); if (pi.dataset.src !== icon) { pi.dataset.src = icon; if (icon) pi.src = icon; pi.hidden = !icon; }
   const rk = state === "menu" || mode === "tt" ? 0 : state === "done" ? K.place : rankOf(k);
-  $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "");
+  if (state === "race" && rk && lastRk && rk !== lastRk) { posPop = { up: rk < lastRk, at: performance.now() }; if (rk < lastRk) tone(988, .09, "square", .05, 1320); }
+  if (state !== "race") posPop = null; lastRk = rk;
+  const pop = posPop && performance.now() - posPop.at < 650 ? (posPop.up ? " up" : " down") : "";
+  $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + pop;
 }
-let flashT = null, warnAt = 0;
-function flash(t, ms) { const f = $k("#kFlash"); f.textContent = t; f.className = "k-flash on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash", ms); }
+let flashT = null, warnAt = 0, lastRk = 0, posPop = null;
+function flash(t, ms, kind) { const f = $k("#kFlash"); f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
 // phones race sideways: go fullscreen + lock to landscape where the browser allows it (Android), otherwise ask to rotate and pause
 const TOUCH = matchMedia("(pointer: coarse)").matches;
 const upright = () => TOUCH && innerHeight > innerWidth;
@@ -1652,7 +1746,7 @@ let raceId = 0;   // bumps on every start and quit, so timers and loading from a
 async function start() {
   const my = ++raceId, alive = () => my === raceId && state !== "menu";
   const n = $k("#kName").value.trim().slice(0, 20);
-  if (n.length < 2) { $k("#kErr").textContent = "Type your character name first."; return; }
+  if (n.length < 2) { needName("👆 Type your character name first."); return; }
   $k("#kErr").textContent = "";
   const g = guildOf(n); me = g ? g.name : n; if (g) store.set("family_me", g.name);
   if (mode === "mp") { if (!MP.code) return; me = MP.me; MP.finished = false; MP.results = null; }
@@ -1672,7 +1766,7 @@ async function start() {
   
   try { ghost = mode === "tt" ? JSON.parse(store.get(ghostKey())) : null; } catch (e) { ghost = null; }
   ghostRec = []; PFX = []; FIRE = [];
-  K = freshKart(); finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
+  K = freshKart(); PETALS = []; FWK = []; lastRk = 0; finishers = 0; bloopCD = 0; armCD = 0; thunderCD = 0; thunderFx = 0; FLAKES = [];
   LAVA = MECH === "lava" ? { i: START_I - 440 / SPC, v: 0, t: 0 } : null; makeRivals(mode === "gp" ? gp.names : null); if (mode === "gp") gp.names = RIV.map(r => r.name);
   if (mode === "tt") { K.item = "triple"; K.itemN = 3; }
   B.musicRate(1);
@@ -1680,15 +1774,19 @@ async function start() {
   if (mode === "tt") fetchTop();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   await waitLandscape(); if (!alive() || state !== "wait") return; fit(); state = "count";
-  const goIn = mode === "mp" ? Math.max(0, MP.goAt - performance.now()) : 3000;   // a room race starts at the server's time
+  // the intro: "Family, are you Ready!", then 3, 2, 1 and "Go Family!!!" (a room race starts at the server's time)
+  const goIn = mode === "mp" ? Math.max(0, MP.goAt - performance.now()) : 4600;
   countAt = performance.now() + goIn - 3000; COINS.forEach(c => c.got = false);
-  for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) if (goIn - 3000 + d >= 0) setTimeout(() => { if (alive() && state === "count") { flash(t, 900); beep(440); } }, goIn - 3000 + d);
+  const at = (ms, fn) => { if (ms >= -200) setTimeout(() => { if (alive() && state === "count") fn(); }, Math.max(0, ms)); };
+  { const introAt = Math.max(0, goIn - 4600), room = goIn - 3000 - introAt;   // skipped if a slow load ate the time for it
+    if (room >= 500) at(introAt, () => { flash("Family,\nare you Ready!", Math.min(1300, room - 100), "intro"); readySound(); }); }
+  for (const [t, d] of [["3", 0], ["2", 1000], ["1", 2000]]) at(goIn - 3000 + d, () => { flash(t, 900, "num"); beep(440); });
   setTimeout(() => {
-    if (!alive() || state !== "count") return; state = "race"; beep(880);
+    if (!alive() || state !== "count") return; state = "race"; beep(880); goSound();
     const h = K.held;
-    if (h != null && h >= 950) { giveBoost(K, 1.2, 110); flash("🚀 ROCKET START!", 1000); }
+    if (h != null && h >= 950) { giveBoost(K, 1.2, 110); flash("🚀 ROCKET START!\nGo Family!!!", 1300, "go"); }
     else if (h != null) { K.stall = .9; flash("💨 Too early!", 1000); bumpSound(); }
-    else flash("GO!", 900);
+    else flash("Go Family!!!", 1300, "go");
     RIV.forEach(r => { if (!r.remote && Math.random() < .35) giveBoost(r, 1, 90); });
   }, goIn);
 }
@@ -1710,6 +1808,7 @@ async function loadArt() {
     jobs.push(artImg(p ? (p[2] ? `media/kart/${p[2]}/${k}.webp?v=1` : `media/kart/${k}.webp?v=1`) : `media/mobs/${k}.png?v=1`).then(im => { IMG[k] = im; if (im && !p) im.px = true; }));
   }
   const art = T.art || HEN_ART;
+  jobs.push(makeCrowd());
   jobs.push(artImg(art.sky).then(im => { sky = im; }), artImg(art.strip).then(im => { IMG.strip = im; }));
   await Promise.all(jobs);
 }
@@ -1717,7 +1816,7 @@ const ordinal = n => n + (["", "st", "nd", "rd"][n] || "th");
 let TRACK_LEN = 0;
 function finish() {
   if (mode === "mp") return mpFinish();
-  const k = K; state = "done"; B.musicRate(1);
+  const k = K; state = "done"; B.musicRate(1); fireworks(6);
   if (!TRACK_LEN) for (let i = 0; i < N; i++) TRACK_LEN += Math.hypot(PTS[(i + 1) % N][0] - PTS[i][0], PTS[(i + 1) % N][1] - PTS[i][1]);
   const total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
   // everyone's time: rivals who finished have theirs, the rest are estimated from how far they still have to go
@@ -1765,7 +1864,7 @@ function finish() {
   }, 1400);
 }
 function mpFinish() {
-  const k = K; state = "done"; B.musicRate(1); MP.finished = true; if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
+  const k = K; state = "done"; B.musicRate(1); MP.finished = true; fireworks(6); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
   const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
   B.sound(place <= 3 ? "win" : "lose"); flash(place === 1 ? "🏆 1st PLACE!" : "🏁 FINISH!", 1600);
   B.client().then(sb => sb && sb.rpc("kart_room_finish", { p_code: MP.code, p_tok: MP.token, p_ms: total })).then(() => mpPoll());
@@ -1794,30 +1893,38 @@ function mpShowResults(res) {
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
     <p class="k-rank">Board points go to guild members only.</p>
     <div id="kNext">${mpNextHtml()}</div>`;
-  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
+  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide"); chatMount($k("#kResult"));
   if (mine && mine.place <= 3) confetti();
 }
 // after a room race: the host picks the next cup and track right here; everyone else watches the room standings (and a dancing Balrog)
 function mpNextHtml() {
-  const host = MP.host === MP.me, rk = roomTrack(), t = TRACKS[rk], here = new Set(MP.players.map(p => p.name));
+  const host = MP.host === MP.me, rk = roomTrack(), t = TRACKS[rk], here = new Set(MP.players.map(p => p.name)), R = mpReadyInfo();
   const order = Object.entries(MP.tally).filter(([n]) => here.has(n)).sort((a, b) => b[1] - a[1]);
   const stand = order.length ? `<div class="k-stand"><b>🏆 Room standings</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${spriteOf(n)}" alt="">${esc(n)} <em>${p}</em></span>`).join("")}</div>` : "";
   const pick = host ? `<p class="kt-pickhead">👑 You're the host: pick the next race</p>
       <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("")}</div>
       <div class="kt-trackpick">${CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("")}</div>
       <div class="kt-diff">${Object.entries(CCS).map(([k, c]) => `<button type="button" data-cc="${k}" class="${+k === cc ? "on" : ""}">${c.label}</button>`).join("")}</div>
-      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${MP.players.length < 2 ? "disabled" : ""}>🏁 Race ${t.icon} ${esc(t.name)} · ${CCS[cc].label.split(" ")[1]}!</button></div>
-      ${MP.players.length < 2 ? `<p class="k-diff">Everyone else left… waiting for someone to join.</p>` : ""}`
-    : `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the next race</b>
+      ${playerList()}
+      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${MP.players.length < 2 || !R.all ? "disabled" : ""}>${R.all ? `🏁 Race ${t.icon} ${esc(t.name)} · ${CCS[cc].label.split(" ")[1]}!` : `⏳ Waiting for ${R.waiting.length} to be ready…`}</button></div>
+      ${MP.players.length < 2 ? `<p class="k-diff">Everyone else left… waiting for someone to join.</p>` : !R.all ? `<p class="k-diff">Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋</p>` : ""}`
+    : `${readyBtn(R.mine)}${playerList()}<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the next race</b>
       <small>Next up: ${t.icon} ${esc(t.name)} · ${CCS[roomCC()].label}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
   return `${stand}${pick}<div class="row"><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
 }
 function mpRedrawNext() { const el = $k("#kNext"); if (el && !$k("#kResult").hidden) el.innerHTML = mpNextHtml(); }
 // ----- rooms: create / join / poll / start / leave
+// no name yet: take them to the name box (scroll there, focus it, shake it) instead of just showing an error at the bottom
+function needName(msg) {
+  const i = $k("#kName"); $k("#kErr").textContent = msg; i.placeholder = "👆 Type your character name here";
+  i.scrollIntoView({ behavior: "smooth", block: "center" }); try { i.focus({ preventScroll: true }); } catch (e) { i.focus(); }
+  i.classList.remove("need"); void i.offsetWidth; i.classList.add("need");
+}
+$k("#kName").addEventListener("input", () => $k("#kName").classList.remove("need"));
 const roomFromHash = () => { const m = location.hash.match(/^#kart\/([A-Z0-9]{4,8})$/); return m ? m[1] : null; };
 async function mpJoin(code, pub) {
   const n = $k("#kName").value.trim().slice(0, 20);
-  if (n.length < 2) { $k("#kErr").textContent = "Type your character name first, then join."; return; }
+  if (n.length < 2) { needName("👆 Type your character name first, then press Join again."); return; }
   const sb = await B.client(); if (!sb) { $k("#kErr").textContent = "Multiplayer needs the database connection."; return; }
   code = code.toUpperCase(); const g = guildOf(n), nm = g ? g.name : n;
   let tok = null; try { tok = store.get("kart_room_tok:" + code); } catch (e) {}
@@ -1828,12 +1935,14 @@ async function mpJoin(code, pub) {
   if (why) { $k("#kErr").textContent = why; return; }
   $k("#kErr").textContent = "";
   store.set("kart_room_tok:" + code, data.token);
-  Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null, tally: {}, tallied: null });
+  Object.assign(MP, { code, token: data.token, me: data.name, raceNo: -1, results: null, pick: null, tally: {}, tallied: null, chat: [] }); chatDraw();
   if (MP.ch) sb.removeChannel(MP.ch);
   MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "p" }, ({ payload }) => mpOnPos(payload))
     .on("broadcast", { event: "it" }, ({ payload }) => mpOnItem(payload))
     .on("broadcast", { event: "go" }, () => mpPoll())
+    .on("broadcast", { event: "rd" }, () => mpPoll())
+    .on("broadcast", { event: "ch" }, ({ payload }) => { if (payload && chatAdd([{ id: payload.id, name: payload.name, msg: payload.msg }])) tone(880, .07, "triangle", .04); })
     .on("broadcast", { event: "tr" }, ({ payload }) => { if (payload && TRACKS[payload.t] && (MP.pick !== payload.t || MP.pickCC !== payload.cc)) { MP.pick = payload.t; MP.pickCC = CCS[payload.cc] ? +payload.cc : 150; if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext(); } })
     .subscribe();
   if (location.hash !== "#kart/" + code) history.replaceState(null, "", "#kart/" + code);
@@ -1848,6 +1957,7 @@ async function mpPoll(first) {
     if (!data) return;
     if (data.r === "gone") { mpLeave(true); $k("#kErr").textContent = "You left that room."; return; }
     Object.assign(MP, { host: data.host, players: data.players || [], status: data.status, track: data.track, pub: !!data.public });
+    if (data.chat) chatAdd(data.chat);
     MP.slot = Math.max(0, MP.players.findIndex(p => p.name === MP.me));
     if (data.status === "racing" && data.ends_in != null && data.race_no === MP.raceNo) MP.endAt = performance.now() + data.ends_in * 1000;
     if (first) MP.raceNo = data.status === "racing" ? data.race_no : data.race_no;   // don't jump into a race that's already running
@@ -1862,7 +1972,10 @@ async function mpPoll(first) {
 }
 async function mpStart() {
   const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: cc === 150 ? track : `${track}@${cc}` });
-  if (!data || data.r !== "ok") { if (state === "done") { flash("Couldn't start, try again", 1200); const b = $k("[data-a=mpgo]"); if (b) b.disabled = false; } $k("#kErr").textContent = { few: "You need at least 2 players to start.", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track." }[data && data.r] || "Couldn't start, try again."; return; }
+  if (!data || data.r !== "ok") { if (state === "done") { flash("Couldn't start, try again", 1200); const b = $k("[data-a=mpgo]"); if (b) b.disabled = false; } $k("#kErr").textContent = { few: "You need at least 2 players to start.", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track.",
+    notready: `Waiting for ${(data && data.who || []).join(", ")} to press Ready ✋` }[data && data.r] || "Couldn't start, try again.";
+    if (data && data.r === "notready" && state === "done") flash("⏳ Not everyone is ready", 1200);
+    return; }
   MP.ch && MP.ch.send({ type: "broadcast", event: "go", payload: {} });
   mpPoll();
 }
@@ -1870,7 +1983,7 @@ async function mpLeave(silent) {
   const sb = await B.client();
   if (MP.code && !silent) { sb.rpc("kart_room_leave", { p_code: MP.code, p_tok: MP.token }); try { store.del("kart_room_tok:" + MP.code); } catch (e) {} }
   clearInterval(MP.poll); if (MP.ch) sb.removeChannel(MP.ch);
-  Object.assign(MP, { code: null, token: null, ch: null, players: [], host: null, status: null });
+  Object.assign(MP, { code: null, token: null, ch: null, players: [], host: null, status: null, chat: [] });
   if (location.hash.startsWith("#kart/")) history.replaceState(null, "", "#kart");
   drawRoom();
 }
@@ -1888,17 +2001,59 @@ function drawRoom() {
     loadOpenRooms();
     return;
   }
-  const link = location.href.split("#")[0] + "#kart/" + MP.code;
-  box.innerHTML = `<div class="kt-roomhead"><b>${MP.pub ? "🌍 Public" : "🔒 Private"} room ${MP.code}</b> · ${MP.players.length}/8 · ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</div>
+  const link = location.href.split("#")[0] + "#kart/" + MP.code, R = mpReadyInfo();
+  let main = box.querySelector("#kRoomMain"); if (!main) { box.innerHTML = `<div id="kRoomMain"></div>`; main = box.firstChild; }
+  main.innerHTML = `<div class="kt-roomhead"><b>${MP.pub ? "🌍 Public" : "🔒 Private"} room ${MP.code}</b> · ${MP.players.length}/8 · ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</div>
     ${MP.pub ? `<p class="kt-modenote">Anyone can join from the Open rooms list on the Family Kart page.</p>` : ""}
     <div class="bd-inv"><input id="kInvite" readonly value="${esc(link)}"><button class="sk-small" id="kCopy">Copy</button></div>
-    <div class="kt-plist">${MP.players.map(p => `<div class="kt-pl${p.name === MP.me ? " me" : ""}"><img src="${spriteOf(p.name)}" alt=""><b>${esc(p.name)}</b>${p.name === MP.host ? " 👑" : ""}</div>`).join("")}</div>
+    ${playerList()}
+    ${!host && MP.status !== "racing" ? readyBtn(R.mine) : ""}
     ${!host && MP.status !== "racing" ? `<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the race</b>
       <small>Next up: ${TRACKS[roomTrack()].icon} ${esc(TRACKS[roomTrack()].name)} · ${CCS[roomCC()].label}</small></div></div>` : ""}
-    <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? (MP.pub ? "Waiting for at least one more player… they can join from the Open rooms list." : "Waiting for at least one more player… share the link!") : "You're the host 👑: pick a cup and track below, then start!") : "The race starts as soon as the host presses Start."}</p>
+    <p class="kt-modenote">${MP.status === "racing" ? "A race is on…" : host ? (MP.players.length < 2 ? (MP.pub ? "Waiting for at least one more player… they can join from the Open rooms list." : "Waiting for at least one more player… share the link!") : R.all ? "Everyone's ready ✅ Pick a cup and track below, then start!" : `You're the host 👑: pick a cup and track below. Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋`) : R.mine ? "You're ready ✅ The race starts when the host presses Start." : "Press ✋ Ready so the host can start the race."}</p>
     <button class="sk-small" id="kRoomLeave">🚪 Leave the room</button>`;
-  $k("#kGo").textContent = "🏁 Start the race!"; $k("#kGo").disabled = MP.players.length < 2;
+  chatMount(box);
+  $k("#kGo").textContent = MP.players.length < 2 ? "🏁 Start the race!" : R.all ? "🏁 Everyone's ready: Start!" : `⏳ Waiting for ${R.waiting.length} to be ready…`; $k("#kGo").disabled = MP.players.length < 2 || !R.all;
 }
+// ✋ Ready: everyone but the host has to press it before the host can start (the host's Start is their ready)
+function mpReadyInfo() {
+  const others = (MP.players || []).filter(p => p.name !== MP.host), waiting = others.filter(p => !p.ready).map(p => p.name), me = (MP.players || []).find(p => p.name === MP.me);
+  return { all: !waiting.length, waiting, mine: !!(me && me.ready) };
+}
+const playerList = () => `<div class="kt-plist">${MP.players.map(p => `<div class="kt-pl${p.name === MP.me ? " me" : ""}${p.name === MP.host || p.ready ? " rdy" : ""}"><img src="${spriteOf(p.name)}" alt=""><b>${esc(p.name)}</b>
+  <em>${p.name === MP.host ? "👑 host" : p.ready ? "✅ ready" : "⏳ not ready"}</em></div>`).join("")}</div>`;
+const readyBtn = mine => `<button type="button" class="sk-btn kt-readybtn${mine ? " on" : ""}" data-ready="${mine ? 0 : 1}">${mine ? "✅ I'm ready! <small>(tap to cancel)</small>" : "✋ Ready!"}</button>`;
+async function mpReady(v) {
+  if (!MP.code) return;
+  if (v) askFull();   // a tap is the only moment phones allow fullscreen, and the race is about to start
+  const p = MP.players.find(q => q.name === MP.me); if (p) p.ready = v;
+  if (!$k("#kMenu").hidden) drawRoom(); else mpRedrawNext();
+  const sb = await B.client(); await sb.rpc("kart_room_ready", { p_code: MP.code, p_tok: MP.token, p_ready: v });
+  mpSend("rd", {}); mpPoll();
+}
+// 💬 room chat: one box that moves between the room menu and the results screen (so what you're typing never gets wiped)
+const chatEl = document.createElement("div"); chatEl.className = "kt-chat";
+chatEl.innerHTML = `<b class="kt-chathead">💬 Room chat</b><div class="kt-chatlog"></div><form class="kt-chatin"><input maxlength="120" placeholder="Say something to the room…" autocomplete="off" enterkeyhint="send"><button class="sk-small" type="submit">Send</button></form>`;
+const chatLog = chatEl.querySelector(".kt-chatlog"), chatIn = chatEl.querySelector("input");
+function chatAdd(list) {
+  if (!MP.chat) MP.chat = [];
+  let added = false; for (const m of list) if (m && m.id && !MP.chat.some(c => c.id === m.id)) { MP.chat.push(m); added = true; }
+  if (added) { MP.chat.sort((a, b) => a.id - b.id); MP.chat = MP.chat.slice(-60); chatDraw(); }
+  return added;
+}
+function chatDraw() {
+  const end = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 40, list = MP.chat || [];
+  chatLog.innerHTML = list.length ? list.map(m => `<div class="${m.name === MP.me ? "me" : ""}"><img src="${spriteOf(m.name)}" alt=""><b>${esc(m.name)}</b><span>${esc(m.msg)}</span></div>`).join("")
+    : `<p class="bd-none">No messages yet. Say hi! 👋</p>`;
+  if (end) chatLog.scrollTop = chatLog.scrollHeight;
+}
+chatEl.querySelector("form").addEventListener("submit", async e => {
+  e.preventDefault(); const m = chatIn.value.trim(); if (!m || !MP.code) return; chatIn.value = "";
+  const sb = await B.client(); const { data } = await sb.rpc("kart_room_say", { p_code: MP.code, p_tok: MP.token, p_msg: m });
+  if (data && data.r === "ok") { chatAdd([data]); mpSend("ch", { id: data.id, name: data.name, msg: data.msg }); } else chatIn.value = m;
+});
+const chatMount = parent => { if (chatEl.parentNode !== parent) { parent.appendChild(chatEl); chatDraw(); } };
+function askFull() { if (!TOUCH) return; try { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen({ navigationUI: "hide" }).catch(() => {}); } catch (e) {} }
 $k("#kRoomBox").addEventListener("click", e => {
   const newCode = () => Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
   if (e.target.id === "kCreate") mpJoin(newCode());
@@ -1906,6 +2061,7 @@ $k("#kRoomBox").addEventListener("click", e => {
   const or = e.target.closest("[data-room]"); if (or && !or.disabled) mpJoin(or.dataset.room);
   if (e.target.id === "kJoin") { const c = ($k("#kCode").value || "").trim().toUpperCase(); if (c) mpJoin(c); }
   if (e.target.id === "kRoomLeave") mpLeave();
+  const rb = e.target.closest("[data-ready]"); if (rb) mpReady(rb.dataset.ready === "1");
   if (e.target.id === "kCopy") { const i = $k("#kInvite"); i.select(); try { navigator.clipboard.writeText(i.value); } catch (er) { document.execCommand("copy"); } e.target.textContent = "Copied!"; setTimeout(() => e.target.textContent = "Copy", 1200); }
 });
 // 🌍 the open public rooms, refreshed every few seconds while you look at the multiplayer menu
@@ -1929,7 +2085,7 @@ function hashRoom() {
   document.querySelectorAll("section").forEach(sec => sec.classList.toggle("on", sec.id === "kart"));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#kart"));
   if (mode !== "mp") { mode = "mp"; drawMode(); drawTrack(); }
-  if (MP.code !== c) { if ($k("#kName").value.trim().length >= 2) mpJoin(c); else $k("#kErr").textContent = `Type your name, then press Join to enter room ${c}.`, drawRoom(), $k("#kCode") && ($k("#kCode").value = c); }
+  if (MP.code !== c) { if ($k("#kName").value.trim().length >= 2) mpJoin(c); else { drawRoom(); if ($k("#kCode")) $k("#kCode").value = c; needName(`👆 Type your name, then press Join to enter room ${c}.`); } }
 }
 addEventListener("hashchange", hashRoom);
 setTimeout(hashRoom, 60);
@@ -1988,7 +2144,7 @@ function showBest() {
   let b = null; try { b = JSON.parse(store.get(key)); } catch (e) {}
   $k("#kMine").innerHTML = b && b.race ? `🏆 Your best: ${bt.open ? "run" : "race"} <b>${fmt(b.race)}</b>${bt.open ? "" : ` · lap <b>${fmt(b.lap)}</b>`}` : "No time yet on this track. Go set one!";
 }
-$k("#kGo").onclick = () => mode === "mp" ? mpStart() : start();
+$k("#kGo").onclick = () => { if (mode === "mp") { askFull(); mpStart(); } else start(); };
 // the room's track as everyone should see it: the host's own pick, or what the host last told the room
 const roomTrack = () => { const st = String(MP.track || "").split("@")[0]; return MP.host === MP.me ? track : TRACKS[MP.pick] ? MP.pick : TRACKS[st] ? st : "henesys"; };
 const roomCC = () => { const sc = String(MP.track || "").split("@")[1]; return MP.host === MP.me ? cc : MP.pick ? (MP.pickCC || 150) : CCS[sc] ? +sc : 150; };
@@ -2067,7 +2223,12 @@ $k("#kName").addEventListener("keydown", e => {
 $k("#kName").addEventListener("input", () => { showBest(); kShowFace(); kSuggest(); });
 $k("#kName").value = store.get("family_me") || "";
 showBest(); kShowFace();
-$k("#kLeave").onclick = quit;
+// ✕ during a race needs a second tap, so a stray thumb doesn't throw the race away
+let leaveArm = 0;
+$k("#kLeave").onclick = () => {
+  if ((state === "race" || state === "count") && performance.now() - leaveArm > 2200) { leaveArm = performance.now(); flash("Tap ✕ again to leave", 2000); return; }
+  quit();
+};
 $k("#kResult").addEventListener("click", e => {
   const a = e.target.closest("[data-a]"); if (!a) return;
   if (a.dataset.a === "again") { if (mode === "gp") gp = null; start(); }
@@ -2075,7 +2236,8 @@ $k("#kResult").addEventListener("click", e => {
   if (a.dataset.a === "podium") podium();
   if (a.dataset.a === "back") { gp = null; quit(); }
   if (a.dataset.a === "room") quit();
-  if (a.dataset.a === "mpgo") { a.disabled = true; mpStart(); }
+  if (a.dataset.a === "mpgo") { a.disabled = true; askFull(); mpStart(); }
+  const rb = e.target.closest("[data-ready]"); if (rb) mpReady(rb.dataset.ready === "1");
   if (a.dataset.a === "mpleave") { mpLeave(); quit(); }
 });
 $k("#kResult").addEventListener("click", e => {   // the host's cup / track pick on the results screen
@@ -2092,7 +2254,7 @@ addEventListener("hashchange", () => { if (location.hash !== "#kart" && state !=
 
 // keyboard + touch buttons
 const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " ", "Shift", "a", "d", "s", "w", "e"];
-addEventListener("keydown", e => { if (state === "menu" || $k("#kGame").hidden || !GAME_KEYS.includes(e.key)) return; keys[e.key] = true; e.preventDefault(); });
+addEventListener("keydown", e => { if (e.target && e.target.closest && e.target.closest("input, textarea")) return; if (state === "menu" || $k("#kGame").hidden || !GAME_KEYS.includes(e.key)) return; keys[e.key] = true; e.preventDefault(); });
 addEventListener("keyup", e => { keys[e.key] = false; });
 addEventListener("blur", () => { keys = {}; touch = { x: 0, d: 0, b: 0, i: 0 }; stickSet(0); });
 document.querySelectorAll("#kPad [data-k]").forEach(b => {
@@ -2101,18 +2263,24 @@ document.querySelectorAll("#kPad [data-k]").forEach(b => {
   ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, on(0)));
   b.addEventListener("contextmenu", e => e.preventDefault());
 });
-// steering joystick: slide your thumb left or right; the further you slide, the harder you turn
+// steering joystick: put your thumb down anywhere on it and slide left or right from THERE (so touching it never turns you by itself);
+// a small dead zone, and gentle near the middle for fine steering, full lock at the end
 const stick = $k("#kStick"), knob = stick.querySelector("i");
-let stickId = null, stickX0 = 0;
-function stickSet(v) { touch.x = Math.abs(v) < .12 ? 0 : v; knob.style.transform = `translateX(${v * stick.clientWidth * .32}px)`; }
+let stickId = null, stickX0 = 0, knob0 = 0;
+const stickRange = () => stick.clientWidth * .26;
+function stickSet(v, px = 0) {
+  const a = Math.abs(v), dz = .1; touch.x = a < dz ? 0 : Math.sign(v) * Math.pow((a - dz) / (1 - dz), 1.35);
+  knob.style.transform = `translateX(${px}px)`;
+}
 stick.addEventListener("pointerdown", e => {
   e.preventDefault(); stickId = e.pointerId; try { stick.setPointerCapture(e.pointerId); } catch (er) {}
-  const r = stick.getBoundingClientRect(); stickX0 = r.left + r.width / 2; stick.classList.add("on"); stickMove(e);
+  const r = stick.getBoundingClientRect(), lim = r.width / 2 - 30; stickX0 = e.clientX; knob0 = Math.max(-lim, Math.min(lim, e.clientX - (r.left + r.width / 2)));
+  stick.classList.add("on"); stickSet(0, knob0);
 });
 function stickMove(e) {
   if (e.pointerId !== stickId) return;
-  const v = (e.clientX - stickX0) / (stick.clientWidth * .32);
-  stickSet(Math.max(-1, Math.min(1, v)));
+  const R = stickRange(), d = Math.max(-R, Math.min(R, e.clientX - stickX0)), lim = stick.clientWidth / 2 - 22;
+  stickSet(d / R, Math.max(-lim, Math.min(lim, knob0 + d)));
 }
 stick.addEventListener("pointermove", stickMove);
 const stickEnd = e => { if (e.pointerId !== stickId) return; stickId = null; stick.classList.remove("on"); stickSet(0); };
@@ -2190,5 +2358,7 @@ const blockSound = () => { tone(1500, .08, "square", .06); tone(900, .15, "trian
 const oinkSound = () => { tone(260, .12, "sawtooth", .07, 180); setTimeout(() => tone(240, .16, "sawtooth", .07, 160), 140); };
 const finalSound = () => { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, i === 5 ? .4 : .13, "square", .08), i * 110)); };
 const hyperSound = () => { for (let i = 0; i < 8; i++) setTimeout(() => tone(400 + i * 90, .1, "square", .06), i * 60); };
+const readySound = () => { [392, 523, 659].forEach((f, i) => setTimeout(() => tone(f, .16, "square", .06), i * 130)); setTimeout(() => tone(784, .4, "triangle", .07), 390); };
+const goSound = () => { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, i === 4 ? .5 : .1, "square", .07), i * 70)); };
 const lapSound = () => { tone(660, .12, "square", .07); setTimeout(() => tone(990, .2, "square", .07), 110); };
 })();
