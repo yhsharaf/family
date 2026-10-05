@@ -168,12 +168,29 @@ export function create(A) {
     const cm = new THREE.MeshLambertMaterial({ map: curbTex(th.curb || ["#d8352d", "#f4f1ea"]), flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5);
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3); }
+    // 🍄 bouncy mushroom caps on the road: spotted domes that squash when someone bounces on them
+    caps = [];
+    for (const c of t.shrooms || []) {
+      const m = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: 60, specular: 0x333333 }));
+      m.scale.set(c.l / 2, 13, c.w / 2); m.rotation.y = -c.a; m.position.set(c.x, h(c.x, c.y) + .6, c.y); scene.add(m); roadObjs.push(m); caps.push({ m, pad: c.pad });
+    }
+  }
+  let caps = [], capT = 0;
+  const CAP = new THREE.SphereGeometry(1, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+  const capTexs = {};
+  function capTex(col) {
+    if (capTexs[col]) return capTexs[col];
+    const C = { o: ["#e8742a", "#ffa040"], g: ["#3e9e34", "#7fd862"], b: ["#2f7cd0", "#7ab8ff"] }[col] || ["#e8742a", "#ffa040"], c = canvas(256, 128), g = c.getContext("2d");
+    const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, C[1]); gr.addColorStop(1, C[0]); g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+    g.fillStyle = "#fffaf0"; for (const [x, y, r] of [[30, 40, 16], [100, 70, 20], [170, 35, 14], [220, 85, 18], [65, 100, 11], [140, 108, 10], [250, 20, 9], [5, 80, 10]]) { g.beginPath(); g.ellipse(x, y, r, r * .8, 0, 0, 7); g.fill(); }
+    g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(0, 118, 256, 10);   // a darker rim
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return capTexs[col] = t;
   }
   const DETAIL = (() => { const n = 64, d = new Uint8Array(n * n * 4); let s = 3; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < n * n; i++) { d[i * 4] = 140 + r() * 115; d[i * 4 + 1] = 120 + r() * 135; d[i * 4 + 2] = 128; d[i * 4 + 3] = 255; }
     const t = new THREE.DataTexture(d, n, n); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true; return t; })();
   // the sky: the track's sky picture with its horizon panorama (the town) wrapped around a huge cylinder that travels with the camera
-  const SKY_R = 3000, SKY_H = 1800, SKY_BELOW = 450;
+  const SKY_R = 3000, SKY_H = 3600, SKY_BELOW = 450, SKY_PIC = 1350;   // the sky picture covers 1350 units above the horizon; above that, its own top colour
   // a picture that repeats without a visible join: its last part is faded over its start
   function seamless(im) {
     const iw = im.width, ih = im.height, ov = Math.round(iw * .22), L = iw - ov, c = canvas(L, ih), g = c.getContext("2d");
@@ -184,13 +201,17 @@ export function create(A) {
     g.drawImage(e, 0, 0); return c;
   }
   function buildSky(t) {
-    const c = canvas(4096, 512), g = c.getContext("2d"), hor = Math.round(512 * (1 - SKY_BELOW / SKY_H));
-    const pxU = 4096 / (2 * Math.PI * SKY_R) * 2, pyU = 512 / SKY_H, ax = pxU / pyU;   // 2 repeats around
-    g.fillStyle = t.theme.sky || "#8fd0ff"; g.fillRect(0, 0, 4096, hor);
-    if (t.sky) { const tile = seamless(t.sky), sh = hor, n = Math.max(1, Math.round(4096 / (tile.width * sh / tile.height * ax))), sw = 4096 / n;   // the same way round every time (no mirrored copies), joins blended away
-      for (let i = 0; i < n; i++) g.drawImage(tile, i * sw, 0, sw + .5, sh); }
+    const c = canvas(4096, 1024), g = c.getContext("2d"), hor = Math.round(1024 * (1 - SKY_BELOW / SKY_H));
+    const pxU = 4096 / (2 * Math.PI * SKY_R) * 2, pyU = 1024 / SKY_H, ax = pxU / pyU;   // 2 repeats around
+    const picH = Math.round(1024 * SKY_PIC / SKY_H), top = hor - picH;
+    let topCol = t.theme.sky || "#8fd0ff";
+    if (t.sky) { try { const sc = canvas(16, 4), sg = sc.getContext("2d"); sg.drawImage(t.sky, 0, 0, t.sky.width, Math.max(1, t.sky.height * .04), 0, 0, 16, 4); const d = sg.getImageData(0, 0, 16, 4).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; topCol = `rgb(${r / n | 0},${gg / n | 0},${b / n | 0})`; } catch (e) {} }
+    g.fillStyle = topCol; g.fillRect(0, 0, 4096, hor);
+    if (t.sky) { const tile = seamless(t.sky), sh = picH, n = Math.max(1, Math.round(4096 / (tile.width * sh / tile.height * ax))), sw = 4096 / n;   // the same way round every time (no mirrored copies), joins blended away
+      for (let i = 0; i < n; i++) g.drawImage(tile, i * sw, top, sw + .5, sh);
+      const fade = g.createLinearGradient(0, top, 0, top + sh * .35); fade.addColorStop(0, topCol); fade.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = fade; g.fillRect(0, top, 4096, sh * .35); }   // the picture's top melts into the sky above it
     if (t.strip) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
-    g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, hor + 6, 4096, 512);
+    g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, hor + 6, 4096, 1024);
     const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.repeat.x = -2; map.anisotropy = aniso;
     if (skyMesh) { scene.remove(skyMesh); skyMesh.material.map.dispose(); skyMesh.material.dispose(); }
     skyMesh = new THREE.Mesh(new THREE.CylinderGeometry(SKY_R, SKY_R, SKY_H, 64, 1, true), new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, fog: false, depthWrite: false }));
@@ -321,12 +342,12 @@ export function create(A) {
     const a = k.a || 0;
     if (cam.yaw == null || o.snap) cam.yaw = a;
     let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * 7);   // the camera swings round a moment after the kart
-    const dist = 58 + 9 * (o.fov || 0), up = 37 + Math.min(k.z || 0, 120) * .65;   // up high and looking down at the road, like Mario Kart Tour
+    const dist = 58 + 9 * (o.fov || 0), up = 37 + Math.min(k.z || 0, 260) * .95;   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
     const gx = k.x - Math.cos(cam.yaw) * dist, gz = k.y - Math.sin(cam.yaw) * dist;
     const want = Math.max(h(k.x, k.y), h(gx, gz) - 6) + up;
     cam.y = o.snap || !cam.y ? want : cam.y + (want - cam.y) * Math.min(1, o.dt * 6);
     camera.position.set(gx, Math.max(cam.y, h(gx, gz) + 5), gz);
-    look.set(k.x + Math.cos(cam.yaw) * 56, h(k.x + Math.cos(cam.yaw) * 56, k.y + Math.sin(cam.yaw) * 56) * .5 + h(k.x, k.y) * .5 + 2 + Math.min(k.z || 0, 120) * .65, k.y + Math.sin(cam.yaw) * 56);   // rises with you in a jump (no tilting up at the sky)
+    look.set(k.x + Math.cos(cam.yaw) * 56, h(k.x + Math.cos(cam.yaw) * 56, k.y + Math.sin(cam.yaw) * 56) * .5 + h(k.x, k.y) * .5 + 2 + Math.min(k.z || 0, 260) * .95, k.y + Math.sin(cam.yaw) * 56);   // rises with you in a jump (no tilting up at the sky)
     if (o.intro != null && o.intro < 1 && o.grid) {   // before the start: from in front of the grid (everyone facing you), swooping up and round to behind your kart
       const [qx, qy, qa] = o.grid, e = o.intro * o.intro * (3 - 2 * o.intro), fx = qx + Math.cos(qa) * 170, fz = qy + Math.sin(qa) * 170;
       tmp.set(fx, h(fx, fz) + 38, fz).lerp(camera.position, e); tmp.y += Math.sin(Math.PI * e) * 45; camera.position.copy(tmp);
@@ -351,6 +372,9 @@ export function create(A) {
   }
   function end() {
     fadeBlockers();
+    const nowS = performance.now() / 1000, cdt = Math.min(.05, nowS - (capT || nowS)); capT = nowS;
+    for (const c of caps) { const p = c.pad; if (p.squash > 0) p.squash = Math.max(0, p.squash - cdt * 2.2); const q = p.squash || 0;
+      c.m.scale.y = 13 * (1 - .55 * q * Math.cos((1 - q) * 10)); }   // squash, then wobble back
     for (let i = pi; i < pool.length; i++) pool[i].visible = false;
     for (let i = bi; i < boxes.length; i++) boxes[i].visible = false;
     for (const [r, m] of karts) if (!m.used) { m.root.visible = false; if (r.gone || r.dead) { scene.remove(m.root); karts.delete(r); } }

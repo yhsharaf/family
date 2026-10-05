@@ -213,37 +213,42 @@ const TRACKS = {
       };
     },
   },
-  // 2. Henesys Town Run: twisty S-bends between the mushroom houses, a market street, a tunnel through a tree house, snails crossing
+  // 2. Mushroom Park (a beginner track like Mario Kart Tour's easy cups): it starts in the Henesys market, climbs past the pond to a
+  // row of giant bouncy mushrooms (orange, green, blue: everyone bounces), dips into the park valley and bounces out again, and runs
+  // home down a wide avenue where mushrooms hop across the road (they only bump you). Wide road, few props, gentle hills.
   town: {
-    id: "town", cup: "henesys", art: HEN_ART, music: "town", name: "Henesys Town Run", sub: "market street · tree house tunnel · back alley · hospital loop", icon: "🏘️",
-    ctrl: [[300, 1700], [300, 1100], [450, 800], [700, 700], [850, 900], [1050, 1000], [1200, 800], [1150, 550], [950, 400], [1000, 200], [1350, 180],
-      [1650, 300], [1800, 550], [1650, 800], [1500, 1000], [1300, 1150], [1000, 1250], [800, 1450], [1100, 1600], [1450, 1450], [1700, 1250],
-      [1850, 1500], [1720, 1810], [1150, 1865], [600, 1860], [380, 1810]],
-    theme: { grass: ["#74c552", "#68b847"], flowers: 3200, road: "cobble" },
-    near: ["shroomhouse", "shroomtower", "stall", "stall2", "hay", "haypile", "sunflower", "posts", "redshrooms", "bush"],
-    far: ["shroomhouse", "shroomtower", "tree", "shroomhouse", "bush"], mobs: ["snail", "blue_snail", "red_snail", "orange_mushroom"],
+    id: "park", road: 200, gate: "market", cup: "henesys", art: HEN_ART, music: "town", name: "Mushroom Park", sub: "bouncy mushrooms · park valley · market start", icon: "🌼",
+    ctrl: [[600, 1760, 0], [1000, 1760, 0], [1350, 1740, 4], [1620, 1620, 10], [1760, 1380, 22], [1780, 1080, 40], [1760, 800, 52], [1700, 520, 56], [1540, 330, 50], [1300, 260, 44],
+      [1080, 330, 34], [990, 580, 22], [920, 860, 12], [740, 1000, 6], [580, 920, 10], [560, 660, 20], [530, 440, 28], [440, 290, 30], [290, 250, 30], [180, 350, 28],
+      [170, 560, 24], [200, 860, 16], [240, 1220, 6], [330, 1620, 2]],
+    theme: { grass: ["#74c94f", "#6dc149"], flowers: 500, tufts: 9000, road: "pave" },
+    near: ["sunflower", "redshrooms", "bush", "tallshroom", "tree", "shroomtower", "shroomhouse"],
+    far: ["tree", "tree", "bush", "shroomhouse", "shroomtower"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom"],
     build() {
-      const t0 = I(1060, 196), t1 = I(1290, 184), m0 = I(1640, 1820), m1 = I(760, 1862);
+      const coins = [], row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      const B1 = I(1778, 1180), B2 = I(566, 800);   // the two rows of bouncy mushrooms
+      const shrooms = i => [["o", -66], ["g", 0], ["b", 66]].map(([col, o]) => ({ t: "shroom", col, i, len: 6, o, w: 64 }));
+      const arc = (b, n) => { for (let j = 0; j < n; j++) { const i = b + 10 + j * 7, [x, y] = at(i, 0); coins.push({ x, y, z: 30 + 70 * Math.sin(Math.PI * (j + .5) / n), got: false }); } };   // along the bounce's arc
+      arc(B1, 6); arc(B2, 6);
+      row(I(1590, 360), I(1420, 280), 5, 40);                            // the inside of the hilltop hairpin
+      row(I(990, 600), I(780, 990), 6, j => Math.sin(j * 1.1) * 40);    // down into the valley
+      row(I(210, 950), I(240, 1250), 5, 0);                              // the avenue
       return {
-        tunnel: { a: t0, b: t1 },
-        // the back alley: a narrow short cut through the S-bends, behind the mushroom houses
-        fork: { a: I(855, 905), b: I(1195, 805), via: [[960, 848], [1090, 832]], width: 58, style: "cobble", pads: [], coins: true },
-        pads: [
-          { t: "boost", i: I(300, 1420), len: 14, o: 0, w: 60 }, { t: "boost", i: I(1400, 182), len: 12, o: -24, w: 54 }, { t: "boost", i: I(1150, 1205), len: 12, o: 22, w: 52 }, { t: "boost", i: I(1300, 1535), len: 12, o: -20, w: 52 },
-          { t: "boost", i: I(1300, 1858), len: 12, o: 0, w: 56 },
-          { t: "ramp", i: I(1790, 1380), len: 9, o: 0, w: ROAD },
-          { t: "slime", i: I(1100, 1862), len: 8, o: 52, w: 40 }, { t: "slime", i: I(700, 712), len: 8, o: -52, w: 40 }, { t: "slime", i: I(1730, 520), len: 8, o: 52, w: 40 }, { t: "slime", i: I(880, 1360), len: 8, o: -52, w: 40 }],
-        coins: [...coinRow(I(300, 1350), I(300, 1150), 6, 0), ...coinRow(m0, m1, 8, j => (j & 1 ? 22 : -22)), ...coinRow(I(1000, 220), I(1050, 200), 3, 0), ...coinRow(I(1680, 790), I(1540, 960), 6, -18), ...coinRow(I(860, 1520), I(1040, 1590), 6, 0)],
-        pigs: [{ i: I(450, 820), ph: 0, k: "snail", sp: .5 }, { i: I(1640, 820), ph: 2.2, k: "blue_snail", sp: .5 }],
-        boxes: [...boxRow(I(300, 1560), [-56, -19, 19, 56]), ...boxRow(I(965, 300), [-54, -18, 18, 54]), ...boxRow(I(1790, 1680), [-56, -19, 19, 56])],
+        lake: { cx: 1300, cy: 1230, rx: 220, ry: 160 },
+        pads: [...shrooms(B1), ...shrooms(B2),
+          { t: "boost", i: I(1250, 272), len: 14, o: 0, w: 60 },         // out of the hilltop hairpin
+          { t: "boost", i: I(176, 600), len: 14, o: 0, w: 60 },          // out of the top-left turn
+          { t: "boost", i: I(1700, 1500), len: 12, o: 0, w: 60 }],       // up the climb to the first bounce
+        coins,
+        // mushrooms hopping across the road: they just bump you (it's a beginner track)
+        pigs: [{ i: I(1300, 262), ph: 0, k: "orange_mushroom", sp: .7, hop: true, soft: true, s: .6 }, { i: I(940, 760), ph: 2, k: "green_mushroom", sp: .65, hop: true, soft: true, s: .6 },
+          { i: I(205, 820), ph: 4, k: "blue_mushroom", sp: .75, hop: true, soft: true, s: .6 }, { i: I(232, 1120), ph: 1.3, k: "orange_mushroom", sp: .7, hop: true, soft: true, s: .6 }],
+        boxes: [...boxRow(I(1200, 1754), [-72, -24, 24, 72]), ...boxRow(I(1766, 720), [-72, -24, 24, 72]), ...boxRow(I(198, 700), [-72, -24, 24, 72])],
         extra(push) {
-          for (let i = m0; i <= m1; i += 6) for (const side of [-1, 1]) {   // the market street: stalls and hay on both sides
-            const [x, y] = at(i, side * (ROAD / 2 + CURB + 26)); push(x, y, ["stall", "stall2", "haypile", "hay"][(i / 6 + (side > 0 ? 1 : 0)) & 3]);
-          }
-          const [ex, ey] = at(t0 - 2, 0); push(ex, ey, "treehouse", .62, 0);   // the tree house you drive through
-          push(1120, 1420, "hospital", .55, 40);   // the hospital mushroom in the middle of the loop
-          for (const [x, y, k] of [[1010, 1400, "sunflower"], [1240, 1380, "shroomtower"], [1180, 1480, "redshrooms"], [960, 1470, "stall2"]]) push(x, y, k);
-          for (let i = t0; i <= t1; i += 5) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 14)); push(x, y, i % 2 ? "tree" : "bush", .42, 14); }
+          for (let i = I(560, 1760); i <= I(1080, 1760); i += 22) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 60)); push(x, y, ["stall", "stall2"][(Math.round(i / 22) + (side > 0 ? 1 : 0)) & 1]); }   // the market
+          for (const [x, y, k, sc] of [[1220, 960, "orange_mushroom", 1.5], [1480, 700, "green_mushroom", 1.4], [860, 1360, "blue_mushroom", 1.5], [380, 600, "orange_mushroom", 1.2], [1500, 1500, "green_mushroom", 1.2]])
+            OBJS.push({ x, y, k, s: sc, r: 20, z: 0, bob: 14, mob: true });   // giant park mushrooms, bouncing on the spot
+          for (const [x, y, k] of [[700, 1300, "shroomhouse"], [1000, 1250, "shroomtower"], [1500, 950, "shroomhouse"], [380, 900, "shroomtower"], [1320, 560, "shroomhouse"]]) push(x, y, k);
         },
       };
     },
@@ -791,6 +796,10 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w), r = 6 + rnd() * 14;
       g.fillStyle = rnd() < .5 ? "#3e3a22" : "#5a5230"; g.beginPath(); g.ellipse(x, y, r, r * .6, rnd() * 3, 0, 7); g.fill();
     }
+    if (p.t === "shroom" && !only) { const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i), C = { o: ["#e8742a", "#ffb35a"], g: ["#4aa83a", "#8ee070"], b: ["#3a86d8", "#8cc8ff"] }[p.col] || ["#e8742a", "#ffb35a"];
+      g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = C[0]; g.beginPath(); g.ellipse(0, 0, p.len * SPC / 2 + 4, p.w / 2, 0, 0, 7); g.fill();
+      g.fillStyle = C[1]; g.beginPath(); g.ellipse(-2, -3, p.len * SPC / 2 - 2, p.w / 2 - 6, 0, 0, 7); g.fill();
+      g.fillStyle = "#fff"; for (const [bx, by, br] of [[-6, -12, 6], [8, 6, 7], [-10, 14, 5], [10, -16, 4]]) { g.beginPath(); g.arc(bx, by, br, 0, 7); g.fill(); } g.restore(); }
     if (p.t === "slime") {
       const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i);
       g.save(); g.translate(x, y); g.rotate(a);
@@ -869,6 +878,17 @@ function makeArchArt() {
     g.strokeStyle = "#ffd75e"; g.lineWidth = 3; g.beginPath(); g.roundRect(9, 13, w - 18, h - 26, 8); g.stroke();
     g.font = "900 38px Ubuntu, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 6; g.strokeStyle = "#5a0d10";
     g.strokeText("👑 FAMILY KART 👑", w / 2, h / 2 + 2); g.fillStyle = "#ffe48a"; g.fillText("👑 FAMILY KART 👑", w / 2, h / 2 + 2); });
+  // 🏪 the Henesys Market gate (Mushroom Park's start): wooden posts and a market sign under a striped awning
+  IMG.mk_post = mk(18, 150, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, "#5a3416"); gr.addColorStop(.5, "#a8703a"); gr.addColorStop(1, "#5e3818");
+    g.fillStyle = gr; g.fillRect(2, 0, w - 4, h); g.fillStyle = "rgba(40,20,8,.35)"; for (let y = 14; y < h; y += 30) g.fillRect(2, y, w - 4, 3); g.fillStyle = "#3e220c"; g.fillRect(0, h - 10, w, 10); });
+  IMG.mk_banner = mk(420, 96, (g, w, h) => {
+    for (let x = 0, n = 0; x < w; x += 30, n++) { g.fillStyle = n & 1 ? "#ffffff" : "#d8352d"; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 30, 0); g.lineTo(x + 30, 22); g.quadraticCurveTo(x + 15, 32, x, 22); g.fill(); }   // the awning
+    g.fillStyle = "#6b4423"; g.beginPath(); g.roundRect(6, 30, w - 12, h - 34, 10); g.fill();
+    g.fillStyle = "#c08a50"; g.beginPath(); g.roundRect(11, 35, w - 22, h - 44, 8); g.fill();
+    g.strokeStyle = "rgba(90,52,22,.35)"; g.lineWidth = 2; for (let y = 47; y < h - 12; y += 12) { g.beginPath(); g.moveTo(16, y); g.lineTo(w - 16, y); g.stroke(); }   // planks
+    g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 6; g.strokeStyle = "#4a2a0e"; g.font = "900 31px Ubuntu, sans-serif";
+    g.strokeText("🍄 HENESYS MARKET 🍄", w / 2, 55); g.fillStyle = "#fff4d0"; g.fillText("🍄 HENESYS MARKET 🍄", w / 2, 55);
+    g.font = "900 15px Ubuntu, sans-serif"; g.lineWidth = 4; g.strokeText("👑 FAMILY KART 👑", w / 2, 79); g.fillStyle = "#ffd75e"; g.fillText("👑 FAMILY KART 👑", w / 2, 79); });
   ["#ff5a5a", "#ffd23f", "#5ac8ff", "#ffffff", "#7ad06a", "#ff8fd0"].forEach((col, i) => IMG["balloon" + i] = mk(26, 60, (g) => {
     g.strokeStyle = "rgba(60,40,20,.7)"; g.lineWidth = 1; g.beginPath(); g.moveTo(13, 30); g.quadraticCurveTo(9, 45, 14, 60); g.stroke();
     g.fillStyle = col; g.beginPath(); g.ellipse(13, 15, 11, 14, 0, 0, 7); g.fill(); g.fillStyle = "rgba(255,255,255,.55)"; g.beginPath(); g.ellipse(9, 9, 3, 5, -.4, 0, 7); g.fill();
@@ -876,9 +896,9 @@ function makeArchArt() {
 }
 function placeStart(push) {
   if (!IMG.arch_post) makeArchArt();
-  const li = OPEN ? START_I : 0, half = ROAD / 2 + CURB + 10, [cx, cy] = at(li, 0);
-  for (const sd of [-1, 1]) { const [x, y] = at(li, sd * half); push(x, y, "arch_post", .62, 0); }
-  OBJS.push({ x: cx, y: cy, k: "arch_banner", s: (half * 2 + 14) / 420, r: 0, z: 70 });
+  const li = OPEN ? START_I : 0, half = ROAD / 2 + CURB + 10, [cx, cy] = at(li, 0), mk = T.gate === "market";
+  for (const sd of [-1, 1]) { const [x, y] = at(li, sd * half); push(x, y, mk ? "mk_post" : "arch_post", .62, 0); }
+  OBJS.push({ x: cx, y: cy, k: mk ? "mk_banner" : "arch_banner", s: (half * 2 + 14) / 420, r: 0, z: mk ? 36 : 70 });   // the market sign hangs low, right in view
   for (let n = 0; n < 10; n++) { const sd = n % 2 ? 1 : -1, [x, y] = at(li + (n >> 1) - 2, sd * (half + 6 + (n % 3) * 7));
     OBJS.push({ x, y, k: "balloon" + (n % 6), s: .7, r: 0, z: 78 + (n % 4) * 9, bob: 4 }); }
 }
@@ -915,7 +935,7 @@ function placeObjects() {
   T.extraFn(push);
   placeStart(push);   // the FAMILY arch and balloons on every map
   { const li = OPEN ? START_I : 0, s0 = PTS[li];   // a map's own gate at the start line moves to halfway round, so the two arches don't stand together
-    for (const o of OBJS) if (!o.r && !/^(arch|balloon)/.test(o.k) && Math.hypot(o.x - s0[0], o.y - s0[1]) < 140 && nearest(o.x, o.y).d < 30) {
+    for (const o of OBJS) if (!o.r && !/^(arch|balloon|mk_)/.test(o.k) && Math.hypot(o.x - s0[0], o.y - s0[1]) < 140 && nearest(o.x, o.y).d < 30) {
       const [x, y] = at(OPEN ? Math.round(START_I + (N - FIN_OFF - START_I) * .5) : Math.round(N * .5), 0); o.x = x; o.y = y; } }
   // anything solid that touches the road is moved back off it (a haypile on the curb…); where the road doubles back there may be no room: then it goes
   const touching = o => { const m = nearest(o.x, o.y); if (m.d < ROAD / 2 + CURB + o.r + 5) return [m, ROAD / 2, PTS[m.i]];
@@ -967,10 +987,11 @@ const FIN_OFF = 14;   // an open track's finish line, this many points before it
 let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
-  decal: () => { const c = document.createElement("canvas"); c.width = c.height = WORLD; paintTrack(c); return c; } });
+  decal: () => { const c = document.createElement("canvas"); c.width = c.height = WORLD; paintTrack(c); return c; },
+  shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=23"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=27"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1334,10 +1355,12 @@ function rivalStep(r, dt, tt) {
     if (pad.t === "ramp" && r.v > 60) { r.vz = (160 + r.v * .22) / SPD; r.z = .1; }
     if (pad.t === "bigramp" && r.v > 60) { r.vz = (300 + r.v * .3) / SPD; r.z = .1; }
     if (pad.t === "hay") { r.vz = 230; r.z = .1; }
+    if (pad.t === "shroom" && r.v > 30) { r.vz = (330 + r.v * .25) / SPD; r.z = .1; giveBoost(r, .5, 60); shroomHit(pad); }
     if (pad.t === "slime" || pad.t === "lava") hit(r);
   }
   r.lastPad = pad;
-  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(r.x - q.x, r.y - q.y) < 17) hit(r); }
+  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(r.x - q.x, r.y - q.y) < 17) { if (p.soft) { if (!(r.bonk > 0)) { r.bonk = .8; r.v *= .6; r.vz = 120; r.z = .1; } } else hit(r); } }
+  if (r.bonk > 0) r.bonk -= dt;
   if (KING) {
     const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0);
     if (r.kingWas < .55 && kp >= .55 && Math.hypot(r.x - kx, r.y - ky) < (KING.big ? 62 : 36) && !air) { hit(r); r.squash = 1.1; r.v = 0; }
@@ -1516,6 +1539,7 @@ function drawPops(x, y) {
     ctx.lineWidth = 3; ctx.strokeStyle = "rgba(30,20,30,.85)"; ctx.strokeText(p.text, x + p.dx, y - rise); ctx.fillStyle = p.col; ctx.fillText(p.text, x + p.dx, y - rise); }
   ctx.restore();
 }
+function shroomHit(pad) { pad.squash = 1; }   // the cap squashes down and springs back (3D)
 function spinOut(msg) {
   const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0 || k.hyper > 0) return;
   buzz([50, 40, 70]);
@@ -1603,6 +1627,7 @@ function step(dt) {
     if (pad.t === "ramp" && k.v > 60) { k.vz = (160 + k.v * .22) / SPD; k.z = .1; k.drift = 0; jumpSound(); if (!k.tricked) { k.tricked = true; flash("Tap Drift in the air! ✨", 900); } }
     if (pad.t === "bigramp" && k.v > 60) { k.vz = (300 + k.v * .3) / SPD; k.z = .1; k.drift = 0; jumpSound(); setTimeout(jumpSound, 120); flash(PEN ? (k.v > 200 ? "🐷 Fly over the pig farm!" : "Uh oh… 🐷") : "🚀 Big jump!", 900); }
     if (pad.t === "hay") { k.vz = 230; k.z = .1; k.mesos = Math.min(10, k.mesos + 2); flash("🌾 Boing! +2 mesos", 900); hopSound(); coinSound(); }
+    if (pad.t === "shroom" && k.v > 30) { k.vz = (330 + k.v * .25) / SPD; k.z = .1; k.drift = 0; giveBoost(k, .5, 60); boingSound(); buzz(25); pop("🍄 Boing!", { o: "#ff9a3a", g: "#7ad06a", b: "#5ac8ff" }[pad.col] || "#ffd23f", true); shroomHit(pad); }
     if (pad.t === "slime") spinOut("🫧 Slimed!");
     if (pad.t === "lava") { spinOut("🔥 Lava! Hot hot hot!"); k.shake = .3; }
   }
@@ -1680,7 +1705,10 @@ function step(dt) {
     if (k.comboN === 5 || k.comboN === 10) pop(`💰 Meso streak ×${k.comboN}!`, "#ffe14a", true);
     if (was < 10 && k.mesos === 10) { flash("💰 MAX MESOS!", 900); [988, 1319, 1568].forEach((f, i) => setTimeout(() => tone(f, .12, "square", .05), i * 80)); }
   }
-  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < 17) spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : "🍄 Bonk!"); }
+  if (k.bonk > 0) k.bonk -= dt;
+  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
+    if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= .6; k.vz = 120; k.z = .1; bumpSound(); pop("🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
+    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : "🍄 Bonk!"); } }
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
   for (const p of PENPIGS) {
     p.dx *= Math.pow(.6, dt); p.dy *= Math.pow(.6, dt);
@@ -1887,7 +1915,7 @@ function render() {
       ctx.fillStyle = d.c; ctx.fillRect(sx + dx - d.s * sc / 2, gy - dz - d.s * sc / 2 + Math.sin(d.a) * d.v * t * sc * .25, d.s * sc, d.s * sc); } });
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
-  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + Math.sin(tt * 2 + ob.x) * ob.bob : ob.z || 0);
+  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
   if (G3) for (const c of CROWD) { if (!c.img) continue; const jz = Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump; G3.spr(c.img, c.x, c.y, jz, c.s, c.flip);
     if (c.tag) addDraw(c.x, c.y, (sx, gy, sc) => { if (sc < .35) return; const top = gy - (c.img.height * c.s + jz) * sc, fs = Math.max(5, Math.min(10, 6 * sc)); ctx.font = `900 ${fs}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(1.5, fs / 4);
       ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }); }
@@ -1901,7 +1929,7 @@ function render() {
   });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got && (G3 ? (c.x - k.x) * ca + (c.y - k.y) * sa > -12 : (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
-  for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
+  for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
   if (KING) { const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0), kz = kingZ(kp); add(kx, ky, IMG[KING.k], KING.s, kz, false, kz > 0 ? 1 - kz / 170 : 0); }
   vis.sort((a, b) => b.fz - a.fz);
   if (G3) { G3.end(); skyFireworks(); }
@@ -3133,6 +3161,7 @@ function tone(f, dur, type = "square", vol = .08, f2) {
 }
 const beep = f => tone(f, .25, "square", .09);
 const hopSound = () => tone(300, .12, "triangle", .08, 520);
+const boingSound = () => { tone(180, .28, "sine", .12, 720); setTimeout(() => tone(520, .14, "triangle", .06, 900), 90); };   // 🍄 a big springy mushroom
 const boostSound = () => { tone(220, .35, "sawtooth", .07, 880); };
 const bumpSound = () => tone(140, .2, "square", .1, 60);
 const coinSound = () => { tone(1320, .07, "square", .05); setTimeout(() => tone(1760, .12, "square", .05), 60); };
