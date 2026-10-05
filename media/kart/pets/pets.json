@@ -1,0 +1,104 @@
+{
+"husky": {
+"id": 5000006,
+"move": 3,
+"stand0": 3,
+"jump": 1
+},
+"blackpig": {
+"id": 5000007,
+"move": 3,
+"stand0": 3,
+"jump": 1
+},
+"jrbalrog": {
+"id": 5000024,
+"move": 4,
+"stand0": 3,
+"jump": 1
+},
+"whitetiger": {
+"id": 5000012,
+"move": 3,
+"stand0": 4,
+"jump": 1
+},
+"pinkbunny": {
+"id": 5000002,
+"move": 4,
+"stand0": 3,
+"jump": 1
+},
+"whitebunny": {
+"id": 5000005,
+"move": 4,
+"stand0": 3,
+"jump": 1
+},
+"blackbunny": {
+"id": 5000034,
+"move": 4,
+"stand0": 3,
+"jump": 1
+},
+"kitty": {
+"id": 5000000,
+"move": 3,
+"stand0": 3,
+"jump": 1
+},
+"puppy": {
+"id": 5000001,
+"move": 3,
+"stand0": 3,
+"jump": 1
+},
+"panda": {
+"id": 5000008,
+"move": 3,
+"stand0": 3,
+"jump": 1
+},
+"dino": {
+"id": 5000009,
+"move": 5,
+"stand0": 3,
+"jump": 1
+},
+"penguin": {
+"id": 5000023,
+"move": 5,
+"stand0": 3,
+"jump": 2
+},
+"elephant": {
+"id": 5000013,
+"move": 6,
+"stand0": 4,
+"jump": 1
+},
+"babydragon": {
+"id": 5000029,
+"move": 4,
+"stand0": 4,
+"jump": 3
+},
+"porcupine": {
+"id": 5000039,
+"move": 3,
+"stand0": 4,
+"jump": 1
+},
+"snowman": {
+"id": 5000041,
+"move": 6,
+"stand0": 4,
+"jump": 1
+},
+"monkey": {
+"id": 5000011,
+"move": 3,
+"stand0": 4,
+"jump": 1
+}
+}

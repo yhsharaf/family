@@ -116,6 +116,12 @@ export function create(A) {
       for (let k = 0; k < 160; k++) { g.fillStyle = r() < .5 ? "rgba(95,122,58,.7)" : "rgba(120,150,70,.5)"; g.beginPath(); g.ellipse(r() * U, r() * 192, 1 + r() * 3, 1 + r() * 2, 0, 0, 7); g.fill(); } }
     else if (style === "basalt") { stones("#1c1719", ["#3a3236", "#463c40", "#2f282b"], "rgba(255,160,120,.12)", "rgba(0,0,0,.4)", 14);
       g.lineWidth = .8; for (let k = 0; k < 14; k++) { let x = r() * U, y = r() * 192; g.strokeStyle = r() < .5 ? "#ff7a2a" : "#d84a1a"; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (r() - .5) * 14; y += (r() - .5) * 14; g.lineTo(x, y); } g.stroke(); } }
+    else if (style === "garden") {   // Peach Gardens' cream garden path, with a soft darker border
+      g.fillStyle = "#f0e3c4"; g.fillRect(0, 0, U, 192);
+      for (let k = 0; k < 80; k++) { const x = r() * U, y = r() * 192, rad = 8 + r() * 16, gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, r() < .5 ? "rgba(190,160,110,.12)" : "rgba(255,250,235,.15)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
+      for (let k = 0; k < 7000; k++) { g.fillStyle = r() < .5 ? "rgba(150,120,80,.18)" : "rgba(255,255,255,.25)"; g.fillRect(r() * U, r() * 192, .4, .4); }
+      g.fillStyle = "rgba(170,130,90,.28)"; g.fillRect(0, 0, 4, 192); g.fillRect(U - 4, 0, 4, 192);
+    }
     else if (style === "farm") {   // Moo Moo Meadows' orange-tan country dirt, with tyre tracks worn into it
       g.fillStyle = "#d6a35e"; g.fillRect(0, 0, U, 192);
       for (let k = 0; k < 120; k++) { const x = r() * U, y = r() * 192, rad = 8 + r() * 18, gr = g.createRadialGradient(x, y, 0, x, y, rad), dk = r() < .5;
@@ -137,8 +143,8 @@ export function create(A) {
       for (let k = 0; k < 26000; k++) { g.fillStyle = r() < .5 ? "rgba(70,62,54,.16)" : "rgba(255,255,255,.14)"; g.fillRect(r() * U, r() * 192, .3, .3); }
       g.fillStyle = "rgba(60,50,40,.045)"; for (const x of [.3, .7]) g.fillRect(U * x - 10, 0, 20, 192); }
     else specks("#5d5d64", ["#555560", "#66666e", "#4f4f58"], 3000, 1.2);
-    if (style !== "planks" && style !== "toy" && style !== "farm") { g.fillStyle = "rgba(255,255,255,.88)"; g.fillRect(3, 0, 2.2, 192); g.fillRect(U - 5.2, 0, 2.2, 192); }   // edge lines
-    if (style !== "planks" && style !== "farm") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
+    if (style !== "planks" && style !== "toy" && style !== "farm" && style !== "garden") { g.fillStyle = "rgba(255,255,255,.88)"; g.fillRect(3, 0, 2.2, 192); g.fillRect(U - 5.2, 0, 2.2, 192); }   // edge lines
+    if (style !== "planks" && style !== "farm" && style !== "garden") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; t.anisotropy = aniso; t.minFilter = THREE.LinearMipmapLinearFilter; return t;
   }
   const curbTex = cc => { const c = canvas(8, 64), g = c.getContext("2d"); g.fillStyle = cc[0]; g.fillRect(0, 0, 8, 32); g.fillStyle = cc[1]; g.fillRect(0, 32, 8, 32);
@@ -180,6 +186,16 @@ export function create(A) {
     const cm = new THREE.MeshLambertMaterial({ map: curbTex(th.curb || ["#d8352d", "#f4f1ea"]), flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5, t.gaps || []);
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3); }
+    // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
+    for (const b of t.buildings || []) {
+      const gnd = h(b.x, b.y), wallM = new THREE.MeshBasicMaterial({ map: windowsTex(b.wall, Math.max(2, Math.round(b.w / 70)), 2) }), plain = new THREE.MeshBasicMaterial({ color: new THREE.Color(b.wall).multiplyScalar(.92) }), roofM = new THREE.MeshBasicMaterial({ color: b.roof });   // shown in their true colours: a white house with a pink roof, even in shade
+      const body = new THREE.Mesh(BOX, [plain, plain, plain, plain, wallM, wallM]); body.scale.set(b.w, b.h, b.d); body.position.set(b.x, gnd + b.h / 2, b.y); scene.add(body); roadObjs.push(body);
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM); roof.rotation.y = Math.PI / 4; roof.scale.set(b.w * .74, b.h * .55, b.d * .9); roof.position.set(b.x, gnd + b.h + b.h * .275, b.y); scene.add(roof); roadObjs.push(roof);
+      if (b.tower) { const tw = new THREE.Mesh(BOX, [plain, plain, plain, plain, wallM, wallM]); tw.scale.set(b.w * .22, b.h * 1.6, b.d * 1.1); tw.position.set(b.x, gnd + b.h * .8, b.y - 4); scene.add(tw); roadObjs.push(tw);
+        const tr = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM); tr.rotation.y = Math.PI / 4; tr.scale.set(b.w * .18, b.h * .7, b.d * .85); tr.position.set(b.x, gnd + b.h * 1.6 + b.h * .35, b.y - 4); scene.add(tr); roadObjs.push(tr); }
+    }
+    // 🌿 hedge blocks (Pets Park's maze): solid, leafy cubes
+    for (const b of t.hedges || []) { const m = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ map: hedgeTex() })); m.scale.set(b.w, b.h, b.w); m.rotation.y = -b.a; m.position.set(b.x, h(b.x, b.y) + b.h / 2, b.y); scene.add(m); roadObjs.push(m); }
     // 🍄 bouncy mushroom caps on the road: spotted domes that squash when someone bounces on them
     caps = [];
     for (const g of t.gaps || []) {
@@ -204,7 +220,13 @@ export function create(A) {
       m.scale.set(c.l / 2, 13, c.w / 2); m.rotation.y = -c.a; m.position.set(c.x, h(c.x, c.y) + .6, c.y); scene.add(m); roadObjs.push(m); caps.push({ m, pad: c.pad });
     }
   }
-  let caps = [], capT = 0, gapsBuilt = [], extraObjs = [];
+  let caps = [], capT = 0, gapsBuilt = [], extraObjs = [], hedgeT = null;
+  const windowsTex = (wall, cols, rows) => { const c = canvas(256, 128), g = c.getContext("2d"); g.fillStyle = wall; g.fillRect(0, 0, 256, 128);
+    for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) { const x = (i + .5) * 256 / cols - 12, y = (j + .5) * 128 / rows - 18; g.fillStyle = "#8fd0ff"; g.fillRect(x, y, 24, 34); g.fillStyle = wall; g.fillRect(x + 11, y, 2, 34); g.fillRect(x, y + 16, 24, 2); g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(x - 2, y + 34, 28, 3); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+  const hedgeTex = () => hedgeT || (hedgeT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#3f9a34"; g.fillRect(0, 0, 128, 128);
+    for (let k = 0; k < 700; k++) { const v = Math.random(); g.fillStyle = v < .4 ? "#2f7d28" : v < .75 ? "#56b848" : "#78d066"; g.beginPath(); g.ellipse(Math.random() * 128, Math.random() * 128, 2 + Math.random() * 4, 1.5 + Math.random() * 3, Math.random() * 3, 0, 7); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })());
   let mistT = null;
   const mistTex = () => mistT || (mistT = (() => { const c = canvas(256, 256), g = c.getContext("2d");
     for (let k = 0; k < 40; k++) { const x = 30 + Math.random() * 196, y = 30 + Math.random() * 196, r = 30 + Math.random() * 60, gr = g.createRadialGradient(x, y, 0, x, y, r);
