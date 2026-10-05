@@ -230,14 +230,16 @@ const TRACKS = {
     build() {
       const u = d => Math.round(d / SPC), coins = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      // the three crossings: platforms at a distance along the gap (and to the side, in the abyss)
+      // the three crossings. You drive onto the first mushroom of each; every bounce then carries you one hop (200) forward, and you steer
+      // in the air to land on the next one. They come in different sizes and heights, zig-zagging; miss and you fall.
       const g1a = I(1605, 560), g2a = I(1112, 228), g3a = I(437, 1028);
-      const G1 = { a: g1a, b: g1a + u(200), kind: "gorge", caps: [{ i: g1a + u(95), r: 90, col: "r" }] };                                   // the first jump
-      const G2 = { a: g2a, b: g2a + u(520), kind: "gorge", caps: [90, 260, 430].map((d, n) => ({ i: g2a + u(d), r: 100, col: n % 2 ? "g" : "r" })) };   // three down the gorge
-      const cave = [{ i: g3a + u(70), o: 0, r: 112, col: "r" }];   // the abyss: one wide platform in, then two staggered rows
-      for (let k = 0; k < 6; k++) cave.push({ i: g3a + u(235 + k * 165), o: -55, r: 74, col: k % 2 ? "r" : "g" });
-      for (let k = 0; k < 6; k++) cave.push({ i: g3a + u(318 + k * 165), o: 55, r: 74, col: k % 2 ? "g" : "r" });
-      const G3 = { a: g3a, b: g3a + u(1190), kind: "gorge", caps: cave };
+      const cap = (a, along, o, r, top, col) => ({ i: a + u(along), o, r, top, col });
+      const G1 = { a: g1a, b: g1a + u(160), kind: "gorge", caps: [cap(g1a, 70, 0, 95, 0, "r")] };                                     // the first jump: one big mushroom
+      const G2 = { a: g2a, b: g2a + u(500), kind: "gorge", caps: [cap(g2a, 75, 0, 100, 0, "r"), cap(g2a, 185, 55, 68, 26, "g"), cap(g2a, 380, -45, 82, 12, "r")] };   // three down the gorge
+      const cave = [cap(g3a, 85, 0, 115, 0, "r")];   // the abyss: one wide mushroom in, then two rows (the middle is open: pick a side)
+      [[170, -70, 72, 18], [370, -52, 58, 34], [570, -78, 80, 8], [770, -50, 62, 28], [970, -68, 76, 14]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, k % 2 ? "r" : "g")));
+      [[170, 72, 60, 30], [370, 60, 84, 10], [570, 76, 56, 36], [770, 55, 80, 6], [970, 74, 66, 24]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, k % 2 ? "g" : "r")));
+      const G3 = { a: g3a, b: g3a + u(1055), kind: "gorge", caps: cave };
       row(I(1885, 1120), I(1900, 960), 5, 0);                             // up the cliffside
       row(I(1520, 160), I(1360, 120), 5, 40);                             // round the inside of the hook
       row(I(560, 430), I(260, 600), 6, j => Math.sin(j * 1.1) * 40);    // the sweep round the far side
@@ -1009,7 +1011,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=28"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=29"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1485,7 +1487,8 @@ function worldStep(dt, tt) {
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), BR = PTS[0].length > 2 ? 21 : 15;   // 3D karts are bigger: they touch sooner
     if (d > 0 && d < BR && Math.abs(a.z - b.z) < 12) {
       const push = (BR - d) / 2, nx = dx / d, ny = dy / d;
-      if ((a.remote && b.remote) || a.noBump || b.noBump) continue;   // two other players' karts (or the test copy): their own games sort it out
+      if ((a.remote && b.remote) || a.noBump || b.noBump) continue;   // two other players' karts (or the test copy)
+      if (GAPS.length && ((a.hopUntil && performance.now() < a.hopUntil + 150) || (b.hopUntil && performance.now() < b.hopUntil + 150))) continue;   // nobody gets knocked off a mushroom bounce: their own games sort it out
       if (a.remote || b.remote) { const me2 = a.remote ? b : a, s2 = me2 === a ? -1 : 1; me2.x += nx * push * 2 * s2; me2.y += ny * push * 2 * s2; }   // only the kart this game drives is moved
       else { a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
       const fast = a.v > b.v ? a : b; fast.v *= .9;
@@ -1560,22 +1563,32 @@ function drawPops(x, y) {
 function shroomHit(pad) { pad.squash = 1; }   // the cap squashes down and springs back (3D)
 const gapAt = idx => { for (const g of GAPS) if (idx >= g.a && idx <= g.b) return g; return null; };
 const capAt = (x, y) => { for (const g of GAPS) for (const c of g.caps) if (Math.hypot(x - c.x, y - c.y) < c.r) return c; return null; };
+const HOP = 200;   // every bounce carries you this far forward (any speed class); you steer in the air to land on the next mushroom
 function gapStep(r, air) {
   if (!GAPS.length || r.rescue > 0) return;
-  if (air && r.hopUntil && performance.now() < r.hopUntil) r.a = r.ma = r.hopA;   // mid-bounce you fly where the mushroom sent you
-  if (air) { r.lastCap = null; return; }
   const c = capAt(r.x, r.y);
-  if (c) { if (c !== r.lastCap) { r.lastCap = c; c.squash = 1;
-      // where to: the next platform ahead that's nearest your line (steer to pick a row), or the road just past the gap
-      const g = c.g, myL = lat(r.x, r.y, r.idx); let tgt = null, best = 1e9;
-      for (const d of g.caps) { const ahead = (d.i - r.idx) * SPC; if (d === c || ahead < 70 || ahead > 320) continue; const sc = Math.abs((d.o || 0) - myL) + ahead * .25; if (sc < best) { best = sc; tgt = d; } }
-      const [tx, ty] = tgt ? [tgt.x, tgt.y] : at(Math.min(N - 1, g.b + Math.round(50 / SPC)), Math.max(-60, Math.min(60, myL)));
-      const D = Math.hypot(tx - r.x, ty - r.y), t = D / (250 * SPD);   // exactly that far (any speed class)
-      r.a = r.ma = r.hopA = Math.atan2(ty - r.y, tx - r.x); r.hopUntil = performance.now() + t * 1000;
-      r.v = 250; r.boost = 0; r.extra = 0; r.vz = 360 * t; r.z = .1; r.drift = 0; r.spin = 0;
-      if (r === K) { boingSound(); buzz(25); pop("🍄 Boing!", c.col === "g" ? "#7ad06a" : "#ff8a6a", true); } } return; }
+  if (air) {
+    if (r.hopUntil && performance.now() < r.hopUntil + 400) { r.v = 250; r.boost = 0; r.extra = 0; }   // a bounce is always the same hop: no speeding up in the air
+    if (r.hopUntil && performance.now() < r.hopUntil && (r !== K || (DEV && DEV.aimK))) r.a = r.ma = r.hopA;   // (the computer racers get a little aim)
+    if (c && c !== r.lastCap && r.vz < 0 && r.z <= (c.top || 0) + 1) bounce(r, c);   // coming down onto a raised mushroom
+    else if (!c) r.lastCap = null;
+    return;
+  }
+  if (c) { if (c !== r.lastCap) bounce(r, c); return; }
   r.lastCap = null;
-  const g = gapAt(r.idx); if (g) rescue(r, g.kind === "water" ? "💦 Splash! Into the pond" : "🍄 Into the gorge!");
+  const m = nearest(r.x, r.y, r.idx), g = gapAt(m.i); if (g && m.i < g.b - 2 && m.i > g.a + 1) rescue(r, g.kind === "water" ? "💦 Splash! Into the pond" : "🍄 Missed! Into the gorge");
+}
+function bounce(r, c) {
+  r.lastCap = c; c.squash = 1;
+  if ((r !== K || (DEV && DEV.aimK)) && !r.remote) {   // computer racers aim at the next mushroom ahead on their side
+    const g = c.g, myL = lat(r.x, r.y, r.idx); let tgt = null, best = 1e9;
+    for (const d of g.caps) { const ahead = (d.i - r.idx) * SPC; if (d === c || ahead < 80 || ahead > 300) continue; const sc = Math.abs((d.o || 0) - myL) + Math.abs(ahead - HOP) * .5; if (sc < best) { best = sc; tgt = d; } }
+    const [tx, ty] = tgt ? [tgt.x, tgt.y] : at(Math.min(N - 1, r.idx + Math.round(HOP / SPC)), Math.max(-25, Math.min(25, myL)));   // off the last one: back to the middle of the road
+    r.a = r.ma = r.hopA = Math.atan2(ty - r.y, tx - r.x);
+  }
+  const t = HOP / (250 * SPD); r.hopUntil = performance.now() + t * 1000;
+  r.v = 250; r.boost = 0; r.extra = 0; r.vz = 360 * t; r.z = Math.max(.1, c.top || 0); r.drift = 0; r.spin = 0;
+  if (r === K) { boingSound(); buzz(25); pop(c.r < 70 ? "🍄 Nice landing!" : "🍄 Boing!", c.col === "g" ? "#7ad06a" : "#ff8a6a", true); }
 }
 function spinOut(msg) {
   const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0 || k.hyper > 0) return;

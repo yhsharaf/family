@@ -178,12 +178,12 @@ export function create(A) {
     for (const g of t.gaps || []) {
       const depth = g.kind === "water" ? 70 : 320;
       for (const c of g.caps) {
-        const top = h(c.x, c.y) + 1, grp = new THREE.Group(); grp.position.set(c.x, top, c.y);
-        const dome = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: 50, specular: 0x333333 })); dome.scale.set(c.r, 16, c.r); grp.add(dome);
+        const lift = c.top || 0, top = h(c.x, c.y) + 1 + lift, grp = new THREE.Group(); grp.position.set(c.x, top, c.y);
+        const dh = 10 + c.r * .08, dome = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: 50, specular: 0x333333 })); dome.scale.set(c.r, dh, c.r); grp.add(dome);
         const rim = new THREE.Mesh(new THREE.CylinderGeometry(c.r, c.r * .9, 6, 40), new THREE.MeshLambertMaterial({ color: c.col === "g" ? 0x2f7a2a : 0xa8321e })); rim.position.y = -2; grp.add(rim);
         const under = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .88, c.r * .3, 14, 32), new THREE.MeshLambertMaterial({ color: 0xf2e2b8 })); under.position.y = -12; grp.add(under);
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .17, c.r * .22, depth + 10, 20), new THREE.MeshLambertMaterial({ color: 0xf0d77a })); stem.position.y = -(depth + 10) / 2 - 12; grp.add(stem);
-        scene.add(grp); roadObjs.push(dome, rim, under, stem); extraObjs.push(grp); caps.push({ m: dome, pad: c, h: 16 });
+        const sl = depth + 10 + lift, stem = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .17, c.r * .22, sl, 20), new THREE.MeshLambertMaterial({ color: 0xf0d77a })); stem.position.y = -sl / 2 - 12; grp.add(stem);
+        scene.add(grp); roadObjs.push(dome, rim, under, stem); extraObjs.push(grp); caps.push({ m: dome, pad: c, h: dh });
       }
       // what's down there: drifting mist in the gorge, water in the pond
       const p0 = g.caps[0], p1 = g.caps[g.caps.length - 1], mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2, base = h(mx, my);
