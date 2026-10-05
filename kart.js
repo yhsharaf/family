@@ -1475,7 +1475,7 @@ function render() {
   // minimap (Sleepywood has none: remember the road)
   if (mini && MECH !== "dark") {
     ctx.imageSmoothingEnabled = true;
-    const side = TOUCH && !upright(), mx = side ? 4 + safeL() : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
+    const side = TOUCH && !upright(), mx = side ? 4 : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
     ctx.globalAlpha = .85; ctx.drawImage(mini, mx, my, 50, 50); ctx.globalAlpha = 1;
     for (const sh of SHOTS) { ctx.fillStyle = sh.tgt === k ? "#ff2a2a" : "#ffe08a"; ctx.beginPath(); ctx.arc(mx + sh.x * 128 / WORLD * s, my + sh.y * 128 / WORLD * s, 2, 0, 7); ctx.fill(); }
     for (const r of RIV) { ctx.fillStyle = r.color; ctx.fillRect(mx + r.x * 128 / WORLD * s - 1.5, my + r.y * 128 / WORLD * s - 1.5, 3, 3); }
@@ -1719,9 +1719,6 @@ let flashT = null, warnAt = 0, lastRk = 0, posPop = null;
 function flash(t, ms, kind) { const f = $k("#kFlash"); if (kind === "intro") f.innerHTML = `<img class="k-crown" src="media/crown.png" alt="">` + esc(t); else f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
 // phones race sideways: go fullscreen + lock to landscape where the browser allows it (Android), otherwise ask to rotate and pause
 const TOUCH = matchMedia("(pointer: coarse)").matches;
-// iPhones sideways: how much of the left edge is under the notch, in game units (the page now reaches into those edges)
-let safeLc = null, safeLt = 0;
-const safeL = () => { const now = performance.now(); if (safeLc === null || now - safeLt > 1000) { safeLt = now; const px = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sal")) || 0, w = $k(".kt-screen").getBoundingClientRect().width || 1; safeLc = px * W / w; } return safeLc; };
 // while racing on a phone, pinches and double taps must not zoom the page (Safari ignores the CSS for this, so stop the gestures here)
 ["gesturestart", "gesturechange", "dblclick"].forEach(ev => document.addEventListener(ev, e => { if (state !== "menu" && !$k("#kGame").hidden) e.preventDefault(); }, { passive: false }));
 let lastTouchEnd = 0;
