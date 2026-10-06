@@ -539,6 +539,9 @@ export function create(A) {
     let m = karts.get(r);
     if (!m || m.color !== o.color) { if (m) scene.remove(m.root); m = makeKart(o.color, o.ghost, o.family); m.color = o.color; karts.set(r, m); }
     m.used = true; m.root.visible = true; m.me = !!o.me;
+    if (!!o.boo !== !!m.booOn) { m.booOn = !!o.boo; if (!m.base) m.base = m.mats.map(mt => [mt.transparent, mt.opacity, mt.depthWrite]);   // 👻 Jr. Wraith: see-through
+      m.mats.forEach((mt, i) => { const [tr, op, dw] = m.base[i]; mt.transparent = m.booOn || tr; mt.opacity = m.booOn ? .22 : op; mt.depthWrite = m.booOn ? false : dw; mt.needsUpdate = true; });
+      m.driver.material.opacity = m.booOn ? .3 : (m.ghost ? .5 : 1); m.driver.material.transparent = true; m.faded = m.booOn; }
     const gx = r.x, gy = r.y, a = r.a || 0, ca = Math.cos(a), sa = Math.sin(a);
     m.root.position.set(gx, h(gx, gy), gy); m.root.rotation.y = -a;
     // lean with the ground: nose up on a climb, tipped on a side slope
@@ -607,7 +610,7 @@ export function create(A) {
   function fadeBlockers() {
     let me = null; for (const m of karts.values()) if (m.me && m.used) me = m; if (!me) return;
     const dMe = tmp.copy(me.root.position).sub(camera.position).dot(fwd);
-    for (const m of karts.values()) { if (m === me || !m.used) continue;
+    for (const m of karts.values()) { if (m === me || !m.used || m.booOn) continue;
       if (!m.base) m.base = m.mats.map(mt => [mt.transparent, mt.opacity, mt.depthWrite]);
       const d = tmp.copy(m.root.position).sub(camera.position).dot(fwd), lat = tmp.addScaledVector(fwd, -d).length(), block = m.ghost ? d < dMe + 15 : d > 0 && d < dMe - 6 && lat < 30;   // ghosts fade whenever they're level with you or behind
       if (block !== m.faded) { m.faded = block; m.mats.forEach((mt, i) => { const [tr, op, dw] = m.base[i];

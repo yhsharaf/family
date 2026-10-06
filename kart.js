@@ -416,20 +416,16 @@ const TRACKS = {
       };
     },
   },
-  // 3. Mount El Nath: Mario Kart 8's Mount Wario, one long run down the mountain in three sections (no laps). Out past the plane at the summit
-  // and off the edge on a glider; down the zig-zags into a rock cave (Cold Eyes float about in it) and glide out over a ravine; the two flat
-  // rocks with boost pads and a boost ramp; along the dam with its water streams, two sharp turns and boost pads down the spillways; the
-  // snowy forest where the road splits round a wood; rocks to trick off; the ski runs past slalom flags, then the ski jump: boost pads all the
-  // way down, a last glide through three boost rings, two turns, and the finish by the log cabin.
+  // 3. Mount El Nath (after Mario Kart 8's Mount Wario, made a 3-lap loop so the pack stays together): off the summit on a glider, round
+  // into the ice cave with its Cold Eyes and out over the ravine on another glider, past the two flat rocks and up the boost ramp to the
+  // dam, down the spillway streams, through the forest split (rocks to trick off), down the slalom run to the ski jump (a glide through
+  // three boost rings), then the long climb back up the east face to the summit.
   en3: {
-    id: "mtwario", scale: 2.7, road: 180, open: true, sections: 3, gate: "ice", cup: "elnath", music: "k_elnath3", name: "Mount El Nath", sub: "glider jumps · the dam · the ski jump · one run", icon: "🏔️",
-    ctrl: [[1990, 260, 360], [1780, 260, 360], [1660, 262, 359], [1560, 265, 358], [1400, 275, 336], [1280, 250, 331], [1150, 200, 326], [1020, 230, 322], [900, 310, 317], [770, 320, 312], [640, 260, 307],
-      [520, 220, 303], [400, 240, 299], [280, 300, 294], [190, 400, 289], [200, 520, 284], [290, 610, 280], [430, 650, 275], [600, 660, 269], [780, 640, 263], [1080, 640, 240], [1200, 660, 237],
-      [1350, 620, 234], [1500, 590, 232], [1640, 620, 229], [1760, 690, 227], [1830, 800, 223], [1780, 910, 220], [1640, 980, 216], [1450, 1040, 210], [1250, 1060, 204], [1090, 1050, 198],
-      [1000, 1075, 196], [965, 1140, 192], [900, 1185, 188], [700, 1150, 180], [540, 1120, 174], [380, 1100, 169], [250, 1150, 166], [190, 1260, 162], [250, 1370, 158], [420, 1420, 155],
-      [650, 1470, 148], [880, 1420, 142], [1050, 1380, 137], [1250, 1420, 131], [1450, 1380, 125], [1640, 1400, 120], [1780, 1470, 115], [1830, 1580, 110], [1760, 1690, 106], [1600, 1760, 100],
-      [1450, 1800, 91], [1300, 1760, 83], [1150, 1800, 74], [1000, 1790, 60], [860, 1790, 44], [560, 1790, 20], [430, 1805, 16], [340, 1860, 13], [370, 1940, 10], [480, 1965, 7], [640, 1960, 6],
-      [780, 1960, 4], [900, 1960, 2]],
+    id: "mtelnath", scale: 1.18, road: 180, gate: "ice", cup: "elnath", music: "k_elnath3", name: "Mount El Nath", sub: "glider jumps · the dam · the ski jump · the climb", icon: "🏔️",
+    ctrl: [[1700, 300, 300], [1560, 300, 300], [1420, 305, 298], [1200, 320, 270], [1000, 340, 255], [800, 320, 245], [600, 300, 236], [430, 330, 228], [310, 430, 220], [290, 580, 210],
+      [380, 690, 200], [550, 730, 190], [750, 740, 180], [1000, 750, 160], [1180, 760, 150], [1350, 790, 145], [1520, 860, 140], [1640, 980, 130], [1650, 1120, 120], [1560, 1250, 105],
+      [1380, 1300, 95], [1180, 1320, 85], [980, 1330, 75], [760, 1330, 65], [560, 1340, 55], [400, 1400, 48], [330, 1520, 42], [400, 1640, 36], [560, 1700, 30], [700, 1710, 26],
+      [1150, 1720, 15], [1400, 1700, 12], [1620, 1640, 20], [1790, 1520, 40], [1910, 1340, 75], [1950, 1120, 115], [1950, 900, 160], [1930, 700, 205], [1890, 520, 250], [1830, 380, 285]],
     theme: { ...TH.elnath, mountain: true, flowers: 500, tufts: 0, road: "snow", curb: ["#c8302a", "#f4f8ff"] }, art: { sky: "media/duel/bg_elnath.webp", strip: "media/kart/elnath/strip1.webp" },
     near: ["en_pine", "en_pine3", "en_pine2"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines", "en_house1", "en_house3"], mobs: ["cold_eye", "jr_yeti"],
     build() {
@@ -438,44 +434,44 @@ const TRACKS = {
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
       // a glider jump: the ramp, then a ravine (fall short and you're put back before it)
       const glide = (x, y, len) => { const a = I(x, y); pads.push({ t: "glide", i: a - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a, b: a + u(len), kind: "chasm", caps: [] }); return a; };
-      glide(1560, 265, 360);                                   // off the summit (where you'd drop out of the plane)
-      const cave = { a: I(330, 625), b: I(760, 645), rock: true };
-      const g2 = glide(800, 640, 560);                         // out of the cave, over the ravine
-      pads.push({ t: "boost", i: I(1200, 660), len: 10, o: -45, w: 60 }, { t: "boost", i: I(1350, 620), len: 10, o: 45, w: 60 });   // the two flat rocks
-      pads.push({ t: "boost", i: I(1500, 590) - 12, len: 8, o: 0, w: 70 }, { t: "ramp", i: I(1500, 590), len: 8, o: 0, w: ROAD });     // the boost ramp to the dam
-      for (const [x, y, o] of [[700, 1150, -40], [600, 1135, 40], [500, 1115, -40]]) pads.push({ t: "boost", i: I(x, y), len: 10, o, w: 55 });   // down the spillway streams
-      for (const [x, y, o] of [[1050, 1380, -45], [1250, 1420, 45], [1450, 1380, -40]]) pads.push({ t: "ramp", i: I(x, y), len: 6, o, w: 70 });   // rocks to trick off
-      for (const [x, y] of [[1000, 1790], [940, 1790]]) pads.push({ t: "boost", i: I(x, y), len: 10, o: 0, w: 80 });                // down the ski jump
-      const g3 = glide(860, 1790, 600);                        // the ski jump's glide…
-      for (const [d, z, o] of [[200, 150, 0], [350, 188, 25], [500, 165, -25]]) rings.push({ i: g3 + u(d), o, z, r: 42 });     // …through three boost rings (on the glider's path)
+      glide(1420, 305, 300);                                   // off the summit
+      const cave = { a: I(400, 700), b: I(750, 740), rock: true };
+      const g2 = glide(780, 742, 420);                         // out of the cave, over the ravine
+      pads.push({ t: "boost", i: I(1180, 760), len: 10, o: -45, w: 60 }, { t: "boost", i: I(1350, 790), len: 10, o: 45, w: 60 });   // the two flat rocks
+      pads.push({ t: "boost", i: I(1520, 860) - 12, len: 8, o: 0, w: 70 }, { t: "ramp", i: I(1520, 860), len: 8, o: 0, w: ROAD });     // the boost ramp to the dam
+      for (const [x, y, o] of [[1380, 1300, -40], [1280, 1310, 40], [1180, 1320, -40]]) pads.push({ t: "boost", i: I(x, y), len: 10, o, w: 55 });   // down the spillway streams
+      for (const [x, y, o] of [[900, 1330, -45], [700, 1335, 45]]) pads.push({ t: "ramp", i: I(x, y), len: 6, o, w: 70 });   // rocks to trick off
+      for (const [x, y] of [[560, 1700], [620, 1705]]) pads.push({ t: "boost", i: I(x, y), len: 10, o: 0, w: 80 });                // down the ski jump
+      const g3 = glide(700, 1710, 480);                        // the ski jump's glide…
+      for (const [d, z, o] of [[160, 150, 0], [290, 180, 25], [420, 160, -25]]) rings.push({ i: g3 + u(d), o, z, r: 42 });     // …through three boost rings
       // 🔢 coins
-      row(I(1400, 275) + 8, I(1150, 200), 6, 0); row(I(900, 310), I(520, 220), 6, j => Math.sin(j) * 40);
-      row(cave.a + 10, cave.b - 10, 6, 0); row(I(1640, 980), I(1250, 1060), 6, -35); row(I(420, 1420), I(880, 1420), 6, 30); row(I(1600, 1760), I(1150, 1800), 7, j => (j & 1 ? 40 : -40));
-      for (let n = 0; n < 5; n++) { const [x, y] = at(g2 + u(80 + n * 90), 0); coins.push({ x, y, z: 120 + 40 * Math.sin(n / 4 * Math.PI), got: false }); }   // a trail over the ravine
+      row(I(1200, 320) + 6, I(800, 320), 6, j => Math.sin(j) * 40); row(cave.a + 8, cave.b - 8, 5, 0); row(I(1640, 980), I(1560, 1250), 6, -35);
+      row(I(400, 1640), I(560, 1700), 5, j => (j & 1 ? 40 : -40)); row(I(1620, 1640), I(1950, 1120), 7, 0); row(I(1930, 700), I(1830, 380), 5, 30);
+      for (let n = 0; n < 4; n++) { const [x, y] = at(g2 + u(80 + n * 90), 0); coins.push({ x, y, z: 120 + 40 * Math.sin(n / 3 * Math.PI), got: false }); }   // a trail over the ravine
       return {
-        plane: { i: I(1760, 262), o: -(ROAD / 2 + CURB + 120) },   // ✈ parked at the summit, just past the start
+        plane: { i: I(1560, 300), o: -(ROAD / 2 + CURB + 120) },   // ✈ parked at the summit
         gaps, caves: [cave], rings, pads, coins,
-        fork: { a: I(420, 1420), b: I(880, 1420), via: [[ws(540), ws(1335)], [ws(760), ws(1335)]], width: 140, style: "cobble" },   // 🌲 the forest split
-        pigs: [{ i: I(1250, 1060), ph: 0, k: "jr_yeti", sp: .7, soft: true, s: .55 }, { i: I(1450, 1800), ph: 2, k: "jr_yeti", sp: .8, soft: true, s: .55 }],   // snowboarding yetis drifting across
-        boxes: [...boxRow(I(1150, 200), [-60, -20, 20, 60]), ...boxRow(I(1350, 620), [-60, -20, 20, 60]), ...boxRow(I(380, 1100), [-60, -20, 20, 60]), ...boxRow(I(1250, 1420), [-60, -20, 20, 60]), ...boxRow(I(1300, 1760), [-60, -20, 20, 60])],
+        fork: { a: I(980, 1330), b: I(560, 1340), via: [[ws(880), ws(1250)], [ws(660), ws(1255)]], width: 140, style: "cobble" },   // 🌲 the forest split
+        pigs: [{ i: I(1350, 790), ph: 0, k: "jr_yeti", sp: .7, soft: true, s: .55 }, { i: I(1400, 1700), ph: 2, k: "jr_yeti", sp: .8, soft: true, s: .55 }],   // snowboarding yetis drifting across
+        boxes: [...boxRow(I(1000, 340), [-60, -20, 20, 60]), ...boxRow(I(1000, 750), [-60, -20, 20, 60]), ...boxRow(I(1560, 1250), [-60, -20, 20, 60]), ...boxRow(I(330, 1520), [-60, -20, 20, 60]), ...boxRow(I(1950, 1000), [-60, -20, 20, 60])],
         extra(push) {
-          // 🌊 the dam along the outside of the long bend, and its spillway wall
-          for (const [x0, y0, x1, y1] of [[1640, 980, 1450, 1040], [1450, 1040, 1250, 1060], [1250, 1060, 1090, 1050]]) { const i0 = I(x0, y0), i1 = I(x1, y1), [ax, ay] = at(i0, ROAD / 2 + CURB + 40), [bx, by] = at(i1, ROAD / 2 + CURB + 40);
+          // 🌊 the dam along the outside of the bend, and the spillway wall
+          for (const [x0, y0, x1, y1] of [[1520, 860, 1640, 980], [1640, 980, 1650, 1120], [1650, 1120, 1560, 1250]]) { const i0 = I(x0, y0), i1 = I(x1, y1), [ax, ay] = at(i0, -(ROAD / 2 + CURB + 40)), [bx, by] = at(i1, -(ROAD / 2 + CURB + 40));
             BUILDINGS.push({ x: (ax + bx) / 2, y: (ay + by) / 2, w: Math.hypot(bx - ax, by - ay) + 30, d: 40, h: 150, a: Math.atan2(by - ay, bx - ax), dam: true }); }
-          { const i0 = I(700, 1150), i1 = I(450, 1110), [ax, ay] = at(i0, -(ROAD / 2 + CURB + 40)), [bx, by] = at(i1, -(ROAD / 2 + CURB + 40));
+          { const i0 = I(1380, 1300), i1 = I(1180, 1320), [ax, ay] = at(i0, -(ROAD / 2 + CURB + 40)), [bx, by] = at(i1, -(ROAD / 2 + CURB + 40));
             BUILDINGS.push({ x: (ax + bx) / 2, y: (ay + by) / 2, w: Math.hypot(bx - ax, by - ay), d: 40, h: 140, a: Math.atan2(by - ay, bx - ax), dam: true }); }
-          // 🌲 the wood between the two forest roads, and pines round the ski runs
-          for (let n = 0; n < 7; n++) push(ws(560 + n * 32), ws(1395 + (n & 1) * 18), n % 2 ? "en_pine" : "en_pine3");
-          // ⛷ slalom flags along the ski runs
-          for (let i = I(1600, 1760), n = 0; i < I(1150, 1800); i += 18, n++) { const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB + 6)); OBJS.push({ x, y, k: n & 1 ? "flag_r" : "flag_b", s: .5, r: 0, z: 0 }); }
+          // 🌲 the wood between the two forest roads, and pines round the ski run
+          for (let n = 0; n < 7; n++) push(ws(640 + n * 32), ws(1288 + (n & 1) * 12), n % 2 ? "en_pine" : "en_pine3");
+          // ⛷ slalom flags down to the ski jump
+          for (let i = I(330, 1520), n = 0; i < I(560, 1700); i += 14, n++) { const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB + 6)); OBJS.push({ x, y, k: n & 1 ? "flag_r" : "flag_b", s: .5, r: 0, z: 0 }); }
           // 👁 Cold Eyes floating in the cave (the Swoopers)
-          for (let n = 0; n < 5; n++) { const [x, y] = at(cave.a + 20 + n * 22, (n & 1 ? 1 : -1) * 55); OBJS.push({ x, y, k: "cold_eye", s: .45, r: 0, z: 60, bob: 10, mob: true }); }
-          // section banners (the flag banners across the road), the log cabin at the finish, hot-air balloons
-          for (const f of [1 / 3, 2 / 3]) { const i = Math.round(START_I + (N - FIN_OFF - START_I) * f); for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 8)); OBJS.push({ x, y, k: "ice_post", s: .9, r: 0, z: 0 }); }
+          for (let n = 0; n < 5; n++) { const [x, y] = at(cave.a + 10 + n * 12, (n & 1 ? 1 : -1) * 55); OBJS.push({ x, y, k: "cold_eye", s: .45, r: 0, z: 60, bob: 10, mob: true }); }
+          // banners across the road a third and two thirds round, the log cabin by the line, hot-air balloons, icicles
+          for (const f of [1 / 3, 2 / 3]) { const i = Math.round(N * f); for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 8)); OBJS.push({ x, y, k: "ice_post", s: .9, r: 0, z: 0 }); }
             const [x, y] = at(i, 0); OBJS.push({ x, y, k: "ice_banner", s: .5, r: 0, z: 118 }); }
-          { const i = N - FIN_OFF + 10, [x, y] = at(i, ROAD / 2 + CURB + 170); BUILDINGS.push({ x, y, w: 260, d: 160, h: 110, a: tangent(i), wall: "#8a5a32", roof: "#5a3420" }); }
-          for (const [x, y, z] of [[700, 1650, 420], [1400, 900, 520], [400, 800, 600], [1700, 300, 700]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1.2, r: 0, z, bob: 18 });
-          for (const [x, y, sc] of [[1100, 450, 1.3], [450, 1580, 1.2], [1550, 1250, 1.1]]) OBJS.push({ x: ws(x), y: ws(y), k: "icicle", s: sc, r: 30, z: 0 });
+          { const i = N - 30, [x, y] = at(i, ROAD / 2 + CURB + 170); BUILDINGS.push({ x, y, w: 260, d: 160, h: 110, a: tangent(i), wall: "#8a5a32", roof: "#5a3420" }); }
+          for (const [x, y, z] of [[700, 1020, 420], [1300, 560, 520], [250, 1150, 600], [1650, 1500, 700]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1.2, r: 0, z, bob: 18 });
+          for (const [x, y, sc] of [[1100, 520, 1.3], [450, 1050, 1.2], [1250, 1520, 1.1]]) OBJS.push({ x: ws(x), y: ws(y), k: "icicle", s: sc, r: 30, z: 0 });
         },
       };
     },
@@ -1530,12 +1526,12 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=63"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=64"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
 // ------------------------------------------------------------------ rivals and items
-// 7 computer racers (real guild members), rows of item boxes, and the MapleStory items: Elixir, 3 Elixirs, Slime drop, Arrow, Zakum's Arm
+// 7 computer racers (real guild members), rows of item boxes, and all the Mario Kart 8 Deluxe items as MapleStory things (see ITEM_ICON)
 // modes: a 3-race Grand Prix with points and a podium, a single race, or a Time Trial alone against your ghost (only Time Trial
 // times go on the guild board, like Mario Kart's leaderboards, since races with rivals depend on luck)
 const MODES = { gp: "🏆 Grand Prix", race: "🏁 Single race", tt: "⏱️ Time Trial", mp: "👥 Multiplayer" };
@@ -1557,10 +1553,30 @@ let cc = CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 100, SPD = 1;   // 
 const ccId = (id, c) => c === 150 ? id : `${id}_${c}`;   // board / ghost / best ids: 150cc keeps the plain track id
 const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
-const ITEM_ICON = { elixir: "media/duel/elixir.png", triple: "media/duel/elixir.png", slime: "media/mobs/slime.png", arrow: "media/kart/items/arrow_icon.png", arm: "media/duel/zarm_stand.gif",
-  thunder: "media/kart/thunder.png?v=2", splat: "media/mobs/octopus.png", hyper: "media/kart/hyperbody.png", bomb: "media/kart/items/bomb0.png" };
-const ITEM_NAME = { elixir: "Elixir", triple: "3 Elixirs", slime: "Slime drop", arrow: "Arrow", arm: "Zakum's Arm", thunder: "Thunder", splat: "Splat", hyper: "Hyper Body", bomb: "Pirate Bomb" };
-let RIV = [], DROPS = [], SHOTS = [], ARMS = [], BOMBS = [], BOOMS = [];
+// 🎁 the Mario Kart 8 Deluxe items, each turned into a MapleStory thing (icons from maplestory.io)
+const IT = "media/kart/items/";
+const ITEM_ICON = { slime: "media/mobs/slime.png", slime3: "media/mobs/slime.png", gshell: IT + "shell_green.png", gshell3: IT + "shell_green.png", rshell: IT + "shell_red.png", rshell3: IT + "shell_red.png",
+  bshell: IT + "shell_blue.png", bomb: IT + "bomb0.png", elixir: "media/duel/elixir.png", triple: "media/duel/elixir.png", golden: IT + "power_elixir.png", rocket: IT + "rocket.png",
+  splat: "media/mobs/octopus.png", thunder: "media/kart/thunder.png?v=2", hyper: "media/kart/hyperbody.png", fire: IT + "star_fire.png", boom: IT + "star_ilbi.png", piranha: IT + "nependeath.gif",
+  horn: IT + "megaphone.png", eight: IT + "gachapon.png", coin: "media/kart/meso1.png", boo: IT + "jrwraith.gif", arrow: IT + "arrow_icon.png", arm: "media/duel/zarm_stand.gif" };
+const ITEM_NAME = { slime: "Slime drop", slime3: "3 Slime drops", gshell: "Green Snail Shell", gshell3: "3 Green Snail Shells", rshell: "Red Snail Shell", rshell3: "3 Red Snail Shells",
+  bshell: "Blue Snail Shell", bomb: "Pirate Bomb", elixir: "Elixir", triple: "3 Elixirs", golden: "Power Elixir", rocket: "Rocket Booster", splat: "Splat", thunder: "Thunder", hyper: "Hyper Body",
+  fire: "Hwabi Fire Stars", boom: "Ilbi Throwing-Star", piranha: "Nependeath", horn: "Megaphone", eight: "Gachapon", coin: "Mesos", boo: "Jr. Wraith", arrow: "Arrow", arm: "Zakum's Arm" };
+const ITEM_N = { triple: 3, slime3: 3, gshell3: 3, rshell3: 3, boom: 3, eight: 8 };   // used one at a time
+const ITEM_ONE = { triple: "elixir", slime3: "slime", gshell3: "gshell", rshell3: "rshell" };   // what each use of a "3" item is
+const EIGHT = ["coin", "rshell", "gshell", "bomb", "splat", "hyper", "elixir", "slime"];   // 🎰 Gachapon = Crazy Eight: these 8, one per press
+// how likely each item is, by how far behind the leader you are (Mario Kart 8's own tables, version 4.1: Grand Prix, people and computer racers;
+// the numbers are % x 2). Deluxe added the Boo (here Jr. Wraith); it's mixed into the middle tables.
+const MK = ["slime", "gshell", "rshell", "elixir", "bomb", "splat", "bshell", "triple", "hyper", "rocket", "thunder", "golden", "fire", "piranha", "horn", "boom", "coin", "slime3", "gshell3", "rshell3", "eight"];
+const MK_P = [[400, "65,50,5,5,0,0,0,0,0,0,0,0,0,0,5,0,70,0,0,0,0"], [1000, "20,25,50,20,10,0,0,0,0,0,0,0,10,10,5,5,15,15,10,5,0"], [2000, "10,20,30,25,15,0,0,15,0,0,0,0,10,15,5,10,5,10,10,15,5"],
+  [3300, "0,15,20,50,5,5,0,60,0,0,0,0,5,5,0,10,0,0,10,10,5"], [5500, "0,0,10,30,0,5,5,85,25,10,0,25,0,0,0,0,0,0,0,0,5"], [8000, "0,0,0,10,0,0,5,65,40,30,5,40,0,0,0,0,0,0,0,0,5"],
+  [13000, "0,0,0,0,0,0,5,35,35,60,10,55,0,0,0,0,0,0,0,0,0"], [26000, "0,0,0,0,0,0,0,10,30,85,15,60,0,0,0,0,0,0,0,0,0"], [1e9, "0,0,0,0,0,0,0,30,40,70,0,60,0,0,0,0,0,0,0,0,0"]].map(([d, w]) => [d, w.split(",").map(Number)]);
+const MK_B = [[300, "50,40,15,10,0,0,0,0,0,0,0,0,0,0,5,0,70,10,0,0,0"], [700, "25,30,60,15,5,0,0,0,0,0,0,0,5,10,5,5,20,10,10,0,0"], [1300, "30,35,30,25,10,0,0,10,0,0,0,0,10,5,0,10,15,10,10,0,0"],
+  [2600, "30,35,15,45,10,5,0,25,0,0,0,0,5,5,0,5,5,0,15,0,0"], [4500, "30,35,5,50,0,5,3,47,10,0,0,10,0,0,0,0,0,0,5,0,0"], [7000, "15,20,0,50,0,0,4,58,20,10,3,20,0,0,0,0,0,0,0,0,0"],
+  [13000, "10,10,0,30,0,0,0,57,30,30,3,30,0,0,0,0,0,0,0,0,0"], [26000, "10,10,0,10,0,0,0,42,30,55,3,40,0,0,0,0,0,0,0,0,0"], [1e9, "0,0,0,30,0,0,0,60,30,50,0,30,0,0,0,0,0,0,0,0,0"]].map(([d, w]) => [d, w.split(",").map(Number)]);
+const ROLL_KEYS = [...MK, "boo"];
+const HELD_IMG = it => it === "arrow" ? IMG.arrowIcon : /^gshell/.test(it) ? IMG.it_gshell : /^rshell/.test(it) ? IMG.it_rshell : IMG.slime;
+let RIV = [], DROPS = [], SHOTS = [], ARMS = [], BOMBS = [], BOOMS = [], BSHELLS = [], HORNS = [];
 const BOMB_R = 78;   // 💣 the Pirate Bomb's blast radius (world units; a kart is about 20 wide)
 const progOf = r => (r.done ? 1e6 - r.finish : 0) + (r.remote && !liveOK(r) && r.srvProg != null ? r.srvProg * (OPEN ? N : LAPS * N) : (OPEN ? r.idx : r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx)));
 const racers = () => [K, ...RIV];
@@ -1633,7 +1649,7 @@ function mpOnPos(p, lat) {
   if (had) { const [tx, ty, ta] = predictNet(r.net, t); r.off = { x: r.x - tx, y: r.y - ty, a: Math.atan2(Math.sin(r.a - ta), Math.cos(r.a - ta)) };   // keep drawing them where they are now; the difference fades away
     if (Math.hypot(r.off.x, r.off.y) > 140) r.off = { x: 0, y: 0, a: 0 }; }   // a respawn or a long gap: just put them there
   else { [r.x, r.y, r.a] = predictNet(r.net, t); r.off = { x: 0, y: 0, a: 0 }; }
-  r.z = p.z || 0; r.steer = p.s || 0; r.spin = p.sp || 0; r.small = p.sm || 0; r.hyper = p.hy || 0; r.extra = p.ex || 0; r.squash = p.sq || 0;
+  r.z = p.z || 0; r.steer = p.s || 0; r.spin = p.sp || 0; r.small = p.sm || 0; r.hyper = p.hy || 0; r.rocket = p.rk || 0; r.boo = p.bo || 0; r.piranha = p.pi || 0; r.extra = p.ex || 0; r.squash = p.sq || 0;
   r.lap = p.lap; r.cps = p.cps; r.idx = p.idx; r.holding = !!p.ho; r.item = p.it || null; r.ink = p.ik || 0;
   if (p.dn && !r.done) { r.done = true; r.finishT = p.ft; r.finish = ++finishers; if (!MP.endAt && !r.bot) { MP.endAt = performance.now() + 10000; MP.firstName = r.name; } }   // bots don't start the 10 s clock
 }
@@ -1642,7 +1658,11 @@ function mpOnItem(p) {
   const by = RIV.find(o => o.name === p.n); if (!by) return;
   if (p.k === "drop") DROPS.push({ x: p.x, y: p.y, t: 40, by, grace: .3, id: p.id });
   if (p.k === "bomb") BOMBS.push({ x: p.x, y: p.y, z: 12, a: p.a, v: p.v, vz: 230, by, t: 0, id: p.id });
-  if (p.k === "shot") SHOTS.push({ x: p.x, y: p.y, a: p.a, v: p.v, tgt: p.tgt ? mpByName(p.tgt) || null : null, by, life: 4, id: p.id });
+  if (p.k === "shot") { const sk = p.sk || "a"; SHOTS.push({ x: p.x, y: p.y, a: p.a, v: p.v, tgt: p.tgt ? mpByName(p.tgt) || null : null, by, k: sk, life: { g: 7, f: 1.8, b: 2.2 }[sk] || 4, bn: sk === "g" ? 5 : 1, out: .6, idx: p.i, grace: .5, id: p.id }); }
+  if (p.k === "bshell") { const tgt = mpByName(p.tgt); if (tgt) { BSHELLS.push({ by, tgt, p: progOf(by), t: 0, id: p.id }); armCD = 20; if (tgt === K) flash(`💙 ${by.name}'s Blue Snail Shell is coming for you!`, 1200); } }
+  if (p.k === "horn") { HORNS.push({ x: p.x, y: p.y, t: 0 }); hornAt(p.x, p.y, by, p.id, false); }
+  if (p.k === "boo") { const v = mpByName(p.tgt); if (v && !v.remote && v.item && v.item !== "boo") { mpItem(v, { k: "booGive", tgt: by.name, it: v.item, nn: v.itemN || 0 }); if (v === K) flash(`👻 ${by.name} stole your ${ITEM_NAME[v.item]}!`, 1100); v.item = null; v.itemN = 0; v.holding = false; } }
+  if (p.k === "booGive") { const r = mpByName(p.tgt); if (r && !r.remote) { booGive(r, p.it, p.nn); if (r === K) flash(`👻 Stole ${by.name}'s ${ITEM_NAME[p.it] || "item"}!`, 1100); } }
   if (p.k === "arm" && p.tgt === MP.me) { ARMS.push({ tgt: K, t: 2.6, by }); armCD = 20; }
   if (p.k === "thunder") {
     thunderCD = 25; thunderFx = .35; thunderSound();
@@ -1678,7 +1698,7 @@ function remoteStep(r, dt) {
 const BOT_IMG = { "Orange Mushroom": "orange_mushroom", "Ribbon Pig": "ribbon_pig", "Blue Snail": "blue_snail", "Stump": "stump", "Green Mushroom": "green_mushroom", "Horny Mushroom": "horny_mushroom", "Pig": "pig" };
 const botImg = name => `media/mobs/${BOT_IMG[name] || "orange_mushroom"}.png`;
 function makeRivals(keep) {
-  if (mode === "tt") { RIV = []; DROPS = []; SHOTS = []; ARMS = []; return; }
+  if (mode === "tt") { RIV = []; DROPS = []; SHOTS = []; ARMS = []; BSHELLS = []; HORNS = []; return; }
   if (mode === "mp") {   // the other players in the room, on the grid in the order they joined
     const order = MP.players.filter(p => !p.spec).map(p => p.name), others = MP.players.filter(p => p.name !== MP.me && !p.spec), host = MP.host === MP.me && !MP.watching;
     RIV = others.map((p, n) => {
@@ -1688,7 +1708,7 @@ function makeRivals(keep) {
       if (p.bot && host) Object.assign(r, { remote: false, lane: g.o, laneT: 1 + Math.random() * 2, skill: 226 + n * 3 + Math.random() * 10, lastPad: null, kingWas: 0 });   // 🤖 the host drives the bots
       return r;
     });
-    DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BOXES.forEach(b => b.t = 0); return;
+    DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BSHELLS = []; HORNS = []; BOXES.forEach(b => b.t = 0); return;
   }
   const pool = [...(typeof D !== "undefined" ? [...D.founders, ...D.members] : [])].map(p => p.name).filter((n, i, a) => n && /^[A-Za-z0-9]{2,13}$/.test(n) && n !== me && a.indexOf(n) === i);
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
@@ -1700,24 +1720,26 @@ function makeRivals(keep) {
       lane: g.o, laneT: 1 + Math.random() * 2, skill: 228 + n * 3 + Math.random() * 10, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0,
       item: null, itemN: 0, itemT: 0, lastPad: null, kingWas: 0 };
   });
-  DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BOXES.forEach(b => b.t = 0);
+  DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BSHELLS = []; HORNS = []; BOXES.forEach(b => b.t = 0);
 }
 let bloopCD = 0, armCD = 0, thunderCD = 0, thunderFx = 0;   // Zakum's Arm: at most one every 20 seconds   // Dizzy/Splat: only one in the whole race every 14 seconds, so they stay special
-// items depend on how far behind the leader you are (like Mario Kart 8), not just your place: right behind the leader you get
-// defensive items, far back you get the catch-up ones. Zakum's Arm, Dizzy and Splat are locked for the first 30 seconds.
+// items depend on how far behind the leader you are, like Mario Kart 8: the distance picks one of the tables above (MK8 measures it in
+// its own units, about 2400 a second at top speed, so here it's seconds behind x 2400). Thunder, Splat and the Blue Snail Shell are
+// locked for the first 30 seconds and have a cooldown; only one Blue Snail Shell flies at a time.
 function rollItem(r, rival) {
-  const lead = racers().reduce((a, b) => progOf(b) > progOf(a) ? b : a), gap = (progOf(lead) - progOf(r)) / N;   // in laps
-  const early = K.t < 30000, b = bloopCD > 0 || early ? 0 : rival ? .25 : 1, arm = armCD > 0 || early || ARMS.length ? 0 : 1;
-  const th = thunderCD > 0 || early ? 0 : rival ? .3 : 1;
-  const t = (gap < .04 ? [["slime", 5], ["arrow", 3], ["elixir", 2], ["bomb", 1.5]]
-    : gap < .12 ? [["elixir", 3], ["arrow", 4], ["slime", 2], ["triple", 1], ["splat", .6 * b], ["bomb", 2.5]]
-    : gap < .25 ? [["triple", 3], ["arrow", 3], ["elixir", 2], ["splat", 1 * b], ["arm", .8 * arm], ["thunder", .5 * th], ["hyper", .8], ["bomb", 2]]
-    : [["triple", 4], ["arrow", 2], ["arm", 2 * arm], ["thunder", 1.2 * th], ["splat", 1.5 * b], ["hyper", 2], ["bomb", 1]]).filter(x => x[1] > 0);
-  let x = Math.random() * t.reduce((a, c) => a + c[1], 0);
-  for (const [k, w] of t) { if ((x -= w) < 0) return k; }
+  const live = racers().filter(o => !o.done), lead = (live.length ? live : racers()).reduce((a, b) => progOf(b) > progOf(a) ? b : a);
+  const mk = Math.max(0, progOf(lead) - progOf(r)) * SPC / (VMAX * SPD) * 2400, T = rival ? MK_B : MK_P, row = (T.find(t => mk < t[0]) || T[T.length - 1])[1];
+  const early = K.t < 30000, cap = { splat: bloopCD > 0 || early ? 0 : rival ? .25 : 1, thunder: thunderCD > 0 || early ? 0 : rival ? .3 : 1, bshell: armCD > 0 || early || BSHELLS.length ? 0 : 1 };
+  const t = MK.map((k, i) => [k, row[i] * (cap[k] != null ? cap[k] : 1)]);
+  const ri = T.findIndex(x => x[1] === row); if (ri >= 1 && ri <= 3) t.push(["boo", 8]);   // 👻 Deluxe's Boo
+  const w = t.filter(x => x[1] > 0); let x = Math.random() * w.reduce((a, c) => a + c[1], 0);
+  for (const [k, v] of w) { if ((x -= v) < 0) return k; }
   return "elixir";
 }
-const HOLDABLE = it => it === "slime" || it === "arrow";
+// a new item in the slot: how many uses it has, and Gachapon's eight
+function setItem(r, it) { r.item = it; r.itemN = ITEM_N[it] || 0; r.eight = it === "eight" ? [...EIGHT] : null; }
+const HOLDABLE = it => it === "slime" || it === "arrow" || it === "gshell" || it === "rshell" || it === "slime3" || it === "gshell3" || it === "rshell3";   // held behind you, they block a shot
+const STRONG = r => r.hyper > 0 || r.rocket > 0;   // nothing hurts you, and you knock others over
 // boosts (like SRB2Kart / SuperTuxKart): the speed jumps up at once, the strongest active boost wins, and when it ends the extra
 // speed fades out over ~0.8 s instead of stopping dead. Also a camera kick for you.
 function giveBoost(r, dur, pow) {
@@ -1732,22 +1754,44 @@ function boostTick(r, dt) {
 }
 function hit(r, msg) {
   if (r.remote) return;   // another player's own game decides their hits
-  if (r.hyper > 0) return;   // 💪 Hyper Body: nothing can hurt you
+  if (r.hyper > 0 || r.rocket > 0 || r.boo > 0) return;   // 💪 Hyper Body, 🚀 Rocket Booster, 👻 Jr. Wraith: nothing can hurt you
   if (r === K) { spinOut(msg); return; }
   if (r.spin <= 0 && r.inv <= 0 && r.z <= 0) { r.spin = .9; r.inv = 1.6; r.boost = 0; r.extra = 0; if (r.holding) { r.item = null; r.holding = false; } }
 }
 function useItem(r) {
   const it = r.item; if (!it) return;
   r.holding = false;
-  if (it === "triple") { giveBoost(r, 1.2, 120); if (--r.itemN <= 0) r.item = null; }
-  else r.item = null;
-  if (it === "elixir") giveBoost(r, 1.5, 120);
+  if (it === "eight") { if (!r.eight || !r.eight.length) r.eight = [...EIGHT]; const one = r.eight.shift(); r.itemN = r.eight.length; if (!r.eight.length) r.item = null; fireItem(r, one); if (r === K) flash(`🎰 ${ITEM_NAME[one]}!`, 600); return; }
+  if (it === "golden") { if (!(r.goldT > 0)) r.goldT = 7.5; giveBoost(r, 1, 125); if (r === K) itemSound(); return; }   // 🧪 boost as often as you like for 7.5 s
+  if (it === "fire") { if (!(r.fireT > 0)) r.fireT = 8; if (!(r.fireCD > 0)) { r.fireCD = .3; fireItem(r, "fireball"); } return; }   // 🔥 throw for 8 s
+  if (it === "piranha") { if (!(r.piranha > 0)) { r.piranha = 8; r.pirCD = .6; if (r === K) { flash("🌱 Nependeath bites for you!", 900); itemSound(); } } else lunge(r); return; }
+  if (ITEM_N[it]) { if (--r.itemN <= 0) r.item = null; fireItem(r, ITEM_ONE[it] || it); return; }
+  r.item = null; fireItem(r, it);
+}
+function fireItem(r, it) {
+  if (it === "elixir" || it === "triple") giveBoost(r, it === "triple" ? 1.2 : 1.5, 120);
   if (it === "hyper") { r.hyper = 7; r.spin = 0; r.small = 0; r.ink = 0; if (r === K) { flash("💪 HYPER BODY!", 1000); hyperSound(); } }
   if (it === "slime") { const d = { x: r.x - Math.cos(r.a) * 24, y: r.y - Math.sin(r.a) * 24, t: 40, by: r, grace: .5, id: itemId(r), own: true }; DROPS.push(d); mpItem(r, { k: "drop", x: d.x, y: d.y, id: d.id }); }
-  if (it === "arrow") {
+  if (it === "gshell" || it === "fireball") {   // 🐌 a Green Snail Shell (or a Hwabi fire star): straight ahead, bouncing off the walls
+    const f = it === "fireball", sh = { x: r.x + Math.cos(r.a) * 18, y: r.y + Math.sin(r.a) * 18, a: r.a + (f ? (Math.random() - .5) * .12 : 0), v: f ? Math.max(330, r.v + 90) : Math.max(360, r.v + 120), tgt: null, by: r, life: f ? 1.8 : 7, k: f ? "f" : "g", bn: f ? 1 : 5, idx: r.idx, grace: .5, id: itemId(r), own: true };
+    SHOTS.push(sh); mpItem(r, { k: "shot", sk: sh.k, x: sh.x, y: sh.y, a: sh.a, v: sh.v, id: sh.id, i: r.idx });
+  }
+  if (it === "boom") {   // 🌀 the Ilbi Throwing-Star flies out and comes back, cutting through everyone on the way
+    const sh = { x: r.x + Math.cos(r.a) * 18, y: r.y + Math.sin(r.a) * 18, a: r.a, v: Math.max(380, r.v + 140), tgt: null, by: r, life: 2.2, k: "b", out: .6, idx: r.idx, id: itemId(r), own: true };
+    SHOTS.push(sh); mpItem(r, { k: "shot", sk: "b", x: sh.x, y: sh.y, a: sh.a, v: sh.v, id: sh.id, i: r.idx });
+  }
+  if (it === "bshell") {   // 💙 the Blue Snail Shell flies up the track to whoever's 1st and blows up on them
+    const leader = racers().filter(o => !o.done).sort((a, b) => progOf(b) - progOf(a))[0];
+    if (leader) { const b = { by: r, tgt: leader, p: progOf(r), t: 0, id: itemId(r), own: true }; BSHELLS.push(b); armCD = 20; mpItem(r, { k: "bshell", tgt: nameOf(leader), id: b.id }); if (r === K) flash(leader === K ? "💙 Blue Snail Shell… it's coming for YOU!" : `💙 Blue Snail Shell → ${leader.name}!`, 1000); }
+  }
+  if (it === "rocket") { r.rocket = 5; r.spin = 0; r.small = 0; r.ink = 0; giveBoost(r, .5, 170); if (r === K) { flash("🚀 ROCKET BOOSTER!", 1000); hyperSound(); } }   // 🚀 Bullet Bill: drives itself, fast, and knocks everyone over
+  if (it === "horn") horn(r);
+  if (it === "coin") { if (r === K) { const add = Math.min(2, 10 - K.mesos); K.mesos += add; K.mesoTotal = (K.mesoTotal || 0) + 2; flash("💰 +2 mesos", 700); } giveBoost(r, .4, 60); }
+  if (it === "boo") boo(r);
+  if (it === "arrow" || it === "rshell") {   // 🔴 a Red Snail Shell homes in on the racer just ahead
     const p = progOf(r), ahead = racers().filter(o => o !== r && progOf(o) > p && progOf(o) - p < N * .5).sort((a, b) => progOf(a) - progOf(b))[0];
-    const sh = { x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4, id: itemId(r), own: true }; SHOTS.push(sh);
-    mpItem(r, { k: "shot", x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? nameOf(ahead) : null, id: sh.id });
+    const sh = { x: r.x + Math.cos(r.a) * 16, y: r.y + Math.sin(r.a) * 16, a: r.a, v: Math.max(370, r.v + 130), tgt: ahead || null, by: r, life: 4, k: it === "arrow" ? "a" : "r", id: itemId(r), own: true }; SHOTS.push(sh);
+    mpItem(r, { k: "shot", sk: sh.k, x: sh.x, y: sh.y, a: sh.a, v: sh.v, tgt: ahead ? nameOf(ahead) : null, id: sh.id });
   }
   if (it === "bomb") {   // 💣 lobbed forward in an arc; explodes where it lands (or on whoever it hits on the way)
     const b = { x: r.x + Math.cos(r.a) * 18, y: r.y + Math.sin(r.a) * 18, z: 12, a: r.a, v: Math.max(250, Math.abs(r.v) + 120), vz: 230, by: r, t: 0, id: itemId(r), own: true }; BOMBS.push(b);
@@ -1757,7 +1801,7 @@ function useItem(r) {
   if (it === "splat") {   // like the Blooper: inks everyone ahead of whoever uses it
     bloopCD = 14; mpItem(r, { k: "splat", p: progOf(r) });
     const p = progOf(r), from = r === K ? "" : ` from ${r.name}`;
-    const hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0) && !(o.bloopSafe > 0) && !(o.ink > 0) && !(o.hyper > 0));
+    const hitList = racers().filter(o => o !== r && !o.done && progOf(o) > p && !(o.rescue > 0) && !(o.bloopSafe > 0) && !(o.ink > 0) && !(o.hyper > 0) && !(o.rocket > 0) && !(o.boo > 0));
     for (const o of hitList) {
       o.ink = 4; o.bloopSafe = 12;   // 4s of ink + 8s safe afterwards
       if (o === K) { makeInk(); flash(`🐙 Splat${from}!`, 1000); splatSound(); }
@@ -1768,7 +1812,7 @@ function useItem(r) {
     thunderCD = 25; thunderFx = .35; thunderSound(); mpItem(r, { k: "thunder" });
     const from = r === K ? "" : ` from ${r.name}`;
     for (const o of racers()) {
-      if (o === r || o.done || o.rescue > 0 || o.hyper > 0) continue;
+      if (o === r || o.done || o.rescue > 0 || o.hyper > 0 || o.rocket > 0 || o.boo > 0) continue;
       if (o.holding || HOLDABLE(o.item)) { o.item = null; o.holding = false; }
       o.small = 3.2; o.inv = 0; o.z = 0; o.vz = 0;
       if (o === K) { spinOut(`⚡ Thunder${from}!`); K.shake = .3; } else hit(o);
@@ -1780,6 +1824,45 @@ function useItem(r) {
     if (leader) { ARMS.push({ tgt: leader, t: 2.6, by: r }); armCD = 20; mpItem(r, { k: "arm", tgt: nameOf(leader) }); }
   }
   if (r === K) itemSound();
+}
+// 🌱 Nependeath (the Piranha Plant): bites whoever's close in front every so often (and eats slime drops and shells), each bite a little lunge
+function lunge(r) { if (r.pirCD > .3) return; chomp(r, true); }
+function chomp(r, forced) {
+  r.pirCD = forced ? .8 : 1.3;
+  const fx = Math.cos(r.a), fy = Math.sin(r.a);
+  const v = racers().filter(o => o !== r && !o.done && !(o.rescue > 0) && Math.abs((o.z || 0) - (r.z || 0)) < 20 && Math.hypot(o.x - r.x, o.y - r.y) < 70 && (o.x - r.x) * fx + (o.y - r.y) * fy > -8)
+    .sort((a, b) => Math.hypot(a.x - r.x, a.y - r.y) - Math.hypot(b.x - r.x, b.y - r.y))[0];
+  for (const L of [DROPS, SHOTS]) for (let i = L.length - 1; i >= 0; i--) if (L[i].by !== r && Math.hypot(L[i].x - r.x, L[i].y - r.y) < 55) L.splice(i, 1);
+  if (v) { hitBy(v, `🌱 Chomped by ${nameOf(r) || "Nependeath"}!`, { id: itemId(r), own: true }, "pir"); if (r === K && v !== K) flash(`🌱 Chomp! ${v.name}`, 700); }
+  if (v || forced) { giveBoost(r, .5, 95); r.bite = .25; if (r === K) tone(180, .12, "square", .06, 90); }
+}
+// 📣 Megaphone (the Super Horn): a shout that spins out everyone close and wipes away slime drops, shells and bombs, even a Blue Snail Shell about to land on you
+const HORN_R = 110;
+function horn(r) { const id = itemId(r); HORNS.push({ x: r.x, y: r.y, t: 0 }); mpItem(r, { k: "horn", x: Math.round(r.x), y: Math.round(r.y), id }); hornAt(r.x, r.y, r, id, true); if (r === K) { flash("📣 MEGAPHONE!", 800); tone(330, .35, "sawtooth", .08, 520); } }
+function hornAt(x, y, by, id, own) {
+  for (const o of racers()) if (o !== by && !o.done && !(o.rescue > 0) && Math.hypot(o.x - x, o.y - y) < HORN_R && (own || o === K)) hitBy(o, `📣 Megaphone blast from ${nameOf(by) || "someone"}!`, { id, own }, "horn");
+  for (const L of [DROPS, SHOTS, BOMBS]) for (let i = L.length - 1; i >= 0; i--) if (L[i].by !== by && Math.hypot(L[i].x - x, L[i].y - y) < HORN_R) L.splice(i, 1);
+  for (let i = BSHELLS.length - 1; i >= 0; i--) { const b = BSHELLS[i]; if (b.tgt === by && b.x != null && Math.hypot(b.x - x, b.y - y) < 260) { BSHELLS.splice(i, 1); if (by === K) flash("📣 Blasted the Blue Snail Shell away!", 1100); } }
+}
+// 👻 Jr. Wraith (the Boo): you turn see-through for a few seconds (nothing can hit you) and it steals someone's item for you
+function boo(r) {
+  r.boo = 5; if (r === K) { flash("👻 Jr. Wraith! You're invisible", 1000); tone(520, .4, "sine", .06, 260); }
+  const local = racers().filter(o => o !== r && !o.done && !o.remote && o.item && o.item !== "boo");
+  const v = local.length ? local[Math.floor(Math.random() * local.length)] : null;
+  if (v) { booGive(r, v.item, v.itemN, v.eight); if (v === K) flash(`👻 ${nameOf(r)} stole your ${ITEM_NAME[v.item]}!`, 1100); else if (r === K) flash(`👻 Stole ${v.name}'s ${ITEM_NAME[v.item]}!`, 1100); v.item = null; v.itemN = 0; v.holding = false; return; }
+  const far = RIV.filter(o => o.remote && !o.bot && !o.done); if (far.length && mpOn()) mpItem(r, { k: "boo", tgt: far[Math.floor(Math.random() * far.length)].name, id: itemId(r) });   // another player: their game hands it over
+}
+function booGive(r, it, n, eight) {
+  if (!it || !ITEM_NAME[it]) return;
+  if (r === K) { if (!K.item && !(K.roll > 0)) { setItem(K, it); if (n) K.itemN = n; if (eight) K.eight = [...eight]; } else if (!K.item2) K.item2 = it; return; }
+  if (!r.item) { setItem(r, it); if (n) r.itemN = n; if (eight) r.eight = [...eight]; r.itemT = 1 + Math.random() * 2; r.holding = HOLDABLE(it); }
+}
+// the items that last a while: Power Elixir, fire stars, Nependeath (they leave the slot when time's up), the Rocket Booster and Jr. Wraith
+function timedTick(r, dt) {
+  for (const [key, it] of [["goldT", "golden"], ["fireT", "fire"], ["piranha", "piranha"]]) if (r[key] > 0) { r[key] -= dt; if (r[key] <= 0) { r[key] = 0; if (r.item === it) { r.item = null; r.itemN = 0; } } }
+  for (const key of ["fireCD", "pirCD", "bite", "boo"]) if (r[key] > 0) r[key] -= dt;
+  if (r.rocket > 0) { r.rocket -= dt; r.spin = 0; giveBoost(r, .25, 170); }
+  if (r.piranha > 0 && !(r.pirCD > 0) && state === "race") chomp(r, false);
 }
 // 💥 a Pirate Bomb goes off: everyone in the blast spins out and is thrown into the air (the closer, the higher); the screen shakes with distance
 function explode(b, all) {
@@ -1868,6 +1951,7 @@ function rivalStep(r, dt, tt) {
   if (r.z > 0 || r.vz > 0) { r.vz -= (r.glide ? 150 : 720) * dt; if (r.glide) { r.vz = Math.max(r.vz, -95); r.v = Math.max(r.v, 245); } r.z += r.vz * dt; if (r.z <= 0) { r.z = 0; r.vz = 0; r.glide = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
   const air = r.z > 0;
   for (const key of ["spin", "inv", "squash", "boost", "itemT", "small", "ink", "bloopSafe", "noItem", "hyper"]) if (r[key] > 0) r[key] -= dt;
+  timedTick(r, dt);
   const lost = (near.d > near.half + 110 && !onRink(r.x, r.y)) || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
   if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 100; r.laneT = 1.5 + Math.random() * 3; }
@@ -1917,7 +2001,10 @@ function rivalStep(r, dt, tt) {
   if (r.item && r.itemT <= 0 && r.spin <= 0 && !r.done) {
     const p = progOf(r), others = racers().filter(o => o !== r);
     const behind = others.some(o => p - progOf(o) > 0 && p - progOf(o) < 30), ahead = others.some(o => progOf(o) - p > 0 && progOf(o) - p < 120);
-    if (["elixir", "triple", "arm", "thunder", "hyper"].includes(r.item) || (r.item === "splat" && (ahead || progOf(K) > p || Math.random() < dt * .1)) || (r.item === "slime" && (behind || Math.random() < dt * .15)) || (r.item === "arrow" && (ahead || Math.random() < dt * .1))) {
+    const it = r.item, near = others.some(o => Math.hypot(o.x - r.x, o.y - r.y) < 85), threat = SHOTS.some(sh => sh.tgt === r) || BSHELLS.some(b => b.tgt === r && b.hover);
+    if (["elixir", "triple", "arm", "thunder", "hyper", "golden", "rocket", "bshell", "coin", "boo", "eight", "fire"].includes(it) || (it === "piranha" && !(r.piranha > 0)) || (it === "splat" && (ahead || progOf(K) > p || Math.random() < dt * .1))
+      || ((it === "slime" || it === "slime3") && (behind || Math.random() < dt * .15)) || (["arrow", "rshell", "rshell3", "gshell", "gshell3", "boom", "bomb"].includes(it) && (ahead || Math.random() < dt * .1))
+      || (it === "horn" && (threat || near || Math.random() < dt * .05))) {
       useItem(r); r.itemT = .6; if (!r.item) r.noItem = 6 + Math.random() * 6; else r.holding = HOLDABLE(r.item);
     }
   }
@@ -1969,7 +2056,7 @@ function worldStep(dt, tt) {
         if (!K.item && K.roll <= 0) { K.roll = 1.1; K.pending = rollItem(K); boxSound(); }
         else if (!K.item2 && !(K.roll2 > 0)) { K.roll2 = 1.1; K.pending2 = rollItem(K); boxSound(); }   // a second item waits in the small slot
       }
-      else if (!r.remote && !r.item && !(r.noItem > 0) && Math.random() < DIFF().pick) { r.item = rollItem(r, true); r.itemN = r.item === "triple" ? 3 : 0; r.itemT = 1.5 + Math.random() * 3; r.holding = HOLDABLE(r.item); }
+      else if (!r.remote && !r.item && !(r.noItem > 0) && Math.random() < DIFF().pick) { setItem(r, rollItem(r, true)); r.itemT = 1.5 + Math.random() * 3; r.holding = HOLDABLE(r.item); }
       break;
     }
   }
@@ -1980,17 +2067,25 @@ function worldStep(dt, tt) {
     if (gone) DROPS.splice(i, 1);
   }
   for (let i = SHOTS.length - 1; i >= 0; i--) {
-    const sh = SHOTS[i]; sh.life -= dt;
-    if (sh.tgt) { let d = Math.atan2(sh.tgt.y - sh.y, sh.tgt.x - sh.x) - sh.a; d = Math.atan2(Math.sin(d), Math.cos(d)); sh.a += Math.max(-7, Math.min(7, d * 9)) * dt; }
+    const sh = SHOTS[i]; sh.life -= dt; if (sh.grace > 0) sh.grace -= dt;
+    if (sh.k === "b") { sh.out -= dt; if (sh.out <= 0 && sh.by) { let d = Math.atan2(sh.by.y - sh.y, sh.by.x - sh.x) - sh.a; d = Math.atan2(Math.sin(d), Math.cos(d)); sh.a += Math.max(-9, Math.min(9, d * 12)) * dt; } }   // 🌀 on its way back
+    else if (sh.tgt) { let d = Math.atan2(sh.tgt.y - sh.y, sh.tgt.x - sh.x) - sh.a; d = Math.atan2(Math.sin(d), Math.cos(d)); sh.a += Math.max(-7, Math.min(7, d * 9)) * dt; }
     sh.x += Math.cos(sh.a) * sh.v * dt * SPD; sh.y += Math.sin(sh.a) * sh.v * dt * SPD;
-    let gone = sh.life <= 0;
+    let gone = sh.life <= 0 || (sh.k === "b" && sh.out < -.1 && sh.by && Math.hypot(sh.by.x - sh.x, sh.by.y - sh.y) < 22);
+    if (!gone && (sh.k === "g" || sh.k === "f")) {   // bounce off the edge of the road
+      const nv = nav(sh.x, sh.y, sh.idx != null ? sh.idx : nearest(sh.x, sh.y).i); sh.idx = nv.i;
+      if (!nv.alt) { const L = lat(sh.x, sh.y, nv.i), lim = ROAD / 2 + CURB * .5;
+        if (Math.abs(L) > lim) { const ta = tangent(nv.i), nx = -Math.sin(ta), ny = Math.cos(ta), sg = Math.sign(L); sh.a = 2 * ta - sh.a; sh.x -= nx * sg * (Math.abs(L) - lim + 2); sh.y -= ny * sg * (Math.abs(L) - lim + 2); if (--sh.bn < 0) gone = true; } }
+    }
     for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16 && r.holding && HOLDABLE(r.item)
       && (sh.x - r.x) * Math.cos(r.a) + (sh.y - r.y) * Math.sin(r.a) < 0) {   // blocked by the item held behind
-      r.item = null; r.holding = false; gone = true; blockSound();
+      if (ITEM_N[r.item] && --r.itemN > 0) {} else { r.item = null; r.holding = false; } gone = true; blockSound();
       if (r === K) flash("🛡️ Blocked!", 800); else if (sh.by === K) flash(`🛡️ ${r.name} blocked it`, 900);
     }
     if (!gone && sh.by !== K) nearMiss(sh, Math.hypot(K.x - sh.x, K.y - sh.y), 34);
-    for (const r of all) if (!gone && r !== sh.by && Math.hypot(r.x - sh.x, r.y - sh.y) < 16) { hitBy(r, `🏹 Arrow from ${nameOf(sh.by) || "someone"}!`, sh, "shot"); gone = true; if (r !== K && sh.by === K) flash(`🏹 Got ${r.name}!`, 900); }
+    const what = { g: "🐌 Green Snail Shell", r: "🔴 Red Snail Shell", f: "🔥 Fire star", b: "🌀 Ilbi star" }[sh.k] || "🏹 Arrow";
+    for (const r of all) if (!gone && (r !== sh.by || (sh.k === "g" && !(sh.grace > 0))) && Math.abs((r.z || 0)) < 24 && Math.hypot(r.x - sh.x, r.y - sh.y) < 16 && !(sh.k === "b" && r.spin > 0)) {
+      hitBy(r, r === sh.by ? `${what}: your own!` : `${what} from ${nameOf(sh.by) || "someone"}!`, sh, "shot"); if (sh.k !== "b") gone = true; if (r !== K && sh.by === K) flash(`${what.split(" ")[0]} Got ${r.name}!`, 900); }
     if (gone) SHOTS.splice(i, 1);
   }
   if (state === "race") hazardStep(dt, all);
@@ -2009,6 +2104,15 @@ function worldStep(dt, tt) {
       slamSound(0); ARMS.splice(i, 1);
     }
   }
+  for (let i = BSHELLS.length - 1; i >= 0; i--) {   // 💙 flying up the track high over everyone, then down onto the leader
+    const b = BSHELLS[i]; b.t += dt;
+    if (!b.tgt || b.tgt.done) { const l = racers().filter(o => !o.done).sort((a, c) => progOf(c) - progOf(a))[0]; if (!l) { BSHELLS.splice(i, 1); continue; } b.tgt = l; }
+    const tp = progOf(b.tgt);
+    if (!b.hover && b.p < tp - 4 && b.t < 12) { b.p = Math.min(tp - 4, b.p + VMAX * 2.4 * SPD / SPC * dt); const ii = OPEN ? Math.max(0, Math.min(N - 1, Math.round(b.p))) : ((Math.round(b.p) % N) + N) % N; [b.x, b.y] = at(ii, 0); b.z = 46; }
+    else { b.hover = (b.hover || 0) + dt; b.x = b.tgt.x; b.y = b.tgt.y; b.z = 46 * Math.max(0, 1 - b.hover / .7); if (b.tgt === K && b.hover < dt * 1.5) tone(1400, .25, "square", .05, 700);
+      if (b.hover >= .7) { BSHELLS.splice(i, 1); explode({ x: b.tgt.x, y: b.tgt.y, by: b.by, id: b.id, own: b.own }, all); } }
+  }
+  for (let i = HORNS.length - 1; i >= 0; i--) if ((HORNS[i].t += dt) > .6) HORNS.splice(i, 1);
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {   // karts bump each other
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), BR = PTS[0].length > 2 ? 21 : 15;   // 3D karts are bigger: they touch sooner
     if (d > 0 && d < BR && Math.abs(a.z - b.z) < 12) {
@@ -2018,7 +2122,7 @@ function worldStep(dt, tt) {
       if (a.remote || b.remote) { const me2 = a.remote ? b : a, s2 = me2 === a ? -1 : 1; me2.x += nx * push * 2 * s2; me2.y += ny * push * 2 * s2; }   // only the kart this game drives is moved
       else { a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
       const fast = a.v > b.v ? a : b; fast.v *= .9;
-      if ((a.hyper > 0) !== (b.hyper > 0)) { const v = a.hyper > 0 ? b : a; hit(v, "💪 Rammed by Hyper Body!"); if (v.spin > 0) { v.v *= .4; if (v === K || a === K || b === K) slamSound(0); } }
+      if (STRONG(a) !== STRONG(b)) { const v = STRONG(a) ? b : a; hit(v, (STRONG(a) ? a : b).rocket > 0 ? "🚀 Run over by a Rocket Booster!" : "💪 Rammed by Hyper Body!"); if (v.spin > 0) { v.v *= .4; if (v === K || a === K || b === K) slamSound(0); } }
       else if ((a.small > 0) !== (b.small > 0)) { const tiny = a.small > 0 ? a : b; hit(tiny, "👟 Flattened!"); tiny.squash = .8; }
       if (a === K || b === K) { K.shake = Math.max(K.shake, .1); if (K.bump <= 0) { bumpSound(); K.bump = .3; } }
     }
@@ -2042,7 +2146,7 @@ const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, 
   },
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, nav: (...a) => nav(...a), nearest: (...a) => nearest(...a), get FORKS() { return { A: FORK_A, B: FORK_B, AN, ALT, PTS, LAPS, OPEN, START_I, FIN_OFF }; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, give: it => setItem(K, it), setMode: m => { mode = m; drawMode(); drawTrack(); }, use: (r, it) => { r = r || K; if (it) setItem(r, it); useItem(r); }, roll: (r, bot) => rollItem(r || K, bot), get SHOTS2() { return { SHOTS, BSHELLS, HORNS, DROPS, BOMBS }; }, nav: (...a) => nav(...a), nearest: (...a) => nearest(...a), get FORKS() { return { A: FORK_A, B: FORK_B, AN, ALT, PTS, LAPS, OPEN, START_I, FIN_OFF }; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
       const A = PTS[a], Bp = PTS[b], dl = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), dt = (b - a) * SPC; if (dl < 260 || dl > 1100 || dt - dl < 450 || dt - dl > 1100) continue;
       const pts = shapeCut(a, b, [], w, kind); if (!pts) continue; const score = shapeCut.k * 2000 - Math.abs(dt - dl - 750); if (!best || score > best.score) best = { a, b, pts: pts.map(p => p.map(Math.round)), score, k: shapeCut.k }; }
@@ -2058,6 +2162,10 @@ const bestKey = () => `kart_best2:${ccId(TRACK_ID, raceCC)}:${me}`;
 let raceCC = 150;
 
 function input() {
+  if (K && K.rocket > 0 && state === "race") {   // 🚀 the Rocket Booster drives for you
+    const tg = PTS[OPEN ? Math.min(N - 1, K.idx + 20) : (K.idx + 20) % N]; let d = Math.atan2(tg[1] - K.y, tg[0] - K.x) - K.a; d = Math.atan2(Math.sin(d), Math.cos(d));
+    return { steer: Math.max(-1, Math.min(1, d * 3)), drift: false, brake: false, item: false };
+  }
   if (DEV && DEV.auto && K) {   // local testing only: aim at a point further along the track
     let lo = 0; for (const h of HOLES) { const di = (h.i - K.idx + N) % N; if (di < 40 && Math.abs(h.o || 0) < h.r + 22) lo = (h.o || 0) + h.r + 34; }
     const tg = lo ? at((K.idx + 18) % N, lo) : PTS[(K.idx + 18) % N], want = Math.atan2(tg[1] - K.y, tg[0] - K.x);
@@ -2284,10 +2392,11 @@ function step(dt) {
   else k.v += (k.v < top ? (k.extra > 5 ? 900 : k.v < 120 ? 210 : 120) : -260) * dt;   // boosts reach their speed almost at once
   if (k.kick > 0) k.kick = Math.max(0, k.kick - dt * 1.4);
   for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "small", "ink", "bloopSafe", "hyper", "roll2"]) if (k[key] > 0) k[key] -= dt;
+  timedTick(k, dt);
   // items from the boxes: the slot spins like a slot machine for a second, then it's yours to use
-  if (k.roll > 0) { k.roll -= dt; if (k.roll <= 0) { k.item = k.pending; k.itemN = k.item === "triple" ? 3 : 0; flash(`${ITEM_NAME[k.item]}!`, 700); } }
+  if (k.roll > 0) { k.roll -= dt; if (k.roll <= 0) { setItem(k, k.pending); flash(`${ITEM_NAME[k.item]}!`, 700); } }
   if (k.pending2 && !(k.roll2 > 0)) { k.item2 = k.pending2; k.pending2 = null; }
-  if (!k.item && k.roll <= 0 && k.item2) { k.item = k.item2; k.itemN = k.item === "triple" ? 3 : 0; k.item2 = null; }   // the second item moves up
+  if (!k.item && k.roll <= 0 && k.item2) { setItem(k, k.item2); k.item2 = null; }   // the second item moves up
   // Slime drop and Arrow can be held behind you as a shield (keep the button pressed), and are used when you let go
   if (racing && k.item && k.roll <= 0) {
     if (inp.item && !k.prevItem) { if (HOLDABLE(k.item)) k.holding = true; else if (k.spin <= 0) useItem(k); }
@@ -2467,11 +2576,11 @@ function render() {
     vis.push({ fz, sx, draw });
   };
   if (G3) {   // 3D karts (with a name tag, stars and ink drawn on top), 3D item boxes
-    for (const r of RIV) if (!r.gone) { G3.kart(r, { color: r.color, img: r.img, dt: dt3 }); addDraw(r.x, r.y, (sx, gy, sc, fz) => rivalTag(r, sx, gy, sc, fz)); }
+    for (const r of RIV) if (!r.gone) { G3.kart(r, { color: r.color, img: r.img, dt: dt3, boo: r.boo > 0 }); addDraw(r.x, r.y, (sx, gy, sc, fz) => rivalTag(r, sx, gy, sc, fz)); }
     if (mode !== "tt") BOXES.forEach((b, i) => { if (b.t <= 0) G3.box(b.x, b.y, tt, i, b.z || 0); });
     if (mode === "tt" && state !== "menu") for (const [g, gd, col, img, skip] of [[GH3.top, topGhost && topGhost.data, "#e8b43a", topGhost && topGhost.img], [GH3.me, ghost, "#c8232c", IMG.me, topGhost && topGhost.name === me]]) {
       const gs = gd && !skip ? ghostAt(K.t, gd) : null; if (gs) { Object.assign(g, { x: gs.x, y: gs.y, a: gs.a, z: gs.z, v: 200 }); G3.kart(g, { color: col, img, ghost: true, dt: dt3 }); } }
-    if (!k.watch) G3.kart(k, { color: "#c8232c", family: true, img: IMG.me, dt: dt3, me: true });
+    if (!k.watch) G3.kart(k, { color: "#c8232c", family: true, img: IMG.me, dt: dt3, me: true, boo: k.boo > 0 });
   }
   else {
   for (const r of RIV) if (!r.gone) addDraw(r.x, r.y, (sx, gy, sc, fz) => drawRival(r, sx, gy, sc, fz));
@@ -2491,7 +2600,15 @@ function render() {
     ctx.fillStyle = g3; ctx.beginPath(); ctx.ellipse(sx, gy - h / 2, w2, h / 2, 0, 0, 7); ctx.fill(); ctx.restore(); });
   const proj = G3 ? (x, y) => { const p = G3.proj(x, y); return p ? [p.sx, p.sy, p.sc] : null; } : (x, y) => { const rx = x - cx, ry = y - cy, fz = rx * ca + ry * sa; return fz < 4 ? null : [W / 2 + (-rx * sa + ry * ca) * FO / fz, HOR + CH * FO / fz, FO / fz]; };
   // 🏹 a real MapleStory arrow in flight, pointing where it's going, with a glowing streak behind it
-  for (const sh of SHOTS) addDraw(sh.x, sh.y, (sx, gy, sc) => {
+  for (const sh of SHOTS) if (sh.k && sh.k !== "a") addDraw(sh.x, sh.y, (sx, gy, sc) => {   // 🐌🔴 snail shells sliding along, 🔥 fire stars, 🌀 the Ilbi star spinning
+    const im = { g: IMG.it_gshell, r: IMG.it_rshell, f: IMG.it_fire, b: IMG.it_boom }[sh.k], w = (sh.k === "f" ? 13 : sh.k === "b" ? 17 : 15) * sc, y = gy - (sh.k === "b" ? 12 : 5) * sc - w / 2;
+    ctx.save(); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(sx, gy, w * .45, w * .14, 0, 0, 7); ctx.fill();
+    const glow = { g: "120,230,120", r: "255,90,80", f: "255,150,40", b: "255,240,160" }[sh.k];
+    ctx.globalCompositeOperation = "lighter"; const gr = ctx.createRadialGradient(sx, y, 0, sx, y, w); gr.addColorStop(0, `rgba(${glow},.65)`); gr.addColorStop(1, `rgba(${glow},0)`); ctx.fillStyle = gr; ctx.fillRect(sx - w, y - w, w * 2, w * 2);
+    ctx.globalCompositeOperation = "source-over"; ctx.imageSmoothingEnabled = false;
+    if (im) { ctx.translate(sx, y); if (sh.k === "f" || sh.k === "b") ctx.rotate(tt * 18); ctx.drawImage(im, -w / 2, -w / 2, w, w * im.height / im.width); }
+    ctx.restore(); });
+  for (const sh of SHOTS) if (!sh.k || sh.k === "a") addDraw(sh.x, sh.y, (sx, gy, sc) => {
     const im = IMG.arrowShot, tail = proj(sh.x - Math.cos(sh.a) * 46, sh.y - Math.sin(sh.a) * 46), head = proj(sh.x + Math.cos(sh.a) * 10, sh.y + Math.sin(sh.a) * 10), y = gy - 11 * sc;
     const ang = head ? Math.atan2((head[1] - 11 * head[2]) - y, head[0] - sx) : 0;
     if (tail) { const ty = tail[1] - 11 * tail[2], g = ctx.createLinearGradient(tail[0], ty, sx, y); g.addColorStop(0, "rgba(255,240,160,0)"); g.addColorStop(1, "rgba(255,250,210,.85)");
@@ -2547,6 +2664,22 @@ function render() {
       ctx.save(); ctx.globalAlpha = fr === 6 ? Math.max(0, 1 - (t - 6 / 13) / 1.1) : 1; ctx.imageSmoothingEnabled = false; ctx.drawImage(im, sx - w / 2, gy - h * .8 - R * .1, w, h); ctx.restore(); }
     for (const d of e.debris) { const z = d.vz * t - 360 * t * t; if (z < 0 && t > .2) continue; const dx = Math.cos(d.a) * d.v * t * sc, dz = Math.max(0, z) * sc;
       ctx.fillStyle = d.c; ctx.fillRect(sx + dx - d.s * sc / 2, gy - dz - d.s * sc / 2 + Math.sin(d.a) * d.v * t * sc * .25, d.s * sc, d.s * sc); } });
+  for (const b of BSHELLS) if (b.x != null) addDraw(b.x, b.y, (sx, gy, sc) => {   // 💙 high over the track, a blue glow and its shadow
+    const im = IMG.it_bshell, w = 22 * sc, y = gy - b.z * sc - w / 2; ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(sx, gy, w * .5, w * .15, 0, 0, 7); ctx.fill();
+    ctx.globalCompositeOperation = "lighter"; const gr = ctx.createRadialGradient(sx, y, 0, sx, y, w * 1.4); gr.addColorStop(0, "rgba(90,170,255,.9)"); gr.addColorStop(1, "rgba(40,100,255,0)"); ctx.fillStyle = gr; ctx.fillRect(sx - w * 1.4, y - w * 1.4, w * 2.8, w * 2.8);
+    ctx.globalCompositeOperation = "source-over"; ctx.imageSmoothingEnabled = false; if (im) { ctx.translate(sx, y); ctx.rotate(Math.sin(tt * 9) * .3); ctx.drawImage(im, -w / 2, -w / 2, w, w); } ctx.restore(); });
+  for (const h of HORNS) addDraw(h.x, h.y, (sx, gy, sc) => {   // 📣 the shout: two rings racing out
+    ctx.save(); for (const f of [1, .7]) { const t = Math.min(1, h.t / .6 * f + (1 - f) * .2), R = HORN_R * sc * t; ctx.globalAlpha = (1 - t) * .9; ctx.strokeStyle = f === 1 ? "#fff3a0" : "#ffb02e"; ctx.lineWidth = Math.max(1, 5 * sc * (1 - t));
+      ctx.beginPath(); ctx.ellipse(sx, gy - 6 * sc, R, R * .3, 0, 0, 7); ctx.stroke(); } ctx.restore(); });
+  for (const r of racers()) if (!r.gone && (r.rocket > 0 || r.piranha > 0)) addDraw(r.x, r.y, (sx, gy, sc) => {   // 🚀 the Rocket Booster on your back, 🌱 Nependeath on the front
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    if (r.rocket > 0 && IMG.it_rocket) { const im = IMG.it_rocket, w = 30 * sc, y = gy - (r.z || 0) * sc - 30 * sc;
+      ctx.globalCompositeOperation = "lighter"; for (let n = 0; n < 3; n++) { ctx.fillStyle = ["#fff6c0", "#ffb02e", "#ff5a1e"][n]; ctx.beginPath(); ctx.arc(sx + (Math.random() - .5) * 4 * sc, y + w * .55 + n * 4 * sc, Math.max(1, (6 - n * 1.5) * sc), 0, 7); ctx.fill(); }
+      ctx.globalCompositeOperation = "source-over"; ctx.drawImage(im, sx - w / 2, y - w / 2, w, w * im.height / im.width); }
+    if (r.piranha > 0 && IMG.it_piranha) { const im = IMG.it_piranha, bite = r.bite > 0 ? 1 + r.bite * 1.6 : 1, h = 24 * sc * bite, w = h * im.width / im.height, p = proj(r.x + Math.cos(r.a) * 14, r.y + Math.sin(r.a) * 14);
+      const px = p ? p[0] : sx, py = p ? p[1] : gy; ctx.drawImage(im, px - w / 2, py - (r.z || 0) * sc - h, w, h); }
+    ctx.restore(); });
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
   for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
@@ -2708,7 +2841,8 @@ function snowfall(n) {
   for (let i = FLAKES.length - 1; i >= 0; i--) { const f = FLAKES[i]; f.y += f.v / 60; f.x += (Math.sin(t + f.ph) * 6 - sw) / 60;
     if (f.y > H) { FLAKES.splice(i, 1); continue; } ctx.fillRect(f.x, f.y, f.s, f.s); }
 }
-function drawKart(k) {
+function drawKart(k) { ctx.save(); if (k.boo > 0) ctx.globalAlpha = .35; drawKart0(k); ctx.restore(); }   // 👻 see-through while Jr. Wraith hides you
+function drawKart0(k) {
   if (k.watch) return;   // watching: there's no kart of yours
   const CH = CAMH + Math.min(k.z, 130) * .35, p3 = G3 && G3.proj(k.x, k.y), p3z = G3 && G3.proj(k.x, k.y, Math.max(0, k.z) + 6);
   if (G3 && !(p3 && p3z)) return;
@@ -2761,7 +2895,7 @@ function drawKart(k) {
   if (k.squash > 0) ctx.scale(1.35, .45);                                   // flattened by the King Slime
   if (k.inv > 0 && k.spin <= 0 && Math.floor(performance.now() / 90) % 2) ctx.globalAlpha = .55;
   const bw = w, bh = w * .42;
-  if (k.holding && k.item) { const hi = k.item === "arrow" ? IMG.arrowIcon : IMG.slime; if (hi) { const hs = 16; ctx.save(); ctx.imageSmoothingEnabled = k.item === "arrow"; ctx.drawImage(hi, -hs / 2, -2, hs, hs * hi.height / hi.width); ctx.restore(); } }
+  if (k.holding && k.item) { const hi = HELD_IMG(k.item); if (hi) { const hs = 16; ctx.save(); ctx.imageSmoothingEnabled = k.item === "arrow"; ctx.drawImage(hi, -hs / 2, -2, hs, hs * hi.height / hi.width); ctx.restore(); } }
   // driver (their picture faces right; mirror it when turning left), sitting in the kart: the body hides their legs
   const sp = IMG.me;
   if (sp) {
@@ -2848,7 +2982,7 @@ function ghostAt(t, gh = ghost) {
   return { x: a[1] + (b[1] - a[1]) * f, y: a[2] + (b[2] - a[2]) * f, z: a[4] + (b[4] - a[4]) * f };
 }
 function drawRival(r, sx, gy, sc, fz) {
-  if (r.ghost) ctx.globalAlpha = .45;
+  if (r.ghost) ctx.globalAlpha = .45; if (r.boo > 0) ctx.globalAlpha = .25;
   const w = 17 * sc, bh = w * .42, y = gy - r.z * sc * .45, t = performance.now() / 1000;
   ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(sx, gy + 1, w * .55, Math.max(1, 3 * sc / 2), 0, 0, 7); ctx.fill();
   if (r.rescue > 0) { const p = r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7; ctx.globalAlpha = Math.max(0, 1 - p); }
@@ -2858,7 +2992,7 @@ function drawRival(r, sx, gy, sc, fz) {
   if (r.spin > 0) ctx.scale(Math.cos((.9 - r.spin) * Math.PI * 4), 1);
   if (r.squash > 0) ctx.scale(1.35, .45);
   if (r.inv > 0 && r.spin <= 0 && Math.floor(t * 11) % 2) ctx.globalAlpha = .55;
-  if (r.ghost) ctx.globalAlpha = .45;
+  if (r.ghost) ctx.globalAlpha = .45; if (r.boo > 0) ctx.globalAlpha = .25;
   if (fz < CAMD * .9) ctx.globalAlpha = Math.min(ctx.globalAlpha, .4);   // right behind you, between you and the camera: see-through so your kart stays visible
   const sp = r.img;
   if (sp && sp.complete && sp.naturalHeight) {
@@ -2873,7 +3007,7 @@ function drawRival(r, sx, gy, sc, fz) {
   ctx.fillStyle = "#fff"; ctx.fillRect(-w * .34, -bh * .4, w * .68, Math.max(.5, sc));
   if ((r.extra || 0) > 5) { ctx.save(); ctx.globalCompositeOperation = "lighter"; for (const sx of [-w * .18, w * .18]) { ctx.fillStyle = Math.random() < .5 ? "#ffb02e" : "#ff5a2e";
     const fl = w * (.4 + Math.random() * .25); ctx.beginPath(); ctx.moveTo(sx - w * .1, -bh * .25); ctx.lineTo(sx + w * .1, -bh * .25); ctx.lineTo(sx, -bh * .25 + fl); ctx.fill(); } ctx.restore(); }
-  if (r.holding && r.item) { const hi = r.item === "arrow" ? IMG.arrowIcon : IMG.slime; if (hi) { const hs = 9 * sc; ctx.drawImage(hi, -hs / 2, -hs * .3, hs, hs * hi.height / hi.width); } }
+  if (r.holding && r.item) { const hi = HELD_IMG(r.item); if (hi) { const hs = 9 * sc; ctx.drawImage(hi, -hs / 2, -hs * .3, hs, hs * hi.height / hi.width); } }
   ctx.restore(); ctx.globalAlpha = 1;
   if (r.frozen > 0) iceBlock(sx, y, w, Math.min(1, r.frozen / .3));
   if ((r.spin > 0 || r.squash > 0) && fz < 600) dizzy(sx, y - bh * .45 - (H * .2 / (FOCAL / CAMD)) * sc - 3 * sc, w * .5, t);
@@ -2924,14 +3058,15 @@ function hud() {
   if (warn && !cd && !flipIn && performance.now() - warnAt > (armIn ? 300 : 420)) { warnAt = performance.now(); tone(armIn ? 880 : 1180, .12, "square", .05, armIn ? 620 : 0); }
   const bag = state === "menu" ? "" : `${k.mesos}/10 · ${k.mesoTotal || 0}`; if ($k("#kBag").dataset.v !== bag) { $k("#kBag").dataset.v = bag; $k("#kBag").innerHTML = bag ? `<img src="media/kart/meso1.png" alt="">${k.mesos}/10 <span class="kt-tot" title="mesos collected this race">💰${k.mesoTotal || 0}</span>` : ""; }
   if ((k.roll > 0 || k.roll2 > 0) && performance.now() - rollTick > 85) { rollTick = performance.now(); tone([660, 740, 830, 880, 990, 880, 830, 740][rollN++ % 8], .05, "square", .035); }
-  const keys = Object.keys(ITEM_ICON), spinIcon = () => ITEM_ICON[keys[Math.floor(performance.now() / 80) % keys.length]];
+  const spinIcon = () => ITEM_ICON[ROLL_KEYS[Math.floor(performance.now() / 80) % ROLL_KEYS.length]];
   const icon = k.roll > 0 ? spinIcon() : k.item ? ITEM_ICON[k.item] : "";
   const icon2 = k.roll2 > 0 ? spinIcon() : k.item2 ? ITEM_ICON[k.item2] : "";
   const img2 = $k("#kItem2 img"); if (img2.dataset.src !== icon2) { img2.dataset.src = icon2; if (icon2) img2.src = icon2; img2.hidden = !icon2; }
   $k("#kItem2").hidden = !icon2;
   const img = $k("#kItemBox img"); if (img.dataset.src !== icon) { img.dataset.src = icon; if (icon) img.src = icon; img.hidden = !icon; }
   $k("#kItemBox").classList.toggle("empty", !k.item && k.roll <= 0);
-  $k("#kItemBoxN").textContent = k.item === "triple" ? k.itemN : ""; $k("#kItemBoxN").hidden = k.item !== "triple";
+  const tl = k.item === "golden" ? k.goldT : k.item === "fire" ? k.fireT : k.item === "piranha" ? k.piranha : 0, nTxt = ITEM_N[k.item] ? String(k.itemN) : tl > 0 ? `${Math.ceil(tl)}s` : "";   // uses left, or seconds left
+  $k("#kItemBoxN").textContent = nTxt; $k("#kItemBoxN").hidden = !nTxt;
   const pb = $k("#kPad [data-k=i]"); pb.disabled = !k.item || k.roll > 0; const pi = pb.querySelector("img"); if (pi.dataset.src !== icon) { pi.dataset.src = icon; if (icon) pi.src = icon; pi.hidden = !icon; }
   // your place: a change only counts once it has held for a moment (two karts side by side would otherwise flicker 7th-8th-7th…)
   const rk0 = state === "menu" || mode === "tt" ? 0 : state === "done" ? K.place : rankOf(k), tNow = performance.now();
@@ -3061,7 +3196,7 @@ function posMsg(r, now) {
   let w = 0; if (r._wt && now > r._wt) { let d = m - r._wa; d = Math.atan2(Math.sin(d), Math.cos(d)); w = d / ((now - r._wt) / 1000); } let u = null; if (r._ut && now - r._ut > 30) { u = Math.hypot(r.x - r._ux, r.y - r._uy) / ((now - r._ut) / 1000); if (u > 2000) u = null; } r._ux = r.x; r._uy = r.y; r._ut = now;   // how fast it really moves (world units/s, boosts and all)
   r._wa = m; r._wt = now;   // how fast it's turning (rad/s)
   return { ...(DEV ? { wt: Date.now() } : {}), m: +m.toFixed(3), u: u == null ? null : Math.round(u), ts: Math.round(now), l: Math.round(MP.ow || 70), w: +Math.max(-6, Math.min(6, w)).toFixed(2), d: r.drift ? Math.sign(r.drift) : 0, x: Math.round(r.x), y: Math.round(r.y), a: +r.a.toFixed(3), v: Math.round(r.v), z: Math.round(r.z || 0), s: +(r.steer || 0).toFixed(2), sp: r.spin > 0 ? +r.spin.toFixed(2) : 0,
-    sm: r.small > 0 ? 1 : 0, hy: r.hyper > 0 ? 1 : 0, ex: Math.round(r.extra || 0), sq: r.squash > 0 ? 1 : 0, lap: r.lap, cps: r.cps, idx: r.idx, ho: r.holding ? 1 : 0, it: r.holding ? r.item : null,
+    sm: r.small > 0 ? 1 : 0, hy: r.hyper > 0 ? 1 : 0, ex: Math.round(r.extra || 0), sq: r.squash > 0 ? 1 : 0, rk: r.rocket > 0 ? 1 : 0, bo: r.boo > 0 ? 1 : 0, pi: r.piranha > 0 ? 1 : 0, lap: r.lap, cps: r.cps, idx: r.idx, ho: r.holding ? 1 : 0, it: r.holding ? r.item : null,
     ik: r.ink > 0 ? 1 : 0, dn: done ? 1 : 0, ft: done ? Math.round(me ? r.laps.reduce((a, b) => a + b, 0) : r.finishT) : 0 };
 }
 let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
@@ -3124,6 +3259,7 @@ async function prepare() {
   await loadTiles();
   const mstrip = await loadImg("media/kart/meso.png?v=1"); IMG.meso = mstrip ? mesoFrames(mstrip) : null;
   [IMG.arrowIcon, IMG.arm, IMG.arrowShot] = await Promise.all([loadImg("media/kart/items/arrow_icon.png"), loadImg(B.M + "zarm_stand.gif"), loadImg("media/kart/items/arrow.png")]);   // the quiver (held as a shield) and the real arrow
+  await Promise.all(["gshell", "rshell", "bshell", "rocket", "piranha", "fire", "boom", "horn"].map(async k => { IMG["it_" + k] = await loadImg(ITEM_ICON[k]); }));   // 🎁 the new items
   IMG.bombF = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map(i => loadImg(`media/kart/items/bomb${i}.png`)));   // 💣 Gunslinger's Grenade (MapleStory)
   IMG.boomF = await Promise.all([0, 1, 2, 3, 4, 5, 6].map(i => loadImg(`media/kart/items/boom${i}.png`)));
   if (IMG.arrowShot) { const c = document.createElement("canvas"); c.width = IMG.arrowShot.width; c.height = IMG.arrowShot.height; const g = c.getContext("2d");
