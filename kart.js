@@ -336,7 +336,7 @@ const TRACKS = {
       [1533, 337, 30], [1717, 392, 28], [1772, 613, 22], [1754, 820, 16], [1643, 981, 12], [1652, 1165, 10], [1730, 1300, 8], [1790, 1440, 6], [1735, 1580, 6], [1758, 1735, 10],
       [1670, 1835, 18], [1441, 1837, 20], [1165, 1827, 18], [1036, 1754, 10], [1018, 1625, 4]],
     theme: { grass: ["#58b84a", "#50ad43"], flowers: 900, flowerCols: ["#ff7ab8", "#ffffff", "#ffd23f", "#ff5a6a"], tufts: 9000, road: "garden", curb: ["#ff9ad0", "#ffffff"], finish: ["#ff7ab8", "#ffffff"], hearts: true, beds: true },
-    near: ["bush", "sunflower", "petbush"], far: ["tree", "bush", "tree"], mobs: [],
+    near: ["bush", "sunflower", "hp_clover", "hp_violet"], far: ["tree", "bush", "tree"], mobs: [],
     build() {
       makePetsArt();
       const u = d => Math.round(d / SPC), coins = [], pa = I(560, 330);
@@ -381,9 +381,13 @@ const TRACKS = {
           for (const [x, y, z] of [[700, 1300, 330], [1500, 500, 380], [300, 1600, 300]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1, r: 0, z, bob: 18 });
           for (const [x, y, k] of [[870, 1300, "bush"], [1350, 1450, "bush"], [430, 900, "tree"], [1600, 1100, "tree"]]) push(ws(x), ws(y), k);
           // 🐾 pets here and there round the park, watching the race and bouncing
-          ["husky", "kitty", "puppy", "panda", "pinkbunny", "dino", "elephant", "babydragon", "monkey", "penguin", "whitebunny", "blackpig"].forEach((k, n) => { const sd = n % 2 ? 1 : -1, [x, y] = at(Math.round(N * (n + .55) / 12) % N, sd * (ROAD / 2 + CURB + 40 + (n % 3) * 28)); OBJS.push({ x, y, k: `pet_${k}_stand00`, s: .9, r: 0, z: 0, bob: 10, mob: true }); });
+          ["husky", "kitty", "puppy", "panda", "pinkbunny", "dino", "elephant", "babydragon", "monkey", "penguin", "whitebunny", "blackpig"].forEach((k, n) => { const sd = n % 2 ? 1 : -1, [x, y] = at(Math.round(N * (n + .55) / 12) % N, sd * (ROAD / 2 + CURB + 40 + (n % 3) * 28)); OBJS.push({ x, y, k: `pet_${k}_stand00`, s: .9, r: 0, z: 0, bob: 10, mob: true });
+            const [ox, oy] = at(Math.round(N * (n + .55) / 12) % N, sd * (ROAD / 2 + CURB + 40 + (n % 3) * 28 + 50));   // their things beside them: a doghouse and a bowl, or a ball to play with
+            if (n % 4 === 0 && Math.hypot(ox - ws(1050), oy - ws(1030)) > 260) { push(ox, oy, "hp_doghouse"); push(ox + 26, oy + 18, "hp_bowl"); } else if (n % 4 === 2) push(x + 24, y + 10, n % 8 === 2 ? "hp_ball" : "hp_ball2"); });
+          for (const a of [2.2, .95]) push(ws(1050) + Math.cos(a) * 148, ws(1030) + Math.sin(a) * 148, "hp_catstatue");   // 🐱 cat statues on the fountain's plaza, facing the road in
+          push(ws(1420) - ws(240), ws(2008) - 110, "hp_bath"); push(ws(1420) + ws(240), ws(2008) - 110, "hp_cushion");   // a pet bath and a cushion on the hospital's lawn
           // 🌸 a few flower clusters at the nice spots (not rows of them)
-          for (const [i, o] of [[I(1220, 1188), -1], [I(245, 1082), 1], [I(337, 360), 1], [I(1772, 613), -1], [I(1600, 1838), 1], [I(1036, 1754), -1]]) { const cl = [["petbush", 0, 0, .42], ["tulips", 30, 16, .3], ["sunflower", -26, 18, .5], ["tulips", -8, -22, .28]];
+          for (const [n, [i, o]] of [[I(1220, 1188), -1], [I(245, 1082), 1], [I(337, 360), 1], [I(1772, 613), -1], [I(1600, 1838), 1], [I(1036, 1754), -1]].entries()) { const cl = n % 2 ? [["hp_clover", 0, 0, .7], ["hp_violet", 26, 14, .62], ["sunflower", -24, 16, .5], ["hp_violet2", -6, -20, .62]] : [["hp_clover", 0, 0, .7], ["hp_orange", 26, 14, .55], ["sunflower", -24, 16, .5], ["hp_orange2", -6, -20, .55]];
             for (const [k, dx, dy, sc] of cl) { const [x, y] = at(i, o * (ROAD / 2 + CURB + 40)); push(x + dx, y + dy, k, sc, 0); } }
         },
       };
@@ -1343,8 +1347,11 @@ function lavaMap() {
 }
 // roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
 // s = world units per picture pixel, r = how solid it is
-const PROPS = { petbush: [.36, 12], tulips: [.3, 0], treehouse: [.62, 0], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
+const PROPS = { treehouse: [.62, 0], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
   hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10],
+  // Pets Park's little things: Henesys's own flowers and pet-park objects (maplestory.io, Map/Obj/acc1.img/grassySoil nature + pet)
+  hp_violet: [.62, 0, "henesys"], hp_violet2: [.62, 0, "henesys"], hp_orange: [.55, 0, "henesys"], hp_orange2: [.55, 0, "henesys"], hp_clover: [.6, 0, "henesys"], hp_ball: [.42, 0, "henesys"], hp_ball2: [.45, 0, "henesys"],
+  hp_cushion: [.6, 0, "henesys"], hp_doghouse: [.9, 16, "henesys"], hp_bath: [.75, 0, "henesys"], hp_bowl: [.5, 0, "henesys"], hp_catstatue: [.6, 10, "henesys"],
   // the new cups' scenery (from maplestory.io's map objects); the 3rd value is the folder, and these load only when a track uses them
   en_pine: [0.522, 14, "elnath"], en_pine2: [0.487, 16, "elnath"], en_tree3: [0.833, 16, "elnath"], en_pine3: [0.478, 12, "elnath"], en_bush: [0.408, 12, "elnath"], en_bush2: [0.512, 12, "elnath"], en_dead: [0.657, 8, "elnath"], en_hay: [0.303, 14, "elnath"], en_fence: [0.33, 0, "elnath"], en_lamp: [0.348, 6, "elnath"], en_sign: [0.538, 6, "elnath"], en_gate: [0.814, 0, "elnath"], en_bench: [0.638, 10, "elnath"], en_swing: [0.309, 14, "elnath"], en_mill: [0.522, 30, "elnath"], en_barrel: [0.419, 8, "elnath"], en_house1: [0.609, 40, "elnath"], en_house2: [0.696, 34, "elnath"], en_house3: [0.609, 40, "elnath"], en_house4: [0.565, 40, "elnath"], en_house5: [0.696, 40, "elnath"], en_tower: [0.957, 40, "elnath"], en_dhouse: [0.652, 40, "elnath"], en_dhouse2: [0.652, 40, "elnath"], en_dhouse3: [0.652, 40, "elnath"], en_snowpines: [1.169, 30, "elnath"],
   sw_ruin: [0.616, 26, "sleepy"], sw_ruin2: [0.654, 26, "sleepy"], sw_ruin3: [0.348, 26, "sleepy"], sw_head: [0.478, 18, "sleepy"], sw_temple: [0.522, 30, "sleepy"], sw_ring: [0.465, 0, "sleepy"], sw_lily: [0.341, 8, "sleepy"], sw_lily2: [0.424, 8, "sleepy"], sw_fern: [0.387, 6, "sleepy"], sw_flower: [0.318, 4, "sleepy"], sw_bell: [0.275, 4, "sleepy"], sw_bush: [0.597, 12, "sleepy"], sw_moss: [0.515, 14, "sleepy"], sw_leaf: [0.407, 6, "sleepy"], sw_puff: [0.38, 4, "sleepy"], sw_tree: [0.556, 10, "sleepy"], sw_vine: [0.348, 10, "sleepy"], sw_treehouse: [0.609, 40, "sleepy"], sw_hut: [0.442, 34, "sleepy"], sw_stump: [0.304, 30, "sleepy"], sw_stump2: [0.348, 30, "sleepy"], sw_shrooms: [0.594, 14, "sleepy"], sw_hotel: [0.485, 8, "sleepy"], sw_lamp: [0.588, 0, "sleepy"], sw_deadtree: [0.565, 14, "sleepy"], sw_deadtree2: [0.565, 14, "sleepy"], sw_boat: [0.336, 20, "sleepy"], sw_log: [0.229, 16, "sleepy"],
@@ -1491,20 +1498,6 @@ function makePetsArt() {
     const cols = ["#ff7ab8", "#ffffff", "#ffd23f", "#ffffff"]; for (let k = 0; k < 6; k++) { g.fillStyle = cols[k % 4]; g.beginPath(); g.moveTo(60, 120); g.ellipse(60, 58, 56, 58, 0, Math.PI + k * Math.PI / 6, Math.PI + (k + 1) * Math.PI / 6); g.lineTo(60, 120); g.fill(); }
     g.fillStyle = "#ff7ab8"; g.beginPath(); g.ellipse(60, 58, 56, 58, 0, 0, Math.PI); g.fill(); g.strokeStyle = "#7a5a3a"; g.lineWidth = 2; g.beginPath(); g.moveTo(30, 105); g.lineTo(48, 145); g.moveTo(90, 105); g.lineTo(72, 145); g.stroke();
     g.fillStyle = "#a0703c"; g.fillRect(44, 142, 32, 24); });
-  let sd = 7; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647;   // (the same blossoms every time)
-  const bloom = (g, x, y, r, col) => { g.fillStyle = col; for (let q = 0; q < 5; q++) { const a = q * 1.2566; g.beginPath(); g.arc(x + Math.cos(a) * r * .55, y + Math.sin(a) * r * .55, r * .5, 0, 7); g.fill(); } g.fillStyle = "#ffd23f"; g.beginPath(); g.arc(x, y, r * .3, 0, 7); g.fill(); };
-  IMG.petbush = mk(190, 140, g => {   // 🌸 a round bush in bloom, covered in pink and white flowers
-    const balls = [[95, 76, 56], [50, 96, 38], [140, 96, 38], [70, 60, 34], [122, 58, 34]];
-    for (const [x, y, r] of balls) { g.fillStyle = "#2f7a2a"; g.beginPath(); g.arc(x, y, r + 3, 0, 7); g.fill(); }
-    for (const [x, y, r] of balls) { g.fillStyle = "#5fbf4a"; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.fillStyle = "#86dc66"; g.beginPath(); g.arc(x - r * .25, y - r * .3, r * .55, 0, 7); g.fill(); }
-    for (let k = 0; k < 26; k++) { const [x, y, r] = balls[k % 5], a = rr() * 6.283, d = Math.sqrt(rr()) * r * .8; bloom(g, x + Math.cos(a) * d, y + Math.sin(a) * d, 7 + rr() * 4, k % 3 ? "#ff8fc8" : "#ffffff"); } });
-  IMG.tulips = mk(170, 120, g => {   // 🌷 a white planter with a pink band, full of pink and white tulips
-    for (let k = 0; k < 9; k++) { const x = 18 + k * 17 + (k % 2) * 4, top = 18 + (k % 3) * 9; g.strokeStyle = "#3f9a36"; g.lineWidth = 4; g.beginPath(); g.moveTo(x, 84); g.lineTo(x, top + 14); g.stroke();
-      g.fillStyle = "#5fbf4a"; g.beginPath(); g.ellipse(x + (k % 2 ? 7 : -7), 66, 4, 13, k % 2 ? .5 : -.5, 0, 7); g.fill();
-      const col = ["#ff7ab8", "#ffffff", "#ff9ad0"][k % 3]; g.fillStyle = col; g.strokeStyle = "rgba(160,60,110,.55)"; g.lineWidth = 1.5;
-      g.beginPath(); g.moveTo(x - 9, top); g.lineTo(x - 4, top + 6); g.lineTo(x, top - 2); g.lineTo(x + 4, top + 6); g.lineTo(x + 9, top); g.quadraticCurveTo(x + 10, top + 18, x, top + 19); g.quadraticCurveTo(x - 10, top + 18, x - 9, top); g.fill(); g.stroke(); }
-    g.fillStyle = "#c9b8a8"; g.beginPath(); g.roundRect(6, 82, 158, 36, 8); g.fill(); g.fillStyle = "#fbf7f2"; g.beginPath(); g.roundRect(6, 80, 158, 34, 8); g.fill();
-    g.fillStyle = "#f07ab0"; g.fillRect(6, 92, 158, 8); g.fillStyle = "#ffffff"; for (let x = 18; x < 160; x += 26) { g.beginPath(); g.arc(x, 96, 2.5, 0, 7); g.fill(); } });
   IMG.chain_post = mk(20, 44, g => { g.fillStyle = "#6b4426"; g.fillRect(6, 4, 8, 40); g.fillStyle = "#8a8d96"; g.beginPath(); g.arc(10, 8, 6, 0, 7); g.fill(); });
 }
 function makeTopiary(pet) {   // 🌿 a giant pet clipped from hedge: a smooth leafy silhouette (darker edges, lit on top, a few flowers) on a pink-and-white planter
