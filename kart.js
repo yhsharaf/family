@@ -2964,7 +2964,7 @@ function render() {
     ctx.globalAlpha = 1;
   }
   // minimap (Sleepywood has none: remember the road)
-  if (mini && MECH !== "dark") {
+  if (mini && MECH !== "dark" && T.cup !== "sleepy") {
     ctx.imageSmoothingEnabled = true;
     const side = TOUCH, mx = side ? 4 : W - 54, my = Math.round(H * (side ? .34 : .3)), s = 50 / 128;   // phones: left side, clear of the buttons
     ctx.globalAlpha = .85; ctx.drawImage(mini, mx, my, 50, 50); ctx.globalAlpha = 1;
