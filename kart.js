@@ -696,8 +696,8 @@ const TRACKS = {
       [1430, 1200, 48], [1340, 1080, 54], [1270, 950, 60], [1210, 840, 64], [1150, 720, 68], [1060, 590, 72], [900, 520, 76], [800, 430, 80], [860, 330, 84], [1020, 300, 88], [1180, 260, 90], [1240, 150, 90],
       [1130, 50, 90], [880, 60, 90], [620, 100, 88], [400, 160, 84], [210, 260, 78], [200, 400, 70], [330, 520, 62], [420, 770, 54], [500, 1000, 46]],
     theme: { ...TH.mine, lava: true, grass: ["#a8280a", "#c8401a"], flowers: 600, flowerCols: ["#ffb02e", "#ff6a1e", "#ffd23f", "#ff8a3a"], tufts: 4000, road: "basalt" },
-    art: { sky: "media/kart/zakum/sky2.webp", strip: "media/kart/zakum/strip2.webp" },
-    near: [], far: ["zk_volcano", "zk_rocks", "zk_rocks2", "zk_skull"], mobs: ["fire_boar", "firebomb"],
+    art: { sky: "media/kart/zakum/sky2.webp" },   // just the lava pillars far away: clean
+    near: [], far: [], mobs: ["fire_boar", "firebomb"],
     build() {
       const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
@@ -717,8 +717,6 @@ const TRACKS = {
         fork: { a: I(794, 1510), b: I(1530, 1780), via: [[ws(950), ws(1590)], [ws(1200), ws(1650)], [ws(1420), ws(1690)]], width: 140, style: "cobble" },
         boxes: [...boxRow(I(860, 1700), [-60, -20, 20, 60]), ...boxRow(I(1600, 1310), [-60, -20, 20, 60]), ...boxRow(I(620, 100), [-60, -20, 20, 60])],
         extra(push) {
-          OBJS.push({ x: ws(1050), y: ws(1180), k: "zk_volcano", s: 4.5, r: 0, z: 0 });   // 🌋 the volcano itself, rising out of the lava in the middle
-          for (const [x, y] of [[1650, 900], [300, 900], [700, 1300], [1500, 500]]) OBJS.push({ x: ws(x), y: ws(y), k: "zk_volcano", s: 1.6, r: 0, z: 0 });
           for (let i = 0; i < N; i += 40) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 6)); if (!gaps.some(g => i >= g.a - 3 && i <= g.b + 3)) OBJS.push({ x, y, k: "zk_lantern", s: .28, r: 0, z: 0 }); }
         },
       };
@@ -3099,7 +3097,7 @@ async function loadArt() {
   jobs.push(makeCrowd());
   if (TRACK_KEY === "ld3" && !IMG.papStand) jobs.push(Promise.all([...[0, 1, 2, 3, 4, 5].map(i => artImg(`media/kart/ludi/pap_stand${i}.webp`)), ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => artImg(`media/kart/ludi/pap_skill${i}.webp`))])
     .then(a => { if (a.every(Boolean)) { IMG.papStand = a.slice(0, 6); IMG.papSkill = a.slice(6); } }));
-  jobs.push(artImg(art.sky).then(im => { sky = im; }), artImg(art.strip).then(im => { IMG.strip = im; }));
+  jobs.push(artImg(art.sky).then(im => { sky = im; }), (art.strip ? artImg(art.strip) : Promise.resolve(null)).then(im => { IMG.strip = im; }));   // (a track can go without a horizon strip)
   for (const n of T.pets || []) for (const [act, cnt] of Object.entries(PETF[n] || {})) for (let i = 0; i < cnt; i++) { const key = `pet_${n}_${act}${i}`;
     if (!IMG[key]) jobs.push(artImg(`media/kart/pets/${n}_${act}${i}.png?v=1`).then(im => { if (im) { im.px = true; IMG[key] = im; } })); }
   await Promise.all(jobs);
