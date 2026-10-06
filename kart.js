@@ -77,7 +77,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   puppy: { move: 3, stand0: 3, jump: 1 }, panda: { move: 3, stand0: 3, jump: 1 }, dino: { move: 5, stand0: 3, jump: 1 }, penguin: { move: 5, stand0: 3, jump: 2 },
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
-let OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
+let FINALMSG = null, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
   ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
@@ -128,10 +128,11 @@ function penPigPos(p, tt) {
 // road crossers: pigs (Henesys Loop), snails (Town Run, slow), mushrooms that hop (Mushroom Forest)
 const pigPos = (p, tt) => { const sp = p.sp || 1.25, o = Math.sin(tt * sp + p.ph) * (p.amp || ROAD / 2 + 8), [x, y] = at(p.i + (p.loop ? Math.cos(tt * sp + p.ph) * p.loop : 0), o);   // (loop: skating round in a ring)
   return { x, y, dir: Math.cos(tt * sp + p.ph), z: p.hop ? Math.abs(Math.sin(tt * 5 + p.ph)) * 16 : 0 }; };
+const lapNow = () => (K ? Math.min(LAPS, K.lap + 1) : 1);   // the lap you're on (some things only come out on the last one)
 const kingPhase = tt => (tt % KING.T) / KING.T;   // 0-.45 up in the air, .45-.55 falling, .55 SLAM, then sitting on the road
 const kingZ = ph => ph < .45 ? 150 * Math.sin(Math.min(1, ph / .2) * Math.PI / 2) : ph < .55 ? 150 * (1 - (ph - .45) / .1) : 0;
 const coinRow = (a, b, st, o) => { const out = []; for (let i = a, j = 0; i <= b; i += st, j++) { const [x, y] = at(i, typeof o === "function" ? o(j) : o); out.push({ x, y, z: 0, got: false }); } return out; };
-const boxRow = (i, os) => os.map(o => { const [x, y] = at(i, o); return { x, y, t: 0 }; });
+const boxRow = (i, os) => os.map(o => { const [x, y] = at(i, o); return { x, y, t: 0, i, o }; });
 const PROPS_ALL = ["tree", "bush", "redshrooms", "sunflower", "tallshroom", "stall", "stall2", "hay", "haypile", "shroomtower", "shroomhouse", "posts", "treehouse"];
 
 const OPEN_ZK1 = [[230, 1900], [1025, 1865], [1820, 1900], [1820, 1600], [1025, 1635], [230, 1600], [230, 1300], [1025, 1265], [1820, 1300], [1820, 1000], [1025, 1035], [230, 1000], [230, 700], [1025, 665], [1820, 700], [1820, 400], [1025, 435], [230, 400], [230, 120], [1025, 85], [1820, 120]];
@@ -211,14 +212,20 @@ const TRACKS = {
       for (let j = 0; j < 6; j++) { const [x, y] = at(launch + u(40 + j * 35), 0); coins.push({ x, y, z: 30 + 60 * Math.sin(Math.PI * (j + .5) / 6), got: false }); }   // the flight over the field
       // 🐷 the pig herds: a few pigs crossing together, slowly (they bump and slow you: it's a beginner track)
       const herd = (i, ph, k3) => [0, 1, 2].map(n => ({ i: i + n * 3, ph: ph + n * .5, k: k3[n % k3.length], sp: .42, soft: true, herd: true, s: .55 }));
+      // 🐷 the final lap: a stampede! a big herd charging back and forth across the start straight (only on lap 3)
+      const stampede = [0, 1, 2, 3, 4, 5].map(n => ({ i: I(1803, 800) + (n % 3) * 4 + Math.floor(n / 3) * 14, ph: n * .9, k: ["pig", "ribbon_pig"][n % 2], sp: .95, soft: true, herd: true, s: .6, lap: 3 }));
+      // 🌾 hay bales across the road before the stump hills: hit one for a hop and +2 mesos
+      const hay = [[205, 925, -55], [199, 985, 50], [210, 1045, -15]].map(([x, y, o]) => ({ i: I(x, y), o }));
       return {
         lake: { cx: ws(1180), cy: ws(1020), rx: ws(300), ry: ws(105) },   // the river by the farm
         pads: [{ t: "ramp", i: I(430, 762), len: 9, o: 0, w: ROAD },                  // the blue ramp halfway round (trick!)
           { t: "boost", i: I(1640, 190), len: 12, o: 0, w: 64 },                    // out of the first turn
           { t: "boost", i: fieldA, len: 10, o: 0, w: 80 },                           // the boost pad into the field…
           { t: "bigramp", i: launch, len: 7, o: 0, w: ROAD },                          // …that flies you over the grass
+          ...hay.map(h => ({ t: "hay", i: h.i, len: 4, o: h.o, w: 46 })),
           ...[[50, -60, 70, 20], [140, 55, 80, 22], [230, -40, 90, 20], [320, 60, 70, 18], [400, -55, 80, 22], [470, 30, 60, 16]].map(([d, o, w, len]) => ({ t: "grass", i: launch + u(d), len: Math.round(len / 4) + 3, o, w }))],
-        coins, pigs: [...herd(I(1180, 210), 0, ["pig", "ribbon_pig", "pig"]), ...herd(I(1040, 500), 2.1, ["ribbon_pig", "pig", "pig"]), ...herd(I(700, 630), 4, ["pig", "pig", "ribbon_pig"])],
+        coins, pigs: [...herd(I(1180, 210), 0, ["pig", "ribbon_pig", "pig"]), ...herd(I(1040, 500), 2.1, ["ribbon_pig", "pig", "pig"]), ...herd(I(700, 630), 4, ["pig", "pig", "ribbon_pig"]), ...stampede],
+        finalMsg: "🐷 STAMPEDE on the straight!",
         // 🌳 Stumps (the Monty Moles): they dig about under the bumpy hills and pop up; their dirt slows you, a stump that's up bumps you
         moles: [[I(240, 1080), -50], [I(300, 1200), 60], [I(420, 1330), -30], [I(455, 1470), 55], [I(468, 1580), -60], [I(500, 1720), 20]].map(([i, o], n) => ({ i, o, ph: n * .9, sp: 1 })),
         boxes: [...boxRow(I(1800, 700), [-80, -27, 27, 80]), ...boxRow(I(1150, 260), [-80, -27, 27, 80]), ...boxRow(I(240, 960), [-80, -27, 27, 80]),
@@ -227,6 +234,8 @@ const TRACKS = {
           // the farm on the hill: a white barn with a blue roof, two silos and a windmill (seen from all over the track)
           for (const [x, y, k, sc] of [[1380, 720, "farm_barn", .9], [1495, 690, "farm_silo", .8], [1545, 730, "farm_silo", .7], [1240, 640, "farm_mill", .9], [760, 1250, "farm_barn", .6]]) OBJS.push({ x: ws(x), y: ws(y), k, s: sc, r: 30, z: 0 });
           for (let i = I(1215, 190); i <= I(660, 650); i += 10) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 14)); push(x, y, "posts", .32, 6); }   // fences along the pig field
+          for (let i = I(1808, 1060); i <= I(1782, 470); i += 9) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 10)); push(x, y, "posts", .32, 6); }   // fence posts flashing past down the start straight
+          for (const h of hay) { const [x, y] = at(h.i + 2, h.o); OBJS.push({ x, y, k: "hay", s: .45, r: 0, z: 0 }); }   // the hay bales you hop off
           for (const [x, y, k] of [[1000, 760, "hay"], [1120, 700, "haypile"], [700, 1500, "tree"], [1400, 1300, "tree"], [1550, 800, "tree"], [880, 1320, "bush"]]) push(ws(x), ws(y), k);
         },
       };
@@ -256,6 +265,8 @@ const TRACKS = {
       const G1 = { a: g1a, b: g1a + u(160), kind: "gorge", caps: [cap(g1a, 70, 0, 95, 0, "r")] };                                     // the first jump: one big mushroom
       const G2 = { a: g2a, b: g2a + u(500), kind: "gorge", caps: [cap(g2a, 75, 0, 100, 0, "o"), cap(g2a, 185, 55, 68, 26, "b"), cap(g2a, 380, -45, 82, 12, "n")] };   // three down the gorge
       const cave = [cap(g3a, 85, 0, 115, 0, "g")];   // the abyss: one wide mushroom in, then two rows (the middle is open: pick a side)
+      cave.push({ ...cap(g3a, 370, 0, 30, 46, "y"), gold: true, hop: 400 }, { ...cap(g3a, 770, 0, 30, 40, "y"), gold: true, hop: 400 });
+      for (const [d, z] of [[470, 90], [570, 115], [670, 90], [870, 90], [970, 115], [1070, 90]]) { const [x, y] = at(g3a + u(d), 0); coins.push({ x, y, z, got: false }); }   // mesos up along the golden arcs   // ✨ the risky middle line: two small golden mushrooms, each a double-length, faster bounce (about 2 s quicker; miss and you fall)
       [[170, -70, 72, 18], [370, -52, 58, 34], [570, -78, 80, 8], [770, -50, 62, 28], [970, -68, 76, 14]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, COL[k % 5])));
       [[170, 72, 60, 30], [370, 60, 84, 10], [570, 76, 56, 36], [770, 55, 80, 6], [970, 74, 66, 24]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, COL[(k + 2) % 5])));
       const G3 = { a: g3a, b: g3a + u(1055), kind: "gorge", caps: cave };
@@ -302,7 +313,9 @@ const TRACKS = {
       row(I(250, 1060), I(240, 700), 5, 0);                               // up the left side
       row(pa + u(110), pa + u(850), 8, j => (j & 1 ? 30 : -30));         // between the hedges
       row(I(1730, 1310), I(1750, 1700), 6, j => Math.sin(j * 1.4) * 35); // down the bunny path
-      row(I(1600, 1838), I(1250, 1832), 5, 0);                            // along the porch
+      const porch = I(1580, 1836);                                         // ✈ off the end of the porch: a boost and a big ramp, coins in the air and an item box up there
+      for (let j = 0; j < 6; j++) { const [x, y] = at(porch + u(45 + j * 38), 0); coins.push({ x, y, z: 35 + 70 * Math.sin(Math.PI * (j + .5) / 6), got: false }); }
+      row(I(1250, 1832), I(1170, 1828), 3, 0);                            // along the porch
       // 🌿 the hedge maze: blocks to weave between (a slalom), and the giant pets on their chains at its edges
       const hedges = [0, 1, 2, 3, 4, 5, 6].map(k => ({ i: pa + u(70 + k * 128), o: k % 2 ? 44 : -44, w: 52, h: 34 }));   // a slalom of hedges, left and right
       for (const [x, y] of [[1840, 960], [1890, 1030], [1840, 1100]]) hedges.push({ x: ws(x), y: ws(y), w: 46, h: 30 });   // the peace-sign hedges by the right-hand bend
@@ -318,9 +331,10 @@ const TRACKS = {
         pads: [{ t: "boost", i: I(520, 1105), len: 12, o: 0, w: 60 },        // out of the fountain roundabout
           { t: "boost", i: I(1690, 380), len: 12, o: 0, w: 60 },              // out of the hedge maze
           { t: "ramp", i: I(1785, 1460), len: 8, o: 0, w: ROAD },              // the bunny path's two little ramps (added in Mario Kart Wii)
-          { t: "ramp", i: I(1745, 1640), len: 8, o: 0, w: ROAD }],
+          { t: "ramp", i: I(1745, 1640), len: 8, o: 0, w: ROAD },
+          { t: "boost", i: porch - u(70), len: 10, o: 0, w: 80 }, { t: "bigramp", i: porch, len: 7, o: 0, w: ROAD }],   // the porch launch
         coins,
-        boxes: [...boxRow(I(420, 1115), [-60, -20, 20, 60]), ...boxRow(pa + u(380), [-70, 70]), ...boxRow(I(1300, 1834), [-60, -20, 20, 60])],
+        boxes: [...boxRow(I(420, 1115), [-60, -20, 20, 60]), ...boxRow(pa + u(380), [-70, 70]), ...boxRow(porch + u(150), [-50, 0, 50]).map(b => ({ ...b, z: 62 }))],
         extra(push) {
           const [tx, ty] = at(I(1030, 1400), ROAD / 2 + CURB + 70); OBJS.push({ x: tx, y: ty, k: "topiary", s: 1, r: 40, z: 0 });   // the giant hedge pet by the start
           OBJS.push({ x: ws(1050), y: ws(1030), k: "fountain", s: .8, r: 0, z: 0 });                                       // the fountain in its moat
@@ -328,6 +342,7 @@ const TRACKS = {
           for (const [x, y] of [[640, 640], [1420, 640], [520, 1500]]) OBJS.push({ x: ws(x), y: ws(y), k: "gazebo", s: .8, r: 30, z: 0 });
           for (const [x, y, z] of [[700, 1300, 330], [1500, 500, 380], [300, 1600, 300]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1, r: 0, z, bob: 18 });
           for (const [x, y, k] of [[870, 1300, "bush"], [1350, 1450, "bush"], [430, 900, "tree"], [1600, 1100, "tree"]]) push(ws(x), ws(y), k);
+          for (let i = I(1730, 1300), n = 0; i <= I(1758, 1735); i += 8, n++) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 9)); push(x, y, n % 3 ? "sunflower" : "redshrooms", .5, 0); }   // 🌻 flowers lining the bunny path, flicking past
         },
       };
     },
@@ -877,13 +892,13 @@ function loadTrack(key) {
   HEDGES = (f.hedges || []).map(b => { if (b.x != null) return { ...b, a: 0 }; const [x, y] = at(b.i, b.o); return { ...b, x, y, a: tangent(b.i) }; });
   GAPS = (f.gaps || []).map(g => { const G = { ...g }; G.caps = g.caps.map(c => { const [x, y] = at(c.i, c.o || 0); return { ...c, x, y, squash: 0, g: G }; }); return G; });
   { const PAL = ["r", "b", "g", "o", "n"], all = GAPS.flatMap(g => g.caps); let k = 0;   // 🎨 no two mushrooms near each other share a colour
-    for (const c of all) { const near = all.filter(d => d !== c && d.colSet && Math.hypot(d.x - c.x, d.y - c.y) < 330).map(d => d.col);
+    for (const c of all) { if (c.gold) { c.col = "y"; c.colSet = true; continue; } const near = all.filter(d => d !== c && d.colSet && Math.hypot(d.x - c.x, d.y - c.y) < 330).map(d => d.col);
       let pick = null; for (let j = 0; j < PAL.length && !pick; j++) { const col = PAL[(k + j) % PAL.length]; if (!near.includes(col)) pick = col; }
       if (!pick) { const cnt = col => near.filter(n => n === col).length; pick = PAL.slice().sort((p, q) => cnt(p) - cnt(q))[0]; }
       c.col = pick; c.colSet = true; k++; } }
   { const g0 = gridSpot(7).i - 25, g1 = (OPEN ? START_I : N) + Math.round(400 / SPC), inStart = i => { const j = OPEN ? i : (i < N / 2 ? i + N : i); return j >= g0 && j <= g1; };
     f.pads = f.pads.filter(p => !(["boost", "ramp", "bigramp"].includes(p.t) && (inStart(p.i) || inStart(p.i + (p.len || 0))))); }
-  PADS = f.pads; COINS = f.coins; PIGS = f.pigs || []; KING = f.king || null; BOXES = f.boxes || [];
+  PADS = f.pads; COINS = f.coins; PIGS = f.pigs || []; FINALMSG = f.finalMsg || null; KING = f.king || null; BOXES = f.boxes || [];
   if (f.fork && f.fork.coins) for (let q = .15; q <= .85; q += .07) { const [x, y] = altAt(q * (AN - 1), 0); COINS.push({ x, y, z: 0, got: false }); }
   PENPIGS = PEN ? [0, 1, 2, 3, 4, 5].map(n => ({ f: .12 + n * .15, o: (n % 3 - 1) * 34, ph: n * 1.7, k: n % 2 ? "ribbon_pig" : "pig", dx: 0, dy: 0 })) : [];
   T.extraFn = f.extra;
@@ -1526,7 +1541,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=69"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=71"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1545,7 +1560,7 @@ let gp = null;   // { race, names, pts: { name: points } }
 let ghost = null, ghostRec = [];   // your best Time Trial run, sampled 10 times a second: [t, x, y, a, z]
 const ghostKey = () => `kart_ghost2:${ccId(TRACK_ID, raceCC)}:${me}`;
 // difficulty, picked before the race: rival speed, how hard they catch up, how often they grab items
-const DIFFS = { easy: { skill: .95, band: .07, pick: .4, drift: .3, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .6, drift: .65, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: .8, drift: .9, label: "Hard" } };   // drift: how often a computer racer gets a mini-turbo out of a corner
+const DIFFS = { easy: { skill: .95, band: .07, pick: .55, drift: .3, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .85, drift: .65, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: 1, drift: .9, label: "Hard" } };   // drift: how often a computer racer gets a mini-turbo out of a corner
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
 // speed classes like Mario Kart's: everything on the track moves slower (turning stays the same, so it's easier to steer)
 const CCS = { 50: { spd: .7, label: "🐢 50cc" }, 100: { spd: .85, label: "🏎️ 100cc" }, 150: { spd: 1, label: "🔥 150cc" } };
@@ -1955,6 +1970,7 @@ function rivalStep(r, dt, tt) {
   const lost = (near.d > near.half + 110 && !onRink(r.x, r.y)) || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
   if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 100; r.laneT = 1.5 + Math.random() * 3; }
+  if (!r.item && !(r.noItem > 0) && mode !== "tt") for (const b of BOXES) if (b.i != null && !(b.z > 0) && b.t <= 0) { const di = OPEN ? b.i - r.idx : (b.i - r.idx + N) % N; if (di > 4 && di < 45) { r.lane = b.o; break; } }   // 🎁 no item: head for a box (dodging below still wins)
   if (LEDGES.length && LEDGES.some(l => { const j = OPEN ? r.idx + 30 : (r.idx + 30) % N; return (r.idx >= l.a && r.idx <= l.b) || (j >= l.a && j <= l.b); })) r.lane = Math.max(-ROAD / 2 + 42, Math.min(ROAD / 2 - 42, r.lane));   // no railing here: stay off the edge (holes and hedges below still win)
   for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
   for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
@@ -1992,7 +2008,7 @@ function rivalStep(r, dt, tt) {
     if (pad.t === "slime" || pad.t === "lava") hit(r);
   }
   r.lastPad = pad; gapStep(r, air); moleStep(r, air, tt); petStep(r, air, tt);
-  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(r.x - q.x, r.y - q.y) < 17) { if (p.soft) { if (!(r.bonk > 0)) { r.bonk = .8; r.v *= .6; r.vz = 120; r.z = .1; } } else hit(r); } }
+  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(r.x - q.x, r.y - q.y) < 17) { if (p.soft) { if (!(r.bonk > 0)) { r.bonk = .8; r.v *= .6; r.vz = 120; r.z = .1; } } else hit(r); } }
   if (r.bonk > 0) r.bonk -= dt;
   if (KING) {
     const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0);
@@ -2260,7 +2276,7 @@ function gapStep(r, air) {
   if (!GAPS.length || r.rescue > 0) return;
   const c = capAt(r.x, r.y);
   if (air) {
-    if (r.hopUntil && performance.now() < r.hopUntil + 400) { r.v = 250; r.boost = 0; r.extra = 0; }   // a bounce is always the same hop: no speeding up in the air
+    if (r.hopUntil && performance.now() < r.hopUntil + 400) { r.v = r.hopV || 250; r.boost = 0; r.extra = 0; }   // a bounce is always the same hop: no speeding up in the air
     if (r.hopUntil && performance.now() < r.hopUntil && (r !== K || (DEV && DEV.aimK))) r.a = r.ma = r.hopA;   // (the computer racers get a little aim)
     if (c && c !== r.lastCap && r.vz < 0 && r.z <= (c.top || 0) + 1) bounce(r, c);   // coming down onto a raised mushroom
     else if (!c) r.lastCap = null;
@@ -2274,13 +2290,14 @@ function bounce(r, c) {
   r.lastCap = c; c.squash = 1;
   if ((r !== K || (DEV && DEV.aimK)) && !r.remote) {   // computer racers aim at the next mushroom ahead on their side
     const g = c.g, myL = lat(r.x, r.y, r.idx); let tgt = null, best = 1e9;
-    for (const d of g.caps) { const ahead = (d.i - r.idx) * SPC; if (d === c || ahead < 80 || ahead > 300) continue; const sc = Math.abs((d.o || 0) - myL) + Math.abs(ahead - HOP) * .5; if (sc < best) { best = sc; tgt = d; } }
+    const hp = c.hop || HOP; for (const d of g.caps) { const ahead = (d.i - r.idx) * SPC; if (d === c || d.gold || ahead < 80 || ahead > hp + 100) continue; const sc = Math.abs((d.o || 0) - myL) + Math.abs(ahead - hp) * .5; if (sc < best) { best = sc; tgt = d; } }
     const [tx, ty] = tgt ? [tgt.x, tgt.y] : at(Math.min(N - 1, r.idx + Math.round(HOP / SPC)), Math.max(-25, Math.min(25, myL)));   // off the last one: back to the middle of the road
     r.a = r.ma = r.hopA = Math.atan2(ty - r.y, tx - r.x);
   }
-  const t = HOP / (250 * SPD); r.hopUntil = performance.now() + t * 1000;
-  r.v = 250; r.boost = 0; r.extra = 0; r.vz = 360 * t; r.z = Math.max(.1, c.top || 0); r.drift = 0; r.spin = 0;
-  if (r === K) { boingSound(); buzz(25); pop(c.r < 70 ? "🍄 Nice landing!" : "🍄 Boing!", { g: "#7ad06a", b: "#6ab8ff", o: "#ffb04a", n: "#d8a46a" }[c.col] || "#ff8a6a", true); }
+  r.hopV = c.gold ? 400 : 250; const t = (c.hop || HOP) / (r.hopV * SPD); r.hopUntil = performance.now() + t * 1000;
+  r.v = r.hopV; r.boost = 0; r.extra = 0; r.vz = 360 * t; r.z = Math.max(.1, c.top || 0); r.drift = 0; r.spin = 0;
+  if (r === K && c.gold) { boingSound(); setTimeout(boingSound, 90); buzz([30, 30, 60]); pop("✨ SUPER BOUNCE!", "#ffe14a", true); K.kick = 1; }
+  else if (r === K) { boingSound(); buzz(25); pop(c.r < 70 ? "🍄 Nice landing!" : "🍄 Boing!", { g: "#7ad06a", b: "#6ab8ff", o: "#ffb04a", n: "#d8a46a" }[c.col] || "#ff8a6a", true); }
 }
 function spinOut(msg) {
   const k = K; if (k.spin > 0 || k.inv > 0 || k.z > 0 || k.rescue > 0 || k.hyper > 0) return;
@@ -2456,7 +2473,7 @@ function step(dt) {
     if (was < 10 && k.mesos === 10) { flash("💰 MAX MESOS!", 900); [988, 1319, 1568].forEach((f, i) => setTimeout(() => tone(f, .12, "square", .05), i * 80)); }
   }
   if (k.bonk > 0) k.bonk -= dt;
-  for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
+  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
     spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Ice block!" : p.k === "fishbone" ? "🐟 Bone Fish!" : p.k === "roller" ? "🪨 Boulder!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }
@@ -2488,7 +2505,7 @@ function step(dt) {
       if (lt > 5000 && (!pb || lt < pb)) { store.set(key, String(Math.round(lt))); if (pb) { setTimeout(() => { if (state === "race" || state === "done") { pop(`⚡ NEW BEST LAP!  −${((pb - lt) / 1000).toFixed(2)}s`, "#ffe14a", true); [880, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, .12, "square", .05), i * 90)); buzz([20, 40, 20]); } }, 700); } } }
     COINS.forEach(c => c.got = false);   // mesos come back every lap (the 10 max stays)
     if (k.lap >= LAPS) finish();
-    else if (k.lap === LAPS - 1) { flash("🏁 FINAL LAP!", 1600); finalSound(); B.musicRate(1.15); fireworks(3); }   // fanfare, and the music speeds up
+    else if (k.lap === LAPS - 1) { flash(FINALMSG ? `🏁 FINAL LAP!\n${FINALMSG}` : "🏁 FINAL LAP!", 1800); finalSound(); B.musicRate(1.15); fireworks(3); }   // fanfare, and the music speeds up
     else flash(`Lap ${k.lap + 1}`, 1300);
     if (k.lap < LAPS) { const lt = k.laps[k.laps.length - 1], pv = k.laps[k.laps.length - 2];   // ⏱️ this lap's time, and how it compares with the last one
       pop(pv ? `${(lt / 1000).toFixed(2)}s  ${lt < pv ? "▼" : "▲"}${Math.abs((lt - pv) / 1000).toFixed(2)}` : `${(lt / 1000).toFixed(2)}s`, !pv ? "#ffffff" : lt < pv ? "#7dff8a" : "#ff9a9a", true); }
@@ -2707,7 +2724,7 @@ function render() {
   });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got && (G3 ? (c.x - k.x) * ca + (c.y - k.y) * sa > -12 : (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
-  for (const p of PIGS) { const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
+  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
   for (const m of MOLES) { const q = molePos(m, tt), im = IMG[m.img || "stump"]; add(q.x, q.y, IMG.farm_mound, .42, 0); if (q.up > 0 && im) add(q.x, q.y, im, m.img ? .75 : .5, -34 * (1 - q.up)); }   // 🌳 mounds, and stumps (or bunnies) popping out
   // 🐾 pets wandering the gardens, and the giant pets on their chains (with the chain drawn from its post)
   for (const w of WANDER) { const q = wanderPos(w, tt), im = petFrame(w.k, "move", tt + w.ph); if (im) add(q.x, q.y, im, w.s, 0, q.dx > 0); }

@@ -335,8 +335,8 @@ export function create(A) {
       const depth = g.kind === "water" ? 70 : 320;
       for (const c of g.caps) {
         const lift = c.top || 0, top = h(c.x, c.y) + 1 + lift, grp = new THREE.Group(); grp.position.set(c.x, top, c.y);
-        const dh = 10 + c.r * .08, dome = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: 50, specular: 0x333333 })); dome.scale.set(c.r, dh, c.r); grp.add(dome);
-        const rim = new THREE.Mesh(new THREE.CylinderGeometry(c.r, c.r * .9, 6, 40), new THREE.MeshLambertMaterial({ color: { g: 0x2f7a2a, r: 0xa8321e, b: 0x235fa8, o: 0xb85a1a, n: 0x4a2c14 }[c.col] || 0xa8321e })); rim.position.y = -2; grp.add(rim);
+        const dh = 10 + c.r * .08, dome = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: c.gold ? 90 : 50, specular: c.gold ? 0xfff0a0 : 0x333333, emissive: c.gold ? 0x6a4800 : 0x000000 }));   // (the golden ones glow) dome.scale.set(c.r, dh, c.r); grp.add(dome);
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(c.r, c.r * .9, 6, 40), new THREE.MeshLambertMaterial({ color: { g: 0x2f7a2a, r: 0xa8321e, b: 0x235fa8, o: 0xb85a1a, n: 0x4a2c14, y: 0xb8860b }[c.col] || 0xa8321e })); rim.position.y = -2; grp.add(rim);
         const under = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .88, c.r * .3, 14, 32), new THREE.MeshLambertMaterial({ color: 0xf2e2b8 })); under.position.y = -12; grp.add(under);
         const sl = depth + 10 + lift, stem = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .17, c.r * .22, sl, 20), new THREE.MeshLambertMaterial({ color: 0xf0d77a })); stem.position.y = -sl / 2 - 12; grp.add(stem);
         scene.add(grp); roadObjs.push(dome, rim, under, stem); extraObjs.push(grp); caps.push({ m: dome, pad: c, h: dh });
@@ -413,7 +413,7 @@ export function create(A) {
   const capTexs = {};
   function capTex(col) {
     if (capTexs[col]) return capTexs[col];
-    const C = { o: ["#e8742a", "#ffa040"], g: ["#3e9e34", "#7fd862"], b: ["#2f7cd0", "#7ab8ff"], r: ["#b8281c", "#f04a32"], n: ["#5e3a1c", "#9a6a3a"] }[col] || ["#e8742a", "#ffa040"], c = canvas(256, 128), g = c.getContext("2d");
+    const C = { o: ["#e8742a", "#ffa040"], g: ["#3e9e34", "#7fd862"], b: ["#2f7cd0", "#7ab8ff"], r: ["#b8281c", "#f04a32"], n: ["#5e3a1c", "#9a6a3a"], y: ["#d4920a", "#ffe45a"] }[col] || ["#e8742a", "#ffa040"], c = canvas(256, 128), g = c.getContext("2d");
     const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, C[1]); gr.addColorStop(1, C[0]); g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
     g.fillStyle = "#fffaf0"; for (const [x, y, r] of [[30, 40, 16], [100, 70, 20], [170, 35, 14], [220, 85, 18], [65, 100, 11], [140, 108, 10], [250, 20, 9], [5, 80, 10]]) { g.beginPath(); g.ellipse(x, y, r, r * .8, 0, 0, 7); g.fill(); }
     g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(0, 118, 256, 10);   // a darker rim
