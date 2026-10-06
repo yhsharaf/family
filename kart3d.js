@@ -179,13 +179,13 @@ export function create(A) {
     }
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
     for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : g.open ? 90 : 320;   // 🍄 a gorge (deep, misty) or the park pond
-      for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * (g.open ? smooth(700, 120, Math.sqrt(dmin[o])) : smooth(520, 430, Math.sqrt(dmin[o]))));   // (an open glide: a smooth hollow in the mountainside)
+      const GW = g.wall || 424; for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * (g.open ? smooth(700, 120, Math.sqrt(dmin[o])) : smooth(GW + 96, GW + 6, Math.sqrt(dmin[o]))));   // (g.wall: a narrower ravine)   // (an open glide: a smooth hollow in the mountainside)
       if (t.theme.cliffs && !g.open && (g.kind === "gorge" || g.kind === "chasm" || g.kind === "bridge")) {   // with cliff walls: the pit is exactly the walls' box (no ground left standing in front of them where the track bends)
         let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = g.a; i <= g.b; i++) { const p = t.PTS[i % t.N]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
         const M = 480, gi0 = Math.max(0, Math.floor((x0 - M) / G)), gi1 = Math.min(GN - 1, Math.ceil((x1 + M) / G)), gj0 = Math.max(0, Math.floor((z0 - M) / G)), gj1 = Math.min(GN - 1, Math.ceil((z1 + M) / G));
         for (let j = gj0; j <= gj1; j++) for (let i = gi0; i <= gi1; i++) { const x = i * G, z = j * G; let bd = 1e12, bi = -1;
           for (let k = g.a - 6; k <= g.b + 6; k++) { const p = t.PTS[((k % t.N) + t.N) % t.N], d = (p[0] - x) ** 2 + (p[1] - z) ** 2; if (d < bd) { bd = d; bi = k; } }
-          if (bi > g.a && bi < g.b) { const o = j * GN + i; DIP[o] = Math.max(DIP[o], depth * smooth(470, 432, Math.sqrt(bd))); } } } }
+          if (bi > g.a && bi < g.b && (!g.wall || (near[j * GN + i] >= g.a - 8 && near[j * GN + i] <= g.b + 8))) { const o = j * GN + i; DIP[o] = Math.max(DIP[o], depth * smooth(GW + 46, GW + 8, Math.sqrt(bd))); } } } }
     // the terrain mesh, painted with the track picture, and a fine grain so it looks like a surface up close
     const pos = new Float32Array(GN * GN * 3), uv = new Float32Array(GN * GN * 2), idx = new Uint32Array((GN - 1) * (GN - 1) * 6);
     for (let j = 0, p = 0; j < GN; j++) for (let i = 0; i < GN; i++, p++) { pos.set([i * G, HG[p] - DIP[p], j * G], p * 3); uv.set([i / (GN - 1), 1 - j / (GN - 1)], p * 2); }
@@ -324,7 +324,7 @@ export function create(A) {
   // dirt with mossy rocks below, darker further down - mapped evenly along the wall like a MapleStory map's ground
   function buildCliffs(t) {
     const CL = t.theme.cliffs ? cliffMats(t.theme.cliffs) : null; if (!CL || !RE) return;
-    const W = 424, DEPTH = 330, N = t.N, P = t.PTS;
+    const DEPTH = 330, N = t.N, P = t.PTS;
     const tan = i => { const a = P[Math.max(0, i - 2) % N], b = P[Math.min(N - 1, i + 2) % N]; const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
     const lipM = new THREE.MeshLambertMaterial({ map: CL.top, side: THREE.DoubleSide, vertexColors: true }), fillM = new THREE.MeshLambertMaterial({ map: CL.fill, side: THREE.DoubleSide, vertexColors: true });
     const strip = pts => {   // pts: [x, z, top] along the wall -> a lip strip and a fill strip
@@ -337,7 +337,7 @@ export function create(A) {
         g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.setIndex(ix); g.computeVertexNormals(); const mesh = new THREE.Mesh(g, m); scene.add(mesh); roadObjs.push(mesh); }
     };
     for (const g of t.gaps || []) { if (g.open || (g.kind !== "gorge" && g.kind !== "chasm" && g.kind !== "bridge")) continue;
-      const at2 = (i, o) => { const [tx, ty] = tan(i), p = P[i % N]; return [p[0] - ty * o, p[1] + tx * o]; }, rim = i => RE[Math.max(0, Math.min(N - 1, i % N))] + 1;
+      const W = g.wall || 424, at2 = (i, o) => { const [tx, ty] = tan(i), p = P[i % N]; return [p[0] - ty * o, p[1] + tx * o]; }, rim = i => RE[Math.max(0, Math.min(N - 1, i % N))] + 1;
       for (const sd of [-1, 1]) { const pts = []; for (let i = g.a; i <= g.b; i += 2) { const [x, z] = at2(i, sd * W), [hx, hz] = at2(i, sd * (W + 110)); pts.push([x, z, Math.max(rim(i), h(hx, hz) + 1)]); } strip(pts); }   // the two long sides, as tall as the hillside behind them
       for (const i of [g.a + 1, g.b - 1]) { const pts = []; for (let o = -W; o <= W; o += 24) { const [x, z] = at2(i, o); pts.push([x, z, rim(i)]); } strip(pts); }   // the ends, under the road's edge
       if (t.theme.cliffs === "snow") {   // ❄ far below: a floor of snow under drifting mist (not bare earth)

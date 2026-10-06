@@ -513,11 +513,9 @@ const TRACKS = {
   // Mount Wario), penguins sliding down past you, and in through El Nath's gate to the line. The Yetis STOMP on the last lap.
   en3: {
     id: "elsummit", scale: 2.0, road: 180, gate: "ice", cup: "elnath", music: "k_elnath3", name: "Mount El Nath", sub: "Sharp Cliff · the big glide · rolling snowballs · the cable car climb", icon: "🏔️",
-    ctrl: [[1700, 330, 300], [1560, 320, 300], [1420, 315, 300], [1280, 320, 298], [1130, 340, 292], [980, 330, 286], [830, 345, 280], [690, 370, 274], [570, 410, 268], [480, 470, 262],
+    ctrl: [[1690, 348, 300], [1560, 328, 300], [1420, 315, 300], [1280, 320, 298], [1130, 340, 292], [980, 330, 286], [830, 345, 280], [690, 370, 274], [570, 410, 268], [480, 470, 262],
       [430, 560, 230], [440, 680, 170], [500, 800, 110], [590, 900, 70], [700, 980, 50], [830, 1060, 40], [980, 1120, 34], [1130, 1170, 30], [1260, 1240, 30],
-      [1360, 1290, 30], [1490, 1310, 30], [1620, 1320, 30], [1760, 1345, 36], [1860, 1300, 50],
-      [1760, 1245, 75], [1650, 1200, 100], [1590, 1140, 112], [1630, 1065, 125], [1720, 1035, 145], [1880, 990, 170], [1940, 920, 185], [1895, 845, 200],
-      [1790, 810, 220], [1650, 780, 240], [1590, 720, 252], [1635, 640, 264], [1730, 595, 278], [1860, 545, 290], [1900, 460, 298], [1830, 390, 300], [1760, 350, 300]],
+      [1360, 1320, 30], [1490, 1370, 30], [1620, 1395, 30], [1710, 1402, 31], [1790, 1400, 32], [1843, 1378, 39], [1865, 1325, 45], [1843, 1272, 52], [1790, 1250, 59], [1680, 1250, 72], [1627, 1228, 79], [1605, 1175, 85], [1627, 1122, 92], [1680, 1100, 99], [1790, 1100, 112], [1843, 1078, 118], [1865, 1025, 125], [1843, 972, 132], [1790, 950, 139], [1680, 950, 152], [1627, 928, 158], [1605, 875, 165], [1627, 822, 172], [1680, 800, 178], [1790, 800, 191], [1843, 778, 198], [1865, 725, 205], [1843, 672, 212], [1790, 650, 218], [1680, 650, 231], [1627, 628, 238], [1605, 575, 245], [1627, 522, 251], [1680, 500, 258], [1790, 500, 271], [1843, 478, 278], [1865, 425, 285], [1843, 372, 291], [1790, 350, 298]],
     theme: { ...TH.elnath, mountain: true, flowers: 500, tufts: 0, road: "snow", curb: ["#c8302a", "#f4f8ff"], cliffs: "snow", drifts: true }, art: { sky: "media/kart/elnath/iv_skypano.webp?v=1", strip: "media/kart/elnath/iv_strip.webp?v=1" },
     near: ["en_bush", "en_bush2", "en_pine"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines"], mobs: ["jr_yeti", "yeti", "white_fang", "pepe"],
     build() {
@@ -531,18 +529,18 @@ const TRACKS = {
       for (const [f, o, z] of [[.3, 0, 130], [.55, 30, 120], [.8, -25, 100]]) rings.push({ i: Math.round(ga + (gb - ga) * f), o, z, r: 44 });
       for (let n = 0; n < 6; n++) { const [x, y] = at(Math.round(ga + (gb - ga) * (.15 + n * .13)), Math.sin(n) * 30); coins.push({ x, y, z: 110 + 20 * Math.sin(n), got: false }); }   // a trail of mesos through the air
       // 🌉 the rope bridge over the frozen river
-      const ba = I(1345, 1288), bb = I(1640, 1323); gaps.push({ a: ba, b: bb, kind: "bridge", deck: 70, river: true, caps: [] });
+      const ba = I(1350, 1316), bb = I(1650, 1397); gaps.push({ a: ba, b: bb, kind: "bridge", deck: 70, river: true, wall: 210, caps: [] });   // (a narrow gorge: clear of the cable car and the first hairpin)
       // ❄ Ice Valley: a giant Yeti on the hillside rolls snowballs across the road
       const snowballs = [[.25, 0], [.5, 2.1], [.75, 4.2]].map(([f, ph]) => ({ i: Math.round(I(830, 1060) + (I(1200, 1205) - I(830, 1060)) * f), ph, k: "snowball", sp: .7, s: .7, amp: ROAD / 2 + 70 }));
       // 🚀 boosts: off the town's edge onto Sharp Cliff, out of the valley, and out of every hairpin on the climb
       pads.push({ t: "boost", i: I(1280, 320), len: 10, o: 0, w: 70 }, { t: "boost", i: I(1260, 1240), len: 10, o: -30, w: 60 }, { t: "boost", i: I(1260, 1240), len: 10, o: 30, w: 60 });
-      for (const [x, y] of [[1650, 1200], [1880, 990], [1650, 780], [1860, 545]]) pads.push({ t: "boost", i: I(x, y), len: 9, o: 0, w: 70 });
+      for (const [x, y] of [[1700, 1250], [1770, 1100], [1700, 950], [1770, 800], [1700, 650], [1770, 500], [1760, 350]]) pads.push({ t: "boost", i: I(x, y), len: 8, o: 0, w: 70 });   // out of every hairpin
       // 🔢 mesos
       row(I(1650, 325), I(1300, 320), 6, 0); row(I(1100, 338), I(620, 395), 7, j => (j & 1 ? 35 : -35)); row(I(700, 980), I(820, 1055), 4, 0); row(ba + 4, bb - 4, 6, j => (j & 1 ? 30 : -30));
-      row(I(1700, 1225), I(1600, 1160), 3, 0); row(I(1760, 1015), I(1870, 995), 3, 0); row(I(1760, 800), I(1660, 785), 3, 0);
+      row(I(1770, 1250), I(1690, 1250), 3, 0); row(I(1690, 1100), I(1770, 1100), 3, 0); row(I(1770, 950), I(1690, 950), 3, 0); row(I(1690, 800), I(1770, 800), 3, 0);
       return {
-        gaps, rings, pads, coins, ledges: [cliff], pigs: [...snowballs, ...[[700, 980, 0], [1760, 1345, 2], [1720, 1035, 4]].map(([x, y, ph]) => ({ i: I(x, y), ph, k: "white_fang", sp: .85, soft: true, s: .6 }))],   // 🐺 White Fangs dashing across
-        boxes: [...boxRow(I(1420, 315), [-60, -20, 20, 60]), ...boxRow(I(830, 345), [-55, -15, 25]), ...boxRow(I(980, 1120), [-60, -20, 20, 60]), ...boxRow(I(1760, 1345), [-60, -20, 20, 60]), ...boxRow(I(1730, 595), [-50, 0, 50])],
+        gaps, rings, pads, coins, ledges: [cliff], pigs: [...snowballs, ...[[700, 980, 0], [1700, 1400, 2], [1735, 950, 4]].map(([x, y, ph]) => ({ i: I(x, y), ph, k: "white_fang", sp: .85, soft: true, s: .6 }))],   // 🐺 White Fangs dashing across
+        boxes: [...boxRow(I(1420, 315), [-60, -20, 20, 60]), ...boxRow(I(830, 345), [-55, -15, 25]), ...boxRow(I(980, 1120), [-60, -20, 20, 60]), ...boxRow(I(1720, 1400), [-60, -20, 20, 60]), ...boxRow(I(1735, 650), [-50, 0, 50])],
         cable: { a: [ws(1470), ws(1185)], b: [ws(1470), ws(445)] },   // 🚡 the cable car, from the valley up to town
         icefalls: [{ x: ws(540), y: ws(1215), height: 340, w: 150, faceTo: [ws(470), ws(500)] }],   // 🧊 the giant icefall on the cliff ahead of you as you glide down
         extra(push) {
@@ -554,12 +552,12 @@ const TRACKS = {
             for (const i of town.filter((_, q) => q % 16 === 8)) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 22)); push(x, y, "en_lamp"); }
             for (let n2 = 0; n2 < 8; n2++) { const i = (I(1700, 330) - n2 * 9 + N) % N, sd = n2 % 2 ? 1 : -1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 60)); OBJS.push({ x, y, k: "pepe", s: .5, r: 0, z: 0, bob: 8, mob: true }); } }
           // ⛩️ El Nath's gate, at the top of the climb, into town
-          { const gi = I(1830, 390), [x, y] = at(gi, 0); OBJS.push({ x, y, k: "engate", s: 1, r: 0, z: 0, f3d: true, fa: tangent(gi), half: ROAD / 2 + CURB }); }
+          { const gi = I(1775, 350), [x, y] = at(gi, 0); OBJS.push({ x, y, k: "engate", s: 1, r: 0, z: 0, f3d: true, fa: tangent(gi), half: ROAD / 2 + CURB }); }
           // 🦍 the Yetis: one on the mountain above Sharp Cliff, the snowball-roller on the valley's hillside, one by the bridge (on the last lap they all STOMP)
-          for (const [i, o] of [[I(900, 333), ROAD / 2 + CURB + 170], [I(1000, 1125), -(ROAD / 2 + CURB + 230)], [I(1600, 1322), -(ROAD / 2 + CURB + 560)]]) { const [x, y] = at(i, o); OBJS.push({ x, y, k: "yeti", s: 2, r: 60, z: 0, bob: 10, mob: true, stomp: true, stompMsg: "💥 Yeti STOMP!" }); }
+          for (const [i, o] of [[I(900, 333), ROAD / 2 + CURB + 170], [I(1000, 1125), -(ROAD / 2 + CURB + 230)], [I(1560, 1385), -(ROAD / 2 + CURB + 560)]]) { const [x, y] = at(i, o); OBJS.push({ x, y, k: "yeti", s: 2, r: 60, z: 0, bob: 10, mob: true, stomp: true, stompMsg: "💥 Yeti STOMP!" }); }
           // ⛄ Jr. Yetis hopping by the road on the climb, penguins sliding down the slope past you
-          for (const [x, y] of [[1700, 1225], [1800, 1010], [1700, 795], [1800, 570]]) { const i = I(x, y), [px, py] = at(i, (i & 1 ? 1 : -1) * (ROAD / 2 + CURB + 50)); OBJS.push({ x: px, y: py, k: "jr_yeti", s: .7, r: 0, z: 0, bob: 14, mob: true }); }
-          for (let n = 0; n < 6; n++) OBJS.push({ x: 0, y: 0, k: "pepe", s: .45, r: 0, z: 0, slide: { a: I(1860, 545), b: I(1860, 1300), o: (n % 2 ? 1 : -1) * (ROAD / 2 + CURB + 8), sp: .08 + (n % 3) * .015, ph: n / 6 } });
+          for (const [x, y] of [[1735, 1250], [1735, 1100], [1735, 950], [1735, 800], [1735, 650]]) { const i = I(x, y), [px, py] = at(i, (i & 1 ? 1 : -1) * (ROAD / 2 + CURB + 50)); OBJS.push({ x: px, y: py, k: "jr_yeti", s: .7, r: 0, z: 0, bob: 14, mob: true }); }
+          for (let n = 0; n < 6; n++) OBJS.push({ x: 0, y: 0, k: "pepe", s: .45, r: 0, z: 0, slide: { a: I(1735, 500), b: I(1735, 1250), o: (n % 2 ? 1 : -1) * (ROAD / 2 + CURB + 8), sp: .08 + (n % 3) * .015, ph: n / 6 } });
           // 🌲 the snowy pine forest: thick clusters along the valley and round the climb (sprites), the hillside below Sharp Cliff full of pines
           for (let i = I(700, 980); i < I(1860, 1300); i += 7) for (const sd of [-1, 1]) for (let c = 0; c < 2; c++) { if (gaps.some(g => i >= g.a - 6 && i <= g.b + 6) || rr() < .3) continue;
             const [x, y] = at(i + Math.round((rr() - .5) * 6), sd * (ROAD / 2 + CURB + 70 + c * 80 + rr() * 80)); if (clear(x, y, 40)) push(x, y, ["en_pine", "en_pine2", "en_pine3"][Math.floor(rr() * 3)]); }
@@ -1637,7 +1635,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=142"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=143"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
