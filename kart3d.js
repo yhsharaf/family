@@ -99,12 +99,21 @@ export function create(A) {
     plain = new THREE.Group(); const pm = new THREE.MeshLambertMaterial({ color: new THREE.Color(t.theme.grass ? t.theme.grass[0] : "#5cae46") }), F = 7000;
     for (const [cx, cz, w, d] of [[WORLD / 2, -F / 2, WORLD + 2 * F, F], [WORLD / 2, WORLD + F / 2, WORLD + 2 * F, F], [-F / 2, WORLD / 2, F, WORLD], [WORLD + F / 2, WORLD / 2, F, WORLD]]) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pm); m.rotation.x = -Math.PI / 2; m.position.set(cx, mean - .3, cz); plain.add(m); }
+    if (t.theme.earth) {   // 🌍 the Earth, far below the road
+      const c = canvas(512, 256), g = c.getContext("2d"); g.fillStyle = "#1e5aa8"; g.fillRect(0, 0, 512, 256); let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      for (let k = 0; k < 40; k++) { g.fillStyle = ["#3a8a3a", "#5aa04a", "#c8b070"][k % 3]; g.beginPath(); g.ellipse(rnd() * 512, 40 + rnd() * 176, 10 + rnd() * 40, 6 + rnd() * 26, rnd() * 3, 0, 7); g.fill(); }
+      g.fillStyle = "rgba(255,255,255,.75)"; for (let k = 0; k < 60; k++) { g.beginPath(); g.ellipse(rnd() * 512, rnd() * 256, 14 + rnd() * 40, 3 + rnd() * 6, rnd() * .6, 0, 7); g.fill(); }
+      g.fillStyle = "#f4f8ff"; g.fillRect(0, 0, 512, 18); g.fillRect(0, 238, 512, 18);
+      const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(5200, 48, 24), new THREE.MeshBasicMaterial({ map: tx, fog: false }));
+      earth.position.set(WORLD / 2, mean - 5800, WORLD / 2); earth.rotation.z = .4; earth.userData.keep = true; plain.add(earth); }
     if (t.water) { const wm = new THREE.MeshPhongMaterial({ color: 0x1d3f63, transparent: true, opacity: .74, shininess: 90, specular: 0x6f8fb0, side: THREE.DoubleSide, depthWrite: false });
       const wp = new THREE.Mesh(new THREE.PlaneGeometry(WORLD + 2 * F, WORLD + 2 * F), wm); wp.rotation.x = -Math.PI / 2; wp.position.set(WORLD / 2, t.water.level, WORLD / 2); wp.renderOrder = 2; plain.add(wp); }
     scene.add(plain);
     gapsBuilt = t.gaps || [];
     if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); terrain.material.map.dispose(); terrain.material.dispose(); }
     terrain = new THREE.Mesh(geo, mat); scene.add(terrain);
+    if (t.theme.space) { terrain.visible = false; for (const m of plain.children) if (!m.userData.keep) m.visible = false; }   // 🌌 in space there's no ground: the road floats over the stars
     buildRoad(t);
     scene.fog = new THREE.Fog(new THREE.Color(...(t.haze || [214, 236, 255]).map(c => c / 255)), 900, 2600);
     renderer.setClearColor(scene.fog.color);
@@ -150,8 +159,8 @@ export function create(A) {
     }
     else if (style === "dirt") { specks("#b98b5a", ["#a87a4a", "#c99d68", "#9c6e40", "#d2a878"], 2600, 1.6); g.fillStyle = "rgba(90,60,30,.18)"; for (const x of [.3, .7]) g.fillRect(U * x - 6, 0, 12, 192); }
     else if (style === "snow") { specks("#e3ebf6", ["#c9d6ea", "#f8fbff", "#d6e2f2"], 2400, 1.6); g.fillStyle = "rgba(150,170,205,.35)"; for (const x of [.28, .72]) g.fillRect(U * x - 5, 0, 10, 192); }
-    else if (style === "rainbow") {   // 🌈 Rainbow Road: rows of glowing tiles in the eight colours, with bright edges
-      const cols = ["#ff3a5a", "#ff8a2a", "#ffd23a", "#5ae06a", "#3ad8c8", "#3ab8ff", "#5a6aff", "#b85aff"], n = Math.max(4, Math.round(U / 22));
+    else if (style === "rainbow" || style === "pastel") {   // 🌈 Rainbow Road: rows of glowing tiles in the eight colours (soft pastels on the Wii one), with bright edges
+      const cols = style === "pastel" ? ["#ffb0c8", "#ffd0a0", "#fff0a0", "#c0f0b0", "#a8f0e8", "#a8d8ff", "#c0c0ff", "#e0b8ff"] : ["#ff3a5a", "#ff8a2a", "#ffd23a", "#5ae06a", "#3ad8c8", "#3ab8ff", "#5a6aff", "#b85aff"], n = Math.max(4, Math.round(U / 22));
       g.fillStyle = "#101028"; g.fillRect(0, 0, U, 192);
       for (let row = 0; row < 8; row++) for (let k = 0; k < n; k++) { const x = k * U / n, y = row * 24, gr = g.createLinearGradient(x, y, x, y + 24); gr.addColorStop(0, "#ffffff"); gr.addColorStop(.18, cols[row]); gr.addColorStop(1, cols[row]);
         g.fillStyle = gr; g.globalAlpha = .9; rr(x + 1, y + 1, U / n - 2, 22, 3); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(255,255,255,.5)"; g.lineWidth = .8; g.stroke(); } }
@@ -220,7 +229,7 @@ export function create(A) {
       altBare.push(...runs(t.AN, j => near(t.ALT[j][0], t.ALT[j][1], t.PTS, t.FORK_A - 80, t.FORK_B + 80, t.ROAD / 2 + t.CURB + t.ALT_ROAD / 2)));
       mainBare.push(...runs(t.N, i => (Math.abs(i - t.FORK_A) < 70 || Math.abs(i - t.FORK_B) < 70) && near(t.PTS[i][0], t.PTS[i][1], t.ALT, 0, t.AN, reach)));
     }
-    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow"), cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
+    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow" || RS === "pastel"), cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
     if (t.water) {   // 🪵 the boardwalk's piles, down into the lake
       const step = Math.max(1, Math.round(46 / t.SPC)), spots = [];
       for (let i = 0; i < t.N; i += step) { const p = t.PTS[i], q = t.PTS[(i + 1) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]); for (const sd of [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB - 3); spots.push([p[0] - Math.sin(a) * o, p[1] + Math.cos(a) * o]); } }
@@ -239,9 +248,9 @@ export function create(A) {
         const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
         const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
       const R0 = t.ROAD / 2 + t.CURB + 14;
-      shell(R0, cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);   // the crystal (or rock) inside
+      shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);   // the crystal (or rock) inside
       shell(R0 + 16, new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), .8);                // a mound of snow over it
-      if (cv.rock || cv.temple) continue;
+      if (cv.rock || cv.temple || cv.star) continue;
       const RP = [], RI = [];   // the red rail (one side, like Double Dash!!)
       for (let i = cv.a, r = 0; i <= cv.b; i += 2, r++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = t.ROAD / 2 + t.CURB + 6, x = p[0] - Math.sin(a) * o, y = p[1] + Math.cos(a) * o, gz = h(x, y);
         RP.push(x, gz, y, x, gz + 16, y); if (r) { const b = r * 2; RI.push(b - 2, b, b - 1, b - 1, b, b + 1); } }
@@ -351,6 +360,11 @@ export function create(A) {
       g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(ox + 6, y + 5, B * .35, 3); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   // ❄ the ice cave's walls: blue crystal facets, darker deep inside
+  let starT = null;
+  const starTex = () => starT || (starT = (() => { const c = canvas(256, 256), g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 256, 256); gr.addColorStop(0, "#1a1050"); gr.addColorStop(1, "#3a1a70"); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);   // ✨ a starry tunnel
+    let sd = 3; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    for (let k = 0; k < 160; k++) { g.fillStyle = ["#ffffff", "#fff3a0", "#a8d8ff", "#ffc8f0"][k % 4]; const x = rnd() * 256, y = rnd() * 256, r = rnd() < .1 ? 3 : 1.2; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null;
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);

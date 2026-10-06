@@ -763,9 +763,9 @@ const TRACKS = {
     ctrl: [[240, 930, 30], [240, 470, 32], [300, 280, 34], [480, 200, 36], [1320, 198, 36], [1520, 260, 36], [1590, 440, 34], [1590, 780, 32], [1518, 900, 30], [1320, 942, 30], [900, 942, 30],
       [750, 1008, 30], [702, 1170, 30], [750, 1302, 30], [930, 1350, 30], [1680, 1350, 32], [1840, 1395, 34], [1910, 1520, 36], [1920, 1740, 36], [1860, 1860, 34], [1650, 1890, 32], [1110, 1890, 30],
       [510, 1890, 30], [318, 1854, 30], [222, 1710, 30], [222, 1230, 30]],
-    theme: { grass: ["#0a0a26", "#0e0e32"], flowers: 2600, flowerCols: ["#ffffff", "#fff3a0", "#c8d8ff", "#ffffff"], stem: null, tufts: 0, road: "rainbow", curb: ["#ffffff", "#ff5ac8"], border: "#0a0a26", sky: "#16103a", out: "#0a0a20", haze: [30, 24, 70], night: .1 },
+    theme: { space: true, grass: ["#0a0a26", "#0e0e32"], flowers: 2600, flowerCols: ["#ffffff", "#fff3a0", "#c8d8ff", "#ffffff"], stem: null, tufts: 0, road: "rainbow", curb: ["#ffffff", "#ff5ac8"], border: "#0a0a26", sky: "#16103a", out: "#0a0a20", haze: [30, 24, 70], night: .1 },
     art: { sky: "media/kart/ludi/sky3.webp", strip: "media/kart/ludi/strip3.webp" },
-    near: [], far: ["ld_h1", "ld_h2", "ld_h3", "ld_h4", "ld_h5", "ld_h6"], mobs: ["chronos"],
+    near: [], far: [], mobs: ["chronos"],
     build() {
       const coins = [], pads = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
@@ -785,22 +785,45 @@ const TRACKS = {
     },
   },
   ld3: {
-    id: "ludi3", cup: "ludi", music: "k_ludi3", name: "Clocktower Night", sub: "under the big clock · Chronos · Papulatus", icon: "🕰️",
-    ctrl: [[300, 1500], [300, 800], [600, 400], [1000, 250], [1400, 300], [1650, 600], [1450, 900], [1100, 800], [800, 1000], [1000, 1250], [1400, 1300], [1750, 1100], [1900, 1450],
-      [1700, 1850], [1100, 1900], [600, 1850]],
-    theme: TH.clock, art: { sky: "media/kart/ludi/sky3.webp", strip: "media/kart/ludi/strip3.webp" },
-    near: ["ld_lamp", "ld_ufo", "ld_parasol", "ld_flower2", "ld_lolly", "ld_banner", "ld_fan"],
-    far: ["ld_clock", "ld_h2", "ld_h5", "ld_h1", "ld_tree3", "ld_ufo", "ld_cone"], mobs: ["chronos", "master_chronos", "trixter", "robo"],
-    build(F) {
+    // 3. Rainbow Road (Mario Kart Wii, as remade for Tour / 8 Deluxe): a narrow pastel rainbow high above the Earth, almost no railings. The long
+    // start straight and the drop with its dash panels; up and a dash ramp over a gap; a sharp left, three dash panels and the U-turn with its
+    // trick ramps; the wavy straight with item boxes and star bits; another dash ramp; the twisting holes section (red ramps round the holes);
+    // a sharp left, a long right and the Star Shooter, which fires you through three star rings over the void; up a left with dash panels to the
+    // ring ramp over a gap; the split round a hole with dash panels each side; and the last wide U-turn through the starry tunnel to the line.
+    id: "rrwii", scale: 1.15, road: 170, cup: "ludi", fall: "🌍 Fell toward the Earth!", music: "k_ludi2", name: "Rainbow Road (Wii)", sub: "the Star Shooter · star rings · no railings", icon: "🌠",
+    ctrl: [[300, 1720, 140], [700, 1730, 120], [1000, 1730, 96], [1250, 1700, 90], [1450, 1640, 104], [1650, 1560, 110], [1820, 1440, 108], [1860, 1250, 106], [1840, 1060, 104], [1750, 930, 102],
+      [1600, 930, 100], [1540, 1060, 98], [1420, 1200, 92], [1200, 1250, 100], [1000, 1210, 92], [820, 1240, 96], [640, 1170, 94], [520, 1020, 92], [600, 860, 90], [780, 780, 92], [880, 640, 94],
+      [1060, 520, 98], [1300, 520, 104], [1500, 600, 110], [1820, 520, 70], [1880, 340, 74], [1760, 200, 80], [1500, 170, 84], [1200, 180, 86], [880, 200, 86], [600, 240, 84], [420, 330, 82],
+      [300, 500, 84], [250, 800, 100], [240, 1150, 120], [250, 1450, 136]],
+    theme: { space: true, earth: true, grass: ["#060618", "#0a0a22"], flowers: 2000, flowerCols: ["#ffffff", "#fff3a0", "#c8d8ff", "#ffc8f0"], stem: null, tufts: 0, road: "pastel", curb: ["#fff3a0", "#ffffff"], border: "#060618", sky: "#0a0a2a", out: "#05051a", haze: [16, 14, 46], night: .1 },
+    art: { sky: "media/kart/ludi/sky3.webp", strip: "media/kart/ludi/strip3.webp" },
+    near: [], far: [], mobs: ["chronos"],
+    build() {
+      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [], rings = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      const jump = (x, y, len) => { const g = I(x, y); pads.push({ t: "boost", i: g - 15, len: 6, o: 0, w: 70 }, { t: "bigramp", i: g - 5, len: 5, o: 0, w: ROAD }); gaps.push({ a: g, b: g + u(len), kind: "chasm", caps: [] }); return g; };
+      pads.push({ t: "boost", i: I(760, 1730), len: 10, o: 0, w: 80 }, { t: "boost", i: I(860, 1730), len: 8, o: -48, w: 46 }, { t: "boost", i: I(900, 1730), len: 8, o: 48, w: 46 });   // the drop
+      jump(1460, 1636, 120);                                                                   // the dash ramp over the first gap
+      for (const y of [1330, 1260, 1190]) pads.push({ t: "boost", i: I(1858, y), len: 5, o: 0, w: 60 });   // three dash panels
+      pads.push({ t: "ramp", i: I(1700, 905), len: 6, o: -50, w: 50 }, { t: "ramp", i: I(1640, 905), len: 6, o: 50, w: 50 });   // trick ramps round the U-turn (the half-pipe)
+      jump(830, 1238, 110);                                                                    // another dash ramp
+      pads.push({ t: "ramp", i: I(560, 1080), len: 5, o: 40, w: 60 }, { t: "ramp", i: I(700, 800), len: 5, o: -40, w: 60 });   // red ramps by the holes
+      // ⭐ the Star Shooter: fired through three star rings over the void
+      const gl = I(1500, 600); pads.push({ t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: gl, b: gl + u(380), kind: "chasm", caps: [] });
+      for (const [d, z, o] of [[150, 135, 0], [280, 185, 20], [420, 170, -20]]) rings.push({ i: gl + u(d), o, z, r: 42 });
+      for (const x of [1820, 1790]) pads.push({ t: "boost", i: I(x, x === 1820 ? 260 : 220), len: 6, o: 0, w: 60 });   // up the left, dash panels
+      const rr = jump(1450, 170, 120); rings.push({ i: rr + u(60), o: 0, z: 70, r: 50 });     // the ring ramp over a gap
+      for (const o of [-62, 62]) pads.push({ t: "boost", i: I(980, 195), len: 8, o, w: 40 });   // the split: dash panels each side of the hole
+      for (const x of [480, 380, 320]) pads.push({ t: "boost", i: I(x, x === 480 ? 290 : x === 380 ? 380 : 470), len: 6, o: 0, w: 60 });   // three dash panels round the last U-turn
+      row(I(1200, 1250), I(820, 1240), 8, 0, 18); row(I(1060, 520), I(1300, 520), 6, 0); row(I(250, 1200), I(250, 900), 5, 0);
       return {
-        pads: [pad("boost", F(.04), 0, 60), pad("boost", F(.27), 24, 54), pad("boost", F(.5), -24, 54), pad("boost", F(.84), 0, 56), pad("bigramp", F(.66), 0, ROAD, 7),
-          pad("rock", F(.18), 0, ROAD, 20), pad("slime", F(.12), -52, 40, 8), pad("slime", F(.4), 52, 40, 8), pad("slime", F(.6), -52, 40, 8), pad("slime", F(.92), 52, 40, 8)],
-        coins: [...coinRow(F(.01), F(.07), 6, 0), ...coinRow(F(.3), F(.35), 5, j => (j & 1 ? 24 : -24)), ...coinRow(F(.52), F(.57), 6, 0),
-          ...[0, 1, 2, 3, 4].map(n => { const [x, y] = at(F(.66) + 12 + n * 5, 0); return { x, y, z: 60, got: false }; })],
-        pigs: [{ i: F(.22), ph: 0, k: "chronos", sp: 1.2, hop: true }, { i: F(.46), ph: 2, k: "master_chronos", sp: 1 }, { i: F(.78), ph: 4, k: "chronos", sp: 1.2, hop: true }],
-        king: { i: F(.36), T: 3.3, k: "papulatus", s: .5, name: "Papulatus" },
-        boxes: [...boxRow(F(.09), [-56, -19, 19, 56]), ...boxRow(F(.43), [-54, -18, 18, 54]), ...boxRow(F(.74), [-56, -19, 19, 56])],
-        extra(push) { const [cx, cy] = at(F(.36), 260); push(cx, cy, "ld_clock", big("ld_clock", 1.8), 20); for (let f = .02; f < 1; f += .05) { const [x, y] = at(F(f), (f * 100 & 1 ? 1 : -1) * (ROAD / 2 + CURB + 12)); push(x, y, "ld_ufo"); } },
+        gaps, pads, coins, rings, ledges: [{ a: 0, b: N - 1 }],
+        holes: [{ i: I(520, 1020), o: -70, r: 40 }, { i: I(780, 780), o: 70, r: 40 }, { i: I(1050, 190), o: 0, r: 44 }],
+        caves: [{ a: I(560, 255), b: I(270, 620), star: true }],   // ✨ the starry tunnel round the last U-turn
+        boxes: [...boxRow(I(1000, 1210), [-55, -18, 18, 55]), ...boxRow(I(1300, 520), [-55, -18, 18, 55]), ...boxRow(I(250, 1000), [-55, -18, 18, 55])],
+        extra(push) {
+          for (let i = 0; i < N; i += 26) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 4)); if (!gaps.some(g => i >= g.a - 3 && i <= g.b + 3)) OBJS.push({ x, y, k: "ld_lamp", s: .24, r: 0, z: 0 }); }
+        },
       };
     },
   },
@@ -811,7 +834,7 @@ const CUPS = {
   elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: brake early and drift round the corners" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Deep in the forest: boardwalks, ponds and gliders" },
   zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Thwomps, mine carts and lava: no railings in places, so mind the edges" },
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 Left and right swap now and then (⚠️ warning first) · Clocktower Night: Papulatus shocks everyone on the ground" },
+  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 The clocktower and two Rainbow Roads: no railings on the rainbows, so mind the edges" },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
 function loadTrack(key) {
@@ -1427,7 +1450,7 @@ function placeObjects() {
     return !touching(o);
   });
   if (GAPS.length) OBJS = OBJS.filter(o => { const m = nearest(o.x, o.y); return !(gapAt(m.i) && m.d < 520); });   // nothing stands over a gorge or pond
-  for (let k = 0; k < Math.round((CLEAN ? 60 : 170) * WS * WS); k++) {   // woods and houses further out (as many per acre on a bigger map)
+  if (T.far.length) for (let k = 0; k < Math.round((CLEAN ? 60 : 170) * WS * WS); k++) {   // woods and houses further out (as many per acre on a bigger map; none out in space)
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
     if (d < ROAD / 2 + (CLEAN ? 260 : 130) || inLake(x, y) || (GAPS.length && d < 560 && gapAt(nearest(x, y).i))) continue;
     const kk = T.far[Math.floor(rnd() * T.far.length)];
@@ -1473,7 +1496,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=55"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=56"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
