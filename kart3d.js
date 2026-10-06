@@ -70,6 +70,11 @@ export function create(A) {
       const be = Math.min(x, y, WORLD - x, WORLD - y), hgt = base + Math.max(-20, (n - .32) * hillAmp) * smooth(edge + 90, edge + 520, d);
       HG[o] = hgt + (mean - hgt) * smooth(160, 0, be) * smooth(edge + 40, edge + 200, d);   // levels out to the open plain at the map's edge
     }
+    if (t.lake && t.lake.kind === "ice") {   // ⛸ a frozen rink is dead flat, at the height of the road across it
+      const L = t.lake; let sum = 0, n = 0; for (let i = 0; i < t.N; i++) if (((t.PTS[i][0] - L.cx) / L.rx) ** 2 + ((t.PTS[i][1] - L.cy) / L.ry) ** 2 < 1) { sum += E[i]; n++; }
+      const lh = n ? sum / n : mean;
+      for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const q = Math.sqrt(((i * G - L.cx) / L.rx) ** 2 + ((j * G - L.cy) / L.ry) ** 2), w = smooth(1.35, 1.02, q); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
+    }
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
     for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : 320;   // 🍄 a gorge (deep, misty) or the park pond
       for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * smooth(520, 430, Math.sqrt(dmin[o]))); }
@@ -157,8 +162,8 @@ export function create(A) {
   const curbTex = cc => { const c = canvas(8, 64), g = c.getContext("2d"); g.fillStyle = cc[0]; g.fillRect(0, 0, 8, 32); g.fillStyle = cc[1]; g.fillRect(0, 32, 8, 32);
     g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(0, 30, 8, 2); g.fillRect(0, 62, 8, 2);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t; };
-  function ribbon(pts, closed, Wd, roadMat, curbMat, lift, skip = []) {
-    const skipped = i => skip.some(g => i >= g.a && i < g.b);
+  function ribbon(pts, closed, Wd, roadMat, curbMat, lift, skip = [], bare = []) {
+    const skipped = i => skip.some(g => i >= g.a && i < g.b), noCurb = i => skipped(i) || bare.some(g => i >= g.a && i < g.b);   // (bare: no curbs, e.g. across a frozen rink)
     const n = pts.length, ang = i => { const a = pts[closed ? (i + n - 2) % n : Math.max(0, i - 2)], b = pts[closed ? (i + 2) % n : Math.min(n - 1, i + 2)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
     const L = [0]; for (let i = 1; i <= n; i++) { if (i === n && !closed) break; const p = pts[i % n], q = pts[i - 1]; L.push(L[i - 1] + Math.hypot(p[0] - q[0], p[1] - q[1])); }
     const tot = L[L.length - 1], rv = closed ? Math.max(1, Math.round(tot / 192)) / tot : 1 / 192, rc = closed ? Math.max(1, Math.round(tot / 32)) / tot : 1 / 32;
@@ -173,7 +178,7 @@ export function create(A) {
     for (const sd of [-1, 1]) {
       const base = CP.length / 3, prof = [[Wd / 2, lift], [Wd / 2, lift + 1.6], [Wd / 2 + CUR, lift + 1.6], [Wd / 2 + CUR + 1.5, -1.5]];
       for (let i = 0; i < rows; i++) for (const [o, dz] of prof) { const [x, y] = at(i, sd * o); CP.push(x, h(x, y) + dz, y); CU.push(.5, L[i] * rc); }
-      for (let i = 0; i < rows - 1; i++) if (!skipped(i)) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k, b = a + 4; CI.push(a, b, a + 1, a + 1, b, b + 1); }
+      for (let i = 0; i < rows - 1; i++) if (!noCurb(i)) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k, b = a + 4; CI.push(a, b, a + 1, a + 1, b, b + 1); }
     }
     const cg = new THREE.BufferGeometry(); cg.setAttribute("position", new THREE.Float32BufferAttribute(CP, 3)); cg.setAttribute("uv", new THREE.Float32BufferAttribute(CU, 2)); cg.setIndex(CI);
     const road = new THREE.Mesh(geo, roadMat), curb = new THREE.Mesh(cg, curbMat); scene.add(road, curb); roadObjs.push(road, curb);
@@ -193,10 +198,36 @@ export function create(A) {
     for (const o of extraObjs) scene.remove(o); extraObjs = [];
     const th = t.theme, RS = th.road || "cobble", decal = new THREE.CanvasTexture(t.decal()); decal.colorSpace = THREE.SRGBColorSpace; decal.anisotropy = aniso;
     const cm = new THREE.MeshLambertMaterial({ map: curbTex(th.curb || ["#d8352d", "#f4f1ea"]), flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
-    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5, t.gaps || []);
+    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5, t.gaps || [], t.bare || []);
+    // ❄ ice caves: a crystal arch over the road (open at both ends), with a red rail along its foot
+    for (const cv of t.caves || []) {
+      const shell = (R0, mat, ht) => { const K = 18, P = [], UV = [], IX = []; let rows = 0, L = 0;
+        for (let i = cv.a; i <= cv.b; i += 2, rows++) {
+          const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), base = h(p[0], p[1]); if (rows) L += 2 * t.SPC;
+          for (let k = 0; k <= K; k++) { const th2 = Math.PI * k / K, o = -Math.cos(th2) * R0, y = Math.sin(th2) * R0 * ht; P.push(p[0] - Math.sin(a) * o, base + y - 6, p[1] + Math.cos(a) * o); UV.push(k / K * 3, L / 160); }
+        }
+        for (let r = 0; r < rows - 1; r++) for (let k = 0; k < K; k++) { const a = r * (K + 1) + k, b = a + K + 1; IX.push(a, b, a + 1, a + 1, b, b + 1); }
+        const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
+        const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
+      const R0 = t.ROAD / 2 + t.CURB + 14;
+      shell(R0, new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);                       // the crystal inside
+      shell(R0 + 16, new THREE.MeshLambertMaterial({ color: 0xeef5fc, side: THREE.DoubleSide, emissive: 0x2a3a50 }), .8);                // a mound of snow over it
+      const RP = [], RI = [];   // the red rail (one side, like Double Dash!!)
+      for (let i = cv.a, r = 0; i <= cv.b; i += 2, r++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = t.ROAD / 2 + t.CURB + 6, x = p[0] - Math.sin(a) * o, y = p[1] + Math.cos(a) * o, gz = h(x, y);
+        RP.push(x, gz, y, x, gz + 16, y); if (r) { const b = r * 2; RI.push(b - 2, b, b - 1, b - 1, b, b + 1); } }
+      const rg = new THREE.BufferGeometry(); rg.setAttribute("position", new THREE.Float32BufferAttribute(RP, 3)); rg.setIndex(RI);
+      const rail = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xc8302a, side: THREE.DoubleSide })); scene.add(rail); roadObjs.push(rail);
+    }
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3); }
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     for (const b of t.buildings || []) {
+      if (b.ice) {   // a wall or tower of ice blocks (no roof)
+        const tx = iceTex().clone(); tx.needsUpdate = true; tx.repeat.set(Math.max(1, b.w / 90), Math.max(1, b.h / 45));
+        const tz = iceTex().clone(); tz.needsUpdate = true; tz.repeat.set(Math.max(1, b.d / 90), Math.max(1, b.h / 45));
+        const mx = new THREE.MeshLambertMaterial({ map: tx, emissive: 0x3a5f80 }), mz = new THREE.MeshLambertMaterial({ map: tz, emissive: 0x3a5f80 }), top = new THREE.MeshLambertMaterial({ color: 0xeaf6ff, emissive: 0x3a5f80 });
+        const m = new THREE.Mesh(BOX, [mz, mz, top, top, mx, mx]); m.scale.set(b.w, b.h, b.d); m.rotation.y = -(b.a || 0); m.position.set(b.x, h(b.x, b.y) + b.h / 2 - 4, b.y); scene.add(m); roadObjs.push(m);
+        continue;
+      }
       const gnd = h(b.x, b.y), wallM = new THREE.MeshBasicMaterial({ map: windowsTex(b.wall, Math.max(2, Math.round(b.w / 70)), 2) }), plain = new THREE.MeshBasicMaterial({ color: new THREE.Color(b.wall).multiplyScalar(.92) }), roofM = new THREE.MeshBasicMaterial({ color: b.roof });   // shown in their true colours: a white house with a pink roof, even in shade
       const body = new THREE.Mesh(BOX, [plain, plain, plain, plain, wallM, wallM]); body.scale.set(b.w, b.h, b.d); body.position.set(b.x, gnd + b.h / 2, b.y); scene.add(body); roadObjs.push(body);
       const roof = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM); roof.rotation.y = Math.PI / 4; roof.scale.set(b.w * .74, b.h * .55, b.d * .9); roof.position.set(b.x, gnd + b.h + b.h * .275, b.y); scene.add(roof); roadObjs.push(roof);
@@ -236,6 +267,20 @@ export function create(A) {
   const hedgeTex = () => hedgeT || (hedgeT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#3f9a34"; g.fillRect(0, 0, 128, 128);
     for (let k = 0; k < 700; k++) { const v = Math.random(); g.fillStyle = v < .4 ? "#2f7d28" : v < .75 ? "#56b848" : "#78d066"; g.beginPath(); g.ellipse(Math.random() * 128, Math.random() * 128, 2 + Math.random() * 4, 1.5 + Math.random() * 3, Math.random() * 3, 0, 7); g.fill(); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })());
+  let iceT = null, caveT = null;
+  // 🧊 stacked ice blocks (Sherbet Land's walls and towers): pale blue bricks with bright edges and a frosty shine
+  const iceTex = () => iceT || (iceT = (() => { const c = canvas(256, 256), g = c.getContext("2d"), B = 64;
+    for (let y = 0; y < 256; y += B / 2) for (let x = -B; x < 256; x += B) { const ox = x + ((y / (B / 2)) & 1) * B / 2, gr = g.createLinearGradient(ox, y, ox + B, y + B / 2);
+      gr.addColorStop(0, "#d9f1ff"); gr.addColorStop(.55, "#9fd2f5"); gr.addColorStop(1, "#7fbce8"); g.fillStyle = gr; g.fillRect(ox, y, B, B / 2);
+      g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = 3; g.strokeRect(ox + 1.5, y + 1.5, B - 3, B / 2 - 3);
+      g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(ox + 6, y + 5, B * .35, 3); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
+  // ❄ the ice cave's walls: blue crystal facets, darker deep inside
+  const caveTex = () => caveT || (caveT = (() => { const c = canvas(256, 256), g = c.getContext("2d"); g.fillStyle = "#4f9fd8"; g.fillRect(0, 0, 256, 256);
+    let sd = 5; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    for (let k = 0; k < 140; k++) { const x = rnd() * 256, y = rnd() * 256, r = 10 + rnd() * 26; g.fillStyle = ["#6fc0ee", "#3d86c4", "#9fdcff", "#5aaee2", "#c8efff"][k % 5]; g.globalAlpha = .75;
+      g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r * .7, y); g.lineTo(x, y + r); g.lineTo(x - r * .7, y); g.closePath(); g.fill(); }
+    g.globalAlpha = 1; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   let mistT = null;
   const mistTex = () => mistT || (mistT = (() => { const c = canvas(256, 256), g = c.getContext("2d");
     for (let k = 0; k < 40; k++) { const x = 30 + Math.random() * 196, y = 30 + Math.random() * 196, r = 30 + Math.random() * 60, gr = g.createRadialGradient(x, y, 0, x, y, r);
