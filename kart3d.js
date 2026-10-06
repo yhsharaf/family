@@ -307,7 +307,7 @@ export function create(A) {
       for (let i = 0; i < rows - 1; i++) if (!noCurb(i)) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k, b = a + 4; CI.push(a, b, a + 1, a + 1, b, b + 1); }
     }
     const cg = new THREE.BufferGeometry(); cg.setAttribute("position", new THREE.Float32BufferAttribute(CP, 3)); cg.setAttribute("uv", new THREE.Float32BufferAttribute(CU, 2)); cg.setIndex(CI);
-    const road = new THREE.Mesh(geo, roadMat), curb = new THREE.Mesh(cg, curbMat); scene.add(road, curb); roadObjs.push(road, curb);
+    const road = new THREE.Mesh(geo, roadMat), curb = new THREE.Mesh(cg, curbMat); scene.add(road, curb); roadObjs.push(road, curb); return [road, curb];
   }
   function roadMat(tex, decal, glow) {
     const w = WORLD;
@@ -361,7 +361,17 @@ export function create(A) {
       altBare.push(...runs(t.AN, j => near(t.ALT[j][0], t.ALT[j][1], t.PTS, t.FORK_A - 80, t.FORK_B + 80, t.ROAD / 2 + t.CURB + t.ALT_ROAD / 2)));
       mainBare.push(...runs(t.N, i => (Math.abs(i - t.FORK_A) < 70 || Math.abs(i - t.FORK_B) < 70) && near(t.PTS[i][0], t.PTS[i][1], t.ALT, 0, t.AN, reach)));
     }
-    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow" || RS === "pastel"), cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
+    const mainMat = roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow" || RS === "pastel");
+    ribbon(t.PTS, !t.OPEN, t.ROAD, mainMat, cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
+    phantomM = []; for (const g of (t.gaps || []).filter(g => g.phantom)) {   // 👻 the vanishing roads: the same road, on its own, fading in and out
+      const rm = mainMat.clone(), cmm = cm.clone(); for (const m of [rm, cmm]) { m.transparent = true; m.depthWrite = false; }
+      const meshes = ribbon(t.PTS, !t.OPEN, t.ROAD, rm, cmm, .5, [{ a: -1, b: g.a }, { a: g.b, b: t.N + 2 }], []); phantomM.push({ g, mats: [rm, cmm], fn: t.phantomAt }); }
+    fakeM = []; for (const f of t.fakes || []) {   // 🌟 the golden roads that aren't there: a shimmering strip off over the abyss
+      const pos = [], idx = [], W2 = t.ROAD * .45; f.forEach(([x, z], k) => { const nx = k < f.length - 1 ? f[k + 1][0] - x : x - f[k - 1][0], nz = k < f.length - 1 ? f[k + 1][1] - z : z - f[k - 1][1], l = Math.hypot(nx, nz) || 1, ox = -nz / l * W2, oz = nx / l * W2, y = h(f[0][0], f[0][1]) + 1;
+        pos.push(x + ox, y, z + oz, x - ox, y, z - oz); if (k) { const a = (k - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } });
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+      const mat = new THREE.MeshBasicMaterial({ map: fakeTex(), color: 0xffe08a, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide });
+      const m = new THREE.Mesh(g, mat); scene.add(m); roadObjs.push(m); fakeM.push({ m, mat, x: f[3][0], z: f[3][1] }); }
     if (t.water) {   // 🪵 the boardwalk's piles, down into the lake
       const step = Math.max(1, Math.round(46 / t.SPC)), spots = [];
       for (let i = 0; i < t.N; i += step) { const p = t.PTS[i], q = t.PTS[(i + 1) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]); for (const sd of [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB - 3); spots.push([p[0] - Math.sin(a) * o, p[1] + Math.cos(a) * o]); } }
@@ -382,7 +392,7 @@ export function create(A) {
         const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
         const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
       const R0 = cv.half || t.ROAD / 2 + t.CURB + 14, HTR = cv.half ? .85 : .72, EXT = cv.half ? .2 : 0;   // (the crystal cave is a big one)
-      shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : cv.crystal ? new THREE.MeshLambertMaterial({ map: caveTex(), color: 0x5a6fa8, side: THREE.DoubleSide, emissive: 0x0a1838 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), HTR, EXT);   // (the crystal cave is dark inside: its glowing crystals light it)   // the crystal (or rock) inside
+      shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, color: t.theme.cave ? 0xd8b070 : 0xffffff, emissive: t.theme.cave ? 0x3a2408 : 0x2a2630 }) : cv.crystal ? new THREE.MeshLambertMaterial({ map: caveTex(), color: 0x5a6fa8, side: THREE.DoubleSide, emissive: 0x0a1838 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), HTR, EXT);   // (the crystal cave is dark inside: its glowing crystals light it)   // the crystal (or rock) inside
       shell(R0 + 16, cv.crystal ? new THREE.MeshLambertMaterial({ color: 0xbfdcff, side: THREE.DoubleSide, emissive: 0x2a4a7a, flatShading: true }) : new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), HTR + .08, EXT);
       if (cv.crystal) crystalCave(t, cv, R0, R0 * HTR);                // a mound of snow over it
       if (cv.rock || cv.temple || cv.star || cv.crystal) continue;
@@ -414,6 +424,12 @@ export function create(A) {
     for (const p of t.pends || []) { const grp = new THREE.Group(), rod = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x8a6a2a })), bob = new THREE.Mesh(new THREE.CylinderGeometry(26, 26, 8, 28), new THREE.MeshLambertMaterial({ color: 0xe8b83a, emissive: 0x3a2a00 }));
       rod.scale.set(4, 300, 4); rod.position.y = -150; bob.rotation.x = Math.PI / 2; bob.position.y = -300; grp.add(rod, bob); const gz = h(p.base[0], p.base[1]); grp.position.set(p.base[0], gz + 330, p.base[1]); grp.rotation.order = "YXZ"; grp.rotation.y = -p.a; scene.add(grp); roadObjs.push(grp); clockM.pends.push({ p, grp }); }
     cartM = []; cartFn = t.cartAt || null;   // 🛒 mine carts: a wooden tub full of gold on little wheels
+    { const done = new Set(), iron = new THREE.MeshLambertMaterial({ color: 0x8a8a90, emissive: 0x1a1a1c }), wood = new THREE.MeshLambertMaterial({ color: 0x4a3420, emissive: 0x0a0604 });   // 🛤 the rails the carts run on
+      for (const c of t.carts || []) { const key = c.a + "," + c.b + "," + c.o; if (done.has(key)) continue; done.add(key); const P = t.PTS, N = t.N, sl = [];
+        for (const sd of [-11, 11]) { const pts = []; for (let i = c.a; i <= c.b; i += 2) { const p = P[i % N], q = P[(i + 2) % N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = (c.o || 0) + sd, x = p[0] - Math.sin(a) * o, z = p[1] + Math.cos(a) * o; pts.push(new THREE.Vector3(x, h(x, z) + 1.6, z)); if (sd < 0 && (i - c.a) % 4 === 0) sl.push([p[0] - Math.sin(a) * (c.o || 0), p[1] + Math.cos(a) * (c.o || 0), a]); }
+          if (pts.length > 1) { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 1.4, 4), iron); scene.add(m); roadObjs.push(m); } }
+        const im = new THREE.InstancedMesh(BOX, wood, sl.length), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), U = new THREE.Vector3(0, 1, 0);
+        sl.forEach(([x, z, a], n) => { Q.setFromAxisAngle(U, -a); M.compose(new THREE.Vector3(x, h(x, z) + .6, z), Q, new THREE.Vector3(5, 1.6, 30)); im.setMatrixAt(n, M); }); scene.add(im); roadObjs.push(im); } }
     for (const c of t.carts || []) { const g = new THREE.Group(), wood = new THREE.MeshLambertMaterial({ color: 0x6a4424 }), gold = new THREE.MeshLambertMaterial({ color: 0xffc83a, emissive: 0x6a4a00 }), iron = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
       const tub = new THREE.Mesh(BOX, wood); tub.scale.set(40, 18, 26); tub.position.y = 14; g.add(tub); const ore = new THREE.Mesh(new THREE.SphereGeometry(14, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), gold); ore.scale.set(1.3, .8, .85); ore.position.y = 23; g.add(ore);
       for (const [x, z] of [[-13, -13], [13, -13], [-13, 13], [13, 13]]) { const w = new THREE.Mesh(CYL, iron); w.scale.set(5, 3, 5); w.rotation.x = Math.PI / 2; w.position.set(x, 5, z); g.add(w); }
@@ -442,7 +458,7 @@ export function create(A) {
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
     balloonM = []; flowM = []; golemM = []; for (const o of t.props3d || []) buildProp(o);
     bridgeG = (t.gaps || []).filter(g => g.kind === "bridge"); buildRopeBridges(t);
-    gondM = []; if (t.trunk) buildTrunk(t.trunk); if (t.temple) buildTemple(t, t.temple); if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
+    gondM = []; if (t.cave) buildCave(t); if (t.trunk) buildTrunk(t.trunk); if (t.temple) buildTemple(t, t.temple); if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
     buildSnowWorld(t); auroraM = []; if (t.aurora) buildAurora(t); if (t.fairy) buildFairy(t.fairy, t);
     for (const b of t.buildings || []) {
       if (b.castle) { buildCastle(b); continue; }
@@ -610,7 +626,7 @@ export function create(A) {
   function buildRopeBridges(t) {
     const N = t.N, P = t.PTS, ang = i => { const a = P[(i + N - 1) % N], b = P[(i + 1) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
     const post = new THREE.MeshLambertMaterial({ color: 0x6b4426, emissive: 0x140802 }), snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e });
-    for (const g of bridgeG) { const half = g.deck + 6, pts = []; if (g.rail) { /* (railed walkway) */ }
+    for (const g of bridgeG) { const half = g.deck + 6, pts = []; if (g.phantom) continue;
       for (let i = g.a - 1; i <= g.b + 1; i++) { const p = P[i % N]; pts.push([p[0], RE[i % N], p[1], ang(i)]); }
       plankBridge(pts, half, g.rail);
       for (const i of [g.a - 1, g.b + 1]) for (const sd of [-1, 1]) { const p = P[i % N], a = ang(i), x = p[0] - Math.sin(a) * sd * (half + 4), z = p[1] + Math.cos(a) * sd * (half + 4), y = RE[i % N];
@@ -723,6 +739,29 @@ export function create(A) {
       for (const z of [-1, 1]) { const e = new THREE.Mesh(new THREE.BoxGeometry(6, 14, 26), eyeM); e.position.set(x + sd * 18, yTop + 70, z * 40); grp.add(e); const g2 = new THREE.Mesh(new THREE.SphereGeometry(24, 10, 8), glowM); g2.position.copy(e.position); grp.add(g2);
         const tc = box(8, 50, 8, x + sd * 14, 25, z * (gapH + 40)); const f = new THREE.Mesh(new THREE.ConeGeometry(7, 18, 6), fire); f.position.set(x + sd * 14, 60, z * (gapH + 40)); grp.add(f); } }
     grp.position.set(cx, base, cz); grp.rotation.y = -Math.atan2(uz, ux); scene.add(grp); roadObjs.push(grp);
+  }
+  let fakeT = null; const fakeTex = () => fakeT || (fakeT = ctex(64, 64, (g, W) => { g.fillStyle = "#c89a40"; g.fillRect(0, 0, W, W); g.fillStyle = "#e8c070"; for (let y = 0; y < W; y += 16) for (let x = (y / 16 % 2) * 8; x < W; x += 16) g.fillRect(x + 1, y + 1, 14, 14); }, true));   // (a golden cobbled road, like the real one)
+  let caveMat = null, caveRoof = null;
+  function caveSkin(im) { const mk = rep => { const tx = new THREE.CanvasTexture(im); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(rep, rep); return tx; };
+    if (caveRoof) { caveRoof.map = mk(4); caveRoof.color.setHex(0xa88a60); caveRoof.needsUpdate = true; } if (caveMat) { caveMat.map = mk(1); caveMat.color.setHex(0xffffff); caveMat.needsUpdate = true; } }
+  function buildCave(t) {   // ⛏ the gold mine: a rock roof over everything with stalactites, stalagmite columns, glittering gold crystals, timber supports over the road with lanterns
+    let lo = 1e9, hi = -1e9; for (let i = 0; i < t.N; i++) { lo = Math.min(lo, RE[i]); hi = Math.max(hi, RE[i]); } const top = hi + 560, rock = caveRoof = new THREE.MeshBasicMaterial({ map: rockTex(), color: 0x8a6a40, side: THREE.DoubleSide, fog: false });   // (the roof shows the cave picture, unfogged: it's what you see overhead)
+    caveMat = new THREE.MeshLambertMaterial({ map: rockTex(), color: 0x8a6a40, emissive: 0x2a1a06 });
+    if (t.sky) caveSkin(t.sky);
+    const roof = new THREE.Mesh(new THREE.PlaneGeometry(WORLD * 3, WORLD * 3, 40, 40), rock), pa = roof.geometry.attributes.position; for (let v = 0; v < pa.count; v++) pa.setZ(v, Math.sin(pa.getX(v) * .004) * 60 + Math.sin(pa.getY(v) * .005) * 60);
+    roof.geometry.computeVertexNormals(); roof.rotation.x = Math.PI / 2; roof.position.set(WORLD / 2, top, WORLD / 2); scene.add(roof); roadObjs.push(roof);
+    let sd = 41; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647, cone = new THREE.ConeGeometry(1, 1, 7), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), U = new THREE.Vector3(1, 0, 0);
+    const stal = new THREE.InstancedMesh(cone, new THREE.MeshLambertMaterial({ map: rockTex(), color: 0x9a7a4a, emissive: 0x1a1006 }), 360); Q.setFromAxisAngle(U, Math.PI);
+    for (let n = 0; n < 360; n++) { const x = rnd() * WORLD, z = rnd() * WORLD, L2 = 60 + rnd() * 220, r = 10 + rnd() * 26; M.compose(new THREE.Vector3(x, top - L2 / 2 + 20, z), Q, new THREE.Vector3(r, L2, r)); stal.setMatrixAt(n, M); } scene.add(stal); roadObjs.push(stal);
+    const col = (x, z) => { const g = h(x, z), hh = top - g; const m = new THREE.Mesh(new THREE.CylinderGeometry(40, 70, hh, 9), caveMat); m.position.set(x, g + hh / 2, z); scene.add(m); roadObjs.push(m); };
+    for (let n = 0, tries = 0; n < 18 && tries < 400; tries++) { const x = rnd() * WORLD, z = rnd() * WORLD; let md = 1e9; for (let i = 0; i < t.N; i += 4) md = Math.min(md, Math.hypot(t.PTS[i][0] - x, t.PTS[i][1] - z)); if (md > t.ROAD / 2 + 220) { col(x, z); n++; } }   // great rock columns from floor to roof
+    for (let n = 0, tries = 0; n < 26 && tries < 500; tries++) { const x = rnd() * WORLD, z = rnd() * WORLD; let md = 1e9; for (let i = 0; i < t.N; i += 4) md = Math.min(md, Math.hypot(t.PTS[i][0] - x, t.PTS[i][1] - z)); if (md < t.ROAD / 2 + 90 || md > t.ROAD / 2 + 420) continue;
+      const g = gemCluster(0xffc840, 40 + rnd() * 70, 8 + rnd() * 8, rnd() * 6); g.position.set(x, h(x, z) - 4, z); scene.add(g); roadObjs.push(g); addGlow(x, h(x, z), z, 60, 0xffc040); n++; }   // gold crystals in the rock
+    const beam = new THREE.MeshLambertMaterial({ color: 0x6a4424, emissive: 0x140a04 }), lamp = new THREE.MeshBasicMaterial({ color: 0xffc860 }), half = t.ROAD / 2 + t.CURB + 12;
+    for (const sp of t.supports || []) for (let i = sp.a; i <= sp.b; i += 22) { const P = t.PTS, N = t.N, p = P[i % N], q = P[(i + 2) % N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), y = RE[i % N], g2 = new THREE.Group();   // timber frames across the road
+      for (const s2 of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(10, 120, 10), beam); post.position.set(0, 60, s2 * half); g2.add(post); const br = new THREE.Mesh(new THREE.BoxGeometry(6, 40, 6), beam); br.position.set(0, 104, s2 * (half - 14)); br.rotation.x = s2 * .8; g2.add(br); }
+      const top2 = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 2 * half + 20), beam); top2.position.y = 124; g2.add(top2); const lm = new THREE.Mesh(new THREE.SphereGeometry(5, 8, 6), lamp); lm.position.set(0, 108, 0); g2.add(lm);
+      g2.position.set(p[0], y, p[1]); g2.rotation.y = -a; scene.add(g2); roadObjs.push(g2); }
   }
   function buildDam(b, t) {   // 🌊 the dam: a tall concrete wall with buttresses, a railed walkway on top under thick snow, and half-frozen waterfalls pouring down its road side, icicles hanging off the lip
     const g0 = h(b.x, b.y), grp = new THREE.Group(), a = b.a || 0, nx = -Math.sin(a), nz = Math.cos(a);
@@ -872,6 +911,15 @@ export function create(A) {
       for (let j = 1; j < 10; j++) { const f = j / 10, x = A[0] + (B[0] - A[0]) * f, z = A[2] + (B[2] - A[2]) * f, y = A[1] + (B[1] - A[1]) * f + 68 - Math.sin(f * Math.PI) * 18; bulbs.push([x, y, z, cols[(k * 9 + j) % cols.length]]); } }
     const m = new THREE.InstancedMesh(new THREE.SphereGeometry(3.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }), bulbs.length), M = new THREE.Matrix4(), C = new THREE.Color();
     bulbs.forEach(([x, y, z, c], i) => { M.makeTranslation(x, y, z); m.setMatrixAt(i, M); m.setColorAt(i, C.setHex(c)); }); scene.add(m); roadObjs.push(m);
+  }
+  function tntModel() {   // 🧨 a TNT block: red sides with a white band reading TNT, a dark top, a fuse with a spark
+    const g = new THREE.Group(), tex = ctex(128, 128, (c, W) => { c.fillStyle = "#d8302a"; c.fillRect(0, 0, W, W); c.fillStyle = "#b02018"; for (let x = 0; x < W; x += 32) c.fillRect(x, 0, 4, W); c.fillStyle = "#f4f0e8"; c.fillRect(0, 44, W, 40);
+      c.fillStyle = "#1a1a1a"; c.font = "900 34px Ubuntu, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("TNT", W / 2, 65); });
+    const side = new THREE.MeshLambertMaterial({ map: tex, emissive: 0x2a0806 }), topM = new THREE.MeshLambertMaterial({ color: 0x5a4a3a, emissive: 0x100a06 }); side.userData.e0 = 0x2a0806; topM.userData.e0 = 0x100a06;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(34, 34, 34), [side, side, topM, topM, side, side]); b.position.y = 17; g.add(b);
+    const fuse = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 14, 5), new THREE.MeshLambertMaterial({ color: 0x3a3a3a })); fuse.position.set(4, 40, 3); fuse.rotation.z = .4; g.add(fuse);
+    const spark = new THREE.Mesh(new THREE.SphereGeometry(5, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd860 })); spark.position.set(7, 47, 3); spark.visible = false; g.add(spark);
+    g.userData.flash = [side, topM]; g.userData.spark = spark; return g;
   }
   function freezieModel() {   // 🧊 a cute living ice block: a soft, squishy marshmallow-cube of ice, big sparkly eyes, rosy cheeks, a tiny smile, a little frosty tuft and stubby feet
     const g = new THREE.Group(), S1 = new THREE.SphereGeometry(1, 16, 12), bk = new THREE.MeshBasicMaterial({ color: 0x1a2a48 }), wh = new THREE.MeshBasicMaterial({ color: 0xffffff }), pink = new THREE.MeshBasicMaterial({ color: 0xff9ac4 });
@@ -1066,7 +1114,7 @@ export function create(A) {
       F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
     F.pts.geometry.attributes.position.needsUpdate = true;
   }
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [], gondM = [], golemM = [];
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [], gondM = [], golemM = [], phantomM = [], fakeM = [];
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -1167,13 +1215,14 @@ export function create(A) {
       for (let i = 0; i < n; i++) g.drawImage(tile, i * sw, top, sw + .5, sh);
       if (t.moon) { const mx = 1250, my = top + sh * .26, r = 70, gl = g.createRadialGradient(mx, my, r * .7, mx, my, r * 2.4);   // 🌕 El Nath's own full moon (maplestory.io), once (the sky goes round twice, so its twin is always behind you)
         gl.addColorStop(0, "rgba(255,248,200,.35)"); gl.addColorStop(1, "rgba(255,248,200,0)"); g.fillStyle = gl; g.fillRect(mx - r * 3, my - r * 3, r * 6, r * 6); g.drawImage(t.moon, mx - r, my - r, r * 2, r * 2); }
-      const fade = g.createLinearGradient(0, top, 0, top + sh * .35); fade.addColorStop(0, topCol); fade.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = fade; g.fillRect(0, top, 4096, sh * .35); }   // the picture's top melts into the sky above it
+      if (!t.theme.skyFull) { const fade = g.createLinearGradient(0, top, 0, top + sh * .35); fade.addColorStop(0, topCol); fade.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = fade; g.fillRect(0, top, 4096, sh * .35); } }   // the picture's top melts into the sky above it (unless it covers it all: the Golden Cave)
     if (t.strip) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
     g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, t.strip ? hor + 6 : hor, 4096, 1024);   // (no strip: the ground meets the picture, no dark gap)
     const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.repeat.x = -2; map.anisotropy = aniso;
     if (skyMesh) { scene.remove(skyMesh); skyMesh.material.map.dispose(); skyMesh.material.dispose(); }
     skyMesh = new THREE.Mesh(new THREE.CylinderGeometry(SKY_R, SKY_R, SKY_H, 64, 1, true), new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, fog: false, depthWrite: false }));
     skyMesh.renderOrder = -1; scene.add(skyMesh);
+    if (caveMat && t.sky) caveSkin(t.sky);   // ⛏ the cave picture on the roof and the columns too
   }
   function sync(t) {
     let built = false;
@@ -1213,8 +1262,9 @@ export function create(A) {
   const mdls = {};   // per-frame pools of moving 3D models (the living ice blocks)
   function mdl(kind, x, y, z, a, tt) {
     const P = mdls[kind] || (mdls[kind] = { list: [], i: 0 }); let g = P.list[P.i++];
-    if (!g) { g = kind === "freezie" ? freezieModel() : kind === "snowball" ? snowballModel() : kind === "stoneball" ? snowballModel(true) : new THREE.Group(); scene.add(g); P.list.push(g); }
+    if (!g) { g = kind === "freezie" ? freezieModel() : kind === "snowball" ? snowballModel() : kind === "stoneball" ? snowballModel(true) : kind === "tnt" ? tntModel() : new THREE.Group(); scene.add(g); P.list.push(g); }
     g.visible = true;
+    if (kind === "tnt") { const lit = z < 0; g.position.set(x, h(x, y) + (lit ? Math.abs(Math.sin(tt * 30)) * 2 : 0), y); g.rotation.set(0, -a, 0); const s2 = lit ? 1 + Math.abs(Math.sin(tt * 18)) * .08 : 1; g.scale.set(s2, s2, s2); for (const m of g.userData.flash) m.emissive.setHex(lit && Math.sin(tt * 22) > 0 ? 0xffffff : m.userData.e0); g.userData.spark.visible = lit; if (lit) g.userData.spark.scale.setScalar(.7 + Math.random() * .8); return; }   // 🧨 (lit: it flashes white, swells and sparks)
     if (kind === "snowball" || kind === "stoneball") { g.position.set(x, h(x, y) + 30, y); g.rotation.set(tt * 4 + x * .01, -a, 0); return; }   // (a giant snowball rolls) const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
   }
   const boxes = []; let bi = 0;
@@ -1325,6 +1375,8 @@ export function create(A) {
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
     if (fountM) fountStep(performance.now() / 1000);
     for (const f of flowM) f.offset.y = performance.now() / 1000 * .22;
+    if (phantomM.length || fakeM.length) { const now = performance.now() / 1000; for (const q of phantomM) { const a = q.fn ? q.fn(q.g, now) : 1; for (const m of q.mats) { m.opacity = a; m.visible = a > .02; } }
+      for (const q of fakeM) { const d = Math.hypot(k.x - q.x, k.y - q.z); q.mat.opacity = Math.min(1, Math.max(0, (d - 120) / 260)) * (.75 + .25 * Math.sin(now * 5)); } }   // (a phantom road melts away as you get close)
     for (const q of golemM) { const z = q.o.sz || 0; q.g.position.y = q.y + z * .55; q.g.rotation.z = z > 1 ? Math.sin(z * .05) * .06 : 0; }   // 🗿 the Golems' stomp
     if (gondM.length) { const now = performance.now() / 1000; for (const q of gondM) { const f = ((now * q.sp + q.ph) % 2), u = f < 1 ? f : 2 - f, L = q.line, p = L.a.clone().lerp(L.b, u); p.addScaledVector(L.off, f < 1 ? 1 : -1); q.g.position.copy(p); q.g.rotation.z = Math.sin(now * 1.3 + q.ph) * .04; } }   // 🚡 gondolas gliding up one cable and down the other   // the dam's half-frozen waterfalls, trickling slowly
     if (auroraM.length) { const now = performance.now() / 1000; for (const q of auroraM) { const pa = q.m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { const b = q.base[v]; pa.setY(v, b[1] + Math.sin(now * .5 + b[3] * 3 + q.ph) * 40 * b[4]); pa.setZ(v, b[2] + Math.sin(now * .35 + b[3] * 5 + q.ph) * 90); } pa.needsUpdate = true; q.m.material.opacity = .62 + Math.sin(now * .7 + q.ph) * .15; } }

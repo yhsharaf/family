@@ -78,7 +78,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let FINALMSG = null, AREAS = [], SPORES = [], areaAt = -1, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
-  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], FAIRY = null, BRIDGES3D = [], HIDE = [];
+  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], FAIRY = null, BRIDGES3D = [], DYNA = [], FAKES = [], CAVEIN = null, HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
   let best = -1, bd = 1e12;
@@ -620,49 +620,48 @@ const TRACKS = {
       };
     },
   },
-  // 2. Golden Temple Jungle: MapleStory's Golem's Temple merged with Mario Kart's DK Jungle, cursed. Out of the torch-lit jungle camp, through
-  // the S-bends where the walking Stumps cross (the Tiki Goons), across the vine bridge over the black gorge, up into Golem's Temple (a stepped
-  // pyramid of mossy stone with glowing eyes over its doors): down the dark stairs inside where stone balls roll across, out of the temple's
-  // mouth on the glider over the swamp, and back along the lakeside. Stone Golems stand guard everywhere; on the last lap they STOMP.
+  // 2. Golden Cave: a gold mine deep under Sleepywood (after Mario Kart's mine courses). Out of the miners' camp into the timbered tunnel with
+  // the mine carts, along the dynamite run (get close and it blows), out over the abyss on a road that keeps vanishing (it's still there: hold
+  // your nerve, and don't follow the golden roads that aren't), across the rickety trestle, through the glittering gold caverns (not all that
+  // glitters is gold) and back. Gold fever: the cave sways, you see double. On the last lap the roof caves in.
   sw2: {
-    id: "golemtemple", scale: 2.6, road: 180, cup: "sleepy", music: "k_sleepy2", name: "Golden Temple Jungle", sub: "Golem's Temple · the vine bridge · rolling stones · the swamp glide", icon: "🛕",
-    ctrl: [[470, 1702, 40], [590, 1705, 40], [720, 1705, 40], [880, 1695, 42], [1010, 1650, 44], [1110, 1560, 46], [1140, 1440, 48], [1150, 1330, 52], [1200, 1235, 56], [1300, 1185, 60], [1420, 1170, 62], [1530, 1165, 62], [1640, 1160, 62], [1760, 1150, 62], [1860, 1095, 66], [1905, 985, 72], [1890, 860, 80], [1830, 750, 90], [1740, 665, 100], [1640, 640, 108], [1540, 640, 104], [1440, 640, 96], [1340, 640, 86], [1250, 640, 78], [1150, 642, 74], [1020, 650, 66], [880, 665, 56], [760, 690, 46], [640, 730, 40], [520, 800, 40], [430, 900, 40], [380, 1030, 40], [360, 1180, 40], [355, 1330, 40], [345, 1470, 40], [352, 1575, 40], [392, 1655, 40]],
-    theme: { ...TH.sleepy, tufts: 7000, flowers: 400, grass: ["#22301f", "#1e2b1b"], haze: [30, 36, 40], fog: [340, 1600], horror: 2, skyMirror: true, dark: { sky: 0x6a6a8a, gnd: 0x221a2a, hemiI: .85, sun: 0xa0a0c8, sunI: .5 } },
-    art: { sky: "media/kart/sleepy/sky2hm2.webp?v=1", strip: "media/kart/sleepy/strip3hm.webp?v=1" },
-    near: ["sw_fern", "sw_bush", "sw_moss", "sw_vine"], far: ["sw_tree", "sw_deadtree", "sw_ruin", "sw_ruin3"],
-    mobs: ["stump", "evil_eye", "curse_eye"],
+    id: "goldcave", scale: 2.55, road: 180, cup: "sleepy", music: "k_sleepy2", name: "Golden Cave", sub: "mine carts · dynamite · the vanishing road · fool's gold", icon: "⛏️",
+    ctrl: [[560, 1700, 40], [720, 1702, 40], [880, 1700, 42], [1050, 1690, 44], [1220, 1640, 48], [1340, 1530, 54], [1400, 1380, 62], [1420, 1220, 70], [1430, 1060, 78], [1480, 920, 86], [1580, 820, 90], [1700, 760, 94], [1800, 700, 96], [1850, 600, 100], [1860, 500, 102], [1830, 410, 104], [1740, 345, 106], [1640, 310, 108], [1540, 300, 110], [1420, 298, 110], [1300, 298, 110], [1200, 300, 108], [1080, 310, 102], [960, 345, 94], [860, 420, 86], [790, 520, 78], [730, 610, 70], [640, 670, 64], [530, 700, 60], [440, 750, 58], [390, 850, 56], [372, 960, 54], [370, 1080, 52], [372, 1200, 50], [378, 1310, 48], [392, 1420, 46], [415, 1530, 44], [462, 1630, 42]],
+    theme: { ...TH.sleepy, road: "cobble", curb: ["#6a4424", "#c8a050"], tufts: 0, flowers: 0, grass: ["#3a2e22", "#33281e"], haze: [44, 32, 16], fog: [420, 1900], cave: true, hallu: true, skyMirror: true, skyFull: true, skyPic: 3000, dark: { sky: 0xd0a860, gnd: 0x3a2810, hemiI: .95, sun: 0xffd890, sunI: .6 } },
+    art: { sky: "media/kart/sleepy/sky3full.webp?v=1", strip: null },
+    near: ["sw_stump2", "sw_log"], far: ["sw_ruin3", "sw_stump"], mobs: ["evil_eye", "curse_eye"],
     build() {
       makeSnowArt(); makeHorrorArt();
-      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
-      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      // 🌉 the vine bridge over the black gorge (no railings)
-      const ba = I(1420, 1170), bb = I(1760, 1150); gaps.push({ a: ba, b: bb, kind: "bridge", deck: ROAD / 2 + CURB - 2, open: true, depth: 260, caps: [] });
-      // 🛕 Golem's Temple: a straight passage down through the pyramid, stone balls rolling across it
-      const ta = I(1640, 640), tb = I(1250, 640), temple = { a: ta, b: tb, rock: true, half: ROAD / 2 + CURB + 14, mound: 0x3a3a34 };
-      const stones = [[.3, 0], [.55, 2.1], [.8, 4.2]].map(([f, ph]) => ({ i: Math.round(ta + (tb - ta) * f), ph, k: "stoneball", sp: .75, s: .7, amp: ROAD / 2 + 10 }));
-      // 🪂 out of the temple's mouth on the glider, over the swamp
-      const ga = tb + 6, gb = I(640, 730); pads.push({ t: "glide", i: ga - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: ga, b: gb, kind: "chasm", open: true, depth: 110, caps: [] });
-      for (let n = 0; n < 5; n++) { const [x, y] = at(Math.round(ga + (gb - ga) * (.15 + n * .17)), Math.sin(n * 1.7) * 30); coins.push({ x, y, z: 90 + 20 * Math.sin(n), got: false }); }
-      pads.push({ t: "boost", i: I(1010, 1650), len: 9, o: 0, w: 70 }, { t: "boost", i: I(1890, 860), len: 9, o: 0, w: 70 }, { t: "boost", i: I(430, 900), len: 9, o: 0, w: 70 });
-      row(I(590, 1705), I(880, 1695), 5, 0); row(I(1110, 1560), I(1200, 1235), 6, j => (j & 1 ? 35 : -35)); row(ba + 4, bb - 4, 6, j => (j & 1 ? 30 : -30)); row(I(360, 1180), I(345, 1470), 5, 0);
+      const coins = [], pads = [], gaps = [];
+      const row = (a, b, n, o, z = 0, fake) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false, fake }); } };
+      // ⛏ the timbered tunnel, mine carts rolling along the start straight and the tunnel (touch one for a push)
+      const tunnel = { a: I(1400, 1380), b: I(1480, 920), rock: true, mound: 0x3a2e22 };
+      const carts = [{ a: I(720, 1702), b: I(1340, 1530), o: -55, sp: 115, ph: 0 }, { a: I(720, 1702), b: I(1340, 1530), o: 55, sp: 105, ph: 40 }, { a: tunnel.a + 4, b: tunnel.b - 4, o: 50, sp: 120, ph: 10 }];
+      // 👻 the vanishing roads over the abyss (solid, but they fade away), each with a golden road that isn't really there
+      const p1 = { a: I(1850, 600), b: I(1830, 410) }, p2 = { a: I(372, 960), b: I(378, 1310) };
+      for (const p of [p1, p2]) gaps.push({ a: p.a, b: p.b, kind: "bridge", deck: ROAD / 2 + CURB - 2, phantom: true, open: true, depth: 320, caps: [] });
+      const fake = (p, f, ang, len) => { const i0 = Math.round(p.a + (p.b - p.a) * f), [x0, y0] = at(i0, 0), a = tangent(i0) + ang, pts = []; for (let k = 0; k <= 8; k++) { const d = len * k / 8, bend = Math.sin(k / 8 * Math.PI) * len * .12; pts.push([x0 + Math.cos(a) * d - Math.sin(a) * bend, y0 + Math.sin(a) * d + Math.cos(a) * bend]); } return pts; };
+      // 🌉 the rickety trestle across the chasm (no railings)
+      const ta = I(1540, 300), tb = I(1200, 300); gaps.push({ a: ta, b: tb, kind: "bridge", deck: ROAD / 2 + CURB - 2, open: true, depth: 300, caps: [] });
+      // 🧨 dynamite: a chain along the run out of the tunnel, and single sticks at the corners
+      const dyn = [], dA = I(1480, 920), dB = I(1800, 700); for (let n = 0; n < 6; n++) { const i = Math.round(dA + (dB - dA) * (n + .5) / 6); dyn.push({ i, o: (n % 2 ? 1 : -1) * 55, chain: n < 5 ? n + 1 : -1 }); }
+      for (const [x, y, o] of [[1220, 1640, -60], [960, 345, 55], [640, 670, -55], [462, 1630, 60]]) dyn.push({ i: I(x, y), o, chain: -1 });
+      pads.push({ t: "boost", i: I(1050, 1690), len: 9, o: 0, w: 70 }, { t: "boost", i: I(1740, 345), len: 9, o: 0, w: 70 }, { t: "boost", i: I(530, 700), len: 9, o: 0, w: 70 });
+      row(I(720, 1702), I(1050, 1690), 5, 0); row(ta + 4, tb - 4, 6, j => (j & 1 ? 30 : -30));
+      row(I(860, 420), I(640, 670), 7, j => Math.sin(j) * 40, 0, (j => j % 2 === 1));   // the gold caverns: every other meso is fool's gold
+      coins.forEach(c => { if (typeof c.fake === "function") c.fake = false; });
+      for (const [k2, c] of coins.slice(-7).entries()) c.fake = k2 % 2 === 1;
       return {
-        gaps, pads, coins, caves: [temple], temple: { a: ta, b: tb },
-        lake: { cx: ws(940), cy: ws(560), rx: ws(190), ry: ws(150), kind: "swamp" },   // the black swamp under the glide
-        pigs: [...stones, ...[[1140, 1440, 0], [1200, 1235, 2], [1880, 900, 4], [380, 1030, 1]].map(([x, y, ph]) => ({ i: I(x, y), ph, k: "stump", sp: .6, soft: true, s: .55 }))],   // 🪵 Stumps shuffling across the road
-        finalMsg: "🗿 The Golems awaken...",
-        boxes: [...boxRow(I(700, 1705), [-60, -20, 20, 60]), ...boxRow(I(1300, 1185), [-50, 0, 50]), ...boxRow(I(1830, 750), [-60, -20, 20, 60]), ...boxRow(I(380, 1030), [-60, -20, 20, 60])],
+        gaps, pads, coins, carts, caves: [tunnel], dynamite: dyn, fakes: [fake(p1, .3, -.45, 340), fake(p2, .35, .45, 360)], supports: [{ a: I(720, 1702), b: I(1220, 1640) }, { a: tunnel.a, b: tunnel.b }, { a: I(960, 345), b: I(640, 670) }],
+        caveIn: true, finalMsg: "🪨 The cave is collapsing!",
+        boxes: [...boxRow(I(880, 1700), [-60, -20, 20, 60]), ...boxRow(I(1430, 1060), [-50, 0, 50]), ...boxRow(I(1640, 310), [-60, -20, 20, 60]), ...boxRow(I(392, 1420), [-60, -20, 20, 60])],
         extra(push) {
           const clear = (x, y, d) => roadDist(x, y) > ROAD / 2 + CURB + d;
-          let sd0 = 29; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
-          // 🗿 Stone Golems standing guard (3D); on the last lap they all stomp
-          for (const [px, py, o] of [[700, 1705, 1], [1140, 1440, -1], [1860, 1095, -1], [1840, 760, 1], [1150, 642, 1], [520, 800, -1], [355, 1330, 1]]) { const i = I(px, py), [x, y] = at(i, o * (ROAD / 2 + CURB + 120)); const [rx, ry] = at(i, 0); if (clear(x, y, 60)) OBJS.push({ x, y, k: "golem", s: 1, r: 55, z: 0, f3d: true, fa: Math.atan2(ry - y, rx - x), stomp: true, stompMsg: "💥 Golem STOMP!" }); }   // (facing the road)
-          // 🔥 torches along the road, flickering; ruins, stone heads and vines in the jungle
-          for (let i = 0; i < N; i += 22) for (const sd of [-1, 1]) { if (gaps.some(g => i >= g.a - 2 && i <= g.b + 2) || (i >= ta - 4 && i <= tb + 4)) continue; const [x, y] = at(i, sd * (ROAD / 2 + CURB + 18)); OBJS.push({ x, y, k: "sw_lamp", s: .32, r: 0, z: 0, flick: rr() < .5 }); }
-          for (let k2 = 0; k2 < 46; k2++) { const i = Math.floor(rr() * N), sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 80 + rr() * 260)); if (clear(x, y, 60)) push(x, y, ["sw_ruin", "sw_ruin2", "sw_ruin3", "sw_head", "sw_deadtree", "sw_tree", "sw_tree"][Math.floor(rr() * 7)]); }
-          for (let k2 = 0; k2 < 40; k2++) { const i = Math.floor(rr() * N), sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 120 + rr() * 260)); if (clear(x, y, 80)) OBJS.push({ x, y, k: "eyes", s: .35 + rr() * .2, r: 0, z: 30 + rr() * 70, flick: true, blink: true }); }
-          for (let k2 = 0; k2 < 12; k2++) { const i = Math.floor(rr() * N), sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 30)); if (clear(x, y, 10) && !gaps.some(g => i >= g.a && i <= g.b)) OBJS.push({ x, y, k: "cobweb", s: .45, r: 0, z: 40 }); }
-          for (const [i, o, k] of [[I(1530, 1165), 200, "evil_eye"], [I(1640, 1160), -200, "curse_eye"], [I(880, 665), 160, "evil_eye"]]) { const [x, y] = at(i, o); OBJS.push({ x, y, k, s: .5, r: 0, z: 180, bob: 14, mob: true }); }
-          for (let k2 = 0; k2 < 8; k2++) { const a = k2 / 8 * 6.28; OBJS.push({ x: ws(940) + Math.cos(a) * ws(260), y: ws(560) + Math.sin(a) * ws(220), k: "bat", s: .35, r: 0, z: 120 + (k2 % 3) * 50, bob: 20 }); }
+          let sd0 = 31; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+          for (let i = 0; i < N; i += 20) for (const sd of [-1, 1]) { if (gaps.some(g => i >= g.a - 2 && i <= g.b + 2)) continue; const [x, y] = at(i, sd * (ROAD / 2 + CURB + 16)); OBJS.push({ x, y, k: "sw_lamp", s: .32, r: 0, z: 0, flick: rr() < .2 }); }
+          for (let k2 = 0; k2 < 30; k2++) { const i = Math.floor(rr() * N), sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 70 + rr() * 200)); if (clear(x, y, 50) && !gaps.some(g => i >= g.a - 20 && i <= g.b + 20)) push(x, y, ["sw_stump2", "sw_log", "sw_ruin3"][Math.floor(rr() * 3)]); }
+          for (const [i, o, k] of [[I(1860, 500), -220, "evil_eye"], [I(1300, 298), 200, "curse_eye"], [I(372, 1080), 220, "evil_eye"]]) { const [x, y] = at(i, o); OBJS.push({ x, y, k, s: .5, r: 0, z: 160, bob: 14, mob: true }); }
+          for (let k2 = 0; k2 < 10; k2++) { const a = k2 / 10 * 6.28; OBJS.push({ x: ws(1100) + Math.cos(a) * ws(500), y: ws(1000) + Math.sin(a) * ws(400), k: "bat", s: .35, r: 0, z: 200 + (k2 % 3) * 60, bob: 20 }); }
         },
       };
     },
@@ -953,7 +952,8 @@ function loadTrack(key) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
-  CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = []; T.cableDef = f.cable || null; T.icefallDefs = f.icefalls || []; T.trunkDef = f.trunk || null; T.templeDef = f.temple || null; HORROR.lvl = (T.theme && T.theme.horror) || 0; HORROR.next = 6; HORROR.black = 0; HORROR.warn = 0; HORROR.gl = 0; HORROR.nextBlack = 18 + Math.random() * 10;
+  CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = []; T.cableDef = f.cable || null; T.icefallDefs = f.icefalls || []; T.trunkDef = f.trunk || null; T.templeDef = f.temple || null; T.supportDefs = f.supports || [];
+  DYNA = (f.dynamite || []).map(d => { const [x, y] = at(d.i, d.o || 0); return { ...d, x, y, st: 0, t: 0 }; }); FAKES = f.fakes || []; CAVEIN = f.caveIn ? { t: 2, rocks: [] } : null; HORROR.lvl = (T.theme && T.theme.horror) || 0; HORROR.next = 6; HORROR.black = 0; HORROR.warn = 0; HORROR.gl = 0; HORROR.nextBlack = 18 + Math.random() * 10;
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
   HIDE = [];
@@ -1517,6 +1517,8 @@ function makeHorrorArt() {   // 👁 eyes glowing in the dark, cobwebs, and the 
   IMG.eyes = mk(90, 40, g => { for (const x of [22, 68]) { const gr = g.createRadialGradient(x, 20, 1, x, 20, 18); gr.addColorStop(0, "rgba(255,240,180,1)"); gr.addColorStop(.25, "rgba(255,60,40,1)"); gr.addColorStop(1, "rgba(255,0,0,0)"); g.fillStyle = gr; g.beginPath(); g.ellipse(x, 20, 18, 12, 0, 0, 7); g.fill(); } });
   IMG.stoneball = mk(90, 90, g => { const gr = g.createRadialGradient(36, 34, 6, 45, 45, 44); gr.addColorStop(0, "#9a948a"); gr.addColorStop(1, "#4a463e"); g.fillStyle = gr; g.beginPath(); g.arc(45, 45, 43, 0, 7); g.fill(); });
   IMG.golem = mk(120, 140, g => { g.fillStyle = "#6a675e"; g.fillRect(20, 30, 80, 90); g.fillRect(36, 6, 48, 30); g.fillStyle = "#ff3a2a"; g.fillRect(44, 16, 10, 6); g.fillRect(66, 16, 10, 6); });
+  IMG.tnt = mk(70, 100, g => { for (let k = 0; k < 4; k++) { const x = 10 + k * 13; g.fillStyle = "#c8302a"; g.fillRect(x, 30, 12, 66); g.fillStyle = "#e8604a"; g.fillRect(x + 2, 30, 3, 66); g.fillStyle = "#f4e8c8"; g.fillRect(x, 30, 12, 6); }
+    g.fillStyle = "#3a2a1a"; g.fillRect(6, 56, 58, 8); g.strokeStyle = "#5a4a3a"; g.lineWidth = 3; g.beginPath(); g.moveTo(36, 30); g.quadraticCurveTo(46, 12, 40, 4); g.stroke(); });
   IMG.cobweb = mk(120, 120, g => { g.strokeStyle = "rgba(230,230,240,.75)"; g.lineWidth = 1.4; for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283; g.beginPath(); g.moveTo(60, 60); g.lineTo(60 + Math.cos(a) * 58, 60 + Math.sin(a) * 58); g.stroke(); }
     for (let r = 10; r < 58; r += 9) { g.beginPath(); for (let k = 0; k <= 8; k++) { const a = k / 8 * 6.283, rr = r * (k % 2 ? .9 : 1); k ? g.lineTo(60 + Math.cos(a) * rr, 60 + Math.sin(a) * rr) : g.moveTo(60 + Math.cos(a) * rr, 60 + Math.sin(a) * rr); } g.stroke(); } });
 }
@@ -1671,11 +1673,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=149"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=154"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2206,6 +2208,28 @@ function caveWall(c, i, x, y) {   // how far the cave wall is from the road's ce
   return side === Math.sign(da) ? Math.min(c.half, Math.max(rt * .8, ROAD / 2 + CURB + 26)) : c.half;
 }
 const ledgeSide = (l, r) => { if (!l.side) return true; const i = nearest(r.x, r.y, r.idx).i, p = PTS[i], a = tangent(i); return Math.sign(-(r.x - p[0]) * Math.sin(a) + (r.y - p[1]) * Math.cos(a)) === l.side; };   // (a one-sided ledge: only its drop side)
+// 👻 Golden Cave: how solid a vanishing road looks right now (the same clock for everyone: 3.4 s there, it fades out, 2 s gone, back)
+function phantomAlpha(g, now) { const T = 7, p = ((now + g.a * .37) % T + T) % T; return p < 3.4 ? 1 : p < 4 ? 1 - (p - 3.4) / .6 * .94 : p < 6 ? .06 : .06 + (p - 6) / 1 * .94; }
+// 🧨 dynamite (lights when someone comes close, blows half a second later, the chain sets off the next) and the last lap's cave-in
+function mineStep(dt, tt) {
+  if (!DYNA.length && !CAVEIN) return; const rs = racers();
+  for (const d of DYNA) {
+    if (d.st === 0 && state === "race") { if (rs.some(r => !r.gone && Math.hypot(r.x - d.x, r.y - d.y) < 90)) { d.st = 1; d.t = .55; if (K && Math.hypot(K.x - d.x, K.y - d.y) < 500) tone(1800, .5, "sawtooth", .02, 900); } }
+    else if (d.st === 1) { d.t -= dt; if (d.t <= 0) { explode({ x: d.x, y: d.y }, rs); d.st = 2; d.t = 6; if (d.chain >= 0 && DYNA[d.chain] && DYNA[d.chain].st === 0) { DYNA[d.chain].st = 1; DYNA[d.chain].t = .28; } } }
+    else if (d.st === 2) { d.t -= dt; if (d.t <= 0) d.st = 0; } }
+  const C = CAVEIN; if (!C || !K || state !== "race" || lapNow() < LAPS) return;
+  C.t -= dt; if (C.t <= 0) { C.t = .9 + Math.random() * .6; const i = (K.idx + 14 + Math.floor(Math.random() * 30)) % N, [x, y] = at(i, (Math.random() - .5) * ROAD * .8); C.rocks.push({ x, y, t: 1 }); }
+  for (let n = C.rocks.length - 1; n >= 0; n--) { const q = C.rocks[n]; q.t -= dt; if (q.t <= 0) { BOOMS.push({ x: q.x, y: q.y, t: 0, debris: [] }); boomSound(Math.hypot(K.x - q.x, K.y - q.y)); K.shake = Math.max(K.shake, .2);
+      for (const r of rs) if (!r.gone && r.z < 30 && Math.hypot(r.x - q.x, r.y - q.y) < 34 && !(r.rescue > 0)) { if (r === K) spinOut("🪨 Cave-in!"); else { r.spin = .9; r.v *= .4; } }
+      C.rocks.splice(n, 1); } }
+}
+// 💫 gold fever: the cave sways and pulses golden, and now and then you see double
+function drawHallu(W, H) {
+  if (!T.theme.hallu) return; const el = $k("#k3d"), t = performance.now() / 1000;
+  if (el && state === "race") { const sw = Math.sin(t * .7) * .6 + Math.sin(t * 1.9) * .25; el.style.transform = `scale(1.03) rotate(${sw * .6}deg) skewX(${Math.sin(t * .5) * 1.2}deg)`; el.style.filter = `sepia(${.25 + .15 * Math.sin(t * .9)}) saturate(1.3) hue-rotate(${Math.sin(t * .4) * 8}deg)`;
+    const dbl = ((t % 11) / 11) > .86; if (dbl) { ctx.save(); ctx.globalAlpha = .28; try { ctx.drawImage(el, 14 + Math.sin(t * 6) * 6, 0, W, H); } catch (e) {} ctx.restore(); } }
+  else if (el && el.style.transform) { el.style.transform = ""; el.style.filter = ""; }
+}
 function slideStep(tt) {   // 🐧 penguins sliding down the rims of the penguin slide, over and over
   for (const o of OBJS) if (o.slide) { const q = o.slide, f = (tt * q.sp + q.ph) % 1, [x, y] = at(Math.round(q.a + (q.b - q.a) * f), q.o); o.x = x; o.y = y; }
 }
@@ -2219,7 +2243,7 @@ function stompStep(tt) {   // 🍄 the last lap: Mushmom (or Ice Valley's Yetis)
       for (const g of GAPS) for (const c of g.caps) c.squash = Math.max(c.squash || 0, .7); } }
 }
 function worldStep(dt, tt) {
-  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt);
+  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt); mineStep(dt, tt);
   if (thunderFx > 0) thunderFx -= dt;
   if (LAVA && state === "race") lavaStep(dt);
   if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt; if (thunderCD > 0) thunderCD -= dt;
@@ -2442,7 +2466,7 @@ function gapStep(r, air) {
   }
   if (c) { if (c !== r.lastCap) bounce(r, c); return; }
   r.lastCap = null;
-  const m = nearest(r.x, r.y, r.idx), g = gapAt(m.i); if (g && g.kind === "bridge") { if (m.i < g.b - 1 && m.i > g.a + 1 && m.d > g.deck) { if (g.rail) { const [cx, cy] = at(m.i, 0), dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy) || 1; r.x = cx + dx / d * g.deck; r.y = cy + dy / d * g.deck; r.v *= .97; r.drift = 0; } else rescue(r, "🌉 Off the rope bridge!"); } return; }   // (a railed walkway: you bump along its rail)
+  const m = nearest(r.x, r.y, r.idx), g = gapAt(m.i); if (g && g.kind === "bridge") { if (m.i < g.b - 1 && m.i > g.a + 1 && m.d > g.deck) { if (g.rail) { const [cx, cy] = at(m.i, 0), dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy) || 1; r.x = cx + dx / d * g.deck; r.y = cy + dy / d * g.deck; r.v *= .97; r.drift = 0; } else rescue(r, g.phantom ? "😵 It was a hallucination!" : "🌉 Off the rope bridge!"); } return; }   // (a railed walkway: you bump along its rail)
   if (g && m.i < g.b - 2 && m.i > g.a + 1) rescue(r, g.kind === "water" ? "💦 Splash! Into the pond" : g.kind === "chasm" ? "🏔️ Down the mountain!" : "🍄 Missed! Into the gorge");
 }
 function bounce(r, c) {
@@ -2626,6 +2650,7 @@ function step(dt) {
   if (k.slip > .9) { k.slip = 0; giveBoost(k, .8, 80); flash("💨 Slipstream!", 600); }
   // mesos, pigs and the King Slime
   for (const c of COINS) if (!c.got && Math.abs(k.z - (c.z || 0)) < 30 && Math.hypot(k.x - c.x, k.y - c.y) < 18) {
+    if (c.fake) { c.got = true; pop("💫 Fool's gold!", "#c8a050"); tone(220, .2, "triangle", .05, 140); continue; }   // (it was never there)
     c.got = true; const was = k.mesos; k.mesos = Math.min(10, k.mesos + 1); k.mesoTotal = (k.mesoTotal || 0) + 1; k.v = Math.min(k.v + 22, 360); coinSound();
     const now = performance.now(); k.comboN = now - (k.comboT || 0) < 1300 ? (k.comboN || 0) + 1 : 1; k.comboT = now;   // 💰 a chain of quick pick-ups climbs in pitch
     if (k.comboN > 1) tone(1320 + k.comboN * 110, .06, "square", .04); pop(k.comboN > 1 ? `+1 ×${k.comboN}` : "+1", "#ffd23f"); buzz(6);
@@ -2847,6 +2872,10 @@ function render() {
     ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(im, sx - w / 2, y - w / 2, w, w); ctx.restore();
     ctx.save(); ctx.globalCompositeOperation = "lighter"; for (let n = 0; n < 3; n++) { ctx.fillStyle = ["#fff6c0", "#ffb02e", "#ff5a1e"][n]; ctx.beginPath(); ctx.arc(sx + w * .3 + (Math.random() - .5) * w * .25, y - w * .45 + (Math.random() - .5) * w * .25, Math.max(.6, w * (.09 - n * .02)), 0, 7); ctx.fill(); } ctx.restore(); });
   // 💥 explosions: a flash, a ring racing across the road, the MapleStory Grenade blast (fire, then smoke) and flying debris
+  for (const d of DYNA) if (d.st < 2) { if (G3 && G3.mdl) G3.mdl("tnt", d.x, d.y, d.st === 1 ? -1 : 0, tangent(d.i), tt); else if (IMG.tnt) add(d.x, d.y, IMG.tnt, .45, 0); }   // 🧨 a TNT block (3D); a lit one sparks
+  if (!G3) for (const d of DYNA) if (d.st === 1) addDraw(d.x, d.y, (sx, gy, sc) => { const r = (6 + Math.random() * 6) * sc; ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = Math.random() < .5 ? "#fff6a0" : "#ff9a2a"; ctx.beginPath(); ctx.arc(sx + 6 * sc, gy - 44 * sc, r, 0, 7); ctx.fill(); ctx.restore(); }, 0);
+  if (CAVEIN) for (const q of CAVEIN.rocks) addDraw(q.x, q.y, (sx, gy, sc) => { ctx.save(); ctx.fillStyle = `rgba(0,0,0,${.55 * (1 - q.t)})`; ctx.beginPath(); ctx.ellipse(sx, gy, 26 * sc * (1.4 - q.t * .6), 10 * sc * (1.4 - q.t * .6), 0, 0, 7); ctx.fill();
+    if (IMG.stoneball) { const z = q.t * 420 * sc, w = 40 * sc; ctx.drawImage(IMG.stoneball, sx - w / 2, gy - z - w, w, w); } ctx.restore(); }, 0);
   for (const e of BOOMS) addDraw(e.x, e.y, (sx, gy, sc) => {
     const t = e.t, R = BOMB_R * sc, F = IMG.boomF;
     if (t < .5) { ctx.save(); ctx.globalAlpha = (1 - t / .5) * .9; ctx.strokeStyle = "#fff4c8"; ctx.lineWidth = Math.max(1, 5 * sc * (1 - t / .5)); const rr2 = R * (.25 + 1.15 * t / .5);
@@ -2936,7 +2965,7 @@ function render() {
   if (T.water && PTS[k.idx] && PTS[k.idx][2] + 30 < T.water.level * WS) {   // 🫧 under the lake: deep blue all round, light from above, bubbles drifting up
     const g2 = ctx.createLinearGradient(0, 0, 0, H); g2.addColorStop(0, "rgba(60,140,200,.28)"); g2.addColorStop(1, "rgba(5,25,60,.45)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "rgba(220,240,255,.55)"; const tb = performance.now() / 1000; for (let n = 0; n < 14; n++) { const x = (n * 53 + Math.sin(tb + n) * 6) % W, y = H - ((tb * 40 + n * 37) % H); ctx.beginPath(); ctx.arc(x, y, 1 + (n % 3) * .6, 0, 7); ctx.fill(); } }
-  drawHorror(k, W, H);
+  drawHorror(k, W, H); drawHallu(W, H);
   for (const cv of CAVES) if (k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .75);
     g2.addColorStop(0, "rgba(160,220,255,0)"); g2.addColorStop(1, cv.crystal ? "rgba(8,20,60,.7)" : "rgba(10,40,90,.5)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }
