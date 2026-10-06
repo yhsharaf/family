@@ -562,7 +562,7 @@ export function create(A) {
     const drops = Array.from({ length: ND }, (_, k) => ({ a: Math.random() * 6.283, ph: Math.random(), sp: .7 + Math.random() * .5, top: k < 40, r: Math.random() }));
     return { plaza, falls, wtx, pts, pos, drops, x, z, g0, R };
   }
-  // 🎈 Pets Park's big things in 3D: the pink-and-white gazebos, the hot-air balloons and the hedge cat at the maze
+  // 🎈 Pets Park's big things in 3D: the pink-and-white gazebos and the hot-air balloons
   function stripeTex(cols) {   // the balloon's gores: tall stripes, a band of trim round the middle
     return ctex(512, 256, (g, W, H) => { const n = 16; for (let k = 0; k < n; k++) { g.fillStyle = cols[k % cols.length]; g.fillRect(k * W / n, 0, W / n + 1, H); }
       g.fillStyle = "rgba(255,255,255,.9)"; g.fillRect(0, H * .62, W, 6); g.fillStyle = "#f07ab0"; g.fillRect(0, H * .62 + 6, W, 4); });
@@ -587,20 +587,6 @@ export function create(A) {
       for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const a = new THREE.Vector3(sx * 11, 16, sz * 11), b = new THREE.Vector3(sx * 13, 40, sz * 13), m = put(new THREE.CylinderGeometry(.8, .8, a.distanceTo(b), 4), L(0x6b4426), 0, 0, 0);
         m.position.copy(a).add(b).multiplyScalar(.5); m.lookAt(b); m.rotateX(Math.PI / 2); }
       const y = g0 + (o.z || 0); grp.position.set(o.x, y, o.y); balloonM.push({ g: grp, y, o });
-    } else if (o.k === "topiary") {   // a cat clipped from hedge, sitting up on a pink-and-white planter, a pink bow at its neck, facing the road
-      const tx = hedgeTex().clone(); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(3, 2); tx.needsUpdate = true;
-      const lf = new THREE.MeshLambertMaterial({ map: tx, emissive: 0x0a1a08 }), wh = L(0xfbf7f2, 0x5a5652), pk = L(0xf07ab0, 0x3a1020), S1 = new THREE.SphereGeometry(1, 24, 18);
-      put(new THREE.BoxGeometry(150, 34, 112), wh, 0, 17, 0); put(new THREE.BoxGeometry(154, 9, 116), pk, 0, 26, 0); put(new THREE.BoxGeometry(140, 3, 102), L(0x3f7a2a, 0x0a1a05), 0, 34.5, 0);
-      put(S1, lf, -10, 92, 0).scale.set(46, 60, 44);   // the body, sitting up
-      put(S1, lf, -36, 52, 0).scale.set(40, 22, 40);   // the haunches
-      for (const z of [-17, 17]) put(S1, lf, 30, 44, z).scale.set(16, 12, 13);   // front paws
-      put(S1, lf, 12, 160, 0).scale.set(40, 36, 40);   // the head
-      for (const z of [-21, 21]) { const e = put(new THREE.ConeGeometry(13, 30, 10), lf, 10, 196, z); e.rotation.x = z < 0 ? -.32 : .32; }   // ears
-      put(S1, lf, 44, 152, 0).scale.set(10, 9, 14);   // the muzzle
-      put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([[-44, 46, 14], [-80, 70, 24], [-88, 118, 22], [-70, 150, 12], [-50, 146, 4]].map(q => new THREE.Vector3(...q))), 24, 9, 10), lf, 0, 0, 0);   // a tail curling up its back
-      put(S1, lf, -50, 146, 4).scale.set(10, 10, 10);
-      put(S1, pk, 36, 122, 0).scale.set(6, 6, 6); for (const z of [-11, 11]) put(S1, pk, 35, 122, z).scale.set(4, 8, 9);   // the pink bow
-      grp.rotation.y = -(o.fa || 0); grp.scale.setScalar(.85); grp.position.set(o.x, g0, o.y);
     } else return;
     scene.add(grp); roadObjs.push(grp);
   }

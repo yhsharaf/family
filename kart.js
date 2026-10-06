@@ -373,7 +373,6 @@ const TRACKS = {
         coins,
         boxes: [...boxRow(I(420, 1115), [-60, -20, 20, 60]), ...boxRow(pa + u(380), [-70, 70]), ...boxRow(porch + u(150), [-50, 0, 50]).map(b => ({ ...b, z: 62 }))],
         extra(push) {
-          { const [tx, ty] = at(pa - 12, -(ROAD / 2 + CURB + 75)), [rx, ry] = at(pa - 12, 0); OBJS.push({ x: tx, y: ty, k: "topiary", s: .85, r: 40, z: 0, f3d: true, fa: Math.atan2(ry - ty, rx - tx) }); }   // 🐱 the hedge cat, guarding the entrance to the hedge maze
           OBJS.push({ x: ws(1050), y: ws(1030), k: "fountain", s: .8, r: 116, z: 0, f3d: true });                         // the fountain (a 2D picture only in the flat view; solid)
           BUILDINGS.push({ x: ws(1420), y: ws(2008), w: ws(600), d: 70, h: 120, wall: "#fbf7f2", roof: "#f07ab0", tower: true, hospital: true });   // 🏥 the Pet Hospital by the porch (3D): white, a red band, a big red cross on the tower
           for (let i = OBJS.length - 1; i >= 0; i--) { const o = OBJS[i], dx = Math.abs(o.x - ws(1420)), dy = ws(2008) - o.y; if (dx < ws(330) && dy > 0 && dy < 330 && !String(o.k).startsWith("pet_")) OBJS.splice(i, 1); }   // (a clear lawn in front of it)
@@ -1500,22 +1499,6 @@ function makePetsArt() {
     g.fillStyle = "#a0703c"; g.fillRect(44, 142, 32, 24); });
   IMG.chain_post = mk(20, 44, g => { g.fillStyle = "#6b4426"; g.fillRect(6, 4, 8, 40); g.fillStyle = "#8a8d96"; g.beginPath(); g.arc(10, 8, 6, 0, 7); g.fill(); });
 }
-function makeTopiary(pet) {   // 🌿 a giant pet clipped from hedge: a smooth leafy silhouette (darker edges, lit on top, a few flowers) on a pink-and-white planter
-  const sc = 6, w = Math.round(pet.width * sc), h = Math.round(pet.height * sc), W = w + 24, H = h + 70, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
-  const mask = document.createElement("canvas"); mask.width = W; mask.height = h + 12; const m = mask.getContext("2d"); m.imageSmoothingEnabled = true; m.drawImage(pet, 12, 6, w, h);   // (smoothed: round, clipped edges)
-  const leafy = (ctx, base, dark, light) => { ctx.globalCompositeOperation = "source-atop"; ctx.fillStyle = base; ctx.fillRect(0, 0, W, h + 12);
-    for (let k = 0; k < 900; k++) { const v = Math.random(); ctx.fillStyle = v < .4 ? dark : v < .8 ? light : "rgba(255,255,255,.18)"; ctx.beginPath(); ctx.ellipse(Math.random() * W, Math.random() * (h + 12), 3 + Math.random() * 5, 2 + Math.random() * 3, Math.random() * 3, 0, 7); ctx.fill(); }
-    const gr = ctx.createLinearGradient(0, 0, 0, h + 12); gr.addColorStop(0, "rgba(255,255,190,.22)"); gr.addColorStop(.6, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,40,0,.35)"); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, h + 12); ctx.globalCompositeOperation = "source-over"; };
-  const edge = document.createElement("canvas"); edge.width = W; edge.height = h + 12; const e = edge.getContext("2d"); e.drawImage(mask, 0, 0); e.globalCompositeOperation = "source-in"; e.fillStyle = "#1f5e1c"; e.fillRect(0, 0, W, h + 12);
-  for (const [dx, dy] of [[-3, 0], [3, 0], [0, 3], [0, -2]]) g.drawImage(edge, dx, dy);   // a darker clipped rim
-  const body = document.createElement("canvas"); body.width = W; body.height = h + 12; const b = body.getContext("2d"); b.drawImage(mask, 0, 0); leafy(b, "#3f9a34", "rgba(25,90,25,.55)", "rgba(120,215,95,.5)");
-  for (let k = 0; k < 9; k++) { const x = 20 + Math.random() * (W - 40), y = 20 + Math.random() * (h - 30); if (m.getImageData(x, y, 1, 1).data[3] < 200) continue;   // a few flowers in the leaves
-    b.fillStyle = ["#ff8fc4", "#ffffff", "#ff8fc4"][k % 3]; for (let q = 0; q < 5; q++) { b.beginPath(); b.arc(x + Math.cos(q * 1.26) * 4, y + Math.sin(q * 1.26) * 4, 3, 0, 7); b.fill(); } b.fillStyle = "#ffe48a"; b.beginPath(); b.arc(x, y, 2.4, 0, 7); b.fill(); }
-  g.drawImage(body, 0, 0);
-  const py = h + 8; g.fillStyle = "#c8558a"; g.beginPath(); g.moveTo(14, py + 6); g.lineTo(W - 14, py + 6); g.lineTo(W - 30, H - 4); g.lineTo(30, H - 4); g.closePath(); g.fill();   // the pink planter
-  g.fillStyle = "#f07ab0"; g.fillRect(24, py + 22, W - 48, 14); g.fillStyle = "#fbf7f2"; g.beginPath(); g.roundRect(8, py - 2, W - 16, 14, 7); g.fill();   // a white rim and a band
-  return c;
-}
 function placeStart(push) {
   if (!IMG.arch_post || (T.gate === "market" && IMG.mp_sign && IMG.mk_banner && IMG.mk_banner.height !== 200)) makeArchArt();   // (again once the Market Place sign has loaded)
   const li = OPEN ? START_I : 0, half = ROAD / 2 + CURB + 10, [cx, cy] = at(li, 0), mk = T.gate === "market", pp = T.gate === "pets", ice = T.gate === "ice" && IMG.ice_post;
@@ -1615,7 +1598,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=96"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=97"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -3411,7 +3394,6 @@ async function loadArt() {
   for (const n of T.pets || []) for (const [act, cnt] of Object.entries(PETF[n] || {})) for (let i = 0; i < cnt; i++) { const key = `pet_${n}_${act}${i}`;
     if (!IMG[key]) jobs.push(artImg(`media/kart/pets/${n}_${act}${i}.png?v=1`).then(im => { if (im) { im.px = true; IMG[key] = im; } })); }
   await Promise.all(jobs);
-  if (T.pets && !IMG.topiary && IMG.pet_kitty_stand00) IMG.topiary = makeTopiary(IMG.pet_kitty_stand00);
 }
 const ordinal = n => n + (["", "st", "nd", "rd"][n] || "th");
 let TRACK_LEN = 0;
