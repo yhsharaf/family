@@ -165,7 +165,10 @@ export function create(A) {
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const w = smooth(L.rx + 150, L.rx + 20, Math.hypot(i * G - L.cx, j * G - L.cy)); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
     }
-    for (const l of t.ledges || []) for (let o = 0; o < GN * GN; o++) { const n = near[o]; if (n >= l.a && n <= l.b && Math.sqrt(dmin[o]) > edge + 14) HG[o] -= (t.theme.ledgeDrop ?? 260) * smooth(edge + 14, edge + 60, Math.sqrt(dmin[o])); }   // ⛏️ no railings: a sheer drop into the dark beside the road
+    for (const l of t.ledges || []) for (let o = 0; o < GN * GN; o++) { const n = near[o]; if (!(n >= l.a && n <= l.b && Math.sqrt(dmin[o]) > edge + 14)) continue;
+      if (l.side) { const P0 = t.PTS[(n + t.N - 1) % t.N], P1 = t.PTS[(n + 1) % t.N], p = t.PTS[n], cx = (o % GN) * G - p[0], cz = Math.floor(o / GN) * G - p[1], sd = Math.sign((P1[0] - P0[0]) * cz - (P1[1] - P0[1]) * cx), d = Math.sqrt(dmin[o]);
+        if (sd === l.side) HG[o] -= (l.drop ?? 260) * smooth(edge + 14, edge + 50, d) * (l.fade ? smooth(edge + 800, edge + 250, d) * smooth(l.a, l.a + 25, n) * smooth(l.b, l.b - 25, n) : 1); else if (l.rise) HG[o] += l.rise * smooth(edge + 30, edge + 200, d); continue; }   // (fading: the cliff, then the mountainside sloping on down to the valley)   // 🏔️ Sharp Cliff: a sheer drop on the valley side, the mountain rising on the other
+      HG[o] -= (t.theme.ledgeDrop ?? 260) * smooth(edge + 14, edge + 60, Math.sqrt(dmin[o])); }   // ⛏️ no railings: a sheer drop into the dark beside the road
     if (t.sea != null) {   // 🌋 a flat sea (of lava) everywhere off the road, which stands above it on its own rock
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const o = j * GN + i; if (Math.sqrt(dmin[o]) > edge + 14) HG[o] = t.sea; }
       mean = t.sea;
@@ -175,9 +178,9 @@ export function create(A) {
       mean = t.water.bed;
     }
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
-    for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : 320;   // 🍄 a gorge (deep, misty) or the park pond
-      for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * smooth(520, 430, Math.sqrt(dmin[o])));
-      if (t.theme.cliffs && (g.kind === "gorge" || g.kind === "chasm" || g.kind === "bridge")) {   // with cliff walls: the pit is exactly the walls' box (no ground left standing in front of them where the track bends)
+    for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : g.open ? 90 : 320;   // 🍄 a gorge (deep, misty) or the park pond
+      for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * (g.open ? smooth(700, 120, Math.sqrt(dmin[o])) : smooth(520, 430, Math.sqrt(dmin[o]))));   // (an open glide: a smooth hollow in the mountainside)
+      if (t.theme.cliffs && !g.open && (g.kind === "gorge" || g.kind === "chasm" || g.kind === "bridge")) {   // with cliff walls: the pit is exactly the walls' box (no ground left standing in front of them where the track bends)
         let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = g.a; i <= g.b; i++) { const p = t.PTS[i % t.N]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
         const M = 480, gi0 = Math.max(0, Math.floor((x0 - M) / G)), gi1 = Math.min(GN - 1, Math.ceil((x1 + M) / G)), gj0 = Math.max(0, Math.floor((z0 - M) / G)), gj1 = Math.min(GN - 1, Math.ceil((z1 + M) / G));
         for (let j = gj0; j <= gj1; j++) for (let i = gi0; i <= gi1; i++) { const x = i * G, z = j * G; let bd = 1e12, bi = -1;
@@ -333,13 +336,13 @@ export function create(A) {
       for (const [pos, uv, col, ix, m] of [[lp, lu, lc, li, lipM], [fp, fu, fc, fi, fillM]]) { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
         g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.setIndex(ix); g.computeVertexNormals(); const mesh = new THREE.Mesh(g, m); scene.add(mesh); roadObjs.push(mesh); }
     };
-    for (const g of t.gaps || []) { if (g.kind !== "gorge" && g.kind !== "chasm" && g.kind !== "bridge") continue;
+    for (const g of t.gaps || []) { if (g.open || (g.kind !== "gorge" && g.kind !== "chasm" && g.kind !== "bridge")) continue;
       const at2 = (i, o) => { const [tx, ty] = tan(i), p = P[i % N]; return [p[0] - ty * o, p[1] + tx * o]; }, rim = i => RE[Math.max(0, Math.min(N - 1, i % N))] + 1;
       for (const sd of [-1, 1]) { const pts = []; for (let i = g.a; i <= g.b; i += 2) { const [x, z] = at2(i, sd * W), [hx, hz] = at2(i, sd * (W + 110)); pts.push([x, z, Math.max(rim(i), h(hx, hz) + 1)]); } strip(pts); }   // the two long sides, as tall as the hillside behind them
       for (const i of [g.a + 1, g.b - 1]) { const pts = []; for (let o = -W; o <= W; o += 24) { const [x, z] = at2(i, o); pts.push([x, z, rim(i)]); } strip(pts); }   // the ends, under the road's edge
       if (t.theme.cliffs === "snow") {   // ❄ far below: a floor of snow under drifting mist (not bare earth)
         let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, lo = 1e9; for (let i = g.a; i <= g.b; i++) { const p = P[i % N]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); lo = Math.min(lo, rim(i)); }
-        const fl = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 + 2 * W + 60, z1 - z0 + 2 * W + 60), new THREE.MeshLambertMaterial({ color: 0xeef4fc, emissive: 0x3a4658 })); fl.rotation.x = -Math.PI / 2; fl.position.set((x0 + x1) / 2, lo - 300, (z0 + z1) / 2); scene.add(fl); roadObjs.push(fl);
+        const fl = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 + 2 * W + 60, z1 - z0 + 2 * W + 60), g.river ? new THREE.MeshLambertMaterial({ map: riverTex(), emissive: 0x2a5a8a }) : new THREE.MeshLambertMaterial({ color: 0xeef4fc, emissive: 0x3a4658 })); fl.rotation.x = -Math.PI / 2; fl.position.set((x0 + x1) / 2, lo - 300, (z0 + z1) / 2); scene.add(fl); roadObjs.push(fl);   // (a frozen river under the rope bridge)
         const mist = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 + 2 * W, z1 - z0 + 2 * W), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .45, depthWrite: false })); mist.rotation.x = -Math.PI / 2; mist.position.set((x0 + x1) / 2, lo - 230, (z0 + z1) / 2); scene.add(mist); roadObjs.push(mist); }
     }
   }
@@ -438,6 +441,7 @@ export function create(A) {
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
     balloonM = []; flowM = []; for (const o of t.props3d || []) buildProp(o);
     bridgeG = (t.gaps || []).filter(g => g.kind === "bridge"); buildRopeBridges(t);
+    gondM = []; if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
     buildSnowWorld(t); auroraM = []; if (t.aurora) buildAurora(t); if (t.fairy) buildFairy(t.fairy, t);
     for (const b of t.buildings || []) {
       if (b.castle) { buildCastle(b); continue; }
@@ -609,6 +613,77 @@ export function create(A) {
     for (const b of t.bridges3d || []) { const i = b.ri % N, p = P[i], a = ang(i) + Math.PI / 2, y0 = RE[i] + b.dy, pts = [];   // across the ravine, sagging in the middle
       for (let s2 = -b.len / 2; s2 <= b.len / 2; s2 += 8) { const f = s2 / (b.len / 2); pts.push([p[0] + Math.cos(a) * s2, y0 - (1 - f * f) * 26, p[1] + Math.sin(a) * s2, a]); }
       plankBridge(pts, 22); }
+  }
+  // ❄ Mount El Nath's big pieces
+  function riverTex() { return ctex(256, 256, (g, W) => { g.fillStyle = "#9fd2f2"; g.fillRect(0, 0, W, W); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = 2;
+    for (let k = 0; k < 24; k++) { let x = Math.random() * W, y = Math.random() * W; g.beginPath(); g.moveTo(x, y); for (let q = 0; q < 4; q++) { x += (Math.random() - .5) * 60; y += (Math.random() - .5) * 60; g.lineTo(x, y); } g.stroke(); } }, true); }
+  function snowballModel() {   // a giant lumpy snowball, a few sticks and pebbles frozen into it
+    const g = new THREE.Group(), sn = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e, flatShading: true }), geo = new THREE.IcosahedronGeometry(30, 2), pa = geo.attributes.position;
+    for (let v = 0; v < pa.count; v++) { const x = pa.getX(v), y = pa.getY(v), z = pa.getZ(v), k = 1 + .08 * Math.sin(x * .3 + y * .2) * Math.cos(z * .25); pa.setXYZ(v, x * k, y * k, z * k); } geo.computeVertexNormals();
+    g.add(new THREE.Mesh(geo, sn)); const dark = new THREE.MeshLambertMaterial({ color: 0x5a4a3a });
+    for (let k = 0; k < 5; k++) { const a = k * 1.3, b = k * .9, m = new THREE.Mesh(new THREE.SphereGeometry(3, 6, 4), dark); m.position.set(Math.cos(a) * Math.sin(b) * 30, Math.cos(b) * 30, Math.sin(a) * Math.sin(b) * 30); g.add(m); }
+    return g;
+  }
+  function buildIcefall(f) {   // 🧊 a huge frozen waterfall pouring down a rock cliff: the cliff face, a curtain of blue ice trickling slowly down it, icicles along the lip, snow on top, a heap of ice at its foot
+    const bot = h(f.x, f.y) - 30, H = f.height || 380, top = bot + H, W = f.w || 160, CW = W * 4.2, grp = new THREE.Group();
+    const rockG = new THREE.BoxGeometry(CW, H, W * 1.4, 14, 10, 2), pa = rockG.attributes.position;   // the cliff: lumpy, faceted rock
+    for (let v = 0; v < pa.count; v++) { const x = pa.getX(v), y = pa.getY(v), z = pa.getZ(v), n = Math.sin(x * .05 + y * .03) * 14 + Math.sin(x * .013 - y * .021) * 22; if (z > 0) pa.setZ(v, z + n * (1 - Math.abs(x) / CW)); pa.setX(v, x + Math.sin(y * .04) * 10); }
+    rockG.computeVertexNormals(); const rock = new THREE.Mesh(rockG, new THREE.MeshLambertMaterial({ map: cliffMats("snow").fill, color: 0xb8c2d8, emissive: 0x141a24, flatShading: true })); rock.position.set(0, bot + H / 2, -W * .5); grp.add(rock);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(CW + 30, 26, W * 1.6), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e })); cap.position.set(0, top + 8, -W * .5); grp.add(cap);
+    for (let k = 0; k < 9; k++) { const sx = (k / 8 - .5) * CW, b = new THREE.Mesh(new THREE.SphereGeometry(30 + (k % 3) * 10, 10, 6), cap.material); b.scale.y = .55; b.position.set(sx, top + 16, -W * .2); grp.add(b); }   // soft snow drifts along the top
+    const tx = ctex(128, 256, (g, w2, h2) => { const gr = g.createLinearGradient(0, 0, w2, 0); gr.addColorStop(0, "#7fc4ee"); gr.addColorStop(.5, "#e0f6ff"); gr.addColorStop(1, "#7fc4ee"); g.fillStyle = gr; g.fillRect(0, 0, w2, h2);
+      for (let k = 0; k < 60; k++) { const x = Math.random() * w2, y = Math.random() * h2, l = 30 + Math.random() * 80; g.strokeStyle = `rgba(255,255,255,${.3 + Math.random() * .5})`; g.lineWidth = 1 + Math.random() * 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - .5) * 6, y + l); g.stroke(); } }, true);
+    tx.repeat.set(2, H / 260); flowM.push(tx);
+    const sheetG = new THREE.CylinderGeometry(W * .7, W * 1.05, H, 24, 10, true, -1.1, 2.2), sp = sheetG.attributes.position;   // the falls bulge out at the bottom, rippling as they go
+    for (let v = 0; v < sp.count; v++) { const y = sp.getY(v), x = sp.getX(v); sp.setX(v, x * (1 + .1 * Math.sin(y * .04))); sp.setZ(v, sp.getZ(v) * (1 + .08 * Math.sin(x * .1 + y * .02))); }
+    sheetG.computeVertexNormals(); const sheet = new THREE.Mesh(sheetG, new THREE.MeshLambertMaterial({ map: tx, emissive: 0x3a6a9a, side: THREE.DoubleSide })); sheet.position.set(0, bot + H / 2, -W * .55); grp.add(sheet);
+    const icy = new THREE.MeshLambertMaterial({ color: 0xe8f6ff, emissive: 0x4a7aa0, transparent: true, opacity: .9 });
+    for (let k = 0; k < 26; k++) { const x = (k / 25 - .5) * CW, l = 18 + (k * 37 % 5) * 10, ic = new THREE.Mesh(new THREE.ConeGeometry(5, l, 6), icy); ic.rotation.x = Math.PI; ic.position.set(x, top - 6 - l / 2, W * .25 + Math.abs(x) * .0); grp.add(ic); }
+    const heap = new THREE.Mesh(new THREE.SphereGeometry(W * 1.1, 18, 8, 0, 6.3, 0, 1.4), new THREE.MeshLambertMaterial({ color: 0xcfeaff, emissive: 0x3a5a7a, flatShading: true })); heap.scale.set(1.3, .3, .8); heap.position.set(0, bot + 20, W * .3); grp.add(heap);
+    grp.position.set(f.x, 0, f.y); grp.rotation.y = f.faceTo ? Math.atan2(f.faceTo[0] - f.x, f.faceTo[1] - f.y) : 0; scene.add(grp); roadObjs.push(grp);
+  }
+  function buildCliffWall(t, l) {   // the mountain's rock face along Sharp Cliff, on the side away from the drop
+    const CL = cliffMats("snow"), N = t.N, P = t.PTS, off = -l.side * (t.ROAD / 2 + t.CURB + 26), pts = [];
+    for (let i = l.a; i <= l.b; i += 2) { const a = P[(i + N - 1) % N], b = P[(i + 1) % N], ln = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, tx = (b[0] - a[0]) / ln, ty = (b[1] - a[1]) / ln, p = P[i % N]; pts.push([p[0] - ty * off, p[1] + tx * off, RE[i % N]]); }
+    const pos = [], uv = [], ix = []; let arc = 0;
+    pts.forEach((q, k) => { if (k) arc += Math.hypot(q[0] - pts[k - 1][0], q[1] - pts[k - 1][1]); const top = q[2] + 160 + 22 * Math.sin(k * .21) + 10 * Math.sin(k * .53); pos.push(q[0], q[2] - 6, q[1], q[0], top, q[1]); uv.push(arc / 300, 0, arc / 300, (top - q[2]) / 100); if (k) { const a = (k - 1) * 2; ix.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } });
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(ix); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: CL.fill, side: THREE.DoubleSide, emissive: 0x141a24 })); scene.add(m); roadObjs.push(m);
+    const tp = pts.map((q, k) => new THREE.Vector3(q[0], q[2] + 160 + 22 * Math.sin(k * .21) + 10 * Math.sin(k * .53), q[1]));   // a fat lip of snow along its top
+    const lip = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(tp), tp.length * 2, 12, 8), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e })); scene.add(lip); roadObjs.push(lip);
+    if (l.fade) {   // and on the drop side, the cliff face falling sheer below the road's edge, icicles hanging off it
+      const off2 = l.side * (t.ROAD / 2 + t.CURB + 16), dp = [], du = [], di = []; let a2 = 0, prev = null; const top2 = [];
+      for (let i = l.a; i <= l.b; i += 2) { const a = P[(i + N - 1) % N], b = P[(i + 1) % N], ln = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, tx = (b[0] - a[0]) / ln, ty = (b[1] - a[1]) / ln, p = P[i % N], x = p[0] - ty * off2, z = p[1] + tx * off2, y = RE[i % N];
+        if (prev) a2 += Math.hypot(x - prev[0], z - prev[1]); prev = [x, z]; dp.push(x, y + 2, z, x, y - (l.drop ?? 260) * .9, z); du.push(a2 / 300, 0, a2 / 300, -(l.drop ?? 260) * .9 / 100); top2.push(new THREE.Vector3(x, y + 4, z)); const k = dp.length / 6 - 1; if (k) { const q = (k - 1) * 2; di.push(q, q + 1, q + 2, q + 1, q + 3, q + 2); } }
+      const g2 = new THREE.BufferGeometry(); g2.setAttribute("position", new THREE.Float32BufferAttribute(dp, 3)); g2.setAttribute("uv", new THREE.Float32BufferAttribute(du, 2)); g2.setIndex(di); g2.computeVertexNormals();
+      const face = new THREE.Mesh(g2, new THREE.MeshLambertMaterial({ map: CL.fill, side: THREE.DoubleSide, emissive: 0x141a24 })); scene.add(face); roadObjs.push(face);
+      const icy = new THREE.MeshLambertMaterial({ color: 0xe8f6ff, emissive: 0x4a6a8a, transparent: true, opacity: .9 });
+      top2.forEach((v, k) => { if (k % 2) return; const ln = 14 + (k * 37 % 5) * 8, ic = new THREE.Mesh(new THREE.ConeGeometry(3.5, ln, 6), icy); ic.rotation.x = Math.PI; ic.position.set(v.x, v.y - 6 - ln / 2, v.z); scene.add(ic); roadObjs.push(ic); });
+    }
+  }
+  function buildCableCar(c) {   // 🚡 a cable car up the mountain: snowy stations top and bottom, steel pylons, two cables, cute red gondolas gliding up and down
+    const A = new THREE.Vector3(c.a[0], h(c.a[0], c.a[1]), c.a[1]), B = new THREE.Vector3(c.b[0], h(c.b[0], c.b[1]), c.b[1]), steel = new THREE.MeshLambertMaterial({ color: 0x5a6070, emissive: 0x101418 });
+    const snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e }), wood = new THREE.MeshLambertMaterial({ color: 0x8a5a32, emissive: 0x1a0a04 }), red = new THREE.MeshLambertMaterial({ color: 0xd8352d, emissive: 0x2a0606 });
+    const dir = new THREE.Vector3(B.x - A.x, 0, B.z - A.z).normalize(), side = new THREE.Vector3(-dir.z, 0, dir.x), yaw = Math.atan2(dir.x, dir.z), add = m => { scene.add(m); roadObjs.push(m); return m; };
+    const station = (P, back) => { const g = new THREE.Group(), bx = new THREE.Mesh(new THREE.BoxGeometry(110, 60, 90), wood); bx.position.y = 30; g.add(bx); const rf = new THREE.Mesh(new THREE.BoxGeometry(124, 14, 104), snow); rf.position.y = 66; g.add(rf);
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(26, 4, 8, 20), steel); wheel.rotation.x = Math.PI / 2; wheel.position.y = 82; g.add(wheel); g.position.copy(P); g.rotation.y = yaw; add(g); };
+    station(A); station(B);
+    const top = 90, L = A.distanceTo(B), n = Math.max(2, Math.round(L / 320)), cab = (u) => { const p = A.clone().lerp(B, u); return p; };
+    let maxClear = 0; for (let k = 1; k < n; k++) { const p = cab(k / n), g = h(p.x, p.z); maxClear = Math.max(maxClear, g - p.y); }
+    const lift = Math.max(top, maxClear + top);   // (the cable runs high enough to clear the slope between the stations)
+    for (let k = 1; k < n; k++) { const p = cab(k / n), g = h(p.x, p.z), hh = p.y + lift - g, pl = new THREE.Group();
+      for (const sd of [-1, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(5, hh, 5), steel); leg.position.set(sd * 14, hh / 2, 0); leg.rotation.z = sd * .08; pl.add(leg); }
+      for (let y = 20; y < hh; y += 34) { const cr = new THREE.Mesh(new THREE.BoxGeometry(26, 3, 3), steel); cr.position.y = y; pl.add(cr); }
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(60, 6, 6), steel); arm.position.y = hh; pl.add(arm); pl.position.set(p.x, g, p.z); pl.rotation.y = yaw + Math.PI / 2; add(pl); }
+    const a0 = A.clone(), b0 = B.clone(); a0.y += lift; b0.y += lift;
+    for (const sd of [-1, 1]) { const off = side.clone().multiplyScalar(sd * 26), pts = [];
+      for (let k = 0; k <= 20; k++) { const u = k / 20, p = a0.clone().lerp(b0, u).add(off); p.y -= Math.sin(Math.PI * ((u * n) % 1)) * 10; pts.push(p); }
+      add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 1.4, 5), steel)); }
+    const line = { a: a0.clone().setY(a0.y - 34), b: b0.clone().setY(b0.y - 34), off: side.clone().multiplyScalar(26) };
+    for (let k = 0; k < 6; k++) { const g = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(30, 26, 30), red); g.add(body);
+      const win = new THREE.Mesh(new THREE.BoxGeometry(31, 10, 31), new THREE.MeshBasicMaterial({ color: 0xffe9a0 })); win.position.y = 3; g.add(win);
+      const rf = new THREE.Mesh(new THREE.BoxGeometry(34, 6, 34), snow); rf.position.y = 16; g.add(rf); const hang = new THREE.Mesh(new THREE.BoxGeometry(2, 20, 2), steel); hang.position.y = 28; g.add(hang);
+      g.rotation.y = yaw; add(g); gondM.push({ g, line, sp: .05, ph: k / 3 }); }
   }
   function buildDam(b, t) {   // 🌊 the dam: a tall concrete wall with buttresses, a railed walkway on top under thick snow, and half-frozen waterfalls pouring down its road side, icicles hanging off the lip
     const g0 = h(b.x, b.y), grp = new THREE.Group(), a = b.a || 0, nx = -Math.sin(a), nz = Math.cos(a);
@@ -861,6 +936,15 @@ export function create(A) {
       for (const [y, x] of [[Ht - 6, 0], [Ht - 30, 8]]) for (let k = 0; k < 14; k++) { const f = (k + .5) / 14, z = -(half + 24) + f * 2 * (half + 24), sag = Math.sin(f * Math.PI) * 18, tri = new THREE.Mesh(new THREE.ConeGeometry(5, 12, 3), new THREE.MeshBasicMaterial({ color: cols[k % 4] }));
         tri.rotation.x = Math.PI; tri.position.set(x, y - sag - 6, z); grp.add(tri); }   // pennant bunting across the road
       grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "engate") {   // ⛩️ El Nath's town gate: two chunky stone towers with snowy pointed roofs, a timber beam across with a snow lip and red lanterns hanging under it
+      const half = o.half || 120, stone = new THREE.MeshLambertMaterial({ map: rockTex(), color: 0xf0f2f8, emissive: 0x4a4e58 }), snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e }), roofM = L(0x3f6fae, 0x0a1a3a), wood = L(0x7a4a26, 0x1a0a04);
+      for (const sd of [-1, 1]) { const z = sd * (half + 34); put(new THREE.BoxGeometry(56, 170, 56), stone, 0, 85, z); put(new THREE.BoxGeometry(64, 10, 64), wood, 0, 175, z);
+        const rf = put(new THREE.ConeGeometry(50, 70, 4), roofM, 0, 215, z); rf.rotation.y = Math.PI / 4; const sc = put(new THREE.ConeGeometry(30, 40, 4), snow, 0, 236, z); sc.rotation.y = Math.PI / 4;
+        put(new THREE.SphereGeometry(8, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffb040 }), 30, 120, z); }   // a lamp on each tower
+      put(new THREE.BoxGeometry(24, 26, 2 * (half + 34)), wood, 0, 150, 0); put(new THREE.BoxGeometry(30, 12, 2 * (half + 40)), snow, 0, 168, 0);
+      for (let k = -2; k <= 2; k++) { const z = k * half * .4; put(new THREE.CylinderGeometry(1, 1, 16, 4), wood, 0, 130, z); const ln = put(new THREE.CylinderGeometry(9, 9, 20, 12), L(0xe8443a, 0x401008), 0, 115, z); put(new THREE.SphereGeometry(5, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd27a }), 0, 115, z).scale.set(1.9, 1.5, 1.9); }
+      for (let k = 0; k < 16; k++) { const z = -half - 30 + k * (2 * half + 60) / 15, l = 8 + (k * 7 % 4) * 4, ic = put(new THREE.ConeGeometry(2.5, l, 6), new THREE.MeshLambertMaterial({ color: 0xe8f6ff, emissive: 0x4a6a8a }), 13, 136 - l / 2, z); ic.rotation.x = Math.PI; }
+      grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
     } else if (o.k === "xpillar" && o.stone) { return;   // (built from El Nath's ice stone pictures instead, in buildIceStones)
     } else if (o.k === "xpillar") {   // 💎 a crystal standing in the cave road: a tall faceted gem with little ones round its foot, and a pool of light under it
       const H = o.h || 70, c = [0x7fe8ff, 0xc4a4ff, 0xffb0e8][Math.abs(Math.round(o.x * .7 + o.y)) % 3], cl = gemCluster(c, H, H * .18, o.x * .01); grp.add(cl);
@@ -920,7 +1004,7 @@ export function create(A) {
       F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
     F.pts.geometry.attributes.position.needsUpdate = true;
   }
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [];
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [], gondM = [];
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -1067,8 +1151,9 @@ export function create(A) {
   const mdls = {};   // per-frame pools of moving 3D models (the living ice blocks)
   function mdl(kind, x, y, z, a, tt) {
     const P = mdls[kind] || (mdls[kind] = { list: [], i: 0 }); let g = P.list[P.i++];
-    if (!g) { g = kind === "freezie" ? freezieModel() : new THREE.Group(); scene.add(g); P.list.push(g); }
-    g.visible = true; const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
+    if (!g) { g = kind === "freezie" ? freezieModel() : kind === "snowball" ? snowballModel() : new THREE.Group(); scene.add(g); P.list.push(g); }
+    g.visible = true;
+    if (kind === "snowball") { g.position.set(x, h(x, y) + 30, y); g.rotation.set(tt * 4 + x * .01, -a, 0); return; }   // (a giant snowball rolls) const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
   }
   const boxes = []; let bi = 0;
   function box(x, y, tt, i, z = 0) {
@@ -1177,7 +1262,8 @@ export function create(A) {
       for (const q of clockM.pends) { const s = Math.sin(now * q.p.sp + q.p.ph); q.grp.rotation.x = -Math.asin(Math.max(-1, Math.min(1, s * q.p.amp / 300))); } }   // (the bob is where the game thinks it is)
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
     if (fountM) fountStep(performance.now() / 1000);
-    for (const f of flowM) f.offset.y = performance.now() / 1000 * .22;   // the dam's half-frozen waterfalls, trickling slowly
+    for (const f of flowM) f.offset.y = performance.now() / 1000 * .22;
+    if (gondM.length) { const now = performance.now() / 1000; for (const q of gondM) { const f = ((now * q.sp + q.ph) % 2), u = f < 1 ? f : 2 - f, L = q.line, p = L.a.clone().lerp(L.b, u); p.addScaledVector(L.off, f < 1 ? 1 : -1); q.g.position.copy(p); q.g.rotation.z = Math.sin(now * 1.3 + q.ph) * .04; } }   // 🚡 gondolas gliding up one cable and down the other   // the dam's half-frozen waterfalls, trickling slowly
     if (auroraM.length) { const now = performance.now() / 1000; for (const q of auroraM) { const pa = q.m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { const b = q.base[v]; pa.setY(v, b[1] + Math.sin(now * .5 + b[3] * 3 + q.ph) * 40 * b[4]); pa.setZ(v, b[2] + Math.sin(now * .35 + b[3] * 5 + q.ph) * 90); } pa.needsUpdate = true; q.m.material.opacity = .62 + Math.sin(now * .7 + q.ph) * .15; } }
     for (const q of balloonM) q.g.position.y = q.y + Math.sin(performance.now() / 1000 * 2 + q.o.x) * (q.o.bob || 0);   // the balloons sway up and down
     if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }

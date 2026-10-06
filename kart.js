@@ -506,72 +506,65 @@ const TRACKS = {
       };
     },
   },
-  // 3. Mount El Nath (after Mario Kart 8's Mount Wario, made a 3-lap loop so the pack stays together): off the summit on a glider, round
-  // into the ice cave with its Cold Eyes and out over the ravine on another glider, past the two flat rocks and up the boost ramp to the
-  // dam, down the spillway streams, through the forest split (rocks to trick off), down the slalom run to the ski jump (a glide through
-  // three boost rings), then the long climb back up the east face to the summit.
+  // 3. Mount El Nath: MapleStory's El Nath merged with Mario Kart's mountain courses. From El Nath town at the summit (the start), out along
+  // Sharp Cliff, a road cut into the cliff with a sheer drop to Ice Valley on one side (Rock Rock Mountain); off its end on the glider, over
+  // the snowy forest past a giant frozen icefall and through three boost rings; down in Ice Valley a giant Yeti rolls snowballs across the road
+  // (DK Mountain's boulders); a rickety rope bridge over the frozen river; then the switchbacks back up beside the cable car (DK Summit /
+  // Mount Wario), penguins sliding down past you, and in through El Nath's gate to the line. The Yetis STOMP on the last lap.
   en3: {
-    id: "mtelnath", scale: 1.18, road: 180, gate: "ice", cup: "elnath", music: "k_elnath3", name: "Mount El Nath", sub: "Ice Valley · the rope bridge · glider jumps · Yetis", icon: "🏔️",
-    ctrl: [[1700, 300, 300], [1560, 300, 300], [1420, 305, 298], [1200, 320, 270], [1000, 340, 255], [800, 320, 245], [600, 300, 236], [430, 330, 228], [310, 430, 220], [290, 580, 210],
-      [380, 690, 200], [550, 730, 190], [750, 740, 180], [1000, 750, 160], [1180, 760, 150], [1350, 790, 145], [1520, 860, 140], [1640, 980, 130], [1650, 1120, 120], [1560, 1250, 105],
-      [1380, 1300, 95], [1180, 1320, 85], [980, 1330, 75], [760, 1330, 65], [560, 1340, 55], [400, 1400, 48], [330, 1520, 42], [400, 1640, 36], [560, 1700, 30], [700, 1710, 26],
-      [1150, 1720, 15], [1400, 1700, 12], [1620, 1640, 20], [1790, 1520, 40], [1910, 1340, 75], [1950, 1120, 115], [1950, 900, 160], [1930, 700, 205], [1890, 520, 250], [1830, 380, 285]],
-    theme: { ...TH.elnath, mountain: true, flowers: 500, tufts: 0, road: "snow", curb: ["#c8302a", "#f4f8ff"], cliffs: "snow", ledges: true, drifts: true }, art: { sky: "media/kart/elnath/iv_skypano.webp?v=1", strip: "media/kart/elnath/iv_strip.webp?v=1" },
-    near: ["en_bush", "en_bush2"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines"], mobs: ["leatty", "jr_yeti", "yeti", "white_fang"],
+    id: "elsummit", scale: 2.0, road: 180, gate: "ice", cup: "elnath", music: "k_elnath3", name: "Mount El Nath", sub: "Sharp Cliff · the big glide · rolling snowballs · the cable car climb", icon: "🏔️",
+    ctrl: [[1700, 330, 300], [1560, 320, 300], [1420, 315, 300], [1280, 320, 298], [1130, 340, 292], [980, 330, 286], [830, 345, 280], [690, 370, 274], [570, 410, 268], [480, 470, 262],
+      [430, 560, 230], [440, 680, 170], [500, 800, 110], [590, 900, 70], [700, 980, 50], [830, 1060, 40], [980, 1120, 34], [1130, 1170, 30], [1260, 1240, 30],
+      [1360, 1290, 30], [1490, 1310, 30], [1620, 1320, 30], [1760, 1345, 36], [1860, 1300, 50],
+      [1760, 1245, 75], [1650, 1200, 100], [1590, 1140, 112], [1630, 1065, 125], [1720, 1035, 145], [1880, 990, 170], [1940, 920, 185], [1895, 845, 200],
+      [1790, 810, 220], [1650, 780, 240], [1590, 720, 252], [1635, 640, 264], [1730, 595, 278], [1860, 545, 290], [1900, 460, 298], [1830, 390, 300], [1760, 350, 300]],
+    theme: { ...TH.elnath, mountain: true, flowers: 500, tufts: 0, road: "snow", curb: ["#c8302a", "#f4f8ff"], cliffs: "snow", drifts: true }, art: { sky: "media/kart/elnath/iv_skypano.webp?v=1", strip: "media/kart/elnath/iv_strip.webp?v=1" },
+    near: ["en_bush", "en_bush2", "en_pine"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines"], mobs: ["jr_yeti", "yeti", "white_fang", "pepe"],
     build() {
-      makeSnowArt(); makePetsArt();
+      makeSnowArt();
       const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [], rings = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      // a glider jump: the ramp, then a ravine (fall short and you're put back before it)
-      const glide = (x, y, len) => { const a = I(x, y); pads.push({ t: "glide", i: a - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a, b: a + u(len), kind: "chasm", caps: [] }); return a; };
-      glide(1420, 305, 300);                                   // off the summit
-      const cave = { a: I(400, 700), b: I(750, 740), rock: true };
-      const g2 = I(780, 742); gaps.push({ a: g2, b: g2 + u(420), kind: "bridge", deck: 66, caps: [] });   // 🌉 out of the cave: a long rope bridge over the ravine (no railings: fall off and down you go)
-      pads.push({ t: "boost", i: I(1180, 760), len: 10, o: -45, w: 60 }, { t: "boost", i: I(1350, 790), len: 10, o: 45, w: 60 });   // the two flat rocks
-      pads.push({ t: "boost", i: I(1520, 860) - 12, len: 8, o: 0, w: 70 }, { t: "ramp", i: I(1520, 860), len: 8, o: 0, w: ROAD });     // the boost ramp to the dam
-      for (const [x, y, o] of [[1380, 1300, -40], [1280, 1310, 40], [1180, 1320, -40]]) pads.push({ t: "boost", i: I(x, y), len: 10, o, w: 55 });   // down the spillway streams
-      for (const [x, y, o] of [[900, 1330, -45], [700, 1335, 45]]) pads.push({ t: "ramp", i: I(x, y), len: 6, o, w: 70 });   // rocks to trick off
-      for (const [x, y] of [[560, 1700], [620, 1705]]) pads.push({ t: "boost", i: I(x, y), len: 10, o: 0, w: 80 });                // down the ski jump
-      const g3 = glide(700, 1710, 480);                        // the ski jump's glide…
-      for (const [d, z, o] of [[160, 150, 0], [290, 180, 25], [420, 160, -25]]) rings.push({ i: g3 + u(d), o, z, r: 42 });     // …through three boost rings
-      // 🔢 coins
-      row(I(1200, 320) + 6, I(800, 320), 6, j => Math.sin(j) * 40); row(cave.a + 8, cave.b - 8, 5, 0); row(I(1640, 980), I(1560, 1250), 6, -35);
-      row(I(400, 1640), I(560, 1700), 5, j => (j & 1 ? 40 : -40)); row(I(1620, 1640), I(1950, 1120), 7, 0); row(I(1930, 700), I(1830, 380), 5, 30);
-      for (let n = 0; n < 6; n++) { const [x, y] = at(g2 + u(50 + n * 65), (n & 1 ? 30 : -30)); coins.push({ x, y, z: 0, got: false }); }   // mesos along the bridge, left and right
+      // 🏔️ Sharp Cliff: no railing on the valley side
+      const cliff = { a: I(1180, 335), b: I(500, 450), side: -1, drop: 200, fade: true, rise: 140, wall: true };
+      // 🪂 the big glide off the end of Sharp Cliff, over the forest to the valley floor
+      const ga = I(472, 490), gb = I(600, 905); pads.push({ t: "glide", i: ga - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: ga, b: gb, kind: "chasm", open: true, caps: [] });   // (open: the forested mountainside below, no ravine walls)
+      for (const [f, o, z] of [[.3, 0, 130], [.55, 30, 120], [.8, -25, 100]]) rings.push({ i: Math.round(ga + (gb - ga) * f), o, z, r: 44 });
+      for (let n = 0; n < 6; n++) { const [x, y] = at(Math.round(ga + (gb - ga) * (.15 + n * .13)), Math.sin(n) * 30); coins.push({ x, y, z: 110 + 20 * Math.sin(n), got: false }); }   // a trail of mesos through the air
+      // 🌉 the rope bridge over the frozen river
+      const ba = I(1345, 1288), bb = I(1640, 1323); gaps.push({ a: ba, b: bb, kind: "bridge", deck: 70, river: true, caps: [] });
+      // ❄ Ice Valley: a giant Yeti on the hillside rolls snowballs across the road
+      const snowballs = [[.25, 0], [.5, 2.1], [.75, 4.2]].map(([f, ph]) => ({ i: Math.round(I(830, 1060) + (I(1200, 1205) - I(830, 1060)) * f), ph, k: "snowball", sp: .7, s: .7, amp: ROAD / 2 + 70 }));
+      // 🚀 boosts: off the town's edge onto Sharp Cliff, out of the valley, and out of every hairpin on the climb
+      pads.push({ t: "boost", i: I(1280, 320), len: 10, o: 0, w: 70 }, { t: "boost", i: I(1260, 1240), len: 10, o: -30, w: 60 }, { t: "boost", i: I(1260, 1240), len: 10, o: 30, w: 60 });
+      for (const [x, y] of [[1650, 1200], [1880, 990], [1650, 780], [1860, 545]]) pads.push({ t: "boost", i: I(x, y), len: 9, o: 0, w: 70 });
+      // 🔢 mesos
+      row(I(1650, 325), I(1300, 320), 6, 0); row(I(1100, 338), I(620, 395), 7, j => (j & 1 ? 35 : -35)); row(I(700, 980), I(820, 1055), 4, 0); row(ba + 4, bb - 4, 6, j => (j & 1 ? 30 : -30));
+      row(I(1700, 1225), I(1600, 1160), 3, 0); row(I(1760, 1015), I(1870, 995), 3, 0); row(I(1760, 800), I(1660, 785), 3, 0);
       return {
-        gaps, caves: [cave], rings, pads, coins,
-        fork: { a: I(980, 1330), b: I(560, 1340), via: [[ws(880), ws(1250)], [ws(660), ws(1255)]], width: 140, style: "cobble" },   // 🌲 the forest split
-        pigs: [...[[1300, 785, 0], [1650, 1060, 1.5], [1000, 1330, 3], [1400, 1700, 4.4], [1950, 1000, 2.2]].map(([x, y, ph]) => ({ i: I(x, y), ph, k: "white_fang", sp: .85, soft: true, s: .6 })),   // 🐺 White Fangs dashing across the road
-          ...[.25, .55, .8].map((f, n) => ({ i: Math.round(cave.a + (cave.b - cave.a) * f), ph: n * 2.1, k: "leatty", sp: .8, soft: true, s: 1.4, fly: true }))],   // ❄ Leatties drifting across the ice mine
-        boxes: [...boxRow(I(1000, 340), [-60, -20, 20, 60]), ...boxRow(I(1000, 750), [-60, -20, 20, 60]), ...boxRow(I(1560, 1250), [-60, -20, 20, 60]), ...boxRow(I(330, 1520), [-60, -20, 20, 60]), ...boxRow(I(1950, 1000), [-60, -20, 20, 60])],
+        gaps, rings, pads, coins, ledges: [cliff], pigs: [...snowballs, ...[[700, 980, 0], [1760, 1345, 2], [1720, 1035, 4]].map(([x, y, ph]) => ({ i: I(x, y), ph, k: "white_fang", sp: .85, soft: true, s: .6 }))],   // 🐺 White Fangs dashing across
+        boxes: [...boxRow(I(1420, 315), [-60, -20, 20, 60]), ...boxRow(I(830, 345), [-55, -15, 25]), ...boxRow(I(980, 1120), [-60, -20, 20, 60]), ...boxRow(I(1760, 1345), [-60, -20, 20, 60]), ...boxRow(I(1730, 595), [-50, 0, 50])],
+        cable: { a: [ws(1470), ws(1185)], b: [ws(1470), ws(445)] },   // 🚡 the cable car, from the valley up to town
+        icefalls: [{ x: ws(540), y: ws(1215), height: 340, w: 150, faceTo: [ws(470), ws(500)] }],   // 🧊 the giant icefall on the cliff ahead of you as you glide down
         extra(push) {
-          // 🌲 the wood between the two forest roads, and pines round the ski run
-          for (let n = 0; n < 7; n++) push(ws(640 + n * 32), ws(1288 + (n & 1) * 12), n % 2 ? "en_pine" : "en_pine3");
-          for (let i = cave.a + 8, n = 0; i < cave.b - 4; i += 14, n++) { const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB - 4)); OBJS.push({ x, y, k: "en_lamp", s: .3, r: 0, z: 0 }); }   // 🏮 lanterns lighting the ice mine
-          const clear = (x, y, d) => roadDist(x, y) > ROAD / 2 + CURB + d, solid = (k, x, y, h3, depth, ex) => { if (ex || clear(x, y, h3 * .35)) OBJS.push({ x, y, k, s: PROPS[k][0] * h3 / 90, r: ex ? 0 : Math.round(h3 * .3), z: 0, f3d: true, solid: true, h3, depth, ...(ex || {}) }); };
-          let sd0 = 5; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
-          for (const [x, y, sc] of [[1100, 520, 1.3], [450, 1050, 1.2], [1250, 1520, 1.1]]) solid("en_icestone" + Math.floor(rr() * 6), ws(x), ws(y), 120 * sc);   // 🧊 El Nath's ice stones out on the slopes
-          // 🪨 snowy boulders and dead trees along the ravines' rims, and boulders scattered over the mountainside (maplestory.io, made solid)
-          for (const g of gaps) for (let i = g.a - 8; i <= g.b + 8; i += 10 + Math.floor(rr() * 14)) { const sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (440 + rr() * 90));
-            if (rr() < .28) solid("en_deadtree" + Math.floor(rr() * 3), x, y, 90 + rr() * 60, .16); else solid("en_rock" + Math.floor(rr() * 6), x, y, 50 + rr() * rr() * 110, .22); }
-          for (let n = 0; n < 40; n++) { const x = 120 + rr() * (WORLD - 240), y = 120 + rr() * (WORLD - 240); if (clear(x, y, 140)) solid("en_rock" + Math.floor(rr() * 6), x, y, 50 + rr() * rr() * 100, .22); }
-          // 🧗 Ice Valley's cliffs: every ravine is walled with stacked snowy rock crags, a lip of snowy ledges with icicles along the top (maplestory.io, made solid)
-          const CW = 404; let bridges3d = [];
-          for (const g of gaps) { for (const sd of [-1, 1]) for (let i = g.a + 2, n = 0; i <= g.b - 2; i += 17, n++) { const [x, y] = at(i, sd * CW), [x2, y2] = at(i, sd * (CW + 30));
-              for (let r = 0; r < 3; r++) { const [cx, cy] = r ? [x + (x2 - x) * r * .25, y + (y2 - y) * r * .25] : [x, y]; solid("iv_crag" + ((n + r) % 2), cx, cy, 150, .16, { ri: i, dy: -125 - r * 120 + (n % 2) * 14 }); }
-              solid("iv_ledge" + (n % 5), x, y, 70 + (n % 3) * 12, .22, { ri: i, dy: -46 }); }
-            for (const [i, back] of [[g.a, 0], [g.b, 1]]) for (let o = -CW + 60, n = 0; o <= CW - 60; o += 125, n++) { if (Math.abs(o) < ROAD / 2 + 50) continue; const [x, y] = at(i, o), ta = tangent(i) + (back ? Math.PI : 0);   // the end walls
-              for (let r = 0; r < 3; r++) solid("iv_crag" + ((n + r) % 2), x, y, 150, .16, { ri: i, dy: -125 - r * 120, fa: ta }); } }
-          // 🌉 rope bridges strung across the glide ravines far below you (like Ice Valley's lower bridges)
-          bridges3d = gaps.filter(g => g.kind === "chasm").map((g, n) => ({ ri: Math.round((g.a + g.b) / 2) + (n ? 8 : -6), dy: -170 - n * 30, len: CW * 2 - 20 })); BRIDGES3D.push(...bridges3d);
-          // 🌲 the snowy pine forest: thick clusters of El Nath's pines along the mountain
-          for (let i = 0; i < N; i += 9) { if (gaps.some(g => i >= g.a - 10 && i <= g.b + 10) || (i >= cave.a - 6 && i <= cave.b + 6)) continue; for (const sd of [-1, 1]) { if (rr() < .35) continue;
-              for (let c = 0; c < 3; c++) { const [x, y] = at(i + Math.round((rr() - .5) * 8), sd * (ROAD / 2 + CURB + 70 + c * 70 + rr() * 90)); if (clear(x, y, 40)) push(x, y, ["en_pine", "en_pine2", "en_pine3", "iv_pine3", "iv_pine4"][Math.floor(rr() * 5)]); } } }   // (sprites: a tree looks full from every side)
-          // 🦍 Ice Valley's Yetis: big ones standing on the cliff tops (on the last lap they STOMP), Jr. Yetis hopping about by the road
-          gaps.forEach((g, n) => { const i = Math.round((g.a + g.b) / 2) + (n - 1) * 10, sd = n % 2 ? 1 : -1, [x, y] = at(i, sd * (CW + 90)); OBJS.push({ x, y, k: "yeti", s: 1.5, r: 50, z: 0, bob: 10, mob: true, stomp: true, stompMsg: "💥 Yeti STOMP!" }); });
-          for (const [px, py] of [[1150, 340], [600, 300], [1640, 1060], [1180, 1330], [1500, 1700], [1940, 800]]) { const i = I(px, py), [x, y] = at(i, (i & 1 ? 1 : -1) * (ROAD / 2 + CURB + 60)); if (clear(x, y, 40)) OBJS.push({ x, y, k: "jr_yeti", s: .7, r: 0, z: 0, bob: 14, mob: true }); }
-          // 🏠 a little El Nath village at the summit, and a house by the finish
-          { const roofs = [0xd2602a, 0x3f7fae, 0xb8402e, 0x8a5a9a]; let n = 0; for (const [i, o] of [[I(1700, 300) + 6, 1], [I(1560, 300), 1], [I(1560, 300), -1], [I(1420, 305) - 18, 1], [N - 30, 1], [N - 60, -1]]) { const [x, y] = at(i, o * (ROAD / 2 + CURB + 140)); if (clear(x, y, 100)) OBJS.push({ x, y, k: "enhouse", s: 1, r: 72, z: 0, roof: roofs[n++ % 4], wall: n % 2 ? "#f3e3c3" : "#e8d2a8" }); } }
+          const clear = (x, y, d) => roadDist(x, y) > ROAD / 2 + CURB + d;
+          let sd0 = 7; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+          // 🏠 El Nath town at the summit: chubby snow-roofed houses along both sides of the start straight, lanterns, Pepes cheering
+          { const roofs = [0xd2602a, 0x3f7fae, 0xb8402e, 0x8a5a9a, 0xc8702a]; let n = 0; const town = []; for (let i = I(1300, 320); i >= -(N - I(1760, 350)); i -= 1) town.push((i + N) % N);   // (the town: from the gate round past the line to the edge of the summit)
+            for (const i of town.filter((_, q) => q % 26 === 0)) for (const sd of [-1, 1]) { if ((n++ + (sd > 0 ? 1 : 0)) % 2) continue; const [x, y] = at(i, sd * (ROAD / 2 + CURB + 120)); if (clear(x, y, 90)) OBJS.push({ x, y, k: "enhouse", s: .9 + (n % 3) * .1, r: 72, z: 0, roof: roofs[n % roofs.length], wall: n % 2 ? "#f3e3c3" : "#e8d2a8" }); }
+            for (const i of town.filter((_, q) => q % 16 === 8)) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 22)); push(x, y, "en_lamp"); }
+            for (let n2 = 0; n2 < 8; n2++) { const i = (I(1700, 330) - n2 * 9 + N) % N, sd = n2 % 2 ? 1 : -1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 60)); OBJS.push({ x, y, k: "pepe", s: .5, r: 0, z: 0, bob: 8, mob: true }); } }
+          // ⛩️ El Nath's gate, at the top of the climb, into town
+          { const gi = I(1830, 390), [x, y] = at(gi, 0); OBJS.push({ x, y, k: "engate", s: 1, r: 0, z: 0, f3d: true, fa: tangent(gi), half: ROAD / 2 + CURB }); }
+          // 🦍 the Yetis: one on the mountain above Sharp Cliff, the snowball-roller on the valley's hillside, one by the bridge (on the last lap they all STOMP)
+          for (const [i, o] of [[I(900, 333), ROAD / 2 + CURB + 170], [I(1000, 1125), -(ROAD / 2 + CURB + 230)], [I(1600, 1322), -(ROAD / 2 + CURB + 560)]]) { const [x, y] = at(i, o); OBJS.push({ x, y, k: "yeti", s: 2, r: 60, z: 0, bob: 10, mob: true, stomp: true, stompMsg: "💥 Yeti STOMP!" }); }
+          // ⛄ Jr. Yetis hopping by the road on the climb, penguins sliding down the slope past you
+          for (const [x, y] of [[1700, 1225], [1800, 1010], [1700, 795], [1800, 570]]) { const i = I(x, y), [px, py] = at(i, (i & 1 ? 1 : -1) * (ROAD / 2 + CURB + 50)); OBJS.push({ x: px, y: py, k: "jr_yeti", s: .7, r: 0, z: 0, bob: 14, mob: true }); }
+          for (let n = 0; n < 6; n++) OBJS.push({ x: 0, y: 0, k: "pepe", s: .45, r: 0, z: 0, slide: { a: I(1860, 545), b: I(1860, 1300), o: (n % 2 ? 1 : -1) * (ROAD / 2 + CURB + 8), sp: .08 + (n % 3) * .015, ph: n / 6 } });
+          // 🌲 the snowy pine forest: thick clusters along the valley and round the climb (sprites), the hillside below Sharp Cliff full of pines
+          for (let i = I(700, 980); i < I(1860, 1300); i += 7) for (const sd of [-1, 1]) for (let c = 0; c < 2; c++) { if (gaps.some(g => i >= g.a - 6 && i <= g.b + 6) || rr() < .3) continue;
+            const [x, y] = at(i + Math.round((rr() - .5) * 6), sd * (ROAD / 2 + CURB + 70 + c * 80 + rr() * 80)); if (clear(x, y, 40)) push(x, y, ["en_pine", "en_pine2", "en_pine3"][Math.floor(rr() * 3)]); }
+          for (let n = 0; n < 70; n++) { const x = ws(250 + rr() * 1100), y = ws(480 + rr() * 520); if (clear(x, y, 80)) push(x, y, ["en_pine", "en_pine2", "en_pine3"][Math.floor(rr() * 3)]); }
+          for (let n = 0; n < 30; n++) { const x = ws(1520 + rr() * 480), y = ws(480 + rr() * 900); if (clear(x, y, 60) && Math.abs(x - ws(1470)) > 70) push(x, y, ["en_pine", "en_pine2", "en_pine3"][Math.floor(rr() * 3)]); }
         },
       };
     },
@@ -961,7 +954,7 @@ function loadTrack(key) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
-  CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = [];
+  CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = []; T.cableDef = f.cable || null; T.icefallDefs = f.icefalls || [];
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
   HIDE = [];
@@ -1330,7 +1323,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
     }
   }
   // 🍄 under a mushroom crossing the 3D view digs out a gorge (or the pond): paint that ground as rock and earth, not road and grass
-  if (!only) for (const gp of GAPS) {
+  if (!only) for (const gp of GAPS) { if (gp.open) continue;
     const xs = [], ys = []; for (let i = gp.a; i <= gp.b; i++) { xs.push(PTS[i][0]); ys.push(PTS[i][1]); }
     const x0 = Math.max(0, Math.min(...xs) - 540), x1 = Math.min(WORLD, Math.max(...xs) + 540), y0 = Math.max(0, Math.min(...ys) - 540), y1 = Math.min(WORLD, Math.max(...ys) + 540);
     const pal = gp.kind === "water" ? ["#7a6440", "#6e5a3a", "#86704a"] : ["#7e6a58", "#6f5c4c", "#8c7764", "#5e4e42"];
@@ -1388,7 +1381,7 @@ function lavaMap() {
 }
 // roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
 // s = world units per picture pixel, r = how solid it is
-const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse", "xpillar"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
+const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse", "xpillar", "engate"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
 const PROPS = { treehouse: [.62, 0], iv_crag0: [.5, 0, "elnath"], iv_crag1: [.5, 0, "elnath"], iv_ledge0: [.3, 0, "elnath"], iv_ledge1: [.4, 0, "elnath"], iv_ledge2: [.6, 0, "elnath"], iv_ledge3: [.6, 0, "elnath"], iv_ledge4: [.5, 0, "elnath"], iv_pine0: [1.4, 12, "elnath"], iv_pine1: [1.6, 12, "elnath"], iv_pine2: [1.6, 12, "elnath"], iv_pine3: [1.1, 16, "elnath"], iv_pine4: [1.3, 14, "elnath"], iv_bridge: [.4, 0, "elnath"], en_rock0: [.35, 40, "elnath"], en_rock1: [.4, 34, "elnath"], en_rock2: [.4, 32, "elnath"], en_rock3: [.5, 22, "elnath"], en_rock4: [.5, 20, "elnath"], en_rock5: [.5, 22, "elnath"], en_deadtree0: [.5, 16, "elnath"], en_deadtree1: [.45, 18, "elnath"], en_deadtree2: [.5, 14, "elnath"],
   en_icestone0: [.5, 18, "elnath"], en_icestone1: [.5, 20, "elnath"], en_icestone2: [.5, 18, "elnath"], en_icestone3: [.45, 22, "elnath"], en_icestone4: [.5, 16, "elnath"], en_icestone5: [.45, 24, "elnath"], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
   hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10],
@@ -1483,7 +1476,8 @@ function makeSnowArt() {
     for (const [x, w, h, c] of [[70, 34, 250, "#c9b8ff"], [38, 24, 170, "#b8d8ff"], [104, 26, 190, "#d8c8ff"], [20, 16, 110, "#cfe8ff"], [122, 16, 120, "#c0d0ff"]]) {
       const gr = g.createLinearGradient(x - w, 0, x + w, 0); gr.addColorStop(0, c); gr.addColorStop(.5, "#ffffff"); gr.addColorStop(1, c); g.fillStyle = gr;
       g.beginPath(); g.moveTo(x, 260 - h); g.lineTo(x + w / 2, 260 - h * .25); g.lineTo(x + w / 3, 260); g.lineTo(x - w / 3, 260); g.lineTo(x - w / 2, 260 - h * .25); g.closePath(); g.fill(); } });
-  IMG.xpillar = IMG.icicle;   // (the cave's crystal pillars, in the flat view)
+  IMG.xpillar = IMG.icicle;
+  IMG.snowball = mk(90, 90, g => { const gr = g.createRadialGradient(36, 34, 6, 45, 45, 44); gr.addColorStop(0, "#ffffff"); gr.addColorStop(1, "#c8d8ee"); g.fillStyle = gr; g.beginPath(); g.arc(45, 45, 43, 0, 7); g.fill(); });   // (the rolling snowball, in the flat view)   // (the cave's crystal pillars, in the flat view)
   IMG.freezie = mk(110, 130, g => {   // 🧊 a Freezie: a crystal ice block with a jagged top, big eyes and a zig-zag grin
     const body = new Path2D(); body.moveTo(8, 126); body.lineTo(4, 50); body.lineTo(22, 30); body.lineTo(30, 44); body.lineTo(46, 6); body.lineTo(60, 34); body.lineTo(74, 14); body.lineTo(84, 40); body.lineTo(104, 46); body.lineTo(102, 126); body.closePath();
     const gr = g.createLinearGradient(0, 0, 110, 130); gr.addColorStop(0, "#e8f8ff"); gr.addColorStop(.45, "#9ad8fb"); gr.addColorStop(1, "#5aa6e0"); g.fillStyle = gr; g.fill(body);
@@ -1596,7 +1590,7 @@ function placeObjects() {
       const [m, half, p] = t, want = half + CURB + o.r + 6, dx = o.x - p[0], dy = o.y - p[1], len = Math.hypot(dx, dy) || 1; o.x = p[0] + dx / len * want; o.y = p[1] + dy / len * want; }
     return !touching(o);
   });
-  if (GAPS.length) OBJS = OBJS.filter(o => { if (o.ri != null || o.stomp) return true; const m = nearest(o.x, o.y); return !(gapAt(m.i) && m.d < 520); });   // (the cliffs' own crags and the Yetis on them stay)   // nothing stands over a gorge or pond
+  if (GAPS.length) OBJS = OBJS.filter(o => { if (o.ri != null || o.stomp) return true; const m = nearest(o.x, o.y), g = gapAt(m.i); return !(g && m.d < (g.open ? ROAD : 520)); });   // (the cliffs' own crags and the Yetis on them stay)   // nothing stands over a gorge or pond
   if (T.far.length) for (let k = 0; k < Math.round((CLEAN ? 60 : 170) * WS * WS); k++) {   // woods and houses further out (as many per acre on a bigger map; none out in space)
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
     if (d < ROAD / 2 + (CLEAN ? 260 : 130) || inLake(x, y) || (GAPS.length && d < 560 && gapAt(nearest(x, y).i))) continue;
@@ -1639,11 +1633,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=130"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=142"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2119,7 +2113,7 @@ function rivalStep(r, dt, tt) {
   }
   if (LAKE && lakeFall() && !air && near.d > near.half + 4 && inLake(r.x, r.y)) rescue(r);   // fell off the bridge
   if (T.water && !air && near.d > near.half + CURB + 8) rescue(r);   // 🌊 off the boardwalk
-  if (LEDGES.length && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(r.x, r.y, 10) && LEDGES.some(l => r.idx >= l.a && r.idx <= l.b)) rescue(r);
+  if (LEDGES.length && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(r.x, r.y, 10) && LEDGES.some(l => r.idx >= l.a && r.idx <= l.b && ledgeSide(l, r))) rescue(r);
   // items: Elixirs and the Arm right away, a slime when someone is close behind, an arrow when someone is ahead
   if (r.item && r.itemT <= 0 && r.spin <= 0 && !r.done) {
     const p = progOf(r), others = racers().filter(o => o !== r);
@@ -2173,6 +2167,7 @@ function caveWall(c, i, x, y) {   // how far the cave wall is from the road's ce
   const rt = Math.hypot(qb[0] - pa[0], qb[1] - pa[1]) / Math.max(1e-3, 2 * Math.abs(da)), a = tangent(i), side = Math.sign(-(x - p[0]) * Math.sin(a) + (y - p[1]) * Math.cos(a));
   return side === Math.sign(da) ? Math.min(c.half, Math.max(rt * .8, ROAD / 2 + CURB + 26)) : c.half;
 }
+const ledgeSide = (l, r) => { if (!l.side) return true; const i = nearest(r.x, r.y, r.idx).i, p = PTS[i], a = tangent(i); return Math.sign(-(r.x - p[0]) * Math.sin(a) + (r.y - p[1]) * Math.cos(a)) === l.side; };   // (a one-sided ledge: only its drop side)
 function slideStep(tt) {   // 🐧 penguins sliding down the rims of the penguin slide, over and over
   for (const o of OBJS) if (o.slide) { const q = o.slide, f = (tt * q.sp + q.ph) % 1, [x, y] = at(Math.round(q.a + (q.b - q.a) * f), q.o); o.x = x; o.y = y; }
 }
@@ -2601,13 +2596,15 @@ function step(dt) {
   if (k.bonk > 0) k.bonk -= dt;
   for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
-    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Ice block!" : p.k === "fishbone" ? "🐟 Bone Fish!" : p.k === "roller" ? "🪨 Boulder!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Ice block!" : p.k === "snowball" ? "❄️ Snowball!" : p.k === "fishbone" ? "🐟 Bone Fish!" : p.k === "roller" ? "🪨 Boulder!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
   for (const c of CAVES) if (c.half && k.idx >= c.a + 1 && k.idx <= c.b - 1 && near.d > Math.min(c.half - 22, caveWall(c, near.i, k.x, k.y) - 22)) {   // 💎 the cave's walls are solid: no driving out through them
     const [cx, cy] = at(near.i, 0), dx = k.x - cx, dy = k.y - cy, d = Math.hypot(dx, dy) || 1, lim = Math.min(c.half - 22, caveWall(c, near.i, k.x, k.y) - 22); k.x = cx + dx / d * lim; k.y = cy + dy / d * lim; if (k.bump <= 0) { k.v *= .7; k.bump = .3; bumpSound(); } k.drift = 0; }
   for (const c of CHUTES) if (!air && k.idx >= c.a && k.idx <= c.b && near.d > near.half + CURB - 6) {   // 🐧 the penguin slide's ice walls keep you in
     const [cx, cy] = at(near.i, 0), dx = k.x - cx, dy = k.y - cy, d = Math.hypot(dx, dy) || 1, lim = near.half + CURB - 6; k.x = cx + dx / d * lim; k.y = cy + dy / d * lim; k.v *= .97; k.drift = 0; }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }
-  if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b) && !(k.rescue > 0)) { rescue(k, T.fall || (T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!")); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
+  for (const l of LEDGES) if (l.wall && !air && k.idx >= l.a && k.idx <= l.b && near.d > near.half + CURB + 6 && !ledgeSide(l, k)) {   // 🏔️ the mountain's rock face: solid
+    const [cx, cy] = at(near.i, 0), dx = k.x - cx, dy = k.y - cy, d = Math.hypot(dx, dy) || 1, lim = near.half + CURB + 6; k.x = cx + dx / d * lim; k.y = cy + dy / d * lim; if (k.bump <= 0) { k.v *= .75; k.bump = .3; bumpSound(); } k.drift = 0; }
+  if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b && ledgeSide(l, k)) && !(k.rescue > 0)) { rescue(k, T.fall || (T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!")); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
   for (const p of PENPIGS) {
     p.dx *= Math.pow(.6, dt); p.dy *= Math.pow(.6, dt);
@@ -2860,7 +2857,7 @@ function render() {
   });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got && (G3 ? (c.x - k.x) * ca + (c.y - k.y) * sa > -12 : (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
-  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (G3 && G3.mdl && p.k === "freezie") G3.mdl("freezie", q.x, q.y, q.z, tangent(p.i) + Math.PI, tt); else add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
+  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (G3 && G3.mdl && (p.k === "freezie" || p.k === "snowball")) G3.mdl(p.k, q.x, q.y, q.z, tangent(p.i) + Math.PI, tt); else add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
   for (const m of MOLES) { const q = molePos(m, tt), im = IMG[m.img || "stump"]; add(q.x, q.y, IMG.farm_mound, .42, 0); if (q.up > 0 && im) add(q.x, q.y, im, m.img ? .75 : .5, -34 * (1 - q.up)); }   // 🌳 mounds, and stumps (or bunnies) popping out
   // 🐾 pets wandering the gardens, and the giant pets on their chains (with the chain drawn from its post)
   for (const w of WANDER) { const q = wanderPos(w, tt), im = petFrame(w.k, "move", tt + w.ph); if (im) add(q.x, q.y, im, w.s, 0, q.dx > 0); }
