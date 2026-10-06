@@ -868,6 +868,10 @@ export function create(A) {
     g.fillStyle = topCol; g.fillRect(0, 0, 4096, hor);
     if (t.sky) { const tile = seamless(t.sky), sh = picH, n = Math.max(1, Math.round(4096 / (tile.width * sh / tile.height * ax))), sw = 4096 / n;   // the same way round every time (no mirrored copies), joins blended away
       for (let i = 0; i < n; i++) g.drawImage(tile, i * sw, top, sw + .5, sh);
+      if (t.theme.moon) { const mx = 1250, my = top + sh * .26, r = 66, gl = g.createRadialGradient(mx, my, r * .8, mx, my, r * 2.6);   // 🌕 one full moon (the sky goes round twice, so its twin is always behind you)
+        gl.addColorStop(0, "rgba(255,248,200,.45)"); gl.addColorStop(1, "rgba(255,248,200,0)"); g.fillStyle = gl; g.fillRect(mx - r * 3, my - r * 3, r * 6, r * 6);
+        const dg = g.createRadialGradient(mx - r * .3, my - r * .3, r * .2, mx, my, r); dg.addColorStop(0, "#fffbe0"); dg.addColorStop(1, "#f4dc70"); g.fillStyle = dg; g.beginPath(); g.arc(mx, my, r, 0, 7); g.fill();
+        g.fillStyle = "rgba(200,170,80,.35)"; for (const [cx, cy, cr] of [[-.3, -.2, .18], [.25, .1, .24], [-.05, .4, .14], [.35, -.35, .1], [-.42, .25, .09]]) { g.beginPath(); g.arc(mx + cx * r, my + cy * r, cr * r, 0, 7); g.fill(); } }
       const fade = g.createLinearGradient(0, top, 0, top + sh * .35); fade.addColorStop(0, topCol); fade.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = fade; g.fillRect(0, top, 4096, sh * .35); }   // the picture's top melts into the sky above it
     if (t.strip) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
     g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, t.strip ? hor + 6 : hor, 4096, 1024);   // (no strip: the ground meets the picture, no dark gap)
@@ -1057,7 +1061,7 @@ export function create(A) {
     camera.fov = 60 + 13 * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     camera.getWorldDirection(fwd);
     if (skyMesh) skyMesh.position.set(camera.position.x, camera.position.y + SKY_H / 2 - SKY_BELOW, camera.position.z);
-    if (skyMesh) skyMesh.visible = !window.__camOv;
+    if (skyMesh) skyMesh.visible = !window.__camOv || !!window.__camSky;
   }
   // a rival between the camera and your kart turns see-through, so it never blocks your view
   function fadeBlockers() {

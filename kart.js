@@ -463,7 +463,7 @@ const TRACKS = {
       [1860, 1482, 6], [1935, 1420, 9], [1948, 1340, 11], [1885, 1268, 13], [1741, 1215, 16], [1536, 1140, 20], [1331, 1165, 24], [1180, 1165, 27], [1075, 1105, 29], [1055, 1000, 30],
       [1115, 905, 28], [1120, 790, 24], [1010, 700, 20], [880, 640, 18], [840, 530, 18], [910, 445, 18], [1050, 420, 18], [1200, 420, 19], [1320, 380, 20], [1360, 290, 22],
       [1290, 200, 24], [1120, 165, 24], [940, 185, 24], [790, 235, 24], [614, 300, 22], [410, 280, 22], [200, 310, 22], [140, 460, 22], [200, 610, 22], [170, 770, 22], [205, 925, 21]],
-    theme: { ...TH.elnathNight, flowers: 400, tufts: 0, road: "snow", curb: ["#3a5fc0", "#eef4ff"], aurora: true, fairy: true, drifts: true }, art: { sky: "media/kart/elnath/sky3.webp", strip: "media/kart/elnath/strip3.webp" },
+    theme: { ...TH.elnathNight, flowers: 400, tufts: 0, road: "snow", curb: ["#3a5fc0", "#eef4ff"], aurora: true, fairy: true, drifts: true, moon: true }, art: { sky: "media/kart/elnath/sky3n.webp?v=1", strip: "media/kart/elnath/strip3.webp" },
     near: ["en_pine", "en_pine3", "en_pine2"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines"], mobs: ["jr_yeti", "pepe"],
     build() {
       makeSnowArt();
@@ -1628,7 +1628,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=107"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=109"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
