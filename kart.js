@@ -569,29 +569,47 @@ const TRACKS = {
       };
     },
   },
+  // 3. Boo Lake (Super Circuit, as remade for Tour and Mario Kart 8 Deluxe): a wooden boardwalk on piles over a dark lake at night, lanterns
+  // all along it and flooded dead trees round about. Up from the line and a sharp right onto the jumps (ramps with dash panels over the gaps
+  // between boardwalks); down the right side and round the split; orange trick ramps on the long right-hand turn; then the boardwalk dives under
+  // the lake: the long diagonal and the twisting J are underwater, with Fish Bones swimming across; three ramps carry you up out of the water
+  // to the line. Fall off the edge and you're fished out of the lake. Ghosts drift over the water.
   sw3: {
-    id: "sleepy3", cup: "sleepy", music: "k_sleepy3", name: "Balrog's Temple", sub: "ancient ruins · the Crimson Balrog stomps", icon: "😈",
-    ctrl: [[300, 1500], [350, 700], [700, 300], [1100, 450], [1300, 250], [1700, 300], [1850, 700], [1550, 1000], [1250, 900], [950, 1000], [1000, 1300], [1350, 1350], [1700, 1400],
-      [1800, 1750], [1300, 1900], [700, 1850], [380, 1820]],
-    theme: TH.temple, art: { sky: "media/kart/sleepy/sky3.webp", strip: "media/kart/sleepy/strip3.webp" },
-    near: ["sw_ruin", "sw_ruin2", "sw_ruin3", "sw_fern", "sw_leaf", "sw_bush", "sw_lamp", "sw_head"],
-    far: ["sw_temple", "sw_head", "sw_ruin", "sw_ring", "sw_ruin2", "sw_moss"], mobs: ["cold_eye", "curse_eye", "drake", "jr_balrog"],
-    build(F) {
+    id: "boolake", scale: 1.28, road: 180, cup: "sleepy", music: "k_sleepy3", name: "Boo Lake", sub: "boardwalk over the lake · the underwater stretch · Fish Bones", icon: "👻",
+    ctrl: [[294, 768, 20], [294, 512, 20], [320, 294, 20], [448, 205, 20], [678, 205, 20], [973, 205, 20], [1267, 225, 20], [1403, 346, 20], [1413, 576, 20], [1408, 819, 20], [1423, 1050, 20],
+      [1567, 1229, 18], [1715, 1385, 14], [1790, 1510, 10], [1745, 1625, 4], [1605, 1630, -10], [1470, 1465, -30], [1216, 1183, -42], [993, 973, -46], [781, 781, -46], [614, 799, -46], [525, 960, -46],
+      [527, 1203, -44], [594, 1382, -40], [748, 1449, -34], [824, 1592, -30], [748, 1751, -26], [525, 1792, -20], [320, 1702, -12], [276, 1472, -2], [282, 1203, 8], [287, 986, 16]],
+    water: { level: 0, bed: -90 },
+    theme: { ...TH.sleepy, road: "planks", grass: ["#1d3550", "#1a3048"], flowers: 0, tufts: 0, hills: 1, curb: ["#4a3420", "#8a6a42"] }, art: { sky: "media/kart/sleepy/sky2.webp", strip: "media/kart/sleepy/strip2.webp" },
+    near: [], far: ["sw_deadtree", "sw_deadtree2", "sw_deadtree", "sw_hotel"], mobs: ["wraith", "evil_eye"],
+    build() {
+      makeSnowArt();
+      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      // the jumps along the top: a ramp with a dash panel, over the gap to the next boardwalk
+      for (const x of [560, 1010]) { const g = I(x, 205);   // (far enough apart that you land before the next ramp)
+        pads.push({ t: "boost", i: g - 15, len: 6, o: 0, w: 70 }, { t: "bigramp", i: g - 5, len: 5, o: 0, w: ROAD }); gaps.push({ a: g, b: g + u(75), kind: "water", caps: [] }); }
+      const split = I(1408, 819);                                                        // the split: a stump in the middle of the boardwalk
+      for (const [x, y, o] of [[1700, 1360, -50], [1780, 1490, 50], [1760, 1590, -50]]) pads.push({ t: "ramp", i: I(x, y), len: 6, o, w: 60 });   // the orange trick ramps round the long turn
+      for (const o of [-60, 0, 60]) pads.push({ t: "ramp", i: I(278, 1300), len: 6, o, w: 52 });   // three ramps up out of the water
+      row(I(640, 205), I(900, 205), 6, 0); row(split - 14, split + 14, 5, -55); row(split - 14, split + 14, 5, 55); row(I(1216, 1183), I(781, 781), 7, j => (j & 1 ? 40 : -40)); row(I(282, 1203), I(287, 986), 5, 0);
+      // 🐟 Fish Bones swimming across the underwater stretch
+      const fish = [[I(1216, 1183), 0], [I(993, 973), 1.7], [I(614, 799), 3.1], [I(527, 1203), .8], [I(748, 1449), 2.4], [I(525, 1792), 4]].map(([i, ph]) => ({ i, ph, k: "fishbone", sp: .8, s: .55 }));
       return {
-        pads: [pad("boost", F(.04), 0, 60), pad("boost", F(.26), -24, 54), pad("boost", F(.5), 24, 54), pad("boost", F(.82), 0, 56), pad("ramp", F(.36), 0, ROAD, 9),
-          pad("rock", F(.15), 0, ROAD, 24), pad("rock", F(.66), 0, ROAD, 22), pad("slime", F(.2), 52, 40, 8), pad("slime", F(.44), -52, 40, 8), pad("slime", F(.9), 52, 40, 8)],
-        coins: [...coinRow(F(.01), F(.07), 6, 0), ...coinRow(F(.28), F(.33), 5, j => (j & 1 ? 24 : -24)), ...coinRow(F(.52), F(.57), 6, 0), ...coinRow(F(.84), F(.88), 5, -20)],
-        pigs: [{ i: F(.12), ph: 0, k: "cold_eye", sp: 1.1 }, { i: F(.4), ph: 2, k: "drake", sp: 1 }, { i: F(.7), ph: 4, k: "cold_eye", sp: 1.1 }],
-        king: { i: F(.6), T: 3.4, k: "crimson_balrog", s: .32, name: "Crimson Balrog", big: true },
-        boxes: [...boxRow(F(.09), [-56, -19, 19, 56]), ...boxRow(F(.47), [-54, -18, 18, 54]), ...boxRow(F(.76), [-56, -19, 19, 56])],
+        gaps, pads, coins, pigs: fish,
+        hedges: [{ i: split, o: 0, w: 40, h: 34, sprite: "ice_rock" }],
+        boxes: [...boxRow(I(1403, 346), [-60, -20, 20, 60]), ...boxRow(I(1715, 1385), [-60, -20, 20, 60]), ...boxRow(I(320, 1702), [-60, -20, 20, 60])],
         extra(push) {
-          const [gx, gy] = at(F(.6) - 30, 0); push(gx, gy, "sw_ring", big("sw_ring", 1.4), 0);
-          for (let f = .55; f < .66; f += .02) for (const s of [-1, 1]) { const [x, y] = at(F(f), s * (ROAD / 2 + CURB + 18)); push(x, y, f * 50 & 1 ? "sw_head" : "sw_ruin3"); }
+          // 🏮 lanterns all along the boardwalk's edges
+          for (let i = 6, n = 0; i < N; i += 16, n++) { if (gaps.some(g => i >= g.a - 2 && i <= g.b + 2)) continue; const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB - 6)); OBJS.push({ x, y, k: "sw_lamp", s: .34, r: 0, z: 0 }); }
+          // 👻 ghosts drifting over the water
+          for (const [x, y, z] of [[700, 420, 60], [1150, 420, 80], [1200, 760, 50], [1620, 900, 70], [900, 1500, 60], [450, 1450, 80], [1000, 1800, 60]]) OBJS.push({ x: ws(x), y: ws(y), k: "wraith", s: .5, r: 0, z, bob: 16, mob: true });
+          OBJS.push({ x: ws(1000), y: ws(620), k: "sw_hotel", s: 2.6, r: 0, z: 0 });   // the haunted hotel out in the lake
         },
       };
     },
   },
-  // ---- Zakum Cup 🔥: one long run from the bottom of the mountain to the top, with the lava rising behind you. No laps.
+  // ---- Zakum Cup 🔥 (still the old runs; being rebuilt as normal races laid out like Wario's Gold Mine, Grumble Volcano and Thwomp Ruins)
   zk1: {
     id: "zakum1", cup: "zakum", music: "k_zakum1", name: "Dead Mine Climb", sub: "switchbacks up the mine · Fire Boars", icon: "⛏️", open: true,
     ctrl: OPEN_ZK1,
@@ -1180,6 +1198,12 @@ function makeSnowArt() {
     g.fillStyle = "rgba(60,80,120,.35)"; g.fillRect(60, 46, 50, 30); });
   for (const [k, col] of [["flag_r", "#e8322c"], ["flag_b", "#2f6fe8"]]) IMG[k] = mk(40, 120, g => {   // ⛷ a slalom gate flag
     g.fillStyle = "#3a3a44"; g.fillRect(4, 4, 4, 116); g.fillStyle = col; g.beginPath(); g.moveTo(8, 8); g.lineTo(38, 22); g.lineTo(8, 38); g.closePath(); g.fill(); g.fillStyle = "rgba(255,255,255,.5)"; g.fillRect(8, 14, 14, 3); });
+  IMG.fishbone = mk(120, 70, g => {   // 🐟 a Fish Bone: a skeleton fish with big glowing eyes
+    g.strokeStyle = "#e8eef8"; g.lineWidth = 5; g.lineCap = "round"; g.beginPath(); g.moveTo(30, 36); g.lineTo(104, 36); g.stroke();
+    g.lineWidth = 3.5; for (let x = 44; x <= 92; x += 12) { g.beginPath(); g.moveTo(x, 36); g.quadraticCurveTo(x + 4, 18, x + 8, 12); g.moveTo(x, 36); g.quadraticCurveTo(x + 4, 54, x + 8, 60); g.stroke(); }
+    g.fillStyle = "#e8eef8"; g.beginPath(); g.moveTo(104, 36); g.lineTo(118, 22); g.lineTo(114, 36); g.lineTo(118, 50); g.closePath(); g.fill();
+    g.beginPath(); g.ellipse(26, 36, 22, 20, 0, 0, 7); g.fill(); g.fillStyle = "#1a2a3a"; g.beginPath(); g.ellipse(22, 30, 9, 9, 0, 0, 7); g.fill(); g.fillStyle = "#d8ff4a"; g.beginPath(); g.arc(22, 30, 5, 0, 7); g.fill();
+    g.fillStyle = "#1a2a3a"; g.beginPath(); g.moveTo(6, 44); for (let k = 0; k < 5; k++) g.lineTo(8 + k * 6, k & 1 ? 52 : 44); g.lineTo(36, 46); g.closePath(); g.fill(); });
   IMG.ice_post = mk(18, 150, g => { const gr = g.createLinearGradient(0, 0, 18, 0); gr.addColorStop(0, "#8fc8f0"); gr.addColorStop(.5, "#f4fbff"); gr.addColorStop(1, "#7ab8e8"); g.fillStyle = gr; g.fillRect(1, 0, 16, 150);
     g.strokeStyle = "rgba(90,150,210,.5)"; for (let y = 18; y < 150; y += 22) { g.beginPath(); g.moveTo(1, y); g.lineTo(17, y); g.stroke(); } });
   IMG.ice_banner = mk(420, 80, g => { g.fillStyle = "#bfe4ff"; g.beginPath(); g.roundRect(0, 4, 420, 72, 10); g.fill(); g.strokeStyle = "#ffffff"; g.lineWidth = 3;
@@ -1254,7 +1278,7 @@ function placeObjects() {
       const a = tangent(s), off = ROAD / 2 + CURB + (CLEAN ? 70 + rnd() * 110 : 18 + rnd() * 60), x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
       if (roadDist(x, y) < ROAD / 2 + CURB + 16 || inLake(x, y) || x < 40 || y < 40 || x > WORLD - 40 || y > WORLD - 40) continue;
       if (rnd() < .18) { OBJS.push({ x, y, k: T.mobs[Math.floor(rnd() * T.mobs.length)], s: .42, r: 10, mob: true }); continue; }
-      push(x, y, T.near[Math.floor(rnd() * T.near.length)]);
+      if (T.near.length) push(x, y, T.near[Math.floor(rnd() * T.near.length)]);   // (a track can have none: Boo Lake's road is a boardwalk over water)
     }
   }
   T.extraFn(push);
@@ -1314,11 +1338,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=48"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=49"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1698,6 +1722,7 @@ function rivalStep(r, dt, tt) {
     r.kingWas = kp;
   }
   if (LAKE && lakeFall() && !air && near.d > near.half + 4 && inLake(r.x, r.y)) rescue(r);   // fell off the bridge
+  if (T.water && !air && near.d > near.half + CURB + 8) rescue(r);   // 🌊 off the boardwalk
   // items: Elixirs and the Arm right away, a slime when someone is close behind, an arrow when someone is ahead
   if (r.item && r.itemT <= 0 && r.spin <= 0 && !r.done) {
     const p = progOf(r), others = racers().filter(o => o !== r);
@@ -2111,7 +2136,8 @@ function step(dt) {
   if (k.bonk > 0) k.bonk -= dt;
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
-    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "fishbone" ? "🐟 Fish Bone!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+  if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }   // 🌊 off the boardwalk: into the lake
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
   for (const p of PENPIGS) {
     p.dx *= Math.pow(.6, dt); p.dy *= Math.pow(.6, dt);
@@ -2369,6 +2395,9 @@ function render() {
   if (LAVA && state !== "menu" && !k.done) { const near = Math.max(0, 1 - (k.idx - LAVA.i) * SPC / 640); if (near > 0) {   // the screen glows red as the lava closes in
     const gr = ctx.createRadialGradient(W / 2, H * .6, H * .2, W / 2, H * .6, W * .75); gr.addColorStop(0, "rgba(255,60,0,0)"); gr.addColorStop(1, `rgba(255,60,0,${near * .5})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); } }
   if (k.hitFlash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(.7, k.hitFlash * 8)})`; ctx.fillRect(0, 0, W, H); }
+  if (T.water && PTS[k.idx] && PTS[k.idx][2] + 30 < T.water.level * WS) {   // 🫧 under the lake: deep blue all round, light from above, bubbles drifting up
+    const g2 = ctx.createLinearGradient(0, 0, 0, H); g2.addColorStop(0, "rgba(60,140,200,.28)"); g2.addColorStop(1, "rgba(5,25,60,.45)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(220,240,255,.55)"; const tb = performance.now() / 1000; for (let n = 0; n < 14; n++) { const x = (n * 53 + Math.sin(tb + n) * 6) % W, y = H - ((tb * 40 + n * 37) % H); ctx.beginPath(); ctx.arc(x, y, 1 + (n % 3) * .6, 0, 7); ctx.fill(); } }
   for (const cv of CAVES) if (k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .75);
     g2.addColorStop(0, "rgba(160,220,255,0)"); g2.addColorStop(1, "rgba(10,40,90,.5)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }
