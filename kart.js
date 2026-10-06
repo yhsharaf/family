@@ -1217,7 +1217,10 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = C[0]; g.beginPath(); g.ellipse(0, 0, p.len * SPC / 2 + 4, p.w / 2, 0, 0, 7); g.fill();
       g.fillStyle = C[1]; g.beginPath(); g.ellipse(-2, -3, p.len * SPC / 2 - 2, p.w / 2 - 6, 0, 0, 7); g.fill();
       g.fillStyle = "#fff"; for (const [bx, by, br] of [[-6, -12, 6], [8, 6, 7], [-10, 14, 5], [10, -16, 4]]) { g.beginPath(); g.arc(bx, by, br, 0, 7); g.fill(); } g.restore(); }
-    if (p.t === "slime") {
+    if (p.t === "slime" && TILEPAT.slime) { const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i), rx = p.len * SPC / 2 + 8, ry = p.w / 2;   // 🟢 a puddle of green slime: the Slime's own body, a darker rim and a wet shine
+      g.save(); g.fillStyle = "#1f6a10"; blob(x, y, a, rx + 4, ry + 4)(); g.fill(); g.restore(); tileFill("slime", blob(x, y, a, rx, ry));
+      g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = "rgba(255,255,255,.5)"; g.beginPath(); g.ellipse(-rx * .3, -ry * .35, rx * .35, ry * .18, -.2, 0, 7); g.fill(); g.restore(); }
+    else if (p.t === "slime") {
       const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i);
       g.save(); g.translate(x, y); g.rotate(a);
       g.fillStyle = "#7c3fa0"; g.beginPath(); g.ellipse(0, 0, p.len * 2.6, p.w / 2, 0, 0, 7); g.fill();
@@ -3100,10 +3103,10 @@ async function start() {
 }
 let assetsReady = false;
 // 🧱 real MapleStory ground tiles (from maplestory.io) for the patches on the road: lava, ice, snow, swamp mud, mine rock
-const TILESETS = ["moltenRock", "glacierExplorer", "snowyLightrock", "swamp", "deepMine"], TILEPAT = {};
+const TILESETS = ["moltenRock", "glacierExplorer", "snowyLightrock", "swamp", "deepMine", "slime"], TILEPAT = {};   // (slime: made here from the Slime monster's own green body, mirrored so it repeats)
 async function loadTiles() {
   await Promise.all(TILESETS.map(async set => { const ims = await Promise.all([0, 1, 2, 3].map(k => loadImg(`media/kart/tiles/${set}${k}.png?v=1`))); if (ims.some(im => !im)) return;
-    const c = document.createElement("canvas"); c.width = 180; c.height = 120; const g = c.getContext("2d"); ims.forEach((im, k) => g.drawImage(im, (k & 1) * 90, (k >> 1) * 60)); TILEPAT[set] = c; }));   // (the four tiles in a 2x2 block)
+    const w = ims[0].width, h = ims[0].height, c = document.createElement("canvas"); c.width = w * 2; c.height = h * 2; const g = c.getContext("2d"); ims.forEach((im, k) => g.drawImage(im, (k & 1) * w, (k >> 1) * h)); TILEPAT[set] = c; }));   // (the four tiles in a 2x2 block)
   TRACK_KEY = null; if (G3E && G3E.reset) G3E.reset();   // (anything painted before they arrived is painted again)
 }
 async function prepare() {
