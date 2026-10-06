@@ -14,7 +14,7 @@ const seedOf = k => [...String(k)].reduce((a, c) => a * 31 + c.charCodeAt(0) | 0
 const canvas = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
 
 export function create(A) {
-  const { WORLD } = A;
+  let WORLD = A.WORLD;   // world size in units: each track sets its own (track.WORLD), so longer courses fit
   A.CURB = 14;
   const renderer = new THREE.WebGLRenderer({ canvas: A.canvas, antialias: !A.touch, powerPreference: "high-performance", alpha: false });
   renderer.setPixelRatio(Math.min(A.touch ? 1.5 : 2, devicePixelRatio || 1));
@@ -26,7 +26,7 @@ export function create(A) {
   const BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 18);
 
   // ---------------------------------------------------------------- ground: heights, terrain mesh, sky
-  const G = 8, GN = WORLD / G + 1;
+  const G = 8; let GN = WORLD / G + 1;
   let HG = new Float32Array(GN * GN), terrain = null, plain = null, skyMesh = null, key = null, skyRefs = [];
   const h = (x, y) => {
     const fx = Math.max(0, Math.min(GN - 1.001, x / G)), fy = Math.max(0, Math.min(GN - 1.001, y / G)), i = fx | 0, j = fy | 0, ax = fx - i, ay = fy - j, o = j * GN + i;
@@ -47,6 +47,7 @@ export function create(A) {
     return E;
   }
   function buildGround(t) {
+    if (t.WORLD && t.WORLD !== WORLD) { WORLD = t.WORLD; GN = Math.round(WORLD / G) + 1; HG = new Float32Array(GN * GN); }
     const E = profile(t), wsum = new Float64Array(GN * GN), hsum = new Float64Array(GN * GN), dmin = new Float32Array(GN * GN).fill(1e9), near = new Int32Array(GN * GN).fill(-1);
     const R = 300, rc = Math.ceil(R / G);
     const splat = (px, py, e, idx = -1) => {
@@ -116,6 +117,12 @@ export function create(A) {
       for (let k = 0; k < 160; k++) { g.fillStyle = r() < .5 ? "rgba(95,122,58,.7)" : "rgba(120,150,70,.5)"; g.beginPath(); g.ellipse(r() * U, r() * 192, 1 + r() * 3, 1 + r() * 2, 0, 0, 7); g.fill(); } }
     else if (style === "basalt") { stones("#1c1719", ["#3a3236", "#463c40", "#2f282b"], "rgba(255,160,120,.12)", "rgba(0,0,0,.4)", 14);
       g.lineWidth = .8; for (let k = 0; k < 14; k++) { let x = r() * U, y = r() * 192; g.strokeStyle = r() < .5 ? "#ff7a2a" : "#d84a1a"; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (r() - .5) * 14; y += (r() - .5) * 14; g.lineTo(x, y); } g.stroke(); } }
+    else if (style === "icy") {   // Snow Land's purple-blue ice road: glassy, with frosty skid streaks
+      const gr0 = g.createLinearGradient(0, 0, U, 0); gr0.addColorStop(0, "#8f9ee8"); gr0.addColorStop(.5, "#a9b6f2"); gr0.addColorStop(1, "#8f9ee8"); g.fillStyle = gr0; g.fillRect(0, 0, U, 192);
+      for (let k = 0; k < 60; k++) { const x = r() * U, y = r() * 192, w = 1 + r() * 2.5, l = 20 + r() * 60; g.fillStyle = r() < .6 ? "rgba(255,255,255,.22)" : "rgba(90,100,190,.18)"; g.fillRect(x, y, w, l); }   // skid streaks along the road
+      for (let k = 0; k < 5000; k++) { g.fillStyle = r() < .6 ? "rgba(255,255,255,.35)" : "rgba(80,90,180,.15)"; g.fillRect(r() * U, r() * 192, .5, .5); }
+      g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(0, 0, 3, 192); g.fillRect(U - 3, 0, 3, 192);
+    }
     else if (style === "garden") {   // Peach Gardens' cream garden path, with a soft darker border
       g.fillStyle = "#f0e3c4"; g.fillRect(0, 0, U, 192);
       for (let k = 0; k < 80; k++) { const x = r() * U, y = r() * 192, rad = 8 + r() * 16, gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, r() < .5 ? "rgba(190,160,110,.12)" : "rgba(255,250,235,.15)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); }
@@ -144,7 +151,7 @@ export function create(A) {
       g.fillStyle = "rgba(60,50,40,.045)"; for (const x of [.3, .7]) g.fillRect(U * x - 10, 0, 20, 192); }
     else specks("#5d5d64", ["#555560", "#66666e", "#4f4f58"], 3000, 1.2);
     if (style !== "planks" && style !== "toy" && style !== "farm" && style !== "garden") { g.fillStyle = "rgba(255,255,255,.88)"; g.fillRect(3, 0, 2.2, 192); g.fillRect(U - 5.2, 0, 2.2, 192); }   // edge lines
-    if (style !== "planks" && style !== "farm" && style !== "garden") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
+    if (style !== "planks" && style !== "farm" && style !== "garden" && style !== "icy") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; t.anisotropy = aniso; t.minFilter = THREE.LinearMipmapLinearFilter; return t;
   }
   const curbTex = cc => { const c = canvas(8, 64), g = c.getContext("2d"); g.fillStyle = cc[0]; g.fillRect(0, 0, 8, 32); g.fillStyle = cc[1]; g.fillRect(0, 32, 8, 32);
@@ -172,11 +179,13 @@ export function create(A) {
     const road = new THREE.Mesh(geo, roadMat), curb = new THREE.Mesh(cg, curbMat); scene.add(road, curb); roadObjs.push(road, curb);
   }
   function roadMat(tex, decal) {
+    const w = WORLD;
     const m = new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     m.onBeforeCompile = sh => { sh.uniforms.decal = { value: decal };
       sh.vertexShader = "varying vec2 vWXZ;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWXZ = position.xz;");
       sh.fragmentShader = "uniform sampler2D decal; varying vec2 vWXZ;\n" + sh.fragmentShader.replace("#include <map_fragment>",
-        `#include <map_fragment>\n vec4 dc = texture2D(decal, vec2(vWXZ.x / ${WORLD.toFixed(1)}, 1.0 - vWXZ.y / ${WORLD.toFixed(1)})); diffuseColor.rgb = mix(diffuseColor.rgb, dc.rgb, dc.a);`); };
+        `#include <map_fragment>\n vec4 dc = texture2D(decal, vec2(vWXZ.x / ${w.toFixed(1)}, 1.0 - vWXZ.y / ${w.toFixed(1)})); diffuseColor.rgb = mix(diffuseColor.rgb, dc.rgb, dc.a);`); };
+    m.customProgramCacheKey = () => "road" + w;   // (the world size is baked into the shader, so tracks of different sizes need their own)
     return m;
   }
   function buildRoad(t) {
@@ -195,7 +204,7 @@ export function create(A) {
         const tr = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM); tr.rotation.y = Math.PI / 4; tr.scale.set(b.w * .18, b.h * .7, b.d * .85); tr.position.set(b.x, gnd + b.h * 1.6 + b.h * .35, b.y - 4); scene.add(tr); roadObjs.push(tr); }
     }
     // 🌿 hedge blocks (Pets Park's maze): solid, leafy cubes
-    for (const b of t.hedges || []) { const m = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ map: hedgeTex() })); m.scale.set(b.w, b.h, b.w); m.rotation.y = -b.a; m.position.set(b.x, h(b.x, b.y) + b.h / 2, b.y); scene.add(m); roadObjs.push(m); }
+    for (const b of t.hedges || []) if (!b.sprite) { const m = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ map: hedgeTex() })); m.scale.set(b.w, b.h, b.w); m.rotation.y = -b.a; m.position.set(b.x, h(b.x, b.y) + b.h / 2, b.y); scene.add(m); roadObjs.push(m); }
     // 🍄 bouncy mushroom caps on the road: spotted domes that squash when someone bounces on them
     caps = [];
     for (const g of t.gaps || []) {
