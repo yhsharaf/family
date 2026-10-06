@@ -215,7 +215,8 @@ export function create(A) {
     m.onBeforeCompile = sh => { sh.uniforms.decal = { value: decal };
       sh.vertexShader = "varying vec2 vWXZ;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWXZ = position.xz;");
       sh.fragmentShader = "uniform sampler2D decal; varying vec2 vWXZ;\n" + sh.fragmentShader.replace("#include <map_fragment>",
-        `#include <map_fragment>\n vec4 dc = texture2D(decal, vec2(vWXZ.x / ${w.toFixed(1)}, 1.0 - vWXZ.y / ${w.toFixed(1)})); diffuseColor.rgb = mix(diffuseColor.rgb, dc.rgb, dc.a);`); };
+        `#include <map_fragment>\n vec4 dc = texture2D(decal, vec2(vWXZ.x / ${w.toFixed(1)}, 1.0 - vWXZ.y / ${w.toFixed(1)})); diffuseColor.rgb = mix(diffuseColor.rgb, dc.rgb, dc.a);`)
+        .replace("#include <emissivemap_fragment>", glow ? "#include <emissivemap_fragment>\n totalEmissiveRadiance *= (1.0 - dc.a);" : "#include <emissivemap_fragment>"); };   // (on a glowing road, what's painted on it, like a hole, doesn't glow)
     m.customProgramCacheKey = () => "road" + w + (glow ? "g" : "");   // (the world size is baked into the shader, so tracks of different sizes need their own)
     return m;
   }
@@ -268,7 +269,8 @@ export function create(A) {
       m.add(glow); const sh = new THREE.Mesh(new THREE.CircleGeometry(40, 24), new THREE.MeshBasicMaterial({ color: 0x220800, transparent: true, opacity: .3, depthWrite: false })); sh.rotation.x = -Math.PI / 2;
       scene.add(m, sh); roadObjs.push(m, sh); fireM.push({ b, m, sh, g: h(b.x, b.y) }); }
     holeM = []; lapFn = t.lapNow || null;
-    for (const hl of t.holes || []) { const g = new THREE.Group(), lava = new THREE.Mesh(new THREE.CircleGeometry(hl.r, 28), new THREE.MeshBasicMaterial({ color: 0xff5a1a })), rim = new THREE.Mesh(new THREE.RingGeometry(hl.r, hl.r + 10, 28), new THREE.MeshBasicMaterial({ color: 0x2a1a14 }));
+    for (const hl of t.holes || []) {   // (the lava inside is real MapleStory molten rock)
+      const g = new THREE.Group(), lava = new THREE.Mesh(new THREE.CircleGeometry(hl.r, 28), new THREE.MeshBasicMaterial(t.tiles && t.tiles.moltenRock ? { map: (() => { const tx = new THREE.CanvasTexture(t.tiles.moltenRock); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(hl.r / 60, hl.r / 40); return tx; })() } : { color: 0xff5a1a })), rim = new THREE.Mesh(new THREE.RingGeometry(hl.r, hl.r + 10, 28), new THREE.MeshBasicMaterial({ color: 0x2a1a14 }));
       for (const q of [lava, rim]) { q.rotation.x = -Math.PI / 2; g.add(q); } rim.position.y = .3; g.position.set(hl.x, h(hl.x, hl.y) + 1.4, hl.y); g.visible = false; scene.add(g); roadObjs.push(g); holeM.push({ hl, g }); }
     // 🕰️ the clockwork: gears that turn (a toothed wheel set into the floor), the clock's hands sweeping round, pendulums swinging across the road
     clockM = { gears: [], hands: [], pends: [], t };

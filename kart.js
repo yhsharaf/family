@@ -1059,6 +1059,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       ["XII", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI"].forEach((t, k) => { const a = k / 12 * 6.283 - Math.PI / 2; g.fillText(t, LAKE.cx + Math.cos(a) * LAKE.rx * .7, LAKE.cy + Math.sin(a) * LAKE.ry * .7); });
       g.fillStyle = "#c8962a"; g.beginPath(); g.arc(LAKE.cx, LAKE.cy, LAKE.rx * .1, 0, 7); g.fill();
     }
+    if (LAKE.kind === "ice" && TILEPAT.glacierExplorer) { const pat = g.createPattern(TILEPAT.glacierExplorer, "repeat"); pat.setTransform(new DOMMatrix().scale(.75)); g.save(); g.globalAlpha = .5; g.fillStyle = pat; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx, LAKE.ry, 0, 0, 7); g.fill(); g.restore(); }   // 🧊 real MapleStory glacier ice under the rink's shine
     if (LAKE.kind === "ice") {   // ⛸ a skating rink: deeper blue in the middle, and the curly white marks of skates all over it
       const gr = g.createRadialGradient(LAKE.cx, LAKE.cy, 0, LAKE.cx, LAKE.cy, LAKE.rx); gr.addColorStop(0, "rgba(90,160,225,.55)"); gr.addColorStop(1, "rgba(150,205,245,0)");
       g.fillStyle = gr; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx, LAKE.ry, 0, 0, 7); g.fill();
@@ -1237,8 +1238,12 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
     for (let y = y0; y < y1; y += 16) for (let x = x0; x < x1; x += 16) { const m = nearest(x + 8, y + 8); if (m.i < gp.a || m.i >= gp.b || m.d > 520) continue;   // (a full search: crossings can be long)
       for (let q = 0; q < 4; q++) { g.fillStyle = pal[((x * 7 + y * 13 + q * 5) >> 3) % pal.length] || pal[0]; g.fillRect(x + (q & 1) * 8, y + (q >> 1) * 8, 8.5, 8.5); } }
   }
-  for (const h of HOLES) if (!h.lap) {   // 🕳️ a hole in the thin ice: dark water with a cracked white rim
-    g.fillStyle = "#e8f6ff"; g.beginPath(); g.arc(h.x, h.y, h.r + 12, 0, 7); g.fill(); g.fillStyle = "#1e4f9a"; g.beginPath(); g.arc(h.x, h.y, h.r, 0, 7); g.fill();
+  for (const h of HOLES) if (!h.lap && T.theme.space) {   // 🌌 a hole in a Rainbow Road: the starry void, with a glowing rim
+    g.fillStyle = (T.theme.curb || ["#fff"])[1] || "#ff5ac8"; g.beginPath(); g.arc(h.x, h.y, h.r + 7, 0, 7); g.fill(); g.fillStyle = "#ffffff"; g.beginPath(); g.arc(h.x, h.y, h.r + 3, 0, 7); g.fill();
+    g.fillStyle = "#05051a"; g.beginPath(); g.arc(h.x, h.y, h.r, 0, 7); g.fill(); g.fillStyle = "#ffffff"; for (let k = 0; k < 18; k++) { const a = rnd() * 6.28, rr = Math.sqrt(rnd()) * h.r * .9; g.fillRect(h.x + Math.cos(a) * rr, h.y + Math.sin(a) * rr, 1.6, 1.6); } }
+  for (const h of HOLES) if (!h.lap && !T.theme.space) {   // 🕳️ a hole in the thin ice: dark water with a cracked rim of real MapleStory glacier ice
+    g.fillStyle = "#e8f6ff"; g.beginPath(); g.arc(h.x, h.y, h.r + 12, 0, 7); g.fill();
+    if (TILEPAT.glacierExplorer) { const pat = g.createPattern(TILEPAT.glacierExplorer, "repeat"); pat.setTransform(new DOMMatrix().scale(.75)); g.fillStyle = pat; g.beginPath(); g.arc(h.x, h.y, h.r + 22, 0, 7); g.fill(); } g.fillStyle = "#1e4f9a"; g.beginPath(); g.arc(h.x, h.y, h.r, 0, 7); g.fill();
     g.fillStyle = "#3a7ed8"; g.beginPath(); g.arc(h.x - 6, h.y - 6, h.r * .6, 0, 7); g.fill(); g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 2;
     for (let k = 0; k < 10; k++) { const a = k * .63, r1 = h.r + 10; g.beginPath(); g.moveTo(h.x + Math.cos(a) * r1, h.y + Math.sin(a) * r1); g.lineTo(h.x + Math.cos(a + .2) * (r1 + 22), h.y + Math.sin(a + .2) * (r1 + 22)); g.stroke(); } }
   // the starting grid (3D tracks): a painted bracket round each of the 8 spots, open towards the front, like Mario Kart Tour
@@ -1521,11 +1526,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=60"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=63"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
