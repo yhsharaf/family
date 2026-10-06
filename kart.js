@@ -756,21 +756,31 @@ const TRACKS = {
     },
   },
   ld2: {
-    id: "ludi2", cup: "ludi", music: "k_ludi2", name: "Toy Factory", sub: "boost belts everywhere · Block Golems · King Block Golem", icon: "🧱",
-    ctrl: [[250, 1700], [250, 1200], [500, 1000], [300, 750], [350, 350], [750, 200], [900, 500], [700, 750], [950, 950], [1250, 750], [1150, 400], [1450, 200], [1800, 350],
-      [1700, 750], [1450, 950], [1650, 1200], [1900, 1450], [1750, 1800], [1300, 1700], [1000, 1450], [750, 1600], [650, 1900], [400, 1880]],
-    theme: TH.factory, art: { sky: "media/kart/ludi/sky2.webp", strip: "media/kart/ludi/strip2.webp" },
-    near: ["ld_lego", "ld_lego2", "ld_cone", "ld_flag", "ld_fan", "ld_flower"],
-    far: ["ld_blocks", "ld_blocks2", "ld_bear", "ld_cone", "ld_h5", "ld_h6", "ld_tree4"], mobs: ["block_golem", "robo", "toy_trojan", "bloctopus"],
-    build(F) {
-      const belts = [.07, .16, .25, .34, .43, .52, .61, .7, .79, .88].map((f, n) => pad("boost", F(f), [0, -30, 30][n % 3], 50, 10));
+    // 2. Rainbow Road (Super Mario Kart, as remade for Mario Kart 7 / 8): a road of glowing rainbow tiles over the night sky above Ludibrium.
+    // No railings anywhere (fall off and you're fished back out of space), tight right-angle turns and hairpins, rainbow Thwomps slamming down
+    // on the corners, a hole in the middle of the bottom straight (go either side), and Ludibrium's toy houses far below.
+    id: "rrsnes", scale: 1.12, road: 180, cup: "ludi", fall: "🌌 Lost in space!", music: "k_ludi1", name: "Rainbow Road (SNES)", sub: "no railings · rainbow Thwomps · hairpins", icon: "🌈",
+    ctrl: [[240, 930, 30], [240, 470, 32], [300, 280, 34], [480, 200, 36], [1320, 198, 36], [1520, 260, 36], [1590, 440, 34], [1590, 780, 32], [1518, 900, 30], [1320, 942, 30], [900, 942, 30],
+      [750, 1008, 30], [702, 1170, 30], [750, 1302, 30], [930, 1350, 30], [1680, 1350, 32], [1840, 1395, 34], [1910, 1520, 36], [1920, 1740, 36], [1860, 1860, 34], [1650, 1890, 32], [1110, 1890, 30],
+      [510, 1890, 30], [318, 1854, 30], [222, 1710, 30], [222, 1230, 30]],
+    theme: { grass: ["#0a0a26", "#0e0e32"], flowers: 2600, flowerCols: ["#ffffff", "#fff3a0", "#c8d8ff", "#ffffff"], stem: null, tufts: 0, road: "rainbow", curb: ["#ffffff", "#ff5ac8"], border: "#0a0a26", sky: "#16103a", out: "#0a0a20", haze: [30, 24, 70], night: .1 },
+    art: { sky: "media/kart/ludi/sky3.webp", strip: "media/kart/ludi/strip3.webp" },
+    near: [], far: ["ld_h1", "ld_h2", "ld_h3", "ld_h4", "ld_h5", "ld_h6"], mobs: ["chronos"],
+    build() {
+      const coins = [], pads = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      pads.push({ t: "ramp", i: I(1590, 600), len: 6, o: 0, w: 120 }, { t: "ramp", i: I(1300, 1350), len: 6, o: 0, w: 120 });   // trick ramps (Mario Kart 7 / 8)
+      pads.push({ t: "boost", i: I(900, 198), len: 10, o: 0, w: 70 }, { t: "boost", i: I(1400, 1890), len: 10, o: 0, w: 70 });
+      row(I(240, 800), I(240, 520), 6, 0); row(I(700, 198), I(1150, 198), 6, j => (j & 1 ? 35 : -35)); row(I(1110, 1890), I(600, 1890), 6, 0);
+      const C = [0xff5a7a, 0xffb43a, 0x7ae06a, 0x5ac8ff, 0xb87aff];
       return {
-        pads: [...belts, pad("ramp", F(.3), 0, ROAD, 9), pad("ramp", F(.74), 0, ROAD, 9), pad("rock", F(.47), 0, ROAD, 18), pad("slime", F(.2), 52, 40, 8), pad("slime", F(.56), -52, 40, 8), pad("slime", F(.92), 52, 40, 8)],
-        coins: [...coinRow(F(.01), F(.06), 6, 0), ...coinRow(F(.36), F(.41), 5, -20), ...coinRow(F(.63), F(.68), 6, j => (j & 1 ? 24 : -24)), ...coinRow(F(.9), F(.95), 5, 0)],
-        pigs: [{ i: F(.12), ph: 0, k: "block_golem", sp: .6 }, { i: F(.4), ph: 2, k: "robo", sp: 1.1 }, { i: F(.66), ph: 4, k: "block_golem", sp: .6 }],
-        king: { i: F(.83), T: 3.2, k: "king_block_golem", s: .55, name: "King Block Golem" },
-        boxes: [...boxRow(F(.05), [-56, -19, 19, 56]), ...boxRow(F(.45), [-54, -18, 18, 54]), ...boxRow(F(.7), [-56, -19, 19, 56])],
-        extra(push) { for (let f = .03; f < 1; f += .045) { const [x, y] = at(F(f), (f * 100 & 1 ? 1 : -1) * (ROAD / 2 + CURB + 12)); push(x, y, f * 40 & 1 ? "ld_cone" : "ld_lego2"); } },
+        ledges: [{ a: 0, b: N - 1 }], pads, coins,
+        thwomps: [[I(480, 200), -45], [I(1590, 780), 45], [I(750, 1008), -40], [I(1840, 1395), 45], [I(318, 1854), -45]].map(([i, o], n) => ({ i, o, ph: n * .7, col: C[n] })),
+        holes: [{ i: I(820, 1890), o: 0, r: 46 }],   // the hole in the middle of the bottom straight
+        boxes: [...boxRow(I(1320, 198), [-60, -20, 20, 60]), ...boxRow(I(930, 1350), [-60, -20, 20, 60]), ...boxRow(I(222, 1500), [-60, -20, 20, 60])],
+        extra(push) {
+          for (let i = 0; i < N; i += 30) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 4)); OBJS.push({ x, y, k: "ld_lamp", s: .26, r: 0, z: 0 }); }   // little lights along the edges
+        },
       };
     },
   },
@@ -1463,7 +1473,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=54"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=55"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 

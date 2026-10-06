@@ -150,6 +150,11 @@ export function create(A) {
     }
     else if (style === "dirt") { specks("#b98b5a", ["#a87a4a", "#c99d68", "#9c6e40", "#d2a878"], 2600, 1.6); g.fillStyle = "rgba(90,60,30,.18)"; for (const x of [.3, .7]) g.fillRect(U * x - 6, 0, 12, 192); }
     else if (style === "snow") { specks("#e3ebf6", ["#c9d6ea", "#f8fbff", "#d6e2f2"], 2400, 1.6); g.fillStyle = "rgba(150,170,205,.35)"; for (const x of [.28, .72]) g.fillRect(U * x - 5, 0, 10, 192); }
+    else if (style === "rainbow") {   // 🌈 Rainbow Road: rows of glowing tiles in the eight colours, with bright edges
+      const cols = ["#ff3a5a", "#ff8a2a", "#ffd23a", "#5ae06a", "#3ad8c8", "#3ab8ff", "#5a6aff", "#b85aff"], n = Math.max(4, Math.round(U / 22));
+      g.fillStyle = "#101028"; g.fillRect(0, 0, U, 192);
+      for (let row = 0; row < 8; row++) for (let k = 0; k < n; k++) { const x = k * U / n, y = row * 24, gr = g.createLinearGradient(x, y, x, y + 24); gr.addColorStop(0, "#ffffff"); gr.addColorStop(.18, cols[row]); gr.addColorStop(1, cols[row]);
+        g.fillStyle = gr; g.globalAlpha = .9; rr(x + 1, y + 1, U / n - 2, 22, 3); g.fill(); g.globalAlpha = 1; g.strokeStyle = "rgba(255,255,255,.5)"; g.lineWidth = .8; g.stroke(); } }
     else if (style === "toy") { const cols = ["#ffe39a", "#ffc8de", "#c4e8ff", "#cdf0bd"]; g.fillStyle = "#f4f0ff"; g.fillRect(0, 0, U, 192);
       for (let y = 0, j = 0; y < 192; y += 24, j++) for (let x = 0, i = 0; x < U; x += U / 8, i++) { g.fillStyle = cols[(i + j) % 4]; rr(x + 1, y + 1, U / 8 - 2, 22, 3); g.fill(); g.fillStyle = "rgba(255,255,255,.55)"; rr(x + 2.5, y + 2.5, U / 8 - 9, 3, 1.5); g.fill(); } }
     else if (style === "planks") { for (let y = 0, j = 0; y < 192; y += 8, j++) { g.fillStyle = ["#8a5a2e", "#9a6634", "#7e5229"][j % 3]; g.fillRect(0, y, U, 8); g.fillStyle = "#4a2e14"; g.fillRect(0, y + 7.2, U, .8);
@@ -190,14 +195,15 @@ export function create(A) {
     const cg = new THREE.BufferGeometry(); cg.setAttribute("position", new THREE.Float32BufferAttribute(CP, 3)); cg.setAttribute("uv", new THREE.Float32BufferAttribute(CU, 2)); cg.setIndex(CI);
     const road = new THREE.Mesh(geo, roadMat), curb = new THREE.Mesh(cg, curbMat); scene.add(road, curb); roadObjs.push(road, curb);
   }
-  function roadMat(tex, decal) {
+  function roadMat(tex, decal, glow) {
     const w = WORLD;
     const m = new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+    if (glow) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = tex; m.emissiveIntensity = .55; }   // (Rainbow Road's tiles glow)
     m.onBeforeCompile = sh => { sh.uniforms.decal = { value: decal };
       sh.vertexShader = "varying vec2 vWXZ;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWXZ = position.xz;");
       sh.fragmentShader = "uniform sampler2D decal; varying vec2 vWXZ;\n" + sh.fragmentShader.replace("#include <map_fragment>",
         `#include <map_fragment>\n vec4 dc = texture2D(decal, vec2(vWXZ.x / ${w.toFixed(1)}, 1.0 - vWXZ.y / ${w.toFixed(1)})); diffuseColor.rgb = mix(diffuseColor.rgb, dc.rgb, dc.a);`); };
-    m.customProgramCacheKey = () => "road" + w;   // (the world size is baked into the shader, so tracks of different sizes need their own)
+    m.customProgramCacheKey = () => "road" + w + (glow ? "g" : "");   // (the world size is baked into the shader, so tracks of different sizes need their own)
     return m;
   }
   function buildRoad(t) {
@@ -214,7 +220,7 @@ export function create(A) {
       altBare.push(...runs(t.AN, j => near(t.ALT[j][0], t.ALT[j][1], t.PTS, t.FORK_A - 80, t.FORK_B + 80, t.ROAD / 2 + t.CURB + t.ALT_ROAD / 2)));
       mainBare.push(...runs(t.N, i => (Math.abs(i - t.FORK_A) < 70 || Math.abs(i - t.FORK_B) < 70) && near(t.PTS[i][0], t.PTS[i][1], t.ALT, 0, t.AN, reach)));
     }
-    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
+    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow"), cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
     if (t.water) {   // 🪵 the boardwalk's piles, down into the lake
       const step = Math.max(1, Math.round(46 / t.SPC)), spots = [];
       for (let i = 0; i < t.N; i += step) { const p = t.PTS[i], q = t.PTS[(i + 1) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]); for (const sd of [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB - 3); spots.push([p[0] - Math.sin(a) * o, p[1] + Math.cos(a) * o]); } }
@@ -268,7 +274,7 @@ export function create(A) {
       for (const [x, z] of [[-13, -13], [13, -13], [-13, 13], [13, 13]]) { const w = new THREE.Mesh(CYL, iron); w.scale.set(5, 3, 5); w.rotation.x = Math.PI / 2; w.position.set(x, 5, z); g.add(w); }
       scene.add(g); roadObjs.push(g); cartM.push({ c, g }); }
     thw = []; thFn = t.thz || null;
-    for (const th of t.thwomps || []) { const fm = new THREE.MeshLambertMaterial({ map: faceTex() }), top = new THREE.MeshLambertMaterial({ color: 0x7a7f8a });
+    for (const th of t.thwomps || []) { const fm = new THREE.MeshLambertMaterial({ map: faceTex(), color: th.col || 0xffffff, emissive: th.col ? 0x202020 : 0 }), top = new THREE.MeshLambertMaterial({ color: th.col || 0x7a7f8a });
       const m = new THREE.Mesh(BOX, [fm, fm, top, top, fm, fm]); m.scale.set(74, 62, 74); m.rotation.y = -(th.a || 0); scene.add(m); roadObjs.push(m);
       const sh = new THREE.Mesh(new THREE.CircleGeometry(40, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; scene.add(sh); roadObjs.push(sh);
       thw.push({ th, m, sh, g: h(th.x, th.y) }); }
