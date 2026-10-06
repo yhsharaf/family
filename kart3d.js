@@ -170,7 +170,13 @@ export function create(A) {
     }
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
     for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : 320;   // 🍄 a gorge (deep, misty) or the park pond
-      for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * smooth(520, 430, Math.sqrt(dmin[o]))); }
+      for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * smooth(520, 430, Math.sqrt(dmin[o])));
+      if (t.theme.cliffs && g.kind === "gorge") {   // with cliff walls: the pit is exactly the walls' box (no ground left standing in front of them where the track bends)
+        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = g.a; i <= g.b; i++) { const p = t.PTS[i % t.N]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+        const M = 480, gi0 = Math.max(0, Math.floor((x0 - M) / G)), gi1 = Math.min(GN - 1, Math.ceil((x1 + M) / G)), gj0 = Math.max(0, Math.floor((z0 - M) / G)), gj1 = Math.min(GN - 1, Math.ceil((z1 + M) / G));
+        for (let j = gj0; j <= gj1; j++) for (let i = gi0; i <= gi1; i++) { const x = i * G, z = j * G; let bd = 1e12, bi = -1;
+          for (let k = g.a - 6; k <= g.b + 6; k++) { const p = t.PTS[((k % t.N) + t.N) % t.N], d = (p[0] - x) ** 2 + (p[1] - z) ** 2; if (d < bd) { bd = d; bi = k; } }
+          if (bi > g.a && bi < g.b) { const o = j * GN + i; DIP[o] = Math.max(DIP[o], depth * smooth(470, 432, Math.sqrt(bd))); } } } }
     // the terrain mesh, painted with the track picture, and a fine grain so it looks like a surface up close
     const pos = new Float32Array(GN * GN * 3), uv = new Float32Array(GN * GN * 2), idx = new Uint32Array((GN - 1) * (GN - 1) * 6);
     for (let j = 0, p = 0; j < GN; j++) for (let i = 0; i < GN; i++, p++) { pos.set([i * G, HG[p] - DIP[p], j * G], p * 3); uv.set([i / (GN - 1), 1 - j / (GN - 1)], p * 2); }
@@ -181,7 +187,8 @@ export function create(A) {
     const mat = new THREE.MeshLambertMaterial({ map });
     mat.onBeforeCompile = sh => { sh.uniforms.detail = { value: DETAIL };
       sh.fragmentShader = "uniform sampler2D detail;\n" + sh.fragmentShader.replace("#include <map_fragment>",
-        "#include <map_fragment>\n diffuseColor.rgb *= (.9 + .2 * texture2D(detail, vMapUv * 97.0).r) * (.94 + .12 * texture2D(detail, vMapUv * 19.0).g);"); };
+        "#include <map_fragment>\n diffuseColor.rgb *= (.9 + .2 * texture2D(detail, vMapUv * 97.0).r) * (.94 + .12 * texture2D(detail, vMapUv * 19.0).g);");
+ };
     // the open plain all round the map, out to the horizon
     if (plain) { scene.remove(plain); plain.children.forEach(m => m.geometry.dispose()); }
     plain = new THREE.Group(); const pm = new THREE.MeshLambertMaterial({ color: new THREE.Color(t.theme.grass ? t.theme.grass[0] : "#5cae46") }), F = 7000;
@@ -202,7 +209,7 @@ export function create(A) {
     if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); terrain.material.map.dispose(); terrain.material.dispose(); }
     terrain = new THREE.Mesh(geo, mat); scene.add(terrain);
     if (t.theme.space) { terrain.visible = false; for (const m of plain.children) if (!m.userData.keep) m.visible = false; }   // 🌌 in space there's no ground: the road floats over the stars
-    buildRoad(t);
+    buildRoad(t); buildCliffs(t);
     scene.fog = new THREE.Fog(new THREE.Color(...(t.haze || [214, 236, 255]).map(c => c / 255)), 900, 2600);
     renderer.setClearColor(scene.fog.color);
   }
@@ -303,6 +310,28 @@ export function create(A) {
         .replace("#include <emissivemap_fragment>", glow ? "#include <emissivemap_fragment>\n totalEmissiveRadiance *= (1.0 - dc.a);" : "#include <emissivemap_fragment>"); };   // (on a glowing road, what's painted on it, like a hole, doesn't glow)
     m.customProgramCacheKey = () => "road" + w + (glow ? "g" : "");   // (the world size is baked into the shader, so tracks of different sizes need their own)
     return m;
+  }
+  // 🧱 clean cliff walls round each gorge (Mushroom Canyon): smooth vertical strips along the pit's edge - the grassy lip at the top, the
+  // dirt with mossy rocks below, darker further down - mapped evenly along the wall like a MapleStory map's ground
+  function buildCliffs(t) {
+    const CL = t.theme.cliffs ? cliffMats(t.theme.cliffs) : null; if (!CL || !RE) return;
+    const W = 424, DEPTH = 330, N = t.N, P = t.PTS;
+    const tan = i => { const a = P[Math.max(0, i - 2) % N], b = P[Math.min(N - 1, i + 2) % N]; const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [dx / l, dy / l]; };
+    const lipM = new THREE.MeshLambertMaterial({ map: CL.top, side: THREE.DoubleSide, vertexColors: true }), fillM = new THREE.MeshLambertMaterial({ map: CL.fill, side: THREE.DoubleSide, vertexColors: true });
+    const strip = pts => {   // pts: [x, z, top] along the wall -> a lip strip and a fill strip
+      const lp = [], lu = [], lc = [], fp = [], fu = [], fc = [], li = [], fi = []; let arc = 0;
+      pts.forEach((q, k) => { if (k) arc += Math.hypot(q[0] - pts[k - 1][0], q[1] - pts[k - 1][1]); const u = arc / CL.w, top = q[2];
+        lp.push(q[0], top, q[1], q[0], top - CL.lip, q[1]); lu.push(u, 1, u, 0); lc.push(1, 1, 1, .92, .92, .92);
+        fp.push(q[0], top - CL.lip + 1, q[1], q[0], top - DEPTH, q[1]); fu.push(u, 0, u, -(DEPTH - CL.lip) / CL.fh); fc.push(.92, .92, .92, .35, .35, .35);
+        if (k) { const a = (k - 1) * 2; li.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); fi.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } });
+      for (const [pos, uv, col, ix, m] of [[lp, lu, lc, li, lipM], [fp, fu, fc, fi, fillM]]) { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+        g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.setIndex(ix); g.computeVertexNormals(); const mesh = new THREE.Mesh(g, m); scene.add(mesh); roadObjs.push(mesh); }
+    };
+    for (const g of t.gaps || []) { if (g.kind !== "gorge") continue;
+      const at2 = (i, o) => { const [tx, ty] = tan(i), p = P[i % N]; return [p[0] - ty * o, p[1] + tx * o]; }, rim = i => RE[Math.max(0, Math.min(N - 1, i % N))] + 1;
+      for (const sd of [-1, 1]) { const pts = []; for (let i = g.a; i <= g.b; i += 2) { const [x, z] = at2(i, sd * W), [hx, hz] = at2(i, sd * (W + 110)); pts.push([x, z, Math.max(rim(i), h(hx, hz) + 1)]); } strip(pts); }   // the two long sides, as tall as the hillside behind them
+      for (const i of [g.a + 1, g.b - 1]) { const pts = []; for (let o = -W; o <= W; o += 24) { const [x, z] = at2(i, o); pts.push([x, z, rim(i)]); } strip(pts); }   // the ends, under the road's edge
+    }
   }
   function buildRoad(t) {
     for (const o of roadObjs) { scene.remove(o); if (o.geometry) o.geometry.dispose(); } roadObjs = [];
@@ -416,10 +445,10 @@ export function create(A) {
       const depth = g.kind === "water" ? 70 : 320;
       for (const c of g.caps) {
         const lift = c.top || 0, top = h(c.x, c.y) + 1 + lift, grp = new THREE.Group(); grp.position.set(c.x, top, c.y);
-        const dh = 10 + c.r * .08, dome = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: c.gold ? 90 : 50, specular: c.gold ? 0xfff0a0 : 0x333333, emissive: c.gold ? 0x6a4800 : 0x000000 }));   // (the golden ones glow) dome.scale.set(c.r, dh, c.r); grp.add(dome);
-        const rim = new THREE.Mesh(new THREE.CylinderGeometry(c.r, c.r * .9, 6, 40), new THREE.MeshLambertMaterial({ color: { g: 0x2f7a2a, r: 0xa8321e, b: 0x235fa8, o: 0xb85a1a, n: 0x4a2c14, y: 0xb8860b }[c.col] || 0xa8321e })); rim.position.y = -2; grp.add(rim);
-        const under = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .88, c.r * .3, 14, 32), new THREE.MeshLambertMaterial({ color: 0xf2e2b8 })); under.position.y = -12; grp.add(under);
-        const sl = depth + 10 + lift, stem = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .17, c.r * .22, sl, 20), new THREE.MeshLambertMaterial({ color: 0xf0d77a })); stem.position.y = -sl / 2 - 12; grp.add(stem);
+        const dh = c.r * (c.gold ? .5 : .56), sink = dh - 14, dome = new THREE.Mesh(CAP, new THREE.MeshPhongMaterial({ map: capTex(c.col), shininess: c.gold ? 90 : 50, specular: c.gold ? 0xfff0a0 : 0x333333, emissive: c.gold ? 0x6a4800 : 0x000000 })); dome.scale.set(c.r, dh, c.r); dome.position.y = -sink; grp.add(dome);   // (the golden ones glow; fat: most of the dome hangs below the road edge, the top you land on stays level)
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(c.r * 1.01, c.r * .94, 7, 40), new THREE.MeshLambertMaterial({ color: { g: 0x2f7a2a, r: 0xa8321e, b: 0x235fa8, o: 0xb85a1a, n: 0x4a2c14, y: 0xb8860b }[c.col] || 0xa8321e })); rim.position.y = -sink - 2; grp.add(rim);
+        const under = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .93, c.r * .36, 18, 32), new THREE.MeshLambertMaterial({ color: 0xf6e8c4 })); under.position.y = -sink - 14; grp.add(under);
+        const sl = depth + 10 + lift, stem = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .26, c.r * .32, sl, 24), new THREE.MeshLambertMaterial({ color: 0xf4e3a8 })); stem.position.y = -sink - sl / 2 - 12; grp.add(stem);
         scene.add(grp); roadObjs.push(dome, rim, under, stem); extraObjs.push(grp); caps.push({ m: dome, pad: c, h: dh });
       }
       // what's down there: drifting mist in the gorge, water in the pond
@@ -475,6 +504,27 @@ export function create(A) {
     for (const x of [40, 168]) { const gr = g.createLinearGradient(x - 18, 0, x + 18, 0); gr.addColorStop(0, "rgba(90,170,235,0)"); gr.addColorStop(.5, "rgba(120,200,255,.95)"); gr.addColorStop(1, "rgba(90,170,235,0)"); g.fillStyle = gr; g.fillRect(x - 18, 0, 36, 256);
       g.fillStyle = "rgba(255,255,255,.7)"; for (let y = 0; y < 256; y += 14) g.fillRect(x - 3 + ((y / 14) % 3) * 2, y, 3, 8); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
+  const cliffCache = {};
+  function cliffMats(kind) {
+    let mode = "ms"; try { mode = localStorage.getItem("kart_cliff") || "ms"; } catch (e) {}
+    if (cliffCache[mode]) return cliffCache[mode];
+    const prep = tx => { tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = aniso; return tx; };
+    if (mode === "ms") {   // 🍄 Henesys's Singing Mushroom Forest ground (maplestory.io): the grassy lip and the dirt with mossy rocks
+      const L = new THREE.TextureLoader();
+      return cliffCache[mode] = { top: prep(L.load("media/kart/tiles/shroomCliffTop.webp")), fill: prep(L.load("media/kart/tiles/shroomCliffFill.webp")), w: 300, lip: 72, fh: 100 };
+    }
+    // the painted version: olive-brown earth with darker cracks, mossy tufts, and a grass lip with little flowers
+    let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    const fc = canvas(360, 120), f = fc.getContext("2d"); f.fillStyle = "#7d6a2c"; f.fillRect(0, 0, 360, 120);
+    for (let k = 0; k < 140; k++) { const x = rnd() * 360, y = rnd() * 120, r = 4 + rnd() * 14; f.fillStyle = rnd() < .5 ? "rgba(70,55,20,.45)" : "rgba(160,140,70,.35)";
+      for (const dx of [-360, 0, 360]) for (const dy of [-120, 0, 120]) { f.beginPath(); f.ellipse(x + dx, y + dy, r, r * .6, rnd() * 3, 0, 7); f.fill(); } }
+    for (let k = 0; k < 5; k++) { const x = 30 + k * 70 + rnd() * 20, y = 20 + rnd() * 80; f.fillStyle = "#6b5a24"; f.beginPath(); f.ellipse(x, y + 5, 22, 10, 0, 0, 7); f.fill();
+      f.fillStyle = "#4f9a2e"; f.beginPath(); f.ellipse(x, y, 20, 8, 0, 0, 7); f.fill(); f.fillStyle = "#7ccc48"; f.beginPath(); f.ellipse(x - 4, y - 3, 10, 4, 0, 0, 7); f.fill(); }
+    const tc = canvas(360, 88), g = tc.getContext("2d"); g.fillStyle = "#54a038"; g.fillRect(0, 0, 360, 88); g.drawImage(fc, 0, 30);
+    g.fillStyle = "#3f8a28"; g.fillRect(0, 22, 360, 10); for (let x = 0; x < 360; x += 4) { g.fillStyle = rnd() < .5 ? "#6cc040" : "#4f9a2e"; g.beginPath(); g.moveTo(x, 34); g.lineTo(x + 2, 14 + rnd() * 10); g.lineTo(x + 4, 34); g.fill(); }
+    for (let k = 0; k < 14; k++) { g.fillStyle = ["#ffc8de", "#ffffff", "#ffe08a"][k % 3]; g.beginPath(); g.arc(rnd() * 360, 18 + rnd() * 10, 2, 0, 7); g.fill(); }
+    return cliffCache[mode] = { top: prep(new THREE.CanvasTexture(tc)), fill: prep(new THREE.CanvasTexture(fc)), w: 300, lip: 72, fh: 100 };
+  }
   const rockTex = () => rockT || (rockT = (() => { const c = canvas(256, 256), g = c.getContext("2d"); g.fillStyle = "#6d6670"; g.fillRect(0, 0, 256, 256);   // 🪨 a rock cave: grey-brown crags with frost
     let sd = 9; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     for (let k = 0; k < 160; k++) { const x = rnd() * 256, y = rnd() * 256, r = 8 + rnd() * 24; g.fillStyle = ["#5a5360", "#7f7882", "#4a4450", "#8e8a96", "#dfe8f2"][k % 5]; g.globalAlpha = k % 5 === 4 ? .35 : .8;
@@ -496,7 +546,7 @@ export function create(A) {
     if (capTexs[col]) return capTexs[col];
     const C = { o: ["#e8742a", "#ffa040"], g: ["#3e9e34", "#7fd862"], b: ["#2f7cd0", "#7ab8ff"], r: ["#b8281c", "#f04a32"], n: ["#5e3a1c", "#9a6a3a"], y: ["#d4920a", "#ffe45a"] }[col] || ["#e8742a", "#ffa040"], c = canvas(256, 128), g = c.getContext("2d");
     const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, C[1]); gr.addColorStop(1, C[0]); g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
-    g.fillStyle = "#fffaf0"; for (const [x, y, r] of [[30, 40, 16], [100, 70, 20], [170, 35, 14], [220, 85, 18], [65, 100, 11], [140, 108, 10], [250, 20, 9], [5, 80, 10]]) { g.beginPath(); g.ellipse(x, y, r, r * .8, 0, 0, 7); g.fill(); }
+    g.fillStyle = "#fffaf0"; for (const [x, y, r] of [[28, 30, 22], [96, 62, 27], [168, 26, 19], [222, 76, 24], [60, 98, 15], [140, 104, 14], [250, 14, 13], [4, 74, 14], [196, 112, 10], [118, 18, 11]]) { g.beginPath(); g.ellipse(x, y, r, r * .82, 0, 0, 7); g.fill(); }   // big round spots, like a real toadstool
     g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(0, 118, 256, 10);   // a darker rim
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return capTexs[col] = t;
   }
@@ -641,7 +691,7 @@ export function create(A) {
     m.body.position.y = Math.max(0, r.z || 0) + hop + lift;
     m.body.rotation.set(flip, -((r.drift || 0) * .34 + (r.steer || 0) * .07) - spin, 0, "YXZ");
     if (r.glide && !m.wing) { const g = new THREE.Group(), cloth = new THREE.MeshLambertMaterial({ color: 0xffcf3a, side: THREE.DoubleSide }), geo = new THREE.BufferGeometry();   // 🪁 a hang-glider over the kart
-      geo.setAttribute("position", new THREE.Float32BufferAttribute([14, 33, 0, -12, 30, -30, -12, 30, 30, 14, 33, 0, -12, 30, 30, -6, 31.5, 0, 14, 33, 0, -6, 31.5, 0, -12, 30, -30], 3));   // (just over the driver's head) geo.computeVertexNormals();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute([14, 33, 0, -12, 30, -30, -12, 30, 30, 14, 33, 0, -12, 30, 30, -6, 31.5, 0, 14, 33, 0, -6, 31.5, 0, -12, 30, -30], 3)); geo.computeVertexNormals();   // (just over the driver's head)
       g.add(new THREE.Mesh(geo, cloth)); for (const z of [-5, 5]) { const st = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x555b66 })); st.scale.set(1.5, 19, 1.5); st.position.set(-4, 21, z); g.add(st); }
       m.body.add(g); m.wing = g; }
     if (m.wing) m.wing.visible = !!r.glide;

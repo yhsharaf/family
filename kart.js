@@ -251,7 +251,7 @@ const TRACKS = {
       [1605, 366, 60], [1572, 231, 66], [1470, 138, 72], [1320, 118, 74], [1200, 150, 72], [1110, 230, 68], [993, 262, 60], [858, 305, 52], [723, 362, 44], [628, 423, 40],
       [463, 440, 36], [297, 538, 30], [213, 709, 24], [279, 888, 18], [437, 1028, 14], [718, 1138, 10], [973, 1285, 6], [1228, 1432, 2], [1420, 1560, 0], [1520, 1720, -4],
       [1590, 1870, -6], [1720, 1915, -4], [1850, 1840, -2], [1875, 1640, 0]],
-    theme: { grass: ["#74c94f", "#6dc149"], flowers: 500, tufts: 9000, road: "pave" },
+    theme: { grass: ["#74c94f", "#6dc149"], flowers: 500, tufts: 9000, road: "pave", cliffs: "shroom" },
     near: ["sunflower", "redshrooms", "bush", "tallshroom", "tree", "shroomtower", "shroomhouse"],
     far: ["tree", "tree", "bush", "shroomhouse", "shroomtower"], mobs: ["orange_mushroom", "green_mushroom", "blue_mushroom"],
     build() {
@@ -288,6 +288,11 @@ const TRACKS = {
           for (const [x, y, k, sc] of [[1150, 700, "orange_mushroom", 1.6], [1350, 900, "green_mushroom", 1.5], [800, 750, "blue_mushroom", 1.5], [1500, 1180, "orange_mushroom", 1.3]])
             OBJS.push({ x: ws(x), y: ws(y), k, s: sc, r: 20, z: 0, bob: 14, mob: true });   // giant mushrooms bouncing on the spot
           for (const [x, y, k] of [[1000, 900, "shroomhouse"], [1250, 650, "shroomtower"], [650, 650, "shroomhouse"], [1650, 1350, "shroomtower"]]) push(ws(x), ws(y), k);
+          // 🍄 Mushmom, huge, sitting on the far rim of the abyss and bouncing, watching everyone try the mushrooms
+          { const [x, y] = at(g3a + u(560), -(ROAD / 2 + CURB + 600)); OBJS.push({ x, y, k: "mushmom", s: 2.8, r: 0, z: 0, bob: 22, mob: true }); }
+          // little mushrooms cheering on the lips of every gorge, where you take off and where you land
+          const kinds = ["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom"];
+          [G1, G2, G3].forEach((g, gi) => [g.a - 10, g.b + 10].forEach((i, e) => [-1, 1].forEach((sd, k) => { for (let n = 0; n < 2; n++) { const [x, y] = at(i - n * 7, sd * (ROAD / 2 + CURB + 22 + n * 26)); OBJS.push({ x, y, k: kinds[(gi + e + k + n) % 4], s: .5, r: 0, z: 0, bob: 9, mob: true }); } })));
         },
       };
     },
@@ -1541,7 +1546,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=75"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=87"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
