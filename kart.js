@@ -77,7 +77,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   puppy: { move: 3, stand0: 3, jump: 1 }, panda: { move: 3, stand0: 3, jump: 1 }, dino: { move: 5, stand0: 3, jump: 1 }, penguin: { move: 5, stand0: 3, jump: 2 },
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
-let FINALMSG = null, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
+let FINALMSG = null, AREAS = [], SPORES = [], areaAt = -1, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
   ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
@@ -128,6 +128,19 @@ function penPigPos(p, tt) {
 // road crossers: pigs (Henesys Loop), snails (Town Run, slow), mushrooms that hop (Mushroom Forest)
 const pigPos = (p, tt) => { const sp = p.sp || 1.25, o = Math.sin(tt * sp + p.ph) * (p.amp || ROAD / 2 + 8), [x, y] = at(p.i + (p.loop ? Math.cos(tt * sp + p.ph) * p.loop : 0), o);   // (loop: skating round in a ring)
   return { x, y, dir: Math.cos(tt * sp + p.ph), z: p.hop ? Math.abs(Math.sin(tt * 5 + p.ph)) * 16 : 0 }; };
+function areaSign(name) {
+  const c = document.createElement("canvas"); c.width = 300; c.height = 190; const g = c.getContext("2d"), txt = name.replace(/^\S+\s/, "");
+  g.fillStyle = "#6b4426"; g.fillRect(52, 70, 18, 120); g.fillRect(230, 70, 18, 120);   // posts
+  g.fillStyle = "#4a2c14"; g.fillRect(64, 70, 6, 120); g.fillRect(242, 70, 6, 120);
+  const gr = g.createLinearGradient(0, 18, 0, 108); gr.addColorStop(0, "#c98a4e"); gr.addColorStop(1, "#8a5428"); g.fillStyle = gr; g.strokeStyle = "#4a2c14"; g.lineWidth = 6;
+  g.beginPath(); g.roundRect(14, 18, 272, 92, 18); g.fill(); g.stroke();
+  g.strokeStyle = "rgba(74,44,20,.35)"; g.lineWidth = 2; for (const y of [44, 70, 92]) { g.beginPath(); g.moveTo(26, y); g.lineTo(274, y); g.stroke(); }   // planks
+  for (const [x, y] of [[30, 32], [270, 32], [30, 96], [270, 96]]) { g.fillStyle = "#3a2410"; g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); }   // nails
+  g.font = "900 " + (txt.length > 14 ? 30 : 36) + "px Ubuntu, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 7; g.strokeStyle = "#3a2008"; g.strokeText(txt, 150, 66); g.fillStyle = "#fff4d6"; g.fillText(txt, 150, 66);
+  g.fillStyle = "#e8452c"; g.beginPath(); g.ellipse(150, 14, 26, 15, 0, Math.PI, 0); g.fill(); g.fillStyle = "#fff"; for (const dx of [-12, 4, 14]) { g.beginPath(); g.arc(150 + dx, 8 + Math.abs(dx) * .2, 3.5, 0, 7); g.fill(); }   // a little toadstool on top
+  g.fillStyle = "#f6e8c4"; g.fillRect(143, 14, 14, 6);
+  return c;
+}
 const lapNow = () => (K ? Math.min(LAPS, K.lap + 1) : 1);   // the lap you're on (some things only come out on the last one)
 const kingPhase = tt => (tt % KING.T) / KING.T;   // 0-.45 up in the air, .45-.55 falling, .55 SLAM, then sitting on the road
 const kingZ = ph => ph < .45 ? 150 * Math.sin(Math.min(1, ph / .2) * Math.PI / 2) : ph < .55 ? 150 * (1 - (ph - .45) / .1) : 0;
@@ -270,12 +283,19 @@ const TRACKS = {
       [[170, -70, 72, 18], [370, -52, 58, 34], [570, -78, 80, 8], [770, -50, 62, 28], [970, -68, 76, 14]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, COL[k % 5])));
       [[170, 72, 60, 30], [370, 60, 84, 10], [570, 76, 56, 36], [770, 55, 80, 6], [970, 74, 66, 24]].forEach(([d, o, r, top], k) => cave.push(cap(g3a, d, o, r, top, COL[(k + 2) % 5])));
       const G3 = { a: g3a, b: g3a + u(1055), kind: "gorge", caps: cave };
+      // 🗺️ the journey round the canyon: each area's name pops up as you reach it, with a signpost by the road
+      const areas = [[0, "market", "🏘️ Henesys Market"], [I(1890, 1110), "climb", "🧗 Cliffside Climb"], [g1a - 40, "leap", "🍄 Toadstool Leap"], [I(1500, 150), "hook", "🪝 The Hook"],
+        [g2a - 40, "steps", "🍄 Mushroom Steps"], [I(700, 375), "spore", "✨ Spore Hill"], [g3a - 50, "abyss", "🕳️ Mushmom's Abyss"], [I(1460, 1600) + 20, "run", "🐾 Mushroom Run"]].map(([i, k, name]) => ({ i, k, name }));
+      // ✨ spores drifting up out of the gorges and over Spore Hill, glowing
+      const spores = [];
+      for (const [ga, len, n] of [[g1a, 160, 10], [g2a, 500, 22], [g3a, 1055, 46]]) for (let k = 0; k < n; k++) { const [x, y] = at(ga + u(len * (k + .5) / n), (Math.random() - .5) * 700); spores.push({ x, y, ph: Math.random(), sp: .06 + Math.random() * .05, sw: Math.random() * 6.28, s: .7 + Math.random() * .6 }); }
+      for (let k = 0; k < 18; k++) { const [x, y] = at(I(860, 310) + Math.round((k / 18) * (I(260, 600) - I(860, 310))), (Math.random() < .5 ? -1 : 1) * (ROAD / 2 + 60 + Math.random() * 200)); spores.push({ x, y, ph: Math.random(), sp: .05 + Math.random() * .04, sw: Math.random() * 6.28, s: .6 + Math.random() * .5, low: true }); }
       row(I(1885, 1120), I(1900, 960), 5, 0);                             // up the cliffside
       row(I(1520, 160), I(1360, 120), 5, 40);                             // round the inside of the hook
       row(I(560, 430), I(260, 600), 6, j => Math.sin(j * 1.1) * 40);    // the sweep round the far side
       row(I(1540, 1790), I(1700, 1912), 5, -40);                          // the inside of the bottom U-turn
       return {
-        gaps: [G1, G2, G3],
+        gaps: [G1, G2, G3], areas, spores, finalMsg: "🍄 Mushmom is STOMPING!",
         pads: [{ t: "boost", i: I(1560, 200), len: 14, o: 0, w: 60 },       // out of the first jump, into the hook
           { t: "boost", i: I(1460, 1600), len: 14, o: 0, w: 60 }],          // out of the abyss
         coins,
@@ -284,12 +304,19 @@ const TRACKS = {
           { i: I(1868, 1760), ph: 4, k: "blue_mushroom", sp: .75, hop: true, soft: true, s: .6 }, { i: I(400, 480), ph: 1.3, k: "orange_mushroom", sp: .7, hop: true, soft: true, s: .6 }],
         boxes: [...boxRow(I(1885, 1180), [-72, -24, 24, 72]), ...boxRow(I(1360, 118), [-72, -24, 24, 72]), ...boxRow(I(250, 800), [-72, -24, 24, 72])],
         extra(push) {
-          for (let i = I(1868, 1680); i <= I(1878, 1300); i += 22) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 60)); push(x, y, ["stall", "stall2"][(Math.round(i / 22) + (side > 0 ? 1 : 0)) & 1]); }   // the market
+          const span = (a, b, st) => { const out = []; for (let k = 0, n = (b - a + N) % N; k <= n; k += st) out.push((a + k) % N); return out; };   // (round the start line)
+          span(I(1868, 1680), I(1878, 1300), 22).forEach((i, n) => { for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 60)); push(x, y, ["stall", "stall2"][(n + (side > 0 ? 1 : 0)) & 1]); } });   // the market
           for (const [x, y, k, sc] of [[1150, 700, "orange_mushroom", 1.6], [1350, 900, "green_mushroom", 1.5], [800, 750, "blue_mushroom", 1.5], [1500, 1180, "orange_mushroom", 1.3]])
             OBJS.push({ x: ws(x), y: ws(y), k, s: sc, r: 20, z: 0, bob: 14, mob: true });   // giant mushrooms bouncing on the spot
           for (const [x, y, k] of [[1000, 900, "shroomhouse"], [1250, 650, "shroomtower"], [650, 650, "shroomhouse"], [1650, 1350, "shroomtower"]]) push(ws(x), ws(y), k);
-          // 🍄 Mushmom, huge, sitting on the far rim of the abyss and bouncing, watching everyone try the mushrooms
-          { const [x, y] = at(g3a + u(560), -(ROAD / 2 + CURB + 600)); OBJS.push({ x, y, k: "mushmom", s: 2.8, r: 0, z: 0, bob: 22, mob: true }); }
+          // 🍄 Mushmom, huge, sitting on the far rim of the abyss and bouncing, watching everyone try the mushrooms (on the last lap she stomps)
+          { const [x, y] = at(g3a + u(560), -(ROAD / 2 + CURB + 600)); OBJS.push({ x, y, k: "mushmom", s: 2.8, r: 0, z: 0, bob: 22, mob: true, stomp: true }); }
+          // 🏘️ the mushroom village round Henesys Market: houses and towers behind the stalls, red toadstools between them
+          span(I(1866, 1700), I(1878, 1260), 26).forEach((i, n) => { for (const sd of [-1, 1]) {
+            const [x, y] = at(i, sd * (ROAD / 2 + CURB + 200 + (n % 2) * 40)); push(x, y, ["shroomhouse", "shroomtower", "shroomhouse", "tallshroom"][(n + (sd > 0 ? 1 : 0)) % 4]);
+            const [x2, y2] = at((i + 13) % N, sd * (ROAD / 2 + CURB + 120)); push(x2, y2, "redshrooms", .42, 0); } });
+          // 🪧 a signpost at the start of every area
+          for (const a of areas) if (a.i > 5) { const [x, y] = at(a.i, ROAD / 2 + CURB + 44); OBJS.push({ x, y, k: "areasign_" + a.k, s: .55, r: 10, z: 0 }); }
           // little mushrooms cheering on the lips of every gorge, where you take off and where you land
           const kinds = ["orange_mushroom", "green_mushroom", "blue_mushroom", "horny_mushroom"];
           [G1, G2, G3].forEach((g, gi) => [g.a - 10, g.b + 10].forEach((i, e) => [-1, 1].forEach((sd, k) => { for (let n = 0; n < 2; n++) { const [x, y] = at(i - n * 7, sd * (ROAD / 2 + CURB + 22 + n * 26)); OBJS.push({ x, y, k: kinds[(gi + e + k + n) % 4], s: .5, r: 0, z: 0, bob: 9, mob: true }); } })));
@@ -903,7 +930,8 @@ function loadTrack(key) {
       c.col = pick; c.colSet = true; k++; } }
   { const g0 = gridSpot(7).i - 25, g1 = (OPEN ? START_I : N) + Math.round(400 / SPC), inStart = i => { const j = OPEN ? i : (i < N / 2 ? i + N : i); return j >= g0 && j <= g1; };
     f.pads = f.pads.filter(p => !(["boost", "ramp", "bigramp"].includes(p.t) && (inStart(p.i) || inStart(p.i + (p.len || 0))))); }
-  PADS = f.pads; COINS = f.coins; PIGS = f.pigs || []; FINALMSG = f.finalMsg || null; KING = f.king || null; BOXES = f.boxes || [];
+  PADS = f.pads; COINS = f.coins; PIGS = f.pigs || []; FINALMSG = f.finalMsg || null; AREAS = f.areas || []; SPORES = f.spores || []; areaAt = -1;
+  for (const a of AREAS) IMG["areasign_" + a.k] = areaSign(a.name); KING = f.king || null; BOXES = f.boxes || [];
   if (f.fork && f.fork.coins) for (let q = .15; q <= .85; q += .07) { const [x, y] = altAt(q * (AN - 1), 0); COINS.push({ x, y, z: 0, got: false }); }
   PENPIGS = PEN ? [0, 1, 2, 3, 4, 5].map(n => ({ f: .12 + n * .15, o: (n % 3 - 1) * 34, ph: n * 1.7, k: n % 2 ? "ribbon_pig" : "pig", dx: 0, dy: 0 })) : [];
   T.extraFn = f.extra;
@@ -2066,7 +2094,21 @@ function lavaStep(dt) {
   }
   if (K && !K.done) { const gap = K.idx - L.i; B.musicRate(gap * SPC < 560 ? 1.15 : 1); if (gap * SPC < 360 && performance.now() - (L.rum || 0) > 600) { L.rum = performance.now(); noiseHit(90, .5, .06, 1); } }
 }
+function areaStep() {   // 🗺️ a new area: its name pops up
+  if (!AREAS.length || !K || state !== "race") return; let cur = 0; for (let n = 0; n < AREAS.length; n++) if (K.idx >= AREAS[n].i) cur = n;
+  if (areaAt < 0) { areaAt = cur; return; }   // (the grid sits in the last area: no shout at the start)
+  if (cur !== areaAt) { pop(AREAS[cur].name, "#ffe9a8", true); areaAt = cur; }
+}
+function stompStep(tt) {   // 🍄 the last lap: Mushmom leaps and lands every 3.4 s; the canyon shakes and every mushroom wobbles
+  const m = OBJS.find(o => o.stomp); if (!m || !K) return;
+  if (lapNow() < LAPS || state !== "race") { m.sz = null; return; }
+  const ph = (tt % 3.4) / 3.4, was = m.ph0 || 0; m.ph0 = ph; m.sz = ph < .6 ? 260 * Math.sin(Math.PI * ph / .6) : Math.max(0, 12 * Math.sin((ph - .6) * 40) * (1 - (ph - .6) / .4));
+  if (was < .6 && ph >= .6) { const d = Math.hypot(K.x - m.x, K.y - m.y);
+    if (d < 2600) { K.shake = Math.max(K.shake, .55 * (1 - d / 2600)); boomSound(d * .4); buzz(60); if (d < 1800 && performance.now() - (m.popT || 0) > 6000) { m.popT = performance.now(); pop("💥 Mushmom STOMP!", "#ff9a3a", true); } }
+    for (const g of GAPS) for (const c of g.caps) c.squash = Math.max(c.squash || 0, .7); }
+}
 function worldStep(dt, tt) {
+  areaStep(); stompStep(tt);
   if (thunderFx > 0) thunderFx -= dt;
   if (LAVA && state === "race") lavaStep(dt);
   if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt; if (thunderCD > 0) thunderCD -= dt;
@@ -2702,6 +2744,12 @@ function render() {
     ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(sx, gy, w * .5, w * .15, 0, 0, 7); ctx.fill();
     ctx.globalCompositeOperation = "lighter"; const gr = ctx.createRadialGradient(sx, y, 0, sx, y, w * 1.4); gr.addColorStop(0, "rgba(90,170,255,.9)"); gr.addColorStop(1, "rgba(40,100,255,0)"); ctx.fillStyle = gr; ctx.fillRect(sx - w * 1.4, y - w * 1.4, w * 2.8, w * 2.8);
     ctx.globalCompositeOperation = "source-over"; ctx.imageSmoothingEnabled = false; if (im) { ctx.translate(sx, y); ctx.rotate(Math.sin(tt * 9) * .3); ctx.drawImage(im, -w / 2, -w / 2, w, w); } ctx.restore(); });
+  for (const sp of SPORES) {   // ✨ spores drifting up out of the gorges: soft glowing puffs that rise, sway and fade
+    const f = (tt * sp.sp + sp.ph) % 1, z = (sp.low ? 10 : 30) + f * (sp.low ? 170 : 320), fade = Math.min(1, f * 5, (1 - f) * 4), wob = Math.sin(tt * .9 + sp.sw) * 18;
+    addDraw(sp.x + wob, sp.y + Math.cos(tt * .7 + sp.sw) * 12, (sx, gy0, sc) => { const r = Math.max(2, 10 * sc * sp.s), gy = G3 ? gy0 : gy0 - z * sc;
+      ctx.save(); ctx.globalAlpha = fade * .9; ctx.globalCompositeOperation = "lighter"; const g = ctx.createRadialGradient(sx, gy, 0, sx, gy, r * 2.6); g.addColorStop(0, "rgba(255,250,215,.95)"); g.addColorStop(.35, "rgba(255,236,150,.55)"); g.addColorStop(1, "rgba(255,210,120,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, gy, r * 2.6, 0, 7); ctx.fill(); ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "rgba(255,255,240,.95)"; ctx.beginPath(); ctx.arc(sx, gy, r * .55, 0, 7); ctx.fill(); ctx.restore(); }, G3 ? z : 0);
+  }
   for (const h of HORNS) addDraw(h.x, h.y, (sx, gy, sc) => {   // 📣 the shout: two rings racing out
     ctx.save(); for (const f of [1, .7]) { const t = Math.min(1, h.t / .6 * f + (1 - f) * .2), R = HORN_R * sc * t; ctx.globalAlpha = (1 - t) * .9; ctx.strokeStyle = f === 1 ? "#fff3a0" : "#ffb02e"; ctx.lineWidth = Math.max(1, 5 * sc * (1 - t));
       ctx.beginPath(); ctx.ellipse(sx, gy - 6 * sc, R, R * .3, 0, 0, 7); ctx.stroke(); } ctx.restore(); });
@@ -2715,7 +2763,7 @@ function render() {
     ctx.restore(); }, G3 ? G3.liftOf(r) : 0);
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
-  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
+  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.sz != null ? ob.sz : ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
   if (G3) for (const c of CROWD) { if (!c.img) continue; const jz = Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump; G3.spr(c.img, c.x, c.y, jz, c.s, c.flip);
     if (c.tag) addDraw(c.x, c.y, (sx, gy, sc) => { if (sc < .35) return; const top = gy - (c.img.height * c.s + jz) * sc, fs = Math.max(5, Math.min(10, 6 * sc)); ctx.font = `900 ${fs}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(1.5, fs / 4);
       ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }); }
