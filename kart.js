@@ -329,7 +329,7 @@ const TRACKS = {
   // down round the peace-sign hedges, the winding bunny path (bunnies pop out of their burrows: the Monty Moles), and up across the porch of
   // the white mansion with the pink roof, then right at the door back to the line. Gazebos, hot-air balloons, heart lawns and pets everywhere.
   forest: {
-    id: "pets2", scale: 1.45, road: 170, cup: "henesys", art: HEN_ART, music: "forest", name: "Pets Park", sub: "hedge maze · chained pets · bunny path · the mansion", icon: "🐾",
+    id: "pets2", scale: 1.45, road: 170, gate: "pets", cup: "henesys", art: HEN_ART, music: "forest", name: "Pets Park", sub: "hedge maze · chained pets · bunny path · the mansion", icon: "🐾",
     pets: ["husky", "blackpig", "jrbalrog", "pinkbunny", "whitebunny", "blackbunny", "kitty", "puppy", "panda", "dino", "penguin", "elephant", "babydragon", "porcupine", "monkey"],
     ctrl: [[1027, 1533, 0], [1036, 1303, 2], [1220, 1188, 4], [1266, 1036, 6], [1174, 866, 8], [1027, 806, 8], [866, 880, 8], [805, 1015, 8], [700, 1085, 8], [560, 1100, 10],
       [406, 1119, 12], [245, 1082, 14], [176, 958, 16], [236, 774, 20], [273, 544, 26], [337, 360, 30], [498, 319, 32], [751, 337, 32], [1027, 346, 32], [1303, 337, 32],
@@ -349,12 +349,17 @@ const TRACKS = {
       for (let j = 0; j < 6; j++) { const [x, y] = at(porch + u(45 + j * 38), 0); coins.push({ x, y, z: 35 + 70 * Math.sin(Math.PI * (j + .5) / 6), got: false }); }
       row(I(1250, 1832), I(1170, 1828), 3, 0);                            // along the porch
       // 🌿 the hedge maze: blocks to weave between (a slalom), and the giant pets on their chains at its edges
-      const hedges = [0, 1, 2, 3, 4, 5, 6].map(k => ({ i: pa + u(70 + k * 128), o: k % 2 ? 44 : -44, w: 52, h: 34 }));   // a slalom of hedges, left and right
+      const hedges = [0, 1, 2, 3, 4, 5, 6].map(k => ({ i: pa + u(70 + k * 128), o: k % 2 ? 44 : -44, w: 52, h: 46 }));   // a slalom of hedges, left and right
       for (const [x, y] of [[1840, 960], [1890, 1030], [1840, 1100]]) hedges.push({ x: ws(x), y: ws(y), w: 46, h: 30 });   // the peace-sign hedges by the right-hand bend
       const chomp = (d, o, k, ph) => { const [ax, ay] = at(pa + u(d), o); return { ax, ay, k, ph, R: 78, s: 1.45 }; };
+      // 🗺️ the journey round the park: each area's name pops up as you reach it, with a signpost by the road
+      const areas = [[0, "plaza", "🐾 Pet Plaza"], [I(1036, 1303), "fountain", "⛲ Fountain Circle"], [I(406, 1119), "climb", "🌸 Blossom Climb"], [pa - 25, "maze", "🌿 Hedge Maze"],
+        [I(1717, 392), "peace", "☮️ Peace Garden"], [I(1700, 1250) - 10, "bunny", "🐰 Bunny Trail"], [porch - u(110), "porch", "🏰 Mansion Porch"], [I(1165, 1827), "home", "🎀 Home Stretch"]].map(([i, k, name]) => ({ i, k, name }));
+      // 🐾 the last lap: the pets got loose! they dash back and forth across the home stretch
+      const loose = ["puppy", "kitty", "husky", "panda", "pinkbunny", "dino"].map((k, n) => ({ i: I(1060, 1790) + (n % 3) * 5 + Math.floor(n / 3) * 16, ph: n * 1.1, k: `pet_${k}_move0`, sp: .9, soft: true, herd: true, s: .95, lap: 3 }));
       return {
         lake: { cx: ws(1050), cy: ws(1030), rx: ws(105), ry: ws(95) },   // the fountain's moat, in the middle of the roundabout
-        hedges, chomps: [chomp(250, 96, "husky", 0), chomp(520, -96, "blackpig", 2), chomp(780, 96, "jrbalrog", 4)],
+        hedges, chomps: [chomp(250, 96, "husky", 0), chomp(520, -96, "blackpig", 2), chomp(780, 96, "jrbalrog", 4)], areas, pigs: loose, finalMsg: "🐾 The pets got loose!",
         // 🐰 bunnies popping out of their burrows along the winding path (the Monty Moles); a bunny that's up bumps you
         moles: [[I(1735, 1310), 30], [I(1785, 1430), -35], [I(1745, 1560), 30], [I(1755, 1700), -30], [I(1700, 1250), -40]].map(([i, o], n) => ({ i, o, ph: n * .8, sp: 1.1, img: ["pet_pinkbunny_jump0", "pet_whitebunny_jump0", "pet_blackbunny_jump0"][n % 3], msg: "🐰 Bunny!" })),
         // 🐾 pets wandering about the gardens
@@ -375,6 +380,11 @@ const TRACKS = {
           for (const [x, y, z] of [[700, 1300, 330], [1500, 500, 380], [300, 1600, 300]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1, r: 0, z, bob: 18 });
           for (const [x, y, k] of [[870, 1300, "bush"], [1350, 1450, "bush"], [430, 900, "tree"], [1600, 1100, "tree"]]) push(ws(x), ws(y), k);
           for (let i = I(1730, 1300), n = 0; i <= I(1758, 1735); i += 8, n++) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 9)); push(x, y, n % 3 ? "sunflower" : "redshrooms", .5, 0); }   // 🌻 flowers lining the bunny path, flicking past
+          for (const [a, b] of [[I(406, 1119), I(273, 544)], [I(1717, 392), I(1643, 981)]]) for (let i = a, n = 0; i <= b; i += 10, n++) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 10)); push(x, y, n % 2 ? "redshrooms" : "sunflower", .46, 0); }   // 🌸 more along the climb and the peace garden
+          // 🐾 pets cheering by the start line, bouncing
+          ["husky", "kitty", "puppy", "panda", "pinkbunny", "dino", "elephant", "babydragon", "monkey", "penguin", "whitebunny", "blackpig"].forEach((k, n) => { const sd = n % 2 ? 1 : -1, [x, y] = at(((n >> 1) * 7 - 18 + N) % N, sd * (ROAD / 2 + CURB + 34 + (n % 3) * 22)); OBJS.push({ x, y, k: `pet_${k}_stand00`, s: .95, r: 0, z: 0, bob: 10, mob: true }); });
+          // 🪧 a signpost at the start of every area
+          for (const a of areas) if (a.i > 5) { const [x, y] = at(a.i, ROAD / 2 + CURB + 44); OBJS.push({ x, y, k: "areasign_" + a.k, s: .55, r: 10, z: 0 }); }
         },
       };
     },
@@ -1375,6 +1385,16 @@ function makeArchArt() {
     g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 6; g.strokeStyle = "#4a2a0e"; g.font = "900 31px Ubuntu, sans-serif";
     g.strokeText("🍄 HENESYS MARKET 🍄", w / 2, 55); g.fillStyle = "#fff4d0"; g.fillText("🍄 HENESYS MARKET 🍄", w / 2, 55);
     g.font = "900 15px Ubuntu, sans-serif"; g.lineWidth = 4; g.strokeText("👑 FAMILY KART 👑", w / 2, 79); g.fillStyle = "#ffd75e"; g.fillText("👑 FAMILY KART 👑", w / 2, 79); });
+  // 🐾 the Pet Park gate (Pets Park's start): white posts with pink bands and a pink-and-cream sign with paw prints
+  IMG.pp_post = mk(18, 150, (g, w, h) => { g.fillStyle = "#fbf7f2"; g.fillRect(2, 0, w - 4, h); g.fillStyle = "#f07ab0"; for (let y = 10; y < h; y += 28) g.fillRect(2, y, w - 4, 8); g.fillStyle = "#c8558a"; g.fillRect(0, h - 10, w, 10); });
+  IMG.pp_banner = mk(420, 110, (g, w, h) => {
+    for (let x = 0, n = 0; x < w; x += 30, n++) { g.fillStyle = n & 1 ? "#ffffff" : "#ff7ab8"; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 30, 0); g.lineTo(x + 30, 22); g.quadraticCurveTo(x + 15, 32, x, 22); g.fill(); }   // the awning
+    g.fillStyle = "#c8558a"; g.beginPath(); g.roundRect(6, 30, w - 12, h - 34, 14); g.fill(); g.fillStyle = "#fff4f8"; g.beginPath(); g.roundRect(12, 36, w - 24, h - 46, 10); g.fill();
+    const paw = (x, y, s, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(x, y + 4 * s, 7 * s, 6 * s, 0, 0, 7); g.fill(); for (const [dx, dy] of [[-7, -5], [-2.5, -9], [2.5, -9], [7, -5]]) { g.beginPath(); g.ellipse(x + dx * s, y + dy * s, 2.6 * s, 3.2 * s, 0, 0, 7); g.fill(); } };
+    for (const [x, y] of [[40, 62], [380, 62], [70, 88], [350, 88]]) paw(x, y, 1.3, "#f7a8cc");
+    g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 6; g.strokeStyle = "#a8306a"; g.font = "900 30px Ubuntu, sans-serif";
+    g.strokeText("HENESYS PET PARK", w / 2, 62); g.fillStyle = "#ffffff"; g.fillText("HENESYS PET PARK", w / 2, 62);
+    g.font = "900 15px Ubuntu, sans-serif"; g.lineWidth = 4; g.strokeStyle = "#a8306a"; g.strokeText("👑 FAMILY KART 👑", w / 2, 89); g.fillStyle = "#ffd75e"; g.fillText("👑 FAMILY KART 👑", w / 2, 89); });
   ["#ff5a5a", "#ffd23f", "#5ac8ff", "#ffffff", "#7ad06a", "#ff8fd0"].forEach((col, i) => IMG["balloon" + i] = mk(26, 60, (g) => {
     g.strokeStyle = "rgba(60,40,20,.7)"; g.lineWidth = 1; g.beginPath(); g.moveTo(13, 30); g.quadraticCurveTo(9, 45, 14, 60); g.stroke();
     g.fillStyle = col; g.beginPath(); g.ellipse(13, 15, 11, 14, 0, 0, 7); g.fill(); g.fillStyle = "rgba(255,255,255,.55)"; g.beginPath(); g.ellipse(9, 9, 3, 5, -.4, 0, 7); g.fill();
@@ -1482,9 +1502,9 @@ function makeTopiary(pet) {   // 🌿 a giant pet clipped from hedge, on a hedge
 }
 function placeStart(push) {
   if (!IMG.arch_post || (T.gate === "market" && IMG.mp_sign && IMG.mk_banner && IMG.mk_banner.height !== 200)) makeArchArt();   // (again once the Market Place sign has loaded)
-  const li = OPEN ? START_I : 0, half = ROAD / 2 + CURB + 10, [cx, cy] = at(li, 0), mk = T.gate === "market", ice = T.gate === "ice" && IMG.ice_post;
-  for (const sd of [-1, 1]) { const [x, y] = at(li, sd * half); push(x, y, mk ? "mk_post" : ice ? "ice_post" : "arch_post", mk && IMG.mp_sign ? 1.05 : .62, 0); }
-  OBJS.push({ x: cx, y: cy, k: mk ? "mk_banner" : ice ? "ice_banner" : "arch_banner", s: (half * 2 + 14) / 420, r: 0, z: mk ? 36 : ice ? 40 : 70 });   // the market sign hangs low, right in view
+  const li = OPEN ? START_I : 0, half = ROAD / 2 + CURB + 10, [cx, cy] = at(li, 0), mk = T.gate === "market", pp = T.gate === "pets", ice = T.gate === "ice" && IMG.ice_post;
+  for (const sd of [-1, 1]) { const [x, y] = at(li, sd * half); push(x, y, mk ? "mk_post" : pp ? "pp_post" : ice ? "ice_post" : "arch_post", mk && IMG.mp_sign ? 1.05 : pp ? .82 : .62, 0); }
+  OBJS.push({ x: cx, y: cy, k: mk ? "mk_banner" : pp ? "pp_banner" : ice ? "ice_banner" : "arch_banner", s: (half * 2 + 14) / 420, r: 0, z: mk ? 36 : pp ? 58 : ice ? 40 : 70 });   // the market sign hangs low, right in view
   for (let n = 0; n < 10; n++) { const sd = n % 2 ? 1 : -1, [x, y] = at(li + (n >> 1) - 2, sd * (half + 6 + (n % 3) * 7));
     OBJS.push({ x, y, k: "balloon" + (n % 6), s: .7, r: 0, z: 78 + (n % 4) * 9, bob: 4 }); }
 }
@@ -1521,7 +1541,7 @@ function placeObjects() {
   T.extraFn(push);
   placeStart(push);   // the FAMILY arch and balloons on every map
   { const li = OPEN ? START_I : 0, s0 = PTS[li];   // a map's own gate at the start line moves to halfway round, so the two arches don't stand together
-    for (const o of OBJS) if (!o.r && !/^(arch|balloon|mk_|ice_)/.test(o.k) && Math.hypot(o.x - s0[0], o.y - s0[1]) < 140 && nearest(o.x, o.y).d < 30) {
+    for (const o of OBJS) if (!o.r && !/^(arch|balloon|mk_|pp_|ice_)/.test(o.k) && Math.hypot(o.x - s0[0], o.y - s0[1]) < 140 && nearest(o.x, o.y).d < 30) {
       const [x, y] = at(OPEN ? Math.round(START_I + (N - FIN_OFF - START_I) * .5) : Math.round(N * .5), 0); o.x = x; o.y = y; } }
   // anything solid that touches the road is moved back off it (a haypile on the curb…); where the road doubles back there may be no room: then it goes
   const touching = o => { const m = nearest(o.x, o.y); if (m.d < ROAD / 2 + CURB + o.r + 5) return [m, ROAD / 2, PTS[m.i]];
@@ -1579,7 +1599,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=88"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=89"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -3363,7 +3383,7 @@ const ART = {};
 const artImg = src => ART[src] || (ART[src] = loadImg(src));
 async function loadArt() {
   const want = new Set([...OBJS.map(o => o.k), ...PIGS.map(p => p.k), ...(KING ? [KING.k] : []), ...(T.mobs || [])]), jobs = [];
-  for (const k of want) if (!(k in IMG)) {
+  for (const k of want) if (!(k in IMG) && !String(k).startsWith("pet_")) {   // (pet frames come from the pets folder below)
     IMG[k] = null; const p = PROPS[k];
     jobs.push(artImg(p ? (p[2] ? `media/kart/${p[2]}/${k}.webp?v=1` : `media/kart/${k}.webp?v=1`) : `media/mobs/${k}.png?v=1`).then(im => { IMG[k] = im; if (im && !p) im.px = true; }));
   }

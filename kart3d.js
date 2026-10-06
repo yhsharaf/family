@@ -469,6 +469,8 @@ export function create(A) {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
   const hedgeTex = () => hedgeT || (hedgeT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#3f9a34"; g.fillRect(0, 0, 128, 128);
     for (let k = 0; k < 700; k++) { const v = Math.random(); g.fillStyle = v < .4 ? "#2f7d28" : v < .75 ? "#56b848" : "#78d066"; g.beginPath(); g.ellipse(Math.random() * 128, Math.random() * 128, 2 + Math.random() * 4, 1.5 + Math.random() * 3, Math.random() * 3, 0, 7); g.fill(); }
+    for (let k = 0; k < 26; k++) { const x = Math.random() * 128, y = Math.random() * 128; g.fillStyle = ["#ff8fc4", "#ffffff", "#ffd23f"][k % 3]; for (let q = 0; q < 5; q++) { g.beginPath(); g.arc(x + Math.cos(q * 1.26) * 2.6, y + Math.sin(q * 1.26) * 2.6, 1.8, 0, 7); g.fill(); } g.fillStyle = "#ffe48a"; g.beginPath(); g.arc(x, y, 1.4, 0, 7); g.fill(); }   // little flowers in the leaves
+    const sh = g.createLinearGradient(0, 0, 0, 128); sh.addColorStop(0, "rgba(255,255,200,.12)"); sh.addColorStop(.7, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,40,0,.25)"); g.fillStyle = sh; g.fillRect(0, 0, 128, 128);   // lit on top, shaded at the foot
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })());
   let iceT = null, caveT = null;
   // 🧊 stacked ice blocks (Sherbet Land's walls and towers): pale blue bricks with bright edges and a frosty shine
