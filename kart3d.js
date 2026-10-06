@@ -111,7 +111,8 @@ export function create(A) {
   let HG = new Float32Array(GN * GN), terrain = null, plain = null, skyMesh = null, key = null, skyRefs = [], RE = null;   // RE: the road's height at each track point
   // 🪁 in the air (a jump, a glide, a mushroom bounce) a kart's height counts from the road it left, not from whatever is below it (a ravine,
   // the slope far under a glide): off the road the ground can be far lower. How far above the ground that puts it:
-  const airLift = r => { if (!(r.z > 0) || !RE || r.idx == null) return 0; const g = h(r.x, r.y), e = RE[Math.max(0, Math.min(RE.length - 1, r.idx | 0))]; return Math.max(0, e - g); };
+  let bridgeG = [];
+  const airLift = r => { if (!RE || r.idx == null) return 0; if (!(r.z > 0)) { const i = r.idx | 0; if (!bridgeG.some(g => i > g.a && i < g.b)) return 0; } const g = h(r.x, r.y), e = RE[Math.max(0, Math.min(RE.length - 1, r.idx | 0))]; return Math.max(0, e - g); };   // (and on a rope bridge, over the ravine, you're held up at the road's height)
   const h = (x, y) => {
     const fx = Math.max(0, Math.min(GN - 1.001, x / G)), fy = Math.max(0, Math.min(GN - 1.001, y / G)), i = fx | 0, j = fy | 0, ax = fx - i, ay = fy - j, o = j * GN + i;
     return (HG[o] * (1 - ax) + HG[o + 1] * ax) * (1 - ay) + (HG[o + GN] * (1 - ax) + HG[o + GN + 1] * ax) * ay;
@@ -176,7 +177,7 @@ export function create(A) {
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
     for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : 320;   // 🍄 a gorge (deep, misty) or the park pond
       for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * smooth(520, 430, Math.sqrt(dmin[o])));
-      if (t.theme.cliffs && g.kind === "gorge") {   // with cliff walls: the pit is exactly the walls' box (no ground left standing in front of them where the track bends)
+      if (t.theme.cliffs && (g.kind === "gorge" || g.kind === "chasm" || g.kind === "bridge")) {   // with cliff walls: the pit is exactly the walls' box (no ground left standing in front of them where the track bends)
         let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = g.a; i <= g.b; i++) { const p = t.PTS[i % t.N]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
         const M = 480, gi0 = Math.max(0, Math.floor((x0 - M) / G)), gi1 = Math.min(GN - 1, Math.ceil((x1 + M) / G)), gj0 = Math.max(0, Math.floor((z0 - M) / G)), gj1 = Math.min(GN - 1, Math.ceil((z1 + M) / G));
         for (let j = gj0; j <= gj1; j++) for (let i = gi0; i <= gi1; i++) { const x = i * G, z = j * G; let bd = 1e12, bi = -1;
@@ -332,10 +333,14 @@ export function create(A) {
       for (const [pos, uv, col, ix, m] of [[lp, lu, lc, li, lipM], [fp, fu, fc, fi, fillM]]) { const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
         g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.setIndex(ix); g.computeVertexNormals(); const mesh = new THREE.Mesh(g, m); scene.add(mesh); roadObjs.push(mesh); }
     };
-    for (const g of t.gaps || []) { if (g.kind !== "gorge") continue;
+    for (const g of t.gaps || []) { if (g.kind !== "gorge" && g.kind !== "chasm" && g.kind !== "bridge") continue;
       const at2 = (i, o) => { const [tx, ty] = tan(i), p = P[i % N]; return [p[0] - ty * o, p[1] + tx * o]; }, rim = i => RE[Math.max(0, Math.min(N - 1, i % N))] + 1;
       for (const sd of [-1, 1]) { const pts = []; for (let i = g.a; i <= g.b; i += 2) { const [x, z] = at2(i, sd * W), [hx, hz] = at2(i, sd * (W + 110)); pts.push([x, z, Math.max(rim(i), h(hx, hz) + 1)]); } strip(pts); }   // the two long sides, as tall as the hillside behind them
       for (const i of [g.a + 1, g.b - 1]) { const pts = []; for (let o = -W; o <= W; o += 24) { const [x, z] = at2(i, o); pts.push([x, z, rim(i)]); } strip(pts); }   // the ends, under the road's edge
+      if (t.theme.cliffs === "snow") {   // ❄ far below: a floor of snow under drifting mist (not bare earth)
+        let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, lo = 1e9; for (let i = g.a; i <= g.b; i++) { const p = P[i % N]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); lo = Math.min(lo, rim(i)); }
+        const fl = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 + 2 * W + 60, z1 - z0 + 2 * W + 60), new THREE.MeshLambertMaterial({ color: 0xeef4fc, emissive: 0x3a4658 })); fl.rotation.x = -Math.PI / 2; fl.position.set((x0 + x1) / 2, lo - 300, (z0 + z1) / 2); scene.add(fl); roadObjs.push(fl);
+        const mist = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 + 2 * W, z1 - z0 + 2 * W), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .45, depthWrite: false })); mist.rotation.x = -Math.PI / 2; mist.position.set((x0 + x1) / 2, lo - 230, (z0 + z1) / 2); scene.add(mist); roadObjs.push(mist); }
     }
   }
   function buildRoad(t) {
@@ -431,10 +436,12 @@ export function create(A) {
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3, [], altBare); }
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
-    balloonM = []; for (const o of t.props3d || []) buildProp(o);
+    balloonM = []; flowM = []; for (const o of t.props3d || []) buildProp(o);
+    bridgeG = (t.gaps || []).filter(g => g.kind === "bridge"); buildRopeBridges(t);
     buildSnowWorld(t); auroraM = []; if (t.aurora) buildAurora(t); if (t.fairy) buildFairy(t.fairy, t);
     for (const b of t.buildings || []) {
       if (b.castle) { buildCastle(b); continue; }
+      if (b.dam && b.frozen) { buildDam(b, t); continue; }
       if (b.ice || b.dam || b.stone) {   // a wall or tower of ice blocks, the concrete dam, or a stone pillar (no roof)
         const T0 = b.dam ? damTex() : b.stone ? rockTex() : iceTex(), U = b.dam ? 220 : b.stone ? 120 : 90, V = b.dam ? 220 : b.stone ? 120 : 45, em = b.dam ? 0x3a3a38 : b.stone ? 0x2a2630 : 0x3a5f80;
         const tx = T0.clone(); tx.needsUpdate = true; tx.repeat.set(Math.max(1, b.w / U), Math.max(1, b.h / V));
@@ -581,6 +588,49 @@ export function create(A) {
     return { map: mk(false), glow: mk(true) };
   }
   let castleT = null;
+  // 🌉 rope bridges: the one you drive across (planks on two ropes, no railings, tall log posts at each end), and others hung across the ravines far below
+  function plankBridge(pts, half) {   // pts: [x, y, z, ang] along the deck
+    const wood = [new THREE.MeshLambertMaterial({ color: 0xa0703c, emissive: 0x201004 }), new THREE.MeshLambertMaterial({ color: 0x8a5a2e, emissive: 0x1a0c02 })], rope = new THREE.MeshLambertMaterial({ color: 0xc8b48a, emissive: 0x201a10 });
+    const n = pts.length, geo = new THREE.BoxGeometry(1, 1, 1), ms = wood.map(m => new THREE.InstancedMesh(geo, m, n)), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), U = new THREE.Vector3(0, 1, 0), cnt = [0, 0];
+    pts.forEach(([x, y, z, a], k) => { const w = k % 2; Q.setFromAxisAngle(U, -a); M.compose(new THREE.Vector3(x, y - 2, z), Q, new THREE.Vector3(7.5, 4, half * 2 * (.94 + ((k * 37) % 7) / 60))); ms[w].setMatrixAt(cnt[w]++, M); });
+    ms.forEach((m, w) => { m.count = cnt[w]; scene.add(m); roadObjs.push(m); });
+    for (const sd of [-1, 1]) { const c = pts.map(([x, y, z, a]) => new THREE.Vector3(x - Math.sin(a) * sd * half, y, z + Math.cos(a) * sd * half)); if (c.length < 2) continue;
+      const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(c), c.length * 2, 1.6, 6), rope); scene.add(t); roadObjs.push(t); }
+  }
+  function buildRopeBridges(t) {
+    const N = t.N, P = t.PTS, ang = i => { const a = P[(i + N - 1) % N], b = P[(i + 1) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
+    const post = new THREE.MeshLambertMaterial({ color: 0x6b4426, emissive: 0x140802 }), snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e });
+    for (const g of bridgeG) { const half = g.deck + 6, pts = [];
+      for (let i = g.a - 1; i <= g.b + 1; i++) { const p = P[i % N]; pts.push([p[0], RE[i % N], p[1], ang(i)]); }
+      plankBridge(pts, half);
+      for (const i of [g.a - 1, g.b + 1]) for (const sd of [-1, 1]) { const p = P[i % N], a = ang(i), x = p[0] - Math.sin(a) * sd * (half + 4), z = p[1] + Math.cos(a) * sd * (half + 4), y = RE[i % N];
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(5, 6, 60, 10), post); m.position.set(x, y + 22, z); scene.add(m); roadObjs.push(m);
+        const c = new THREE.Mesh(new THREE.SphereGeometry(7, 10, 6, 0, 6.3, 0, 1.6), snow); c.position.set(x, y + 52, z); scene.add(c); roadObjs.push(c); } }
+    for (const b of t.bridges3d || []) { const i = b.ri % N, p = P[i], a = ang(i) + Math.PI / 2, y0 = RE[i] + b.dy, pts = [];   // across the ravine, sagging in the middle
+      for (let s2 = -b.len / 2; s2 <= b.len / 2; s2 += 8) { const f = s2 / (b.len / 2); pts.push([p[0] + Math.cos(a) * s2, y0 - (1 - f * f) * 26, p[1] + Math.sin(a) * s2, a]); }
+      plankBridge(pts, 22); }
+  }
+  function buildDam(b, t) {   // 🌊 the dam: a tall concrete wall with buttresses, a railed walkway on top under thick snow, and half-frozen waterfalls pouring down its road side, icicles hanging off the lip
+    const g0 = h(b.x, b.y), grp = new THREE.Group(), a = b.a || 0, nx = -Math.sin(a), nz = Math.cos(a);
+    let bd = 1e12, bp = null; for (let i = 0; i < t.N; i += 3) { const p = t.PTS[i], d = (p[0] - b.x) ** 2 + (p[1] - b.y) ** 2; if (d < bd) { bd = d; bp = p; } }
+    const sg = Math.sign((bp[0] - b.x) * nx + (bp[1] - b.y) * nz) || 1, H = b.h, W = b.w, D = b.d;
+    const tx = damTex().clone(); tx.needsUpdate = true; tx.repeat.set(Math.max(1, W / 220), Math.max(1, H / 220));
+    const conc = new THREE.MeshLambertMaterial({ map: tx, emissive: 0x2a2a30 }), dark = new THREE.MeshLambertMaterial({ color: 0x8a8a90, emissive: 0x1a1a20 }), snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e });
+    const put = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); grp.add(o); return o; };
+    put(new THREE.BoxGeometry(W, H, D), conc, 0, H / 2, 0);
+    for (let x = -W / 2 + 30; x <= W / 2 - 30; x += 90) { const bt = put(new THREE.BoxGeometry(22, H, 26), dark, x, H / 2, sg * (D / 2 + 9)); bt.scale.y = 1; }   // buttresses
+    put(new THREE.BoxGeometry(W + 8, 10, D + 16), snow, 0, H + 4, 0);   // snow on the walkway
+    for (let x = -W / 2; x <= W / 2; x += 18) put(new THREE.BoxGeometry(2, 14, 2), dark, x, H + 15, sg * (D / 2 + 4));   // the railing
+    put(new THREE.BoxGeometry(W, 2, 2), dark, 0, H + 22, sg * (D / 2 + 4));
+    const fall = ctex(128, 256, (g, w2, h2) => { g.fillStyle = "rgba(190,230,255,.75)"; g.fillRect(0, 0, w2, h2); for (let k = 0; k < 90; k++) { const x = Math.random() * w2, y = Math.random() * h2, l = 20 + Math.random() * 60; g.strokeStyle = `rgba(255,255,255,${.4 + Math.random() * .5})`; g.lineWidth = 1 + Math.random() * 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + l); g.stroke(); } }, true);
+    flowM.push(fall.offset ? fall : fall);
+    const fm = new THREE.MeshLambertMaterial({ map: fall, transparent: true, opacity: .9, emissive: 0x3a5a7a, side: THREE.DoubleSide, depthWrite: false });
+    for (let x = -W / 2 + 75; x <= W / 2 - 60; x += 90) { const cw = 46, pl = put(new THREE.PlaneGeometry(cw, H - 6), fm, x, H / 2, sg * (D / 2 + 23)); if (sg < 0) pl.rotation.y = Math.PI;
+      const pool = put(new THREE.CylinderGeometry(cw * .7, cw * .8, 8, 16), new THREE.MeshLambertMaterial({ color: 0xcfeaff, emissive: 0x3a5a7a }), x, 3, sg * (D / 2 + 30)); pool.scale.z = .6; }   // a frozen splash where each one lands
+    const icy = new THREE.MeshLambertMaterial({ color: 0xe8f6ff, emissive: 0x4a6a8a, transparent: true, opacity: .9 });
+    for (let x = -W / 2 + 6; x <= W / 2 - 6; x += 11) { const l = 10 + ((x * 7) % 13 + 13) % 13 * 2, ic = put(new THREE.ConeGeometry(2.6, l, 6), icy, x, H - l / 2 - 1, sg * (D / 2 + 1)); ic.rotation.x = Math.PI; }   // icicles off the lip
+    grp.rotation.y = -a; grp.position.set(b.x, g0 - 4, b.y); scene.add(grp); roadObjs.push(grp);
+  }
   function buildCastle(b) {   // 🏰 the ice castle round the rink: chubby round towers with snowy blue cone roofs and glowing windows, walls with battlements
     const tx = castleT || (castleT = { tower: iceBrickTex(true), wall: iceBrickTex(false) }), g0 = h(b.x, b.y), grp = new THREE.Group();
     const ice = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x4a6a98 }), snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x7a8498 }), roof = new THREE.MeshLambertMaterial({ color: 0x6aa0f0, emissive: 0x1a3a78 });
@@ -617,21 +667,26 @@ export function create(A) {
   const glowDisc = (() => { let t = null; return () => t || (t = ctex(64, 64, (g, W) => { const gr = g.createRadialGradient(W / 2, W / 2, 2, W / 2, W / 2, W / 2); gr.addColorStop(0, "rgba(255,255,255,.9)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, W, W); })); })();
   function addGlow(x, y, z, r, c) { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 24), new THREE.MeshBasicMaterial({ map: glowDisc(), color: c, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, y + 1.2, z); scene.add(m); roadObjs.push(m); }
   // 🧊 El Nath's ice stones (maplestory.io) made solid: each picture's outline cut out and given thickness, the painting on its front and back, frosty bevelled ice round the sides
-  let stoneKey = null; const stoneGeos = new Map();
-  function stoneGeo(im) {
-    if (stoneGeos.has(im)) return stoneGeos.get(im);
+  let stoneKey = null, solidKey = null; const stoneGeos = new Map();
+  function stoneGeo(im, dk = .34) {
+    const ck = im.src + "|" + dk; if (stoneGeos.has(ck)) return stoneGeos.get(ck);
     const W = im.width, H = im.height, c = canvas(W, H), g = c.getContext("2d"); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, W, H).data, L = [], R = [];
     const ra = [], rb = []; for (let y = 0; y < H; y++) { let a = -1, b = -1; for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 90) { if (a < 0) a = x; b = x; } ra.push(a); rb.push(b); }
     const rows = ra.map((a, y) => y).filter(y => ra[y] >= 0), y0 = rows[0], y1 = rows[rows.length - 1], avg = (arr, y, r) => { let sm = 0, n = 0; for (let j = Math.max(y0, y - r); j <= Math.min(y1, y + r); j++) if (arr[j] >= 0) { sm += arr[j]; n++; } return sm / n; };   // (a smooth outline: each side averaged over nearby rows)
     for (let y = y0; y <= y1; y = y < y1 && y + 5 > y1 ? y1 : y + 5) { L.push([avg(ra, y, 4) - W / 2, H - y]); R.push([avg(rb, y, 4) + 1 - W / 2, H - y]); if (y === y1) break; }
     const sh = new THREE.Shape(); L.forEach(([x, y], k) => k ? sh.lineTo(x, y) : sh.moveTo(x, y)); for (let k = R.length - 1; k >= 0; k--) sh.lineTo(R[k][0], R[k][1]); sh.closePath();
-    const D = W * .34, geo = new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: true, bevelThickness: D * .18, bevelSize: W * .025, bevelSegments: 3, curveSegments: 1 }); geo.translate(0, 0, -D / 2);
+    let cr = 0, cg = 0, cb = 0, cn = 0; for (let q = 0; q < d.length; q += 16) if (d[q + 3] > 200) { cr += d[q]; cg += d[q + 1]; cb += d[q + 2]; cn++; }   // the sides: the picture's own average colour, a little darker
+    const side = new THREE.Color(Math.min(1, cr / cn / 255 * 1.02), Math.min(1, cg / cn / 255 * 1.02), Math.min(1, cb / cn / 255 * 1.06)).convertSRGBToLinear();
+    const D = W * dk, geo = new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: true, bevelThickness: D * .18, bevelSize: W * .025, bevelSegments: 3, curveSegments: 1 }); geo.translate(0, 0, -D / 2);
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.repeat.set(1 / W, 1 / H); tx.offset.set(.5, 0); tx.magFilter = THREE.NearestFilter;
-    const mats = [new THREE.MeshLambertMaterial({ map: tx, alphaTest: .35, emissive: 0x1a2c48 }), new THREE.MeshLambertMaterial({ color: 0x8eaed0, emissive: 0x16283e, flatShading: true })];
-    const r = { geo, mats, H }; stoneGeos.set(im, r); return r;
+    const mats = [new THREE.MeshLambertMaterial({ map: tx, alphaTest: .35, emissive: 0x1a2c48 }), new THREE.MeshLambertMaterial({ color: side, emissive: 0x101820, flatShading: true })];
+    const r = { geo, mats, H }; stoneGeos.set(ck, r); return r;
   }
-  function iceStone(im, x, z, y, hh, face, lean = 0) {   // one solid stone, hh tall, its painted front facing the angle `face`
-    const s = stoneGeo(im), m = new THREE.Mesh(s.geo, s.mats), k = hh / s.H; m.scale.set(k, k, k); m.position.set(x, y - 3, z); m.rotation.set(lean, Math.PI / 2 - face, 0); scene.add(m); roadObjs.push(m); return m;
+  function iceStone(im, x, z, y, hh, face, lean = 0, dk) {   // one solid stone, hh tall, its painted front facing the angle `face`
+    const s = stoneGeo(im, dk), m = new THREE.Mesh(s.geo, s.mats), k = hh / s.H; m.scale.set(k, k, k); m.position.set(x, y - 3, z); m.rotation.set(lean, Math.PI / 2 - face, 0); scene.add(m); roadObjs.push(m); return m;
+  }
+  function buildSolids(t) {   // maplestory.io objects made solid (rocks, dead trees, ice stones), wherever the track put them
+    for (const o of t.solids) { const y = o.ri != null ? RE[o.ri % t.N] + o.dy : h(o.x, o.y); iceStone(t.solidImgs[o.k], o.x, o.y, y, o.h, o.fa, 0, o.depth); if (o.cross) iceStone(t.solidImgs[o.k], o.x, o.y, y, o.h, o.fa + Math.PI / 2, 0, o.depth); }   // (a tree: two thin cut-outs crossed, so it's full from every side)
   }
   function buildIceStones(t) {
     const ims = t.iceStones; let sd0 = 47; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
@@ -745,7 +800,7 @@ export function create(A) {
     }
     if (t.drifts) {   // soft snow drifts heaped along the roadside (never on the road)
       const spots = [];
-      for (let i = 0; i < N; i += 16) for (const sd of [-1, 1]) { if ((t.caves || []).some(c => i >= c.a - 12 && i <= c.b + 12)) continue; const [tx, ty] = tan(i), w = 22 + rnd() * 26, o = sd * (half + 14 + w), p = P[i], x = p[0] - ty * o, z = p[1] + tx * o;
+      for (let i = 0; i < N; i += 16) for (const sd of [-1, 1]) { if ((t.caves || []).some(c => i >= c.a - 12 && i <= c.b + 12) || (t.gaps || []).some(g => i >= g.a - 30 && i <= g.b + 20)) continue; const [tx, ty] = tan(i), w = 22 + rnd() * 26, o = sd * (half + 14 + w), p = P[i], x = p[0] - ty * o, z = p[1] + tx * o;
         if (rnd() < .35 || rd(x, z) < half + 10 + w) continue; spots.push([x, z, Math.atan2(ty, tx), 40 + rnd() * 60, 10 + rnd() * 14, w]); }
       const m = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 8, 0, 6.283, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x505868 }), spots.length), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), U = new THREE.Vector3(0, 1, 0);
       spots.forEach(([x, z, a, l, hh, w], k) => { Q.setFromAxisAngle(U, -a); M.compose(new THREE.Vector3(x, h(x, z) - 2, z), Q, new THREE.Vector3(l, hh, w)); m.setMatrixAt(k, M); });
@@ -794,6 +849,18 @@ export function create(A) {
       cr(0, 0, H, H * .085, 0, 0);
       for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + .4, d = H * (.1 + (k % 2) * .05); cr(Math.cos(a) * d, Math.sin(a) * d, H * (.38 + ((k * 37) % 5) * .07), H * (.045 + (k % 3) * .01), Math.sin(a) * .35, -Math.cos(a) * .35); }
       grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "skijump") {   // 🎿 the ski jump's launch: wooden lattice towers either side of the take-off, flags on top, and strings of pennants across the road
+      const half = o.half || 110, wood = L(0x8a5a32, 0x1a0a04), dark = L(0x5a3a1e, 0x100800), Ht = 130;
+      for (const sd of [-1, 1]) { const z0 = sd * (half + 24);
+        for (const [dx, dz] of [[-14, -10], [14, -10], [-14, 10], [14, 10]]) put(new THREE.BoxGeometry(5, Ht, 5), wood, dx, Ht / 2, z0 + dz);
+        for (let y = 20; y < Ht; y += 26) { put(new THREE.BoxGeometry(34, 3, 3), dark, 0, y, z0 - 10); put(new THREE.BoxGeometry(34, 3, 3), dark, 0, y, z0 + 10); put(new THREE.BoxGeometry(3, 3, 24), dark, -14, y, z0); put(new THREE.BoxGeometry(3, 3, 24), dark, 14, y, z0);
+          const d1 = put(new THREE.BoxGeometry(2, 30, 2), dark, 0, y + 13, z0 - 10); d1.rotation.z = (y / 26 % 2 ? 1 : -1) * .85; }
+        put(new THREE.BoxGeometry(40, 6, 30), wood, 0, Ht + 3, z0); put(new THREE.BoxGeometry(42, 6, 32), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e }), 0, Ht + 8, z0);   // a snowy platform on top
+        put(new THREE.CylinderGeometry(1.4, 1.4, 50, 6), dark, 0, Ht + 33, z0); const fl = put(new THREE.PlaneGeometry(30, 18), new THREE.MeshBasicMaterial({ color: sd > 0 ? 0xd8352d : 0x2f6fd8, side: THREE.DoubleSide }), -15, Ht + 48, z0); fl.rotation.y = Math.PI / 2 * 0; }
+      const cols = [0xd8352d, 0xffffff, 0x2f6fd8, 0xffd23f];
+      for (const [y, x] of [[Ht - 6, 0], [Ht - 30, 8]]) for (let k = 0; k < 14; k++) { const f = (k + .5) / 14, z = -(half + 24) + f * 2 * (half + 24), sag = Math.sin(f * Math.PI) * 18, tri = new THREE.Mesh(new THREE.ConeGeometry(5, 12, 3), new THREE.MeshBasicMaterial({ color: cols[k % 4] }));
+        tri.rotation.x = Math.PI; tri.position.set(x, y - sag - 6, z); grp.add(tri); }   // pennant bunting across the road
+      grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
     } else if (o.k === "xpillar" && o.stone) { return;   // (built from El Nath's ice stone pictures instead, in buildIceStones)
     } else if (o.k === "xpillar") {   // 💎 a crystal standing in the cave road: a tall faceted gem with little ones round its foot, and a pool of light under it
       const H = o.h || 70, c = [0x7fe8ff, 0xc4a4ff, 0xffb0e8][Math.abs(Math.round(o.x * .7 + o.y)) % 3], cl = gemCluster(c, H, H * .18, o.x * .01); grp.add(cl);
@@ -853,7 +920,7 @@ export function create(A) {
       F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
     F.pts.geometry.attributes.position.needsUpdate = true;
   }
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [];
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [];
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -876,8 +943,18 @@ export function create(A) {
   const cliffCache = {};
   function cliffMats(kind) {
     let mode = "paint"; try { mode = localStorage.getItem("kart_cliff") || "paint"; } catch (e) {}   // (the guild picked the painted walls; "ms" = the maplestory.io ground)
-    if (cliffCache[mode]) return cliffCache[mode];
     const prep = tx => { tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = aniso; return tx; };
+    if (kind === "snow") { if (cliffCache.snow) return cliffCache.snow;   // 🏔️ El Nath's ravines: blue-grey crags streaked with frost, under a thick lip of snow with icicles
+      let sd = 21; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      const fc = canvas(360, 120), f = fc.getContext("2d"); f.fillStyle = "#5f6a80"; f.fillRect(0, 0, 360, 120);
+      for (let k = 0; k < 170; k++) { const x = rnd() * 360, y = rnd() * 120, r = 6 + rnd() * 18, c = ["#4a5468", "#77839a", "#3e4658", "#8a96ac", "#dfe9f6"][k % 5]; f.fillStyle = c; f.globalAlpha = k % 5 === 4 ? .45 : .85;
+        for (const dx of [-360, 0, 360]) for (const dy of [-120, 0, 120]) { f.beginPath(); f.moveTo(x + dx - r, y + dy); f.lineTo(x + dx - r * .3, y + dy - r * .8); f.lineTo(x + dx + r, y + dy - r * .2); f.lineTo(x + dx + r * .4, y + dy + r * .7); f.closePath(); f.fill(); } }
+      f.globalAlpha = 1; f.strokeStyle = "rgba(30,36,50,.5)"; f.lineWidth = 2; for (let k = 0; k < 10; k++) { const x = rnd() * 360; f.beginPath(); f.moveTo(x, 0); f.lineTo(x + (rnd() - .5) * 30, 60); f.lineTo(x + (rnd() - .5) * 40, 120); f.stroke(); }
+      const tc = canvas(360, 88), g = tc.getContext("2d"); g.drawImage(fc, 0, 20); g.fillStyle = "#f4f8ff"; g.beginPath(); g.moveTo(0, 0); g.lineTo(360, 0); g.lineTo(360, 30);
+      for (let x = 360; x >= 0; x -= 12) g.quadraticCurveTo(x - 6, 34 + rnd() * 8, x - 12, 30); g.closePath(); g.fill();
+      g.fillStyle = "#dbe8f8"; for (let x = 4; x < 360; x += 14 + rnd() * 10) { const l = 8 + rnd() * 18; g.beginPath(); g.moveTo(x, 30); g.lineTo(x + 3, 30 + l); g.lineTo(x + 6, 30); g.fill(); }   // icicles under the snow
+      return cliffCache.snow = { top: prep(new THREE.CanvasTexture(tc)), fill: prep(new THREE.CanvasTexture(fc)), w: 300, lip: 72, fh: 100 }; }
+    if (cliffCache[mode]) return cliffCache[mode];
     if (mode === "ms") {   // 🍄 Henesys's Singing Mushroom Forest ground (maplestory.io): the grassy lip and the dirt with mossy rocks
       const L = new THREE.TextureLoader();
       return cliffCache[mode] = { top: prep(L.load("media/kart/tiles/shroomCliffTop.webp")), fill: prep(L.load("media/kart/tiles/shroomCliffFill.webp")), w: 300, lip: 72, fh: 100 };
@@ -954,7 +1031,8 @@ export function create(A) {
   }
   function sync(t) {
     let built = false;
-    if (key !== t.key) { key = t.key; stoneKey = null; buildGround(t); skyRefs = []; built = true; }
+    if (key !== t.key) { key = t.key; stoneKey = null; solidKey = null; buildGround(t); skyRefs = []; built = true; }
+    if (t.solids && t.solids.length && t.solids.every(o => t.solidImgs[o.k]) && solidKey !== key) { solidKey = key; buildSolids(t); }
     if (t.iceStones && t.iceStones.every(Boolean) && stoneKey !== key) { stoneKey = key; buildIceStones(t); }   // (once their pictures have loaded)
     if (skyRefs[0] !== t.sky || skyRefs[1] !== t.strip || skyRefs[2] !== t.moon || !skyMesh) { skyRefs = [t.sky, t.strip, t.moon]; buildSky(t); built = true; }
     lastT = t; if (built) applyLook(t);
@@ -1099,6 +1177,7 @@ export function create(A) {
       for (const q of clockM.pends) { const s = Math.sin(now * q.p.sp + q.p.ph); q.grp.rotation.x = -Math.asin(Math.max(-1, Math.min(1, s * q.p.amp / 300))); } }   // (the bob is where the game thinks it is)
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
     if (fountM) fountStep(performance.now() / 1000);
+    for (const f of flowM) f.offset.y = performance.now() / 1000 * .22;   // the dam's half-frozen waterfalls, trickling slowly
     if (auroraM.length) { const now = performance.now() / 1000; for (const q of auroraM) { const pa = q.m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { const b = q.base[v]; pa.setY(v, b[1] + Math.sin(now * .5 + b[3] * 3 + q.ph) * 40 * b[4]); pa.setZ(v, b[2] + Math.sin(now * .35 + b[3] * 5 + q.ph) * 90); } pa.needsUpdate = true; q.m.material.opacity = .62 + Math.sin(now * .7 + q.ph) * .15; } }
     for (const q of balloonM) q.g.position.y = q.y + Math.sin(performance.now() / 1000 * 2 + q.o.x) * (q.o.bob || 0);   // the balloons sway up and down
     if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }
