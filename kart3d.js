@@ -243,6 +243,14 @@ export function create(A) {
       const rail = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xc8302a, side: THREE.DoubleSide })); scene.add(rail); roadObjs.push(rail);
     }
     // 🗿 Thwomps: a stone block with a face on every side, and its shadow on the road (darker as it comes down)
+    // 🔥 fireballs (a glowing ball and its warning shadow) and the road that gives way on later laps (a crumbled hole glowing with lava)
+    fireM = []; fireFn = t.fireZ || null;
+    for (const b of t.fireballs || []) { const m = new THREE.Mesh(new THREE.SphereGeometry(18, 14, 10), new THREE.MeshBasicMaterial({ color: 0xff7a1e })), glow = new THREE.Mesh(new THREE.SphereGeometry(26, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffc23a, transparent: true, opacity: .4, depthWrite: false }));
+      m.add(glow); const sh = new THREE.Mesh(new THREE.CircleGeometry(40, 24), new THREE.MeshBasicMaterial({ color: 0x220800, transparent: true, opacity: .3, depthWrite: false })); sh.rotation.x = -Math.PI / 2;
+      scene.add(m, sh); roadObjs.push(m, sh); fireM.push({ b, m, sh, g: h(b.x, b.y) }); }
+    holeM = []; lapFn = t.lapNow || null;
+    for (const hl of t.holes || []) { const g = new THREE.Group(), lava = new THREE.Mesh(new THREE.CircleGeometry(hl.r, 28), new THREE.MeshBasicMaterial({ color: 0xff5a1a })), rim = new THREE.Mesh(new THREE.RingGeometry(hl.r, hl.r + 10, 28), new THREE.MeshBasicMaterial({ color: 0x2a1a14 }));
+      for (const q of [lava, rim]) { q.rotation.x = -Math.PI / 2; g.add(q); } rim.position.y = .3; g.position.set(hl.x, h(hl.x, hl.y) + 1.4, hl.y); g.visible = false; scene.add(g); roadObjs.push(g); holeM.push({ hl, g }); }
     cartM = []; cartFn = t.cartAt || null;   // 🛒 mine carts: a wooden tub full of gold on little wheels
     for (const c of t.carts || []) { const g = new THREE.Group(), wood = new THREE.MeshLambertMaterial({ color: 0x6a4424 }), gold = new THREE.MeshLambertMaterial({ color: 0xffc83a, emissive: 0x6a4a00 }), iron = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
       const tub = new THREE.Mesh(BOX, wood); tub.scale.set(40, 18, 26); tub.position.y = 14; g.add(tub); const ore = new THREE.Mesh(new THREE.SphereGeometry(14, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), gold); ore.scale.set(1.3, .8, .85); ore.position.y = 23; g.add(ore);
@@ -326,7 +334,7 @@ export function create(A) {
       g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(ox + 6, y + 5, B * .35, 3); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   // ❄ the ice cave's walls: blue crystal facets, darker deep inside
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null;
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null;
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -528,6 +536,8 @@ export function create(A) {
   let VW = 320, VH = 180, shake = 0;
   const fwd = new THREE.Vector3(), tmp = new THREE.Vector3(), look = new THREE.Vector3();
   function begin(k, o) {
+    if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
+    if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }
     if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
     if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const m of karts.values()) m.used = false;
