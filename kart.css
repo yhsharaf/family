@@ -365,3 +365,5 @@ kbd.w { min-width: 54px; }
 /* every meso counts: the race total next to the 10 you hold, and on the results */
 .kt-bag .kt-tot { color: #ffd75e; margin-left: 4px; }
 .k-mesos { font-weight: 800; color: #b07a12 !important; margin: 4px 0; }
+/* phones: text boxes at 16px, or an iPhone zooms the whole page in when you tap one (the room chat after a race did this) */
+@media (pointer: coarse) { .kt input, .kt textarea, .kt select { font-size: 16px; } }

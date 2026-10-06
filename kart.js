@@ -2042,7 +2042,7 @@ const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, 
   },
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, nav: (...a) => nav(...a), nearest: (...a) => nearest(...a), get FORKS() { return { A: FORK_A, B: FORK_B, AN, ALT, PTS, LAPS, OPEN, START_I, FIN_OFF }; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
       const A = PTS[a], Bp = PTS[b], dl = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), dt = (b - a) * SPC; if (dl < 260 || dl > 1100 || dt - dl < 450 || dt - dl > 1100) continue;
       const pts = shapeCut(a, b, [], w, kind); if (!pts) continue; const score = shapeCut.k * 2000 - Math.abs(dt - dl - 750); if (!best || score > best.score) best = { a, b, pts: pts.map(p => p.map(Math.round)), score, k: shapeCut.k }; }
@@ -2196,7 +2196,8 @@ function makeInk() {
 function rescue(r, msg, lava) {
   if (r.rescue > 0) return;
   r.glide = 0; r.rescue = 1.4; r.rescueAt = OPEN ? Math.max(START_I, r.idx - 4) : (r.idx - 4 + N) % N;
-  { const g = gapAt(r.rescueAt) || gapAt(r.idx); if (g) r.rescueAt = Math.max(0, g.a - Math.round(60 / SPC)); }   // fell in: you're put back just before the gap, to bounce across again r.rescueLava = !!lava; r.rescueAlt = r.onAlt ? Math.max(1, (r.altJ || 0) - 5) : null; r.drift = 0; r.charge = 0; r.boost = 0; r.extra = 0; r.spin = 0;
+  { const g = gapAt(r.rescueAt) || gapAt(r.idx); if (g) r.rescueAt = Math.max(0, g.a - Math.round(60 / SPC)); }   // fell in: you're put back just before the gap, to bounce across again
+  r.rescueLava = !!lava; r.rescueAlt = r.onAlt ? Math.max(1, (r.altJ || 0) - 5) : null; r.drift = 0; r.charge = 0; r.boost = 0; r.extra = 0; r.spin = 0;
   if (r === K) { flash(msg || "📜 Return Scroll!", 1200); msg ? splatSound() : scrollSound(); }
 }
 function rescueStep(r, dt) {   // true while being rescued (no driving)
@@ -2956,6 +2957,11 @@ document.addEventListener("touchend", e => {
   const now = performance.now(); if (now - lastTouchEnd < 350) e.preventDefault(); lastTouchEnd = now;
 }, { passive: false });
 const upright = () => TOUCH && innerHeight > innerWidth;
+// 🔍 while the game is on screen a phone can't zoom the page (an iPhone zooms in when you tap a small text box, and with pinches
+// blocked you'd be stuck zoomed in for the next race); setting this also snaps an already zoomed page back to normal
+const VP = document.querySelector('meta[name="viewport"]'), VP0 = VP ? VP.content : "";
+let vpLocked = false;
+function lockZoom(on) { if (!VP || on === vpLocked) return; vpLocked = on; VP.content = on ? VP0 + ", maximum-scale=1, user-scalable=no" : VP0; }
 async function goLandscape() {
   if (!TOUCH) return;
   try { if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: "hide" }); } catch (e) {}
@@ -2982,7 +2988,7 @@ function loop(now) {
 }
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
-  syncRot(); $k("#kFull").hidden = !wantFull();
+  syncRot(); lockZoom(TOUCH && state !== "menu" && !$k("#kGame").hidden); $k("#kFull").hidden = !wantFull();
   const t0 = performance.now();
   if (TEX && K && state !== "loading") { if (state === "watch") { watchStep(dt); render(); watchHud(); } else { step(dt); const t1 = performance.now(); render(); hud(); engine(); if (DEV) { DEV.stepMs = (DEV.stepMs || 0) * .95 + (t1 - t0) * .05; DEV.drawMs = (DEV.drawMs || 0) * .95 + (performance.now() - t1) * .05; } } }
   if (mpOn() && K && (state === "race" || state === "count" || state === "done") && now - MP.sendAt > 100) {
@@ -3050,7 +3056,7 @@ async function p2pOnSignal(p) {
 }
 // one kart's state as it goes out to the room (your kart, or one of the host's bots)
 function posMsg(r, now) {
-  const me = r === K, done = me ? state === "done" : r.done;
+  const me = r === K, done = me ? state === "done" && !!K.fin : r.done;   // (ran out of time: not "finished")
   const m = r.ma != null ? r.ma : r.a;   // the direction it's actually moving (differs from where the nose points in a drift)
   let w = 0; if (r._wt && now > r._wt) { let d = m - r._wa; d = Math.atan2(Math.sin(d), Math.cos(d)); w = d / ((now - r._wt) / 1000); } let u = null; if (r._ut && now - r._ut > 30) { u = Math.hypot(r.x - r._ux, r.y - r._uy) / ((now - r._ut) / 1000); if (u > 2000) u = null; } r._ux = r.x; r._uy = r.y; r._ut = now;   // how fast it really moves (world units/s, boosts and all)
   r._wa = m; r._wt = now;   // how fast it's turning (rad/s)
@@ -3199,7 +3205,7 @@ function finish() {
   }, 1400);
 }
 function mpFinish() {
-  const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); MP.finished = true; fireworks(6); buzz([40, 60, 120]); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
+  const k = K; state = "done"; K.doneAt = performance.now(); K.fin = true; B.musicRate(1); MP.finished = true; fireworks(6); buzz([40, 60, 120]); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
   const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
   const sure = RIV.every(r => !r.remote || r.done || liveOK(r));   // not sure where someone is? don't claim a place: the results will say
   B.sound(place <= 3 ? "win" : "lose"); flash(sure && place === 1 ? "🏆 1st PLACE!" : sure ? `🏁 FINISH! ${ordinal(place)}` : "🏁 FINISH!", 1600);
@@ -3224,7 +3230,7 @@ function mpShowResults(res) {
   const mine = res.find(r => r.name === MP.me);
   if (MP.tallied !== MP.raceNo) { MP.tallied = MP.raceNo; for (const r of res) { MP.tally[r.name] = (MP.tally[r.name] || 0) + (GP_PTS[r.place - 1] || 0); if (r.bot) (MP.tBots ||= {})[r.name] = 1; }   // this room's own standings, for everyone
     const rk = String(MP.track).split("@")[0], C = CUPS[cupOf(rk)], ci = C.tracks.indexOf(rk);   // 🏆 the cup goes on: 10 seconds to look at the results, then everyone is taken to the next track
-    MP.next = TRACKS[rk] && ci >= 0 && ci < C.tracks.length - 1 ? { t: C.tracks[ci + 1], n: ci + 2, at: performance.now() + 10000, cc: roomCC(), cup: cupOf(rk) } : null;
+    MP.next = TRACKS[rk] && ci >= 0 && ci < C.tracks.length - 1 ? { t: C.tracks[ci + 1], n: ci + 2, at: performance.now() + 10000, cc: roomCC(), cup: cupOf(rk), fails: 0 } : null;
     if (MP.next && MP.host === MP.me) { cup = MP.next.cup; track = MP.next.t; }
     if (MP.next && MP.host !== MP.me) setTimeout(() => { if (MP.next && !mpReadyInfo().mine) mpReady(true); }, 600);   // (everyone's ready for the next race automatically)
   }
@@ -3242,19 +3248,19 @@ function mpNextHtml() {
   const host = MP.host === MP.me, rk = roomTrack(), t = TRACKS[rk], here = new Set(MP.players.map(p => p.name)), R = mpReadyInfo();
   if (MP.next) {   // 🏆 in the middle of a cup: the standings, and a countdown to the next track
     const nt = TRACKS[MP.next.t], left = Math.max(0, Math.ceil((MP.next.at - performance.now()) / 1000));
-    const order = Object.entries(MP.tally).filter(([n]) => here.has(n) || (MP.tBots || {})[n]).sort((a, b) => b[1] - a[1]);
-    return `<div class="k-stand"><b>🏆 ${esc(CUPS[MP.next.cup].name)} standings</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${(MP.tBots || {})[n] ? botImg(n) : spriteOf(n)}" alt="">${(MP.tBots || {})[n] ? "🤖 " : ""}${esc(n)} <em>${p}</em></span>`).join("")}</div>
+    const order = Object.entries(MP.tally).sort((a, b) => b[1] - a[1]);   // (everyone who raced in this cup, even if they left)
+    return `<div class="k-stand"><b>🏆 ${esc(CUPS[MP.next.cup].name)} standings</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${(MP.tBots || {})[n] ? botImg(n) : spriteOf(n)}" alt="">${(MP.tBots || {})[n] ? "🤖 " : ""}${esc(n)}${!here.has(n) && !(MP.tBots || {})[n] ? " <small>(left)</small>" : ""} <em>${p}</em></span>`).join("")}</div>
       <div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>🏁 Race ${MP.next.n}/3: ${nt.icon} ${esc(nt.name)}</b><small id="kCupNext">${left > 0 ? `Starting in ${left}…` : "Starting…"}</small></div></div>
       <div class="row"><button class="sk-btn sk-private" data-a="lobby">🏠 Back to the lobby</button><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
   }
-  const order = Object.entries(MP.tally).filter(([n]) => here.has(n) || (MP.tBots || {})[n]).sort((a, b) => b[1] - a[1]);
-  const stand = order.length ? `<div class="k-stand"><b>🏆 ${(() => { const lk = String(MP.track).split("@")[0], C = TRACKS[lk] && CUPS[cupOf(lk)]; return C && MP.results && C.tracks.indexOf(lk) === C.tracks.length - 1 ? `${esc(C.name)} final standings` : "Room standings"; })()}</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${(MP.tBots || {})[n] ? botImg(n) : spriteOf(n)}" alt="">${(MP.tBots || {})[n] ? "🤖 " : ""}${esc(n)} <em>${p}</em></span>`).join("")}</div>` : "";
+  const order = Object.entries(MP.tally).sort((a, b) => b[1] - a[1]);   // (everyone who raced in this cup, even if they left)
+  const stand = order.length ? `<div class="k-stand"><b>🏆 ${(() => { const lk = String(MP.track).split("@")[0], C = TRACKS[lk] && CUPS[cupOf(lk)]; return C && MP.results && C.tracks.indexOf(lk) === C.tracks.length - 1 ? `${esc(C.name)} final standings` : "Room standings"; })()}</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${(MP.tBots || {})[n] ? botImg(n) : spriteOf(n)}" alt="">${(MP.tBots || {})[n] ? "🤖 " : ""}${esc(n)}${!here.has(n) && !(MP.tBots || {})[n] ? " <small>(left)</small>" : ""} <em>${p}</em></span>`).join("")}</div>` : "";
   const pick = host ? `<p class="kt-pickhead">👑 You're the host: pick the next race</p>
       <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("")}</div>
       <p class="k-diff">${CUPS[cup].tracks.map(k => `${TRACKS[k].icon} ${TRACKS[k].name}`).join(" → ")}</p>
       <div class="kt-diff">${Object.entries(CCS).map(([k, c]) => `<button type="button" data-cc="${k}" class="${+k === cc ? "on" : ""}">${c.label}</button>`).join("")}</div>
       ${playerList()}${botPick()}<p class="k-diff">${countNote()}</p>
-      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${(humansIn() < 2 && !botsWant) || !R.all ? "disabled" : ""}>${R.all ? `🏁 Start the ${esc(CUPS[cup].name)} · ${CCS[cc].label.split(" ")[1]}!` : `⏳ Waiting for ${R.waiting.length} to be ready…`}</button></div>
+      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${(humansIn() < 2 && !botsWant) || !R.all || MP.goBusy > performance.now() ? "disabled" : ""}>${R.all ? `🏁 Start the ${esc(CUPS[cup].name)} · ${CCS[cc].label.split(" ")[1]}!` : `⏳ Waiting for ${R.waiting.length} to be ready…`}</button></div>
       ${humansIn() < 2 && !botsWant ? `<p class="k-diff">Everyone else left… waiting for someone to join (or turn on 🤖).</p>` : !R.all ? `<p class="k-diff">Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋</p>` : ""}`
     : `${readyBtn(R.mine)}${playerList()}<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the next race</b>
       <small>Next up: ${CUPS[cupOf(rk)].icon} ${esc(CUPS[cupOf(rk)].name)} (3 races) · ${CCS[roomCC()].label}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
@@ -3264,7 +3270,11 @@ setInterval(() => {
   if (!MP.next || !MP.code) return;
   if (state !== "done" || $k("#kResult").hidden) { if (state === "menu") MP.next = null; return; }   // (gone back to the lobby: the cup stops)
   const el = $k("#kCupNext"), left = Math.max(0, Math.ceil((MP.next.at - performance.now()) / 1000)); if (el) el.textContent = left > 0 ? `Starting in ${left}…` : "Starting…";
-  if (MP.host === MP.me && left <= 0 && !(MP.next.tryAt > performance.now())) { MP.next.tryAt = performance.now() + 1500; track = MP.next.t; cup = MP.next.cup; mpStart(); }
+  if (MP.host === MP.me && left <= 0 && !MP.next.busy && !(MP.next.tryAt > performance.now())) {
+    const nx = MP.next; nx.busy = true; track = nx.t; cup = nx.cup; if (nx.cc) cc = nx.cc;
+    mpStart().then(r => { nx.busy = false; nx.tryAt = performance.now() + 2000; if (r !== "ok" && ++nx.fails >= 3 && MP.next === nx) { MP.next = null; mpRedrawNext(); } });   // (someone isn't ready: back to the start screen, which says who)
+  }
+  if (MP.host !== MP.me && MP.status !== "racing" && performance.now() > MP.next.at + 8000) { MP.next = null; mpRedrawNext(); }   // the host stopped the cup (or left)
 }, 500);
 function mpRedrawNext() { const el = $k("#kNext"); if (el && !$k("#kResult").hidden) el.innerHTML = mpNextHtml(); }
 // ----- rooms: create / join / poll / start / leave
@@ -3316,11 +3326,12 @@ async function mpJoinedTail(code) {
 async function mpPoll(first) {
   if (!MP.code || MP.polling) return; MP.polling = true;
   try {
-    const racingNow = state === "race" && K && !MP.finished;
-    const prog = racingNow ? Math.max(0, Math.min(1, OPEN ? K.idx / N : (K.lap * N + (K.cps === 0 && K.idx > N * .75 ? K.idx - N : K.idx)) / (LAPS * N))) : null;
+    const racingNow = state === "race" && K && !MP.finished && MP.srvRace === MP.raceNo && performance.now() - (MP.srvAt || 0) < 4000;   // (a phone back from the background may still be in an old race)
+    const prog = racingNow ? Math.max(0, Math.min(1, OPEN ? K.idx / N : (K.lap * N + (K.cps === 0 && K.idx > N * .75 ? K.idx - N : K.idx)) / (LAPS * N))) : K && !MP.finished && (state === "wait" || state === "count") ? 0 : null;   // (on the grid: 0, so the last race's spot isn't kept)
     const sb = await B.client(), q0 = performance.now(); const { data } = await sb.rpc("kart_room_state", { p_code: MP.code, p_tok: MP.token, p_prog: prog });
     { const ow = (performance.now() - q0) / 2; if (ow > 0 && ow < 1500) MP.ow = MP.ow ? (ow < MP.ow ? MP.ow * .5 + ow * .5 : MP.ow * .92 + ow * .08) : ow; }
-    const bots = (state === "race" || state === "done") && K && MP.host === MP.me ? RIV.filter(r => r.bot && !r.remote) : [];
+    if (data) { MP.srvRace = data.status === "racing" ? data.race_no : null; MP.srvAt = performance.now(); }
+    const bots = (state === "race" || state === "done") && K && MP.host === MP.me && data && data.status === "racing" && data.race_no === MP.raceNo ? RIV.filter(r => r.bot && !r.remote) : [];   // (not the last race's bots into a new race)
     if (bots.length) { const d = {}; for (const r of bots) d[r.name] = r.done ? { p: 1, f: Math.round(r.finishT) } : { p: +Math.max(0, Math.min(1, OPEN ? r.idx / N : (r.lap * N + (r.cps === 0 && r.idx > N * .75 ? r.idx - N : r.idx)) / (LAPS * N))).toFixed(3) };
       sb.rpc("kart_room_bots", { p_code: MP.code, p_tok: MP.token, p_data: d }).then(() => {}); }   // (.then: the request is only sent once something listens)
     if (!data) return;
@@ -3346,18 +3357,20 @@ async function mpPoll(first) {
       if (mode !== "mp") { mode = "mp"; drawMode(); }
       start();
     }
-    if (data.status === "lobby" && data.results && MP.finished && !MP.results) { MP.results = data.results; mpShowResults(data.results); loadBoard(); }
+    if (data.status === "lobby" && data.results && data.race_no === MP.raceNo && state === "race" && !MP.finished && !MP.watching) mpTimeUp();   // the race is already over on the server (you missed the 10 s clock): stop and see the results
+    if (data.status === "lobby" && data.results && data.race_no === MP.raceNo && MP.finished && !MP.results) { MP.results = data.results; mpShowResults(data.results); loadBoard(); }
     if (!$k("#kMenu").hidden) drawRoom(); else if (MP.results) { mpRedrawNext(); if (MP.host === MP.me && MP.ch) mpSend("tr", { t: track, cc }); }
   } finally { MP.polling = false; }
 }
 async function mpStart() {
   const sb = await B.client(); const { data } = await sb.rpc("kart_room_start", { p_code: MP.code, p_tok: MP.token, p_track: cc === 150 ? track : `${track}@${cc}`, p_bots: botsWant });
+  if (data && data.r === "running") return "ok";   // (already started: a double tap, or the other start got there first)
   if (!data || data.r !== "ok") { if (state === "done") { flash("Couldn't start, try again", 1200); const b = $k("[data-a=mpgo]"); if (b) b.disabled = false; } $k("#kErr").textContent = { few: "You need at least 2 players to start (or turn on 🤖 computer racers).", host: "Only the host can start.", running: "Already racing!", track: "That track isn't open for rooms yet. Pick a Henesys track.",
     notready: `Waiting for ${(data && data.who || []).join(", ")} to press Ready ✋` }[data && data.r] || "Couldn't start, try again.";
     if (data && data.r === "notready" && state === "done") flash("⏳ Not everyone is ready", 1200);
-    return; }
+    return data && data.r === "running" ? "ok" : (data && data.r) || "err"; }
   mpSend("go", {});
-  mpPoll();
+  mpPoll(); return "ok";
 }
 const tokKey = code => "kart_room_tok:" + code + (location.hostname === "localhost" && new URLSearchParams(location.search).get("as") ? ":" + new URLSearchParams(location.search).get("as") : "");   // (testing: ?as=b is a second player)
 async function mpLeave(silent) {
@@ -3549,7 +3562,7 @@ function confetti() {
     box.appendChild(c); setTimeout(() => c.remove(), 4500); }
 }
 function quit() {
-  raceId++; state = "menu"; $k("#kart").classList.remove("watching"); B.musicRate(1); leaveLandscape(); $k("#kRotate").hidden = true; $k("#kart").classList.remove("rot"); rotWas = null; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
+  raceId++; state = "menu"; $k("#kart").classList.remove("watching"); B.musicRate(1); leaveLandscape(); lockZoom(false); $k("#kRotate").hidden = true; $k("#kart").classList.remove("rot"); rotWas = null; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
   $k("#kGame").hidden = true; $k("#kMenu").hidden = false; $k("#kResult").hidden = true;
   $k("#kart").classList.remove("racing"); document.body.classList.remove("bd-playing"); showBest();
 }
@@ -3688,7 +3701,7 @@ $k("#kResult").addEventListener("click", e => {
   if (a.dataset.a === "podium") podium();
   if (a.dataset.a === "back") { gp = null; quit(); }
   if (a.dataset.a === "room") quit();
-  if (a.dataset.a === "mpgo") { a.disabled = true; track = CUPS[cup].tracks[0]; MP.next = null; askFull(); mpStart(); }   // (a new cup starts at its first race)
+  if (a.dataset.a === "mpgo") { if (MP.goBusy > performance.now()) return; MP.goBusy = performance.now() + 3000; a.disabled = true; track = CUPS[cup].tracks[0]; MP.next = null; askFull(); mpStart().then(r => { if (r !== "ok") MP.goBusy = 0; }); }   // (a new cup starts at its first race)
   if (a.dataset.a === "lobby") { MP.next = null; quit(); drawRoom(); }   // back to the room's lobby (you stay in the room)
   if (a.dataset.a === "mpleave") { MP.next = null; mpLeave(); quit(); }
 });
