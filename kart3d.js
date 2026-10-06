@@ -91,6 +91,7 @@ export function create(A) {
     if (NG) { sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI;
       sun.castShadow = true; const ms = Q >= 2 ? 2048 : 1024; if (sun.shadow.mapSize.x !== ms) { sun.shadow.mapSize.set(ms, ms); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } } }
     else { hemi.color.setHex(OLD_LIGHT.hemiSky); hemi.groundColor.setHex(OLD_LIGHT.hemiGnd); hemi.intensity = OLD_LIGHT.hemiI; sun.color.setHex(OLD_LIGHT.sun); sun.intensity = OLD_LIGHT.sunI; sun.position.copy(OLD_LIGHT.pos); sun.target.position.set(0, 0, 0); sun.castShadow = false; }
+    if (!NG && t.theme.dark) { const D = t.theme.dark; hemi.color.setHex(D.sky); hemi.groundColor.setHex(D.gnd); hemi.intensity = D.hemiI; sun.color.setHex(D.sun); sun.intensity = D.sunI; }   // 👻 a track's own gloomy light (Sleepywood)
     if (NG !== renderer.shadowMap.enabled) { renderer.shadowMap.enabled = NG; renderer.shadowMap.type = THREE.PCFSoftShadowMap; scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); }); }
     if (NG) scene.traverse(o => { if (!o.isMesh || o === blobs) return; const big = !o.geometry.boundingSphere && o.geometry.computeBoundingSphere() || (o.geometry.boundingSphere.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 900);
       o.receiveShadow = true; o.castShadow = !big && o !== terrain && !(o.material && o.material.transparent) && !(o.geometry.type === "PlaneGeometry" || o.geometry.type === "CircleGeometry"); });
@@ -178,7 +179,7 @@ export function create(A) {
       mean = t.water.bed;
     }
     const DIP = new Float32Array(GN * GN); for (let o = 0; o < GN * GN; o++) DIP[o] = 5 * smooth(edge + 24, edge + 4, Math.sqrt(dmin[o]));   // the ground sinks a little under the road, so it never pokes through
-    for (const g of t.gaps || []) { const depth = g.kind === "water" ? 70 : g.open ? 90 : 320;   // 🍄 a gorge (deep, misty) or the park pond
+    for (const g of t.gaps || []) { const depth = g.depth ?? (g.kind === "water" ? 70 : g.open ? 90 : 320);   // 🍄 a gorge (deep, misty) or the park pond
       const GW = g.wall || 424; for (let o = 0; o < GN * GN; o++) if (near[o] >= g.a && near[o] < g.b) DIP[o] = Math.max(DIP[o], depth * (g.open ? smooth(700, 120, Math.sqrt(dmin[o])) : smooth(GW + 96, GW + 6, Math.sqrt(dmin[o]))));   // (g.wall: a narrower ravine)   // (an open glide: a smooth hollow in the mountainside)
       if (t.theme.cliffs && !g.open && (g.kind === "gorge" || g.kind === "chasm" || g.kind === "bridge")) {   // with cliff walls: the pit is exactly the walls' box (no ground left standing in front of them where the track bends)
         let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = g.a; i <= g.b; i++) { const p = t.PTS[i % t.N]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
@@ -219,7 +220,7 @@ export function create(A) {
     terrain = new THREE.Mesh(geo, mat); scene.add(terrain);
     if (t.theme.space) { terrain.visible = false; for (const m of plain.children) if (!m.userData.keep) m.visible = false; }   // 🌌 in space there's no ground: the road floats over the stars
     buildRoad(t); buildCliffs(t);
-    scene.fog = new THREE.Fog(new THREE.Color(...(t.haze || [214, 236, 255]).map(c => c / 255)), 900, 2600);
+    scene.fog = new THREE.Fog(new THREE.Color(...(t.haze || [214, 236, 255]).map(c => c / 255)), ...(t.theme.fog || [900, 2600]));
     renderer.setClearColor(scene.fog.color);
   }
   // ---------------------------------------------------------------- the road: its own sharp surface (in the track's style) with raised curbs;
@@ -441,7 +442,7 @@ export function create(A) {
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
     balloonM = []; flowM = []; for (const o of t.props3d || []) buildProp(o);
     bridgeG = (t.gaps || []).filter(g => g.kind === "bridge"); buildRopeBridges(t);
-    gondM = []; if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
+    gondM = []; if (t.trunk) buildTrunk(t.trunk); if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
     buildSnowWorld(t); auroraM = []; if (t.aurora) buildAurora(t); if (t.fairy) buildFairy(t.fairy, t);
     for (const b of t.buildings || []) {
       if (b.castle) { buildCastle(b); continue; }
@@ -480,7 +481,8 @@ export function create(A) {
         const sl = depth + 10 + lift, stem = new THREE.Mesh(new THREE.CylinderGeometry(c.r * .26, c.r * .32, sl, 24), new THREE.MeshLambertMaterial({ color: 0xf4e3a8 })); stem.position.y = -sink - sl / 2 - 12; grp.add(stem);
         scene.add(grp); roadObjs.push(dome, rim, under, stem); extraObjs.push(grp); caps.push({ m: dome, pad: c, h: dh });
       }
-      // what's down there: drifting mist in the gorge, water in the pond
+      // what's down there: drifting mist in the gorge, water in the pond (not under an open drop or a bridge: those have their own ground)
+      if (g.open || g.kind === "bridge") continue;
       const p0 = g.caps[0] || { x: t.PTS[g.a % t.N][0], y: t.PTS[g.a % t.N][1] }, p1 = g.caps[g.caps.length - 1] || { x: t.PTS[g.b % t.N][0], y: t.PTS[g.b % t.N][1] }, mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2, base = h(mx, my);   // (a glider's ravine has no mushrooms)
       const sz = Math.max(1100, Math.hypot(p1.x - p0.x, p1.y - p0.y) + 600), sheet = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), g.kind === "water"
         ? new THREE.MeshPhongMaterial({ color: 0x3d8de0, transparent: true, opacity: .85, shininess: 120, specular: 0xffffff })
@@ -593,20 +595,24 @@ export function create(A) {
   }
   let castleT = null;
   // 🌉 rope bridges: the one you drive across (planks on two ropes, no railings, tall log posts at each end), and others hung across the ravines far below
-  function plankBridge(pts, half) {   // pts: [x, y, z, ang] along the deck
+  function plankBridge(pts, half, rail) {   // pts: [x, y, z, ang] along the deck (rail: posts and a handrail along both sides)
     const wood = [new THREE.MeshLambertMaterial({ color: 0xa0703c, emissive: 0x201004 }), new THREE.MeshLambertMaterial({ color: 0x8a5a2e, emissive: 0x1a0c02 })], rope = new THREE.MeshLambertMaterial({ color: 0xc8b48a, emissive: 0x201a10 });
     const n = pts.length, geo = new THREE.BoxGeometry(1, 1, 1), ms = wood.map(m => new THREE.InstancedMesh(geo, m, n)), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), U = new THREE.Vector3(0, 1, 0), cnt = [0, 0];
     pts.forEach(([x, y, z, a], k) => { const w = k % 2; Q.setFromAxisAngle(U, -a); M.compose(new THREE.Vector3(x, y - 2, z), Q, new THREE.Vector3(7.5, 4, half * 2 * (.94 + ((k * 37) % 7) / 60))); ms[w].setMatrixAt(cnt[w]++, M); });
     ms.forEach((m, w) => { m.count = cnt[w]; scene.add(m); roadObjs.push(m); });
     for (const sd of [-1, 1]) { const c = pts.map(([x, y, z, a]) => new THREE.Vector3(x - Math.sin(a) * sd * half, y, z + Math.cos(a) * sd * half)); if (c.length < 2) continue;
-      const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(c), c.length * 2, 1.6, 6), rope); scene.add(t); roadObjs.push(t); }
+      const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(c), c.length * 2, 1.6, 6), rope); scene.add(t); roadObjs.push(t);
+      if (rail) { const hr = c.map(v => v.clone().setY(v.y + 26)), tr = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hr), hr.length * 2, 2.6, 6), wood[1]); scene.add(tr); roadObjs.push(tr);
+        const pg = new THREE.CylinderGeometry(2.4, 2.8, 30, 6); c.forEach((v, k) => { if (k % 3) return; const pm = new THREE.Mesh(pg, wood[1]); pm.position.set(v.x, v.y + 13, v.z); scene.add(pm); roadObjs.push(pm); }); } }
+    if (rail && pts.length > 2) {   // stilts down to the forest floor
+      const st = new THREE.MeshLambertMaterial({ color: 0x4a3626, emissive: 0x0c0804 }); pts.forEach(([x, y, z, a], k) => { if (k % 6) return; for (const sd of [-1, 1]) { const px = x - Math.sin(a) * sd * (half - 6), pz = z + Math.cos(a) * sd * (half - 6), g = h(px, pz), L2 = y - g; if (L2 < 20) continue; const m = new THREE.Mesh(new THREE.CylinderGeometry(4, 5, L2, 6), st); m.position.set(px, g + L2 / 2, pz); scene.add(m); roadObjs.push(m); } }); }
   }
   function buildRopeBridges(t) {
     const N = t.N, P = t.PTS, ang = i => { const a = P[(i + N - 1) % N], b = P[(i + 1) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
     const post = new THREE.MeshLambertMaterial({ color: 0x6b4426, emissive: 0x140802 }), snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e });
-    for (const g of bridgeG) { const half = g.deck + 6, pts = [];
+    for (const g of bridgeG) { const half = g.deck + 6, pts = []; if (g.rail) { /* (railed walkway) */ }
       for (let i = g.a - 1; i <= g.b + 1; i++) { const p = P[i % N]; pts.push([p[0], RE[i % N], p[1], ang(i)]); }
-      plankBridge(pts, half);
+      plankBridge(pts, half, g.rail);
       for (const i of [g.a - 1, g.b + 1]) for (const sd of [-1, 1]) { const p = P[i % N], a = ang(i), x = p[0] - Math.sin(a) * sd * (half + 4), z = p[1] + Math.cos(a) * sd * (half + 4), y = RE[i % N];
         const m = new THREE.Mesh(new THREE.CylinderGeometry(5, 6, 60, 10), post); m.position.set(x, y + 22, z); scene.add(m); roadObjs.push(m);
         const c = new THREE.Mesh(new THREE.SphereGeometry(7, 10, 6, 0, 6.3, 0, 1.6), snow); c.position.set(x, y + 52, z); scene.add(c); roadObjs.push(c); } }
@@ -684,6 +690,22 @@ export function create(A) {
       const win = new THREE.Mesh(new THREE.BoxGeometry(31, 10, 31), new THREE.MeshBasicMaterial({ color: 0xffe9a0 })); win.position.y = 3; g.add(win);
       const rf = new THREE.Mesh(new THREE.BoxGeometry(34, 6, 34), snow); rf.position.y = 16; g.add(rf); const hang = new THREE.Mesh(new THREE.BoxGeometry(2, 20, 2), steel); hang.position.y = 28; g.add(hang);
       g.rotation.y = yaw; add(g); gondM.push({ g, line, sp: .05, ph: k / 3 }); }
+  }
+  function buildTrunk(T0) {   // 🌳 the giant haunted tree: a huge gnarled trunk of dark bark with roots spreading out, glowing fungus on it, dead branches up top hung with moss
+    const g0 = h(T0.x, T0.y), grp = new THREE.Group(), R = T0.r, H = T0.h || 500;
+    const bark = ctex(256, 512, (g, W, Hh) => { g.fillStyle = "#3a2c22"; g.fillRect(0, 0, W, Hh); for (let k = 0; k < 90; k++) { const x = Math.random() * W; g.strokeStyle = `rgba(${20 + Math.random() * 30},${14 + Math.random() * 20},${10 + Math.random() * 14},.8)`; g.lineWidth = 2 + Math.random() * 6; g.beginPath(); g.moveTo(x, 0); for (let y = 0; y < Hh; y += 40) g.lineTo(x + Math.sin(y * .02 + k) * 10, y); g.stroke(); }
+      for (let k = 0; k < 30; k++) { g.fillStyle = "rgba(90,120,60,.35)"; g.beginPath(); g.ellipse(Math.random() * W, Math.random() * Hh, 10 + Math.random() * 20, 6 + Math.random() * 10, 0, 0, 7); g.fill(); } }, true);
+    bark.repeat.set(4, 2); const bm = new THREE.MeshLambertMaterial({ map: bark, emissive: 0x0a0806 });
+    const tg = new THREE.CylinderGeometry(R * .82, R * 1.08, H, 28, 12), pa = tg.attributes.position;
+    for (let v = 0; v < pa.count; v++) { const x = pa.getX(v), y = pa.getY(v), z = pa.getZ(v), a = Math.atan2(z, x), k = 1 + .07 * Math.sin(a * 5 + y * .01) + .05 * Math.sin(a * 11 - y * .02); pa.setX(v, x * k); pa.setZ(v, z * k); }
+    tg.computeVertexNormals(); const trunk = new THREE.Mesh(tg, bm); trunk.position.y = H / 2 - 20; grp.add(trunk);
+    for (let k = 0; k < 9; k++) { const a = k / 9 * 6.283 + .3, root = new THREE.Mesh(new THREE.CylinderGeometry(R * .06, R * .2, R * .9, 8), bm); root.position.set(Math.cos(a) * R * 1.05, 10, Math.sin(a) * R * 1.05); root.rotation.set(Math.sin(a) * 1.25, 0, -Math.cos(a) * 1.25); grp.add(root); }
+    const fun = [0x9aff7a, 0xc07aff, 0x7af0ff]; for (let k = 0; k < 26; k++) { const a = Math.random() * 6.283, y = 20 + Math.random() * (H - 80), m = new THREE.Mesh(new THREE.SphereGeometry(6 + Math.random() * 8, 10, 6, 0, 6.283, 0, 1.4), new THREE.MeshBasicMaterial({ color: fun[k % 3] })); m.scale.y = .35; m.position.set(Math.cos(a) * R * .98, y, Math.sin(a) * R * .98); m.rotation.z = Math.cos(a) * 1.4; m.rotation.x = -Math.sin(a) * 1.4; grp.add(m); }   // glowing fungus
+    for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283, br = new THREE.Mesh(new THREE.CylinderGeometry(6, 18, R * 1.6, 6), bm); br.position.set(Math.cos(a) * R * .9, H - 40 + (k % 3) * 30, Math.sin(a) * R * .9); br.rotation.set(Math.sin(a) * 1.1, 0, -Math.cos(a) * 1.1); grp.add(br); }   // bare branches reaching out
+    const moss = new THREE.MeshLambertMaterial({ color: 0x3a4a30, emissive: 0x080c06, transparent: true, opacity: .85, side: THREE.DoubleSide });
+    for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283, m = new THREE.Mesh(new THREE.PlaneGeometry(14, 70 + (k % 4) * 20), moss); m.position.set(Math.cos(a) * R * 1.3, H - 90, Math.sin(a) * R * 1.3); m.rotation.y = -a; grp.add(m); }   // hanging moss
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(R * 1.3, 18, 10), new THREE.MeshLambertMaterial({ color: 0x24301e, emissive: 0x060a04, flatShading: true })); cap.scale.y = .45; cap.position.y = H + 30; grp.add(cap);   // a dark crown of leaves
+    grp.position.set(T0.x, g0, T0.y); scene.add(grp); roadObjs.push(grp);
   }
   function buildDam(b, t) {   // 🌊 the dam: a tall concrete wall with buttresses, a railed walkway on top under thick snow, and half-frozen waterfalls pouring down its road side, icicles hanging off the lip
     const g0 = h(b.x, b.y), grp = new THREE.Group(), a = b.a || 0, nx = -Math.sin(a), nz = Math.cos(a);
@@ -945,6 +967,17 @@ export function create(A) {
       for (let k = -2; k <= 2; k++) { const z = k * half * .4; put(new THREE.CylinderGeometry(1, 1, 16, 4), wood, 0, 130, z); const ln = put(new THREE.CylinderGeometry(9, 9, 20, 12), L(0xe8443a, 0x401008), 0, 115, z); put(new THREE.SphereGeometry(5, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd27a }), 0, 115, z).scale.set(1.9, 1.5, 1.9); }
       for (let k = 0; k < 16; k++) { const z = -half - 30 + k * (2 * half + 60) / 15, l = 8 + (k * 7 % 4) * 4, ic = put(new THREE.ConeGeometry(2.5, l, 6), new THREE.MeshLambertMaterial({ color: 0xe8f6ff, emissive: 0x4a6a8a }), 13, 136 - l / 2, z); ic.rotation.x = Math.PI; }
       grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "swhotel") {   // 🏚 the old Sleepywood Hotel: three crooked storeys of dark timber, a sagging pointed roof, windows glowing sickly yellow and green (some dead), a porch with lanterns
+      const S = o.s || 1, wood = L(0x5a4636, 0x0e0a06), dark = L(0x2e2420, 0x060404), roofM = L(0x2a2232, 0x08060c), win = new THREE.MeshBasicMaterial({ color: 0xffd27a }), win2 = new THREE.MeshBasicMaterial({ color: 0x9aff7a }), dead = new THREE.MeshBasicMaterial({ color: 0x141018 });
+      const W = 260 * S, D = 150 * S, FH = 70 * S;
+      for (let f = 0; f < 3; f++) { const w = W - f * 26, d2 = D - f * 14, b = put(new THREE.BoxGeometry(d2, FH, w), wood, f * 3, FH / 2 + f * FH, 0); b.rotation.z = (f - 1) * .025;   // each floor a little crooked
+        put(new THREE.BoxGeometry(d2 + 8, 6, w + 8), dark, f * 3, (f + 1) * FH, 0);
+        for (let k = 0; k < 5; k++) { const z = (k - 2) * w / 5.4, m = (k * 7 + f * 3) % 5 === 0 ? dead : (k + f) % 4 === 0 ? win2 : win; put(new THREE.BoxGeometry(2, FH * .42, w / 9), m, d2 / 2 + f * 3 + 1, FH * .55 + f * FH, z); put(new THREE.BoxGeometry(3, FH * .5, 3), dark, d2 / 2 + f * 3 + 2, FH * .55 + f * FH, z); } }
+      const rf = put(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM, 6, 3 * FH + 70 * S, 0); rf.rotation.y = Math.PI / 4; rf.scale.set((D - 20) * .78, 140 * S, (W - 40) * .74); rf.rotation.z = .05;
+      put(new THREE.BoxGeometry(14, 60 * S, 14), dark, -D * .2, 3 * FH + 110 * S, W * .25);   // a crooked chimney
+      put(new THREE.BoxGeometry(40 * S, 6, W * .6), dark, D / 2 + 20 * S, 40 * S, 0); for (const z of [-1, 1]) { put(new THREE.BoxGeometry(5, 40 * S, 5), dark, D / 2 + 38 * S, 20 * S, z * W * .28); put(new THREE.SphereGeometry(6, 8, 6), win, D / 2 + 38 * S, 44 * S, z * W * .28); }   // the porch and its lanterns
+      put(new THREE.BoxGeometry(3, 44 * S, 30 * S), dark, D / 2 + 1, 22 * S, 0);   // the door
+      grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
     } else if (o.k === "xpillar" && o.stone) { return;   // (built from El Nath's ice stone pictures instead, in buildIceStones)
     } else if (o.k === "xpillar") {   // 💎 a crystal standing in the cave road: a tall faceted gem with little ones round its foot, and a pool of light under it
       const H = o.h || 70, c = [0x7fe8ff, 0xc4a4ff, 0xffb0e8][Math.abs(Math.round(o.x * .7 + o.y)) % 3], cl = gemCluster(c, H, H * .18, o.x * .01); grp.add(cl);
@@ -974,8 +1007,8 @@ export function create(A) {
       grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
     } else if (o.k === "enhouse") {   // 🏠 a fat little El Nath house: timber walls, warm glowing windows, a thick roof of snow with icing drips, a chimney, a lantern by the door
       const S = o.s || 1, W = 150 * S, D = 110 * S, Hh = 70 * S, ov = 18 * S, sl = .62, rise = (D / 2 + ov) * Math.tan(sl), slope = (D / 2 + ov) / Math.cos(sl);
-      const tx = houseTex(o.wall || "#f3e3c3"), wallM = new THREE.MeshLambertMaterial({ map: tx.map, emissive: 0xffb050, emissiveMap: tx.glow }), plainM = L(new THREE.Color(o.wall || "#f3e3c3").getHex(), 0x3a3020);
-      const snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e }), roofM = L(o.roof || 0xd2602a, 0x301008), S1 = new THREE.SphereGeometry(1, 14, 10);
+      const tx = houseTex(o.wall || "#f3e3c3"), wallM = new THREE.MeshLambertMaterial({ map: tx.map, emissive: o.glow || 0xffb050, emissiveMap: tx.glow }), plainM = L(new THREE.Color(o.wall || "#f3e3c3").getHex(), 0x3a3020);
+      const snow = o.dark ? L(0x3a3046, 0x0c0814) : new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e }), roofM = L(o.roof || 0xd2602a, 0x301008), S1 = new THREE.SphereGeometry(1, 14, 10);   // (dark: mossy shingles instead of snow)
       put(new THREE.BoxGeometry(D, Hh, W), wallM, 0, Hh / 2, 0);
       const tri = new THREE.Shape(); tri.moveTo(-D / 2, 0); tri.lineTo(D / 2, 0); tri.lineTo(0, rise * .92); tri.closePath();
       for (const z of [-1, 1]) put(new THREE.ExtrudeGeometry(tri, { depth: 3, bevelEnabled: false }), plainM, 0, Hh, z * W / 2 - 1.5);
@@ -1101,7 +1134,7 @@ export function create(A) {
     let topCol = t.theme.sky || "#8fd0ff";
     if (t.sky) { try { const sc = canvas(16, 4), sg = sc.getContext("2d"); sg.drawImage(t.sky, 0, 0, t.sky.width, Math.max(1, t.sky.height * .04), 0, 0, 16, 4); const d = sg.getImageData(0, 0, 16, 4).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; topCol = `rgb(${r / n | 0},${gg / n | 0},${b / n | 0})`; } catch (e) {} }
     g.fillStyle = topCol; g.fillRect(0, 0, 4096, hor);
-    if (t.sky) { const tile = seamless(t.sky), sh = picH, n = Math.max(1, Math.round(4096 / (tile.width * sh / tile.height * ax))), sw = 4096 / n;   // the same way round every time (no mirrored copies), joins blended away
+    if (t.sky) { const tile = t.theme.skyMirror ? t.sky : seamless(t.sky), sh = picH, n = Math.max(1, Math.round(4096 / (tile.width * sh / tile.height * ax))), sw = 4096 / n;   // the same way round every time (no mirrored copies), joins blended away
       for (let i = 0; i < n; i++) g.drawImage(tile, i * sw, top, sw + .5, sh);
       if (t.moon) { const mx = 1250, my = top + sh * .26, r = 70, gl = g.createRadialGradient(mx, my, r * .7, mx, my, r * 2.4);   // 🌕 El Nath's own full moon (maplestory.io), once (the sky goes round twice, so its twin is always behind you)
         gl.addColorStop(0, "rgba(255,248,200,.35)"); gl.addColorStop(1, "rgba(255,248,200,0)"); g.fillStyle = gl; g.fillRect(mx - r * 3, my - r * 3, r * 6, r * 6); g.drawImage(t.moon, mx - r, my - r, r * 2, r * 2); }

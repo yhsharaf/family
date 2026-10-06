@@ -568,51 +568,54 @@ const TRACKS = {
     },
   },
   // ---- Sleepywood Cup 🌙: the deep forest. Fun to challenging: Treetop Village, Golden Temple Jungle, Phantom Lake.
-  // 1. Wild Woods (Mario Kart 8): up the trunk of a giant tree from the start; the road splits (coins one way, trick ramps the other); through
-  // the tree-house village where the mushrooms live; off the end of the village on a glider, over the void to a round platform; down the
-  // winding boardwalk with a stream running down its middle; out into the shallow pond with giant leaves carrying boost pads; one last ramp
-  // over the water onto the boardwalk, and the detour round to the line.
+  // 1. Treetop Village: MapleStory's Sleepywood merged with Mario Kart 8's Wild Woods, cursed. From Sleepywood town (the old hotel, crooked
+  // houses, flickering lanterns) out along the dead forest, up the wooden ramp that winds round the giant haunted tree (Wild Woods' trunk),
+  // across the plank walkway through the canopy, off its end on the glider over the dead forest, and back down the boardwalk with the black
+  // stream running down its middle. Horror: fog, eyes in the dark, glitches, and now and then the lights die for a couple of seconds.
   sw1: {
-    id: "woods", scale: 1.7, road: 180, cup: "sleepy", music: "k_sleepy1", name: "Treetop Village", sub: "the giant tree · tree-house village · glider · leaf pond", icon: "🌳",
-    ctrl: [[328, 640, 70], [328, 486, 78], [384, 358, 88], [538, 256, 98], [742, 210, 106], [947, 192, 112], [1101, 243, 116], [1203, 371, 118], [1357, 474, 120], [1536, 499, 122],
-      [1690, 550, 122], [1766, 678, 122], [1690, 806, 121], [1562, 870, 120], [1075, 1050, 80], [947, 1126, 77], [858, 1242, 72], [883, 1344, 66], [1011, 1421, 58], [1101, 1536, 48],
-      [1075, 1651, 38], [947, 1741, 28], [794, 1741, 18], [640, 1664, 6], [538, 1536, 0], [486, 1382, 0], [499, 1229, 8], [512, 1075, 24], [550, 909, 40], [461, 814, 52], [358, 755, 62]],
-    theme: { ...TH.sleepy, road: "planks", tufts: 9000, flowers: 900 }, art: { sky: "media/duel/bg_sleepy.webp", strip: "media/kart/sleepy/strip1.webp" },
-    near: ["sw_fern", "sw_flower", "sw_bush", "sw_shrooms", "sw_puff", "sw_lamp"], far: ["sw_treehouse", "sw_hut", "sw_tree", "sw_tree", "sw_stump", "sw_vine"],
-    mobs: ["horny_mushroom", "zombie_mushroom", "evil_eye"],
+    id: "treetop", scale: 2.0, road: 180, cup: "sleepy", music: "k_sleepy1", name: "Treetop Village", sub: "Sleepywood town · the haunted tree · the canopy walk · the glide", icon: "🌳",
+    ctrl: [[400, 330, 20], [560, 330, 20], [720, 330, 20], [880, 330, 20], [1040, 334, 20], [1200, 338, 20], [1360, 342, 22], [1500, 355, 24], [1630, 395, 26], [1720, 500, 28], [1755, 680, 30], [1760, 900, 32], [1752, 1150, 34], [1735, 1400, 36], [1690, 1570, 37], [1590, 1650, 38], [1490, 1615, 39], [1442, 1510, 40], [1432, 1330, 41], [1430, 1150, 42], [1408, 1053, 59], [1348, 974, 76], [1260, 928, 94], [1160, 923, 111], [1068, 962, 128], [1001, 1035, 146], [971, 1130, 163], [984, 1229, 180], [1004, 1335, 181], [955, 1440, 182], [870, 1520, 183], [750, 1565, 183], [630, 1578, 182], [520, 1560, 180], [430, 1515, 178], [345, 1440, 130], [285, 1330, 80], [255, 1200, 56], [245, 1060, 50], [250, 910, 42], [258, 760, 34], [268, 620, 28], [285, 490, 23], [325, 385, 20]],
+    theme: { ...TH.sleepy, road: "planks", tufts: 6000, flowers: 300, grass: ["#26302a", "#222b25"], haze: [34, 44, 42], fog: [380, 1700], horror: 1, skyMirror: true, dark: { sky: 0x6a7a8a, gnd: 0x2a2032, hemiI: .9, sun: 0x9ab0c8, sunI: .55 } },
+    art: { sky: "media/kart/sleepy/sky2hm.webp?v=1", strip: "media/kart/sleepy/strip2hm.webp?v=1" },
+    near: ["sw_fern", "sw_shrooms", "sw_moss", "sw_deadtree2"], far: ["sw_deadtree", "sw_deadtree2", "sw_tree", "sw_stump2"],
+    mobs: ["horny_mushroom", "zombie_mushroom", "evil_eye", "curse_eye"],
     build() {
-      const u = d => Math.round(d / SPC), coins = [], pads = [];
+      makeSnowArt(); makeHorrorArt();
+      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      const fa = I(742, 210), fb = I(1203, 371);
-      row(fa + 12, fb - 12, 8, 0);                                                          // the coin road (the other one has the trick ramps)
-      // 🪂 off the end of the village and over the void
-      const gl = I(1562, 870); pads.push({ t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD });
-      const gap = { a: gl, b: gl + u(600), kind: "chasm", caps: [] };   // (a glider carries about 670+ units even at 50cc)
-      for (let n = 0; n < 6; n++) { const [x, y] = at(gl + u(90 + n * 120), 0); coins.push({ x, y, z: 110 + 50 * Math.sin(n / 5 * Math.PI), got: false }); }
-      // 🌊 the stream down the boardwalk (its current gives you a push)
-      const sa = I(947, 1126), sb = I(947, 1741);
-      for (const f of [.2, .45, .7]) pads.push({ t: "boost", i: Math.round(sa + (sb - sa) * f), len: 8, o: 0, w: 46 });
-      // 🍃 the leaf pond: boost pads on giant leaves
-      const leaves = [[I(720, 1712), 50], [I(600, 1610), -55], [I(530, 1500), 45]].map(([i, o]) => ({ i, o, r: 46 }));
-      for (const l of leaves) pads.push({ t: "boost", i: l.i - 4, len: 8, o: l.o, w: 52 });
-      // the last ramp, over the water onto the boardwalk
-      const lr = I(492, 1290); pads.push({ t: "bigramp", i: lr - 8, len: 7, o: 0, w: ROAD });
+      // 🌳 the ramp round the giant tree: a plank ramp on stilts with railings, the forest floor far below
+      const ra = I(1432, 1330), rb = I(984, 1229); gaps.push({ a: ra + 2, b: rb, kind: "bridge", deck: ROAD / 2 + CURB - 4, rail: true, open: true, depth: 110, caps: [] });
+      // 🍂 the canopy walkway: planks between the treetops (railings), then the glide off its end
+      const wa = I(1004, 1335), wb = I(520, 1560); gaps.push({ a: wa, b: wb, kind: "bridge", deck: ROAD / 2 + CURB - 4, rail: true, open: true, depth: 150, caps: [] });
+      const ga = I(430, 1515), gb = I(255, 1200); pads.push({ t: "glide", i: ga - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: ga, b: gb, kind: "chasm", open: true, depth: 140, caps: [] });
+      for (let n = 0; n < 5; n++) { const [x, y] = at(Math.round(ga + (gb - ga) * (.15 + n * .17)), Math.sin(n * 1.7) * 30); coins.push({ x, y, z: 100 + 20 * Math.sin(n), got: false }); }
+      // 🌊 the black stream down the boardwalk (its current pushes you on)
+      const sa = I(245, 1060), sb = I(268, 620); for (const f of [.2, .5, .8]) pads.push({ t: "boost", i: Math.round(sa + (sb - sa) * f), len: 8, o: 0, w: 46 });
+      pads.push({ t: "boost", i: I(1500, 355), len: 10, o: 0, w: 70 }, { t: "boost", i: I(1442, 1510), len: 9, o: 0, w: 70 });
+      row(I(560, 330), I(1200, 338), 8, 0); row(I(1760, 900), I(1735, 1400), 6, j => (j & 1 ? 35 : -35)); row(ra + 6, rb - 6, 7, 0); row(wa + 6, wb - 6, 6, j => (j & 1 ? 30 : -30)); row(sa + 4, sb - 4, 6, 0);
       return {
-        gaps: [gap, { a: lr, b: lr + u(170), kind: "water", caps: [] }],
-        lake: { cx: ws(610), cy: ws(1580), rx: ws(200), ry: ws(185), kind: "shallow" },
-        streams: [{ a: sa, b: sb, w: 56 }], leaves, pads, coins,
-        fork: { a: fa, b: fb, via: [[ws(870), ws(330)], [ws(1060), ws(405)]], width: 140, style: "planks", pads: [{ t: "ramp", j: .3, len: 6, o: 0, w: 110 }, { t: "ramp", j: .62, len: 6, o: 0, w: 110 }] },
-        // 🍄 the village folk wandering across the road
-        pigs: [{ i: I(1450, 490), ph: 0, k: "horny_mushroom", sp: .7, soft: true, s: .5 }, { i: I(1650, 530), ph: 2, k: "zombie_mushroom", sp: .6, soft: true, s: .5 }, { i: I(1740, 720), ph: 4, k: "horny_mushroom", sp: .75, soft: true, s: .5 }],
-        boxes: [...boxRow(I(538, 256), [-60, -20, 20, 60]), ...boxRow(I(1075, 1050) + 8, [-60, -20, 20, 60]), ...boxRow(I(486, 1382) - 6, [-60, -20, 20, 60])],
+        gaps, pads, coins, streams: [{ a: sa, b: sb, w: 56 }],
+        trunk: { x: ws(1200), y: ws(1150), r: ws(230) - ROAD / 2 - CURB - 26, h: 520 },   // (the giant tree, solid; built in 3D)
+        // 🍄 Zombie Mushrooms shambling across the town road; on the last lap a whole horde of them
+        pigs: [{ i: I(1040, 334), ph: 0, k: "zombie_mushroom", sp: .55, soft: true, s: .55 }, { i: I(1755, 680), ph: 2, k: "horny_mushroom", sp: .7, soft: true, s: .5 }, { i: I(250, 910), ph: 4, k: "zombie_mushroom", sp: .55, soft: true, s: .55 },
+          ...[0, 1, 2, 3, 4, 5].map(n => ({ i: I(720, 330) + n * 9, ph: n * 1.1, k: "zombie_mushroom", sp: .5, soft: true, herd: true, s: .55, lap: 3 }))],
+        finalMsg: "🧟 The dead walk...",
+        boxes: [...boxRow(I(880, 330), [-60, -20, 20, 60]), ...boxRow(I(1752, 1150), [-60, -20, 20, 60]), ...boxRow(I(870, 1520), [-45, 0, 45]), ...boxRow(I(250, 760), [-60, -20, 20, 60])],
         extra(push) {
-          // 🏡 the tree-house village round the hook at the far end
-          for (let i = I(1357, 474), n = 0; i < I(1562, 870); i += 14, n++) { const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB + 75)); push(x, y, n % 3 === 2 ? "sw_hut" : "sw_treehouse"); }
-          for (let i = I(1357, 474); i < I(1562, 870); i += 9) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 10)); OBJS.push({ x, y, k: "sw_lamp", s: .32, r: 0, z: 0 }); }
-          // 🌳 the giant tree you climb at the start
-          { const [x, y] = at(I(328, 560), -(ROAD / 2 + CURB + 120)); OBJS.push({ x, y, k: "sw_tree", s: 2.2, r: 60, z: 0 }); }
-          for (const [x, y] of [[700, 700], [1300, 700], [1300, 1300], [300, 1200], [1500, 1600], [900, 1550]]) push(ws(x), ws(y), "sw_tree");
-          for (let n = 0; n < 8; n++) { const a = n / 8 * 6.28, [x, y] = [ws(610) + Math.cos(a) * (ws(200) + 40), ws(1580) + Math.sin(a) * (ws(185) + 40)]; if (roadDist(x, y) > ROAD / 2 + CURB + 30) push(x, y, n & 1 ? "sw_lily" : "sw_fern"); }
+          const clear = (x, y, d) => roadDist(x, y) > ROAD / 2 + CURB + d;
+          let sd0 = 13; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+          // 🏚 Sleepywood town: the old hotel by the line, crooked dark houses, lanterns that flicker
+          { const [x, y] = at(I(560, 330), -(ROAD / 2 + CURB + 230)); OBJS.push({ x, y, k: "swhotel", s: 1, r: 120, z: 0, f3d: true, fa: tangent(I(560, 330)) + Math.PI / 2 }); }
+          const glows = [0xffb050, 0x9aff7a, 0xffb050, 0xc07aff]; let n = 0;
+          for (let i = I(720, 330); i < I(1500, 355); i += 30) for (const sd of [-1, 1]) { if ((n++ + (sd > 0 ? 1 : 0)) % 2) continue; const [x, y] = at(i, sd * (ROAD / 2 + CURB + 120)); if (clear(x, y, 90)) OBJS.push({ x, y, k: "enhouse", s: .85 + (n % 3) * .1, r: 70, z: 0, dark: true, glow: glows[n % 4], roof: 0x3a2a3a, wall: n % 2 ? "#6a5a50" : "#5a4a48" }); }
+          for (let i = I(400, 330); i < I(1500, 355); i += 18) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 20)); OBJS.push({ x, y, k: "sw_lamp", s: .32, r: 0, z: 0, flick: rr() < .45 }); }
+          // 🕸 cobwebs strung between the lamps and the dead trees, eyes glowing in the dark
+          for (let i = 0; i < N; i += 30) for (const sd of [-1, 1]) { if (gaps.some(g => i >= g.a - 4 && i <= g.b + 4) || rr() < .5) continue; const [x, y] = at(i, sd * (ROAD / 2 + CURB + 60 + rr() * 140)); if (clear(x, y, 40)) push(x, y, rr() < .5 ? "sw_deadtree" : "sw_deadtree2"); }
+          for (let k2 = 0; k2 < 40; k2++) { const i = Math.floor(rr() * N), sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 120 + rr() * 260)); if (clear(x, y, 80)) OBJS.push({ x, y, k: "eyes", s: .35 + rr() * .2, r: 0, z: 30 + rr() * 70, flick: true, blink: true }); }
+          for (let k2 = 0; k2 < 14; k2++) { const i = Math.floor(rr() * N), sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 30)); if (clear(x, y, 10) && !gaps.some(g => i >= g.a && i <= g.b)) OBJS.push({ x, y, k: "cobweb", s: .45, r: 0, z: 40 }); }
+          // 🦇 bats round the giant tree and over the canopy; Evil Eyes and Curse Eyes drifting by the walkway
+          for (let k2 = 0; k2 < 8; k2++) { const a = k2 / 8 * 6.28; OBJS.push({ x: ws(1200) + Math.cos(a) * ws(330), y: ws(1150) + Math.sin(a) * ws(330), k: "bat", s: .35, r: 0, z: 160 + (k2 % 3) * 60, bob: 20 }); }
+          for (const [i, o, k] of [[I(870, 1520), 160, "evil_eye"], [I(630, 1578), -170, "curse_eye"], [I(1260, 928), -200, "evil_eye"]]) { const [x, y] = at(i, o); OBJS.push({ x, y, k, s: .5, r: 0, z: 200, bob: 14, mob: true }); }
         },
       };
     },
@@ -952,7 +955,7 @@ function loadTrack(key) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
-  CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = []; T.cableDef = f.cable || null; T.icefallDefs = f.icefalls || [];
+  CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = []; T.cableDef = f.cable || null; T.icefallDefs = f.icefalls || []; T.trunkDef = f.trunk || null; HORROR.lvl = (T.theme && T.theme.horror) || 0; HORROR.next = 6; HORROR.black = 0; HORROR.warn = 0; HORROR.gl = 0; HORROR.nextBlack = 18 + Math.random() * 10;
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
   HIDE = [];
@@ -1379,7 +1382,7 @@ function lavaMap() {
 }
 // roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
 // s = world units per picture pixel, r = how solid it is
-const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse", "xpillar", "engate"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
+const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse", "xpillar", "engate", "swhotel"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
 const PROPS = { treehouse: [.62, 0], iv_crag0: [.5, 0, "elnath"], iv_crag1: [.5, 0, "elnath"], iv_ledge0: [.3, 0, "elnath"], iv_ledge1: [.4, 0, "elnath"], iv_ledge2: [.6, 0, "elnath"], iv_ledge3: [.6, 0, "elnath"], iv_ledge4: [.5, 0, "elnath"], iv_pine0: [1.4, 12, "elnath"], iv_pine1: [1.6, 12, "elnath"], iv_pine2: [1.6, 12, "elnath"], iv_pine3: [1.1, 16, "elnath"], iv_pine4: [1.3, 14, "elnath"], iv_bridge: [.4, 0, "elnath"], en_rock0: [.35, 40, "elnath"], en_rock1: [.4, 34, "elnath"], en_rock2: [.4, 32, "elnath"], en_rock3: [.5, 22, "elnath"], en_rock4: [.5, 20, "elnath"], en_rock5: [.5, 22, "elnath"], en_deadtree0: [.5, 16, "elnath"], en_deadtree1: [.45, 18, "elnath"], en_deadtree2: [.5, 14, "elnath"],
   en_icestone0: [.5, 18, "elnath"], en_icestone1: [.5, 20, "elnath"], en_icestone2: [.5, 18, "elnath"], en_icestone3: [.45, 22, "elnath"], en_icestone4: [.5, 16, "elnath"], en_icestone5: [.45, 24, "elnath"], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
   hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10],
@@ -1510,6 +1513,43 @@ function makeSnowArt() {
     for (let x = 0; x < 420; x += 42) for (let y = 6; y < 76; y += 24) g.strokeRect(x + ((y / 24 | 0) % 2) * 21, y, 42, 24);   // ice blocks
     g.font = "900 36px Ubuntu, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 6; g.strokeStyle = "#2f6fb8"; g.strokeText("❄ FAMILY KART ❄", 210, 42); g.fillStyle = "#ffffff"; g.fillText("❄ FAMILY KART ❄", 210, 42); });
 }
+function makeHorrorArt() {   // 👁 eyes glowing in the dark, cobwebs, and the giant tree for the flat view
+  if (IMG.eyes) return;
+  const mk = (w, h, draw) => { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); return c; };
+  IMG.eyes = mk(90, 40, g => { for (const x of [22, 68]) { const gr = g.createRadialGradient(x, 20, 1, x, 20, 18); gr.addColorStop(0, "rgba(255,240,180,1)"); gr.addColorStop(.25, "rgba(255,60,40,1)"); gr.addColorStop(1, "rgba(255,0,0,0)"); g.fillStyle = gr; g.beginPath(); g.ellipse(x, 20, 18, 12, 0, 0, 7); g.fill(); } });
+  IMG.cobweb = mk(120, 120, g => { g.strokeStyle = "rgba(230,230,240,.75)"; g.lineWidth = 1.4; for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283; g.beginPath(); g.moveTo(60, 60); g.lineTo(60 + Math.cos(a) * 58, 60 + Math.sin(a) * 58); g.stroke(); }
+    for (let r = 10; r < 58; r += 9) { g.beginPath(); for (let k = 0; k <= 8; k++) { const a = k / 8 * 6.283, rr = r * (k % 2 ? .9 : 1); k ? g.lineTo(60 + Math.cos(a) * rr, 60 + Math.sin(a) * rr) : g.moveTo(60 + Math.cos(a) * rr, 60 + Math.sin(a) * rr); } g.stroke(); } });
+}
+// 👻 Sleepywood horror: lanterns flickering, glitches tearing the screen, blackouts (warned by a flicker, never in the air, on a glide or a walkway)
+const HORROR = { lvl: 0, next: 6, gl: 0, black: 0, warn: 0, nextBlack: 20, gs: 0 };
+const flickOff = (o, tt) => { const f = Math.sin(tt * 7.3 + o.x * .13) + Math.sin(tt * 17.1 + o.y * .07) * .7; return o.blink ? f > 1.1 || HORROR.black > 0 : (f > 1.25 || HORROR.warn > 0 && Math.random() < .5); };
+function horrorStep(dt) {
+  const H = HORROR; if (!H.lvl || !K || state !== "race") { H.gl = H.black = H.warn = 0; return; }
+  H.gl = Math.max(0, H.gl - dt); H.next -= dt; if (H.next <= 0) { H.gl = .12 + Math.random() * .3 * H.lvl; H.gs = Math.random() * 1000; H.next = (9 - H.lvl * 2) + Math.random() * 8; if (Math.random() < .5) { B.musicRate(.82); setTimeout(() => B.musicRate(1), 260); } }
+  if (H.black > 0) { H.black -= dt; if (H.black <= 0) { H.black = 0; H.nextBlack = (34 - H.lvl * 8) + Math.random() * 14; } return; }
+  if (H.warn > 0) { H.warn -= dt; if (H.warn <= 0) { const g = gapAt(K.idx) || gapAt((K.idx + 40) % N); if (K.z > 0 || K.glide || g) { H.warn = 0; H.nextBlack = 4; } else { H.black = 1.6 + H.lvl * .3; tone(42, .35, "square", .05); } } return; }
+  H.nextBlack -= dt; if (H.nextBlack <= 0) { const g = gapAt(K.idx) || gapAt((K.idx + 60) % N); if (K.z > 0 || K.glide || g) H.nextBlack = 3; else { H.warn = 1.3; tone(55, 1.2, "sawtooth", .04); } }
+}
+function drawHorror(k, W, H) {
+  const S = HORROR; if (!S.lvl) return; const el = $k("#k3d");
+  if (S.gl > 0) {   // 📺 a glitch: the picture jumps and splits, bands of static
+    const r = Math.random; if (el) { el.style.transform = `translate(${(r() - .5) * 14}px, ${(r() - .5) * 6}px) skewX(${(r() - .5) * 4}deg)`; el.style.filter = `hue-rotate(${r() * 90 - 45}deg) contrast(1.4) saturate(1.6)`; }
+    for (let n = 0; n < 5; n++) { const y = r() * H, h = 4 + r() * 22; ctx.fillStyle = [`rgba(255,0,80,.25)`, `rgba(0,255,220,.22)`, `rgba(255,255,255,.18)`][n % 3]; ctx.fillRect((r() - .5) * 40, y, W, h); }
+    ctx.fillStyle = "rgba(255,255,255,.08)"; for (let n = 0; n < 160; n++) ctx.fillRect(r() * W, r() * H, 2, 1);
+  } else if (el && el.style.transform) { el.style.transform = ""; el.style.filter = ""; }
+  ctx.fillStyle = "rgba(0,0,0,.08)"; for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);   // faint scanlines, always (a haunted old screen)
+  const vg = ctx.createRadialGradient(W / 2, H * .55, H * .25, W / 2, H * .55, W * .7); vg.addColorStop(0, "rgba(10,20,15,0)"); vg.addColorStop(1, "rgba(5,10,8,.55)"); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  if (S.warn > 0 && Math.random() < .35) { ctx.fillStyle = "rgba(0,0,0,.75)"; ctx.fillRect(0, 0, W, H); }
+  if (S.black > 0) {   // 🌑 the lights die: black, only your headlights and eyes in the dark
+    const fade = Math.min(1, S.black * 3, (1.6 + S.lvl * .3 - S.black) * 6 + .2), kx = W / 2, ky = H * .78;
+    ctx.save(); ctx.fillStyle = `rgba(0,0,0,${.96 * fade})`; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "destination-out"; const hl = ctx.createRadialGradient(kx, ky - H * .12, 4, kx, ky - H * .12, H * .32); hl.addColorStop(0, "rgba(0,0,0,.85)"); hl.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = hl; ctx.beginPath(); ctx.ellipse(kx, ky - H * .12, W * .2, H * .3, 0, 0, 7); ctx.fill();
+    ctx.globalCompositeOperation = "source-over"; const t = performance.now() / 1000;
+    for (let n = 0; n < 8; n++) { const x = W * (n % 2 ? .62 + ((n * 37) % 34) / 100 : .04 + ((n * 53) % 30) / 100), y = H * (.2 + ((n * 59) % 28) / 100);   // (out in the trees either side, never over the road)
+       if (Math.sin(t * 3 + n * 2) > -.6 && IMG.eyes) ctx.drawImage(IMG.eyes, x - 22, y - 10, 44, 20); }
+    for (const r of racers()) if (r !== k && !r.gone && G3) { const q = G3.proj(r.x, r.y, 10, G3.liftOf(r)); if (q && q.sx > 0 && q.sx < W) { const gr = ctx.createRadialGradient(q.sx, q.sy, 1, q.sx, q.sy, 18 * q.sc + 4); gr.addColorStop(0, "rgba(255,240,200,.9)"); gr.addColorStop(1, "rgba(255,200,120,0)"); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(q.sx, q.sy, 18 * q.sc + 4, 0, 7); ctx.fill(); } }
+    ctx.restore(); }
+}
 function makePetsArt() {
   if (IMG.fountain) return;
   const mk = (w, h, draw) => { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); return c; };
@@ -1631,11 +1671,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, trunk: T.trunkDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=143"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=146"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2179,7 +2219,7 @@ function stompStep(tt) {   // 🍄 the last lap: Mushmom (or Ice Valley's Yetis)
       for (const g of GAPS) for (const c of g.caps) c.squash = Math.max(c.squash || 0, .7); } }
 }
 function worldStep(dt, tt) {
-  areaStep(); stompStep(tt); slideStep(tt);
+  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt);
   if (thunderFx > 0) thunderFx -= dt;
   if (LAVA && state === "race") lavaStep(dt);
   if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt; if (thunderCD > 0) thunderCD -= dt;
@@ -2271,7 +2311,7 @@ function worldStep(dt, tt) {
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0, rkCand = 0, rkSince = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get PLANE() { return PLANE; }, get RINGS() { return RINGS; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get GAPS() { return GAPS; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get HORROR() { return HORROR; }, get PLANE() { return PLANE; }, get RINGS() { return RINGS; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get GAPS() { return GAPS; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
     g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
   decal: () => trackData().decal(), get P2P() { return P2P; },
   echo: (delay = 150, jitter = 40) => {
@@ -2402,7 +2442,7 @@ function gapStep(r, air) {
   }
   if (c) { if (c !== r.lastCap) bounce(r, c); return; }
   r.lastCap = null;
-  const m = nearest(r.x, r.y, r.idx), g = gapAt(m.i); if (g && g.kind === "bridge") { if (m.i < g.b - 1 && m.i > g.a + 1 && m.d > g.deck) rescue(r, "🌉 Off the rope bridge!"); return; }
+  const m = nearest(r.x, r.y, r.idx), g = gapAt(m.i); if (g && g.kind === "bridge") { if (m.i < g.b - 1 && m.i > g.a + 1 && m.d > g.deck) { if (g.rail) { const [cx, cy] = at(m.i, 0), dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy) || 1; r.x = cx + dx / d * g.deck; r.y = cy + dy / d * g.deck; r.v *= .97; r.drift = 0; } else rescue(r, "🌉 Off the rope bridge!"); } return; }   // (a railed walkway: you bump along its rail)
   if (g && m.i < g.b - 2 && m.i > g.a + 1) rescue(r, g.kind === "water" ? "💦 Splash! Into the pond" : g.kind === "chasm" ? "🏔️ Down the mountain!" : "🍄 Missed! Into the gorge");
 }
 function bounce(r, c) {
@@ -2574,6 +2614,7 @@ function step(dt) {
     if (d < r + 7 && d > 0) { k.x = ox + dx / d * (r + 7); k.y = oy + dy / d * (r + 7); if (k.bump <= 0) { k.v *= .35; k.bump = .4; bumpSound(); k.shake = .15; } k.drift = 0; }
   };
   for (const o of OBJS) if (o.r) solid(o.x, o.y, o.r);
+  if (T.trunkDef && !air) solid(T.trunkDef.x, T.trunkDef.y, T.trunkDef.r);   // 🌳 the giant tree
   if (k.bump > 0) k.bump -= dt;
   // slipstream: right behind another kart for about a second gives a short boost to pass them
   let tuck = false;
@@ -2841,7 +2882,7 @@ function render() {
     ctx.restore(); }, G3 ? G3.liftOf(r) : 0);
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
-  for (const ob of OBJS) if (!(G3 && (ob.f3d || K3D.has(ob.k)))) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.sz != null ? ob.sz : ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
+  for (const ob of OBJS) if (!(G3 && (ob.f3d || K3D.has(ob.k))) && !(ob.flick && flickOff(ob, tt))) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.sz != null ? ob.sz : ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
   if (G3) for (const c of CROWD) { if (!c.img) continue; const jz = Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump; G3.spr(c.img, c.x, c.y, jz, c.s, c.flip);
     if (c.tag) addDraw(c.x, c.y, (sx, gy, sc) => { if (sc < .35) return; const top = gy - (c.img.height * c.s + jz) * sc, fs = Math.max(5, Math.min(10, 6 * sc)); ctx.font = `900 ${fs}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(1.5, fs / 4);
       ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }); }
@@ -2895,6 +2936,7 @@ function render() {
   if (T.water && PTS[k.idx] && PTS[k.idx][2] + 30 < T.water.level * WS) {   // 🫧 under the lake: deep blue all round, light from above, bubbles drifting up
     const g2 = ctx.createLinearGradient(0, 0, 0, H); g2.addColorStop(0, "rgba(60,140,200,.28)"); g2.addColorStop(1, "rgba(5,25,60,.45)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "rgba(220,240,255,.55)"; const tb = performance.now() / 1000; for (let n = 0; n < 14; n++) { const x = (n * 53 + Math.sin(tb + n) * 6) % W, y = H - ((tb * 40 + n * 37) % H); ctx.beginPath(); ctx.arc(x, y, 1 + (n % 3) * .6, 0, 7); ctx.fill(); } }
+  drawHorror(k, W, H);
   for (const cv of CAVES) if (k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .75);
     g2.addColorStop(0, "rgba(160,220,255,0)"); g2.addColorStop(1, cv.crystal ? "rgba(8,20,60,.7)" : "rgba(10,40,90,.5)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }
