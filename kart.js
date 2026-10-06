@@ -695,8 +695,8 @@ const TRACKS = {
     ctrl: [[576, 1190, 40], [666, 1382, 34], [794, 1510, 28], [860, 1700, 22], [1040, 1820, 20], [1300, 1830, 22], [1530, 1780, 26], [1792, 1638, 30], [1870, 1520, 34], [1792, 1400, 38], [1600, 1310, 42],
       [1430, 1200, 48], [1340, 1080, 54], [1270, 950, 60], [1210, 840, 64], [1150, 720, 68], [1060, 590, 72], [900, 520, 76], [800, 430, 80], [860, 330, 84], [1020, 300, 88], [1180, 260, 90], [1240, 150, 90],
       [1130, 50, 90], [880, 60, 90], [620, 100, 88], [400, 160, 84], [210, 260, 78], [200, 400, 70], [330, 520, 62], [420, 770, 54], [500, 1000, 46]],
-    theme: { ...TH.mine, lava: true, grass: ["#a8280a", "#c8401a"], flowers: 600, flowerCols: ["#ffb02e", "#ff6a1e", "#ffd23f", "#ff8a3a"], tufts: 4000, road: "basalt" },
-    art: { sky: "media/kart/zakum/sky2.webp" },   // just the lava pillars far away: clean
+    theme: { ...TH.mine, lava: true, ledgeDrop: 0, sea: -10, skyPic: 2700, grass: ["#c63e12", "#cc4416"], flowers: 0, tufts: 0, road: "basalt", haze: [120, 40, 20] },   // a plain lava sea just below the road edge
+    art: { sky: "media/kart/zakum/sky2t.webp" },   // just the lava pillars far away, mirrored upward so they rise tall from the horizon: clean
     near: [], far: [], mobs: ["fire_boar", "firebomb"],
     build() {
       const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
@@ -717,7 +717,6 @@ const TRACKS = {
         fork: { a: I(794, 1510), b: I(1530, 1780), via: [[ws(950), ws(1590)], [ws(1200), ws(1650)], [ws(1420), ws(1690)]], width: 140, style: "cobble" },
         boxes: [...boxRow(I(860, 1700), [-60, -20, 20, 60]), ...boxRow(I(1600, 1310), [-60, -20, 20, 60]), ...boxRow(I(620, 100), [-60, -20, 20, 60])],
         extra(push) {
-          for (let i = 0; i < N; i += 40) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 6)); if (!gaps.some(g => i >= g.a - 3 && i <= g.b + 3)) OBJS.push({ x, y, k: "zk_lantern", s: .28, r: 0, z: 0 }); }
         },
       };
     },
@@ -999,7 +998,12 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   if (th.beds && !only) for (let k = 0; k < 34 * WS * WS; k++) { const x = 100 + rnd() * (WORLD - 200), y = 100 + rnd() * (WORLD - 200); if (roadDist(x, y) < ROAD / 2 + 50) continue;   // 🌷 flower beds
     const rx = 30 + rnd() * 40, ry = 18 + rnd() * 20; g.fillStyle = "#6b4a2e"; g.beginPath(); g.ellipse(x, y, rx, ry, rnd() * 3, 0, 7); g.fill();
     for (let f = 0; f < rx * ry / 20; f++) { const a = rnd() * 6.28, rr2 = Math.sqrt(rnd()); g.fillStyle = flowers[f % flowers.length]; g.fillRect(x + Math.cos(a) * rx * rr2 * .85 - 2, y + Math.sin(a) * ry * rr2 * .85 - 2, 5, 5); } }
-  if (T.cup === "zakum" && !only) {   // 🔥 no ground beside the road: it's all lava (glowing blobs and bright veins)
+  if (T.theme.sea != null && !only) {   // 🌋 a clean lava sea: smooth glowing lava, and dark rock under the road's edges (no blobs, no veins)
+    g.fillStyle = th.grass[0]; g.fillRect(0, 0, WORLD, WORLD);
+    for (let k = 0; k < 90 * WS * WS; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 120 + rnd() * 220, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(255,150,60,.16)"); gr.addColorStop(1, "rgba(255,150,60,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    g.lineJoin = g.lineCap = "round"; g.strokeStyle = "#2a1c1a"; g.lineWidth = ROAD + 2 * CURB + 60; g.beginPath(); PTS.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.stroke();
+  }
+  else if (T.cup === "zakum" && !only) {   // 🔥 no ground beside the road: it's all lava (glowing blobs and bright veins)
     g.fillStyle = "#6a1806"; g.fillRect(0, 0, WORLD, WORLD);
     for (let k = 0; k < 2600; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 6 + rnd() * 26; g.fillStyle = ["#a8280a", "#d2441a", "#ff7a1e", "#8a1e08"][k & 3]; g.globalAlpha = .55; g.beginPath(); g.ellipse(x, y, r, r * .6, rnd() * 3, 0, 7); g.fill(); }
     g.globalAlpha = 1; g.lineWidth = 2.5; for (let k = 0; k < 500; k++) { let x = rnd() * WORLD, y = rnd() * WORLD; g.strokeStyle = rnd() < .5 ? "#ffd23f" : "#ff9a2e"; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (rnd() - .5) * 50; y += (rnd() - .5) * 50; g.lineTo(x, y); } g.stroke(); }
@@ -1490,11 +1494,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=56"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=59"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 

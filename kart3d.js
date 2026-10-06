@@ -75,7 +75,11 @@ export function create(A) {
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const q = Math.sqrt(((i * G - L.cx) / L.rx) ** 2 + ((j * G - L.cy) / L.ry) ** 2), w = smooth(1.35, 1.02, q); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
     }
-    for (const l of t.ledges || []) for (let o = 0; o < GN * GN; o++) { const n = near[o]; if (n >= l.a && n <= l.b && Math.sqrt(dmin[o]) > edge + 14) HG[o] -= 260 * smooth(edge + 14, edge + 60, Math.sqrt(dmin[o])); }   // ⛏️ no railings: a sheer drop into the dark beside the road
+    for (const l of t.ledges || []) for (let o = 0; o < GN * GN; o++) { const n = near[o]; if (n >= l.a && n <= l.b && Math.sqrt(dmin[o]) > edge + 14) HG[o] -= (t.theme.ledgeDrop ?? 260) * smooth(edge + 14, edge + 60, Math.sqrt(dmin[o])); }   // ⛏️ no railings: a sheer drop into the dark beside the road
+    if (t.sea != null) {   // 🌋 a flat sea (of lava) everywhere off the road, which stands above it on its own rock
+      for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const o = j * GN + i; if (Math.sqrt(dmin[o]) > edge + 14) HG[o] = t.sea; }
+      mean = t.sea;
+    }
     if (t.water) {   // 🌊 a lake: the bed lies deep under the water everywhere, and the boardwalk stands on its own piles above it
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const o = j * GN + i, d = Math.sqrt(dmin[o]); if (d > edge + 14) HG[o] = t.water.bed; }   // (a lip a couple of cells wide, so the road edge never sags)
       mean = t.water.bed;
@@ -427,7 +431,7 @@ export function create(A) {
   function buildSky(t) {
     const c = canvas(4096, 1024), g = c.getContext("2d"), hor = Math.round(1024 * (1 - SKY_BELOW / SKY_H));
     const pxU = 4096 / (2 * Math.PI * SKY_R) * 2, pyU = 1024 / SKY_H, ax = pxU / pyU;   // 2 repeats around
-    const picH = Math.round(1024 * SKY_PIC / SKY_H), top = hor - picH;
+    const picH = Math.round(1024 * Math.min(SKY_H - SKY_BELOW - 200, t.theme.skyPic || SKY_PIC) / SKY_H), top = hor - picH;   // (a track can have a taller sky picture)
     let topCol = t.theme.sky || "#8fd0ff";
     if (t.sky) { try { const sc = canvas(16, 4), sg = sc.getContext("2d"); sg.drawImage(t.sky, 0, 0, t.sky.width, Math.max(1, t.sky.height * .04), 0, 0, 16, 4); const d = sg.getImageData(0, 0, 16, 4).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; topCol = `rgb(${r / n | 0},${gg / n | 0},${b / n | 0})`; } catch (e) {} }
     g.fillStyle = topCol; g.fillRect(0, 0, 4096, hor);
@@ -435,7 +439,7 @@ export function create(A) {
       for (let i = 0; i < n; i++) g.drawImage(tile, i * sw, top, sw + .5, sh);
       const fade = g.createLinearGradient(0, top, 0, top + sh * .35); fade.addColorStop(0, topCol); fade.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = fade; g.fillRect(0, top, 4096, sh * .35); }   // the picture's top melts into the sky above it
     if (t.strip) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
-    g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, hor + 6, 4096, 1024);
+    g.fillStyle = t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, t.strip ? hor + 6 : hor, 4096, 1024);   // (no strip: the ground meets the picture, no dark gap)
     const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.repeat.x = -2; map.anisotropy = aniso;
     if (skyMesh) { scene.remove(skyMesh); skyMesh.material.map.dispose(); skyMesh.material.dispose(); }
     skyMesh = new THREE.Mesh(new THREE.CylinderGeometry(SKY_R, SKY_R, SKY_H, 64, 1, true), new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, fog: false, depthWrite: false }));
