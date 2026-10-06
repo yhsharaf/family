@@ -70,7 +70,7 @@ export function create(A) {
       const be = Math.min(x, y, WORLD - x, WORLD - y), hgt = base + Math.max(-20, (n - .32) * hillAmp) * smooth(edge + 90, edge + 520, d);
       HG[o] = hgt + (mean - hgt) * smooth(160, 0, be) * smooth(edge + 40, edge + 200, d);   // levels out to the open plain at the map's edge
     }
-    if (t.lake && t.lake.kind === "ice") {   // ⛸ a frozen rink is dead flat, at the height of the road across it
+    if (t.lake && (t.lake.kind === "ice" || t.lake.kind === "shallow")) {   // ⛸ a frozen rink (or a shallow pond) is dead flat, at the height of the road across it
       const L = t.lake; let sum = 0, n = 0; for (let i = 0; i < t.N; i++) if (((t.PTS[i][0] - L.cx) / L.rx) ** 2 + ((t.PTS[i][1] - L.cy) / L.ry) ** 2 < 1) { sum += E[i]; n++; }
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const q = Math.sqrt(((i * G - L.cx) / L.rx) ** 2 + ((j * G - L.cy) / L.ry) ** 2), w = smooth(1.35, 1.02, q); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
@@ -274,8 +274,8 @@ export function create(A) {
         scene.add(grp); roadObjs.push(dome, rim, under, stem); extraObjs.push(grp); caps.push({ m: dome, pad: c, h: dh });
       }
       // what's down there: drifting mist in the gorge, water in the pond
-      const p0 = g.caps[0], p1 = g.caps[g.caps.length - 1], mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2, base = h(mx, my);
-      const sheet = new THREE.Mesh(new THREE.PlaneGeometry(1100, 1100), g.kind === "water"
+      const p0 = g.caps[0] || { x: t.PTS[g.a % t.N][0], y: t.PTS[g.a % t.N][1] }, p1 = g.caps[g.caps.length - 1] || { x: t.PTS[g.b % t.N][0], y: t.PTS[g.b % t.N][1] }, mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2, base = h(mx, my);   // (a glider's ravine has no mushrooms)
+      const sz = Math.max(1100, Math.hypot(p1.x - p0.x, p1.y - p0.y) + 600), sheet = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), g.kind === "water"
         ? new THREE.MeshPhongMaterial({ color: 0x3d8de0, transparent: true, opacity: .85, shininess: 120, specular: 0xffffff })
         : new THREE.MeshBasicMaterial({ map: mistTex(), transparent: true, opacity: .8, depthWrite: false, fog: false }));
       sheet.rotation.x = -Math.PI / 2; sheet.position.set(mx, base - (g.kind === "water" ? 40 : 230), my); scene.add(sheet); roadObjs.push(sheet);
