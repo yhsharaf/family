@@ -75,6 +75,7 @@ export function create(A) {
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const q = Math.sqrt(((i * G - L.cx) / L.rx) ** 2 + ((j * G - L.cy) / L.ry) ** 2), w = smooth(1.35, 1.02, q); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
     }
+    for (const l of t.ledges || []) for (let o = 0; o < GN * GN; o++) { const n = near[o]; if (n >= l.a && n <= l.b && Math.sqrt(dmin[o]) > edge + 14) HG[o] -= 260 * smooth(edge + 14, edge + 60, Math.sqrt(dmin[o])); }   // ⛏️ no railings: a sheer drop into the dark beside the road
     if (t.water) {   // 🌊 a lake: the bed lies deep under the water everywhere, and the boardwalk stands on its own piles above it
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const o = j * GN + i, d = Math.sqrt(dmin[o]); if (d > edge + 14) HG[o] = t.water.bed; }   // (a lip a couple of cells wide, so the road edge never sags)
       mean = t.water.bed;
@@ -242,6 +243,11 @@ export function create(A) {
       const rail = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xc8302a, side: THREE.DoubleSide })); scene.add(rail); roadObjs.push(rail);
     }
     // 🗿 Thwomps: a stone block with a face on every side, and its shadow on the road (darker as it comes down)
+    cartM = []; cartFn = t.cartAt || null;   // 🛒 mine carts: a wooden tub full of gold on little wheels
+    for (const c of t.carts || []) { const g = new THREE.Group(), wood = new THREE.MeshLambertMaterial({ color: 0x6a4424 }), gold = new THREE.MeshLambertMaterial({ color: 0xffc83a, emissive: 0x6a4a00 }), iron = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
+      const tub = new THREE.Mesh(BOX, wood); tub.scale.set(40, 18, 26); tub.position.y = 14; g.add(tub); const ore = new THREE.Mesh(new THREE.SphereGeometry(14, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), gold); ore.scale.set(1.3, .8, .85); ore.position.y = 23; g.add(ore);
+      for (const [x, z] of [[-13, -13], [13, -13], [-13, 13], [13, 13]]) { const w = new THREE.Mesh(CYL, iron); w.scale.set(5, 3, 5); w.rotation.x = Math.PI / 2; w.position.set(x, 5, z); g.add(w); }
+      scene.add(g); roadObjs.push(g); cartM.push({ c, g }); }
     thw = []; thFn = t.thz || null;
     for (const th of t.thwomps || []) { const fm = new THREE.MeshLambertMaterial({ map: faceTex() }), top = new THREE.MeshLambertMaterial({ color: 0x7a7f8a });
       const m = new THREE.Mesh(BOX, [fm, fm, top, top, fm, fm]); m.scale.set(74, 62, 74); m.rotation.y = -(th.a || 0); scene.add(m); roadObjs.push(m);
@@ -320,7 +326,7 @@ export function create(A) {
       g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(ox + 6, y + 5, B * .35, 3); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   // ❄ the ice cave's walls: blue crystal facets, darker deep inside
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null;
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null;
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -522,6 +528,7 @@ export function create(A) {
   let VW = 320, VH = 180, shake = 0;
   const fwd = new THREE.Vector3(), tmp = new THREE.Vector3(), look = new THREE.Vector3();
   function begin(k, o) {
+    if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
     if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const m of karts.values()) m.used = false;
     const a = k.a || 0;
