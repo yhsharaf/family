@@ -440,9 +440,9 @@ export function create(A) {
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3, [], altBare); }
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
-    balloonM = []; flowM = []; for (const o of t.props3d || []) buildProp(o);
+    balloonM = []; flowM = []; golemM = []; for (const o of t.props3d || []) buildProp(o);
     bridgeG = (t.gaps || []).filter(g => g.kind === "bridge"); buildRopeBridges(t);
-    gondM = []; if (t.trunk) buildTrunk(t.trunk); if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
+    gondM = []; if (t.trunk) buildTrunk(t.trunk); if (t.temple) buildTemple(t, t.temple); if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
     buildSnowWorld(t); auroraM = []; if (t.aurora) buildAurora(t); if (t.fairy) buildFairy(t.fairy, t);
     for (const b of t.buildings || []) {
       if (b.castle) { buildCastle(b); continue; }
@@ -623,8 +623,8 @@ export function create(A) {
   // ❄ Mount El Nath's big pieces
   function riverTex() { return ctex(256, 256, (g, W) => { g.fillStyle = "#9fd2f2"; g.fillRect(0, 0, W, W); g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = 2;
     for (let k = 0; k < 24; k++) { let x = Math.random() * W, y = Math.random() * W; g.beginPath(); g.moveTo(x, y); for (let q = 0; q < 4; q++) { x += (Math.random() - .5) * 60; y += (Math.random() - .5) * 60; g.lineTo(x, y); } g.stroke(); } }, true); }
-  function snowballModel() {   // a giant lumpy snowball, a few sticks and pebbles frozen into it
-    const g = new THREE.Group(), sn = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e, flatShading: true }), geo = new THREE.IcosahedronGeometry(30, 2), pa = geo.attributes.position;
+  function snowballModel(stone) {   // a giant lumpy snowball, a few sticks and pebbles frozen into it (or a mossy stone ball)
+    const g = new THREE.Group(), sn = stone ? new THREE.MeshLambertMaterial({ map: rockTex(), color: 0x9a968a, emissive: 0x141210, flatShading: true }) : new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e, flatShading: true }), geo = new THREE.IcosahedronGeometry(30, 2), pa = geo.attributes.position;
     for (let v = 0; v < pa.count; v++) { const x = pa.getX(v), y = pa.getY(v), z = pa.getZ(v), k = 1 + .08 * Math.sin(x * .3 + y * .2) * Math.cos(z * .25); pa.setXYZ(v, x * k, y * k, z * k); } geo.computeVertexNormals();
     g.add(new THREE.Mesh(geo, sn)); const dark = new THREE.MeshLambertMaterial({ color: 0x5a4a3a });
     for (let k = 0; k < 5; k++) { const a = k * 1.3, b = k * .9, m = new THREE.Mesh(new THREE.SphereGeometry(3, 6, 4), dark); m.position.set(Math.cos(a) * Math.sin(b) * 30, Math.cos(b) * 30, Math.sin(a) * Math.sin(b) * 30); g.add(m); }
@@ -706,6 +706,23 @@ export function create(A) {
     for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283, m = new THREE.Mesh(new THREE.PlaneGeometry(14, 70 + (k % 4) * 20), moss); m.position.set(Math.cos(a) * R * 1.3, H - 90, Math.sin(a) * R * 1.3); m.rotation.y = -a; grp.add(m); }   // hanging moss
     const cap = new THREE.Mesh(new THREE.SphereGeometry(R * 1.3, 18, 10), new THREE.MeshLambertMaterial({ color: 0x24301e, emissive: 0x060a04, flatShading: true })); cap.scale.y = .45; cap.position.y = H + 30; grp.add(cap);   // a dark crown of leaves
     grp.position.set(T0.x, g0, T0.y); scene.add(grp); roadObjs.push(grp);
+  }
+  function buildTemple(t, T0) {   // 🛕 Golem's Temple: a stepped pyramid of mossy stone over the passage, a carved doorway at each end with glowing eyes above it, torches, a shrine with a cursed green flame on top
+    const P = t.PTS, N = t.N, pa = P[T0.a % N], pb = P[T0.b % N], dx = pb[0] - pa[0], dz = pb[1] - pa[1], L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, cx = (pa[0] + pb[0]) / 2, cz = (pa[1] + pb[1]) / 2;
+    let lo = 1e9, hi = -1e9; for (let i = T0.a; i <= T0.b; i++) { lo = Math.min(lo, RE[i % N]); hi = Math.max(hi, RE[i % N]); }
+    const R0 = t.ROAD / 2 + t.CURB + 14, gapH = R0 + 30, base = lo - 40, clear = hi - base + (R0 + 16) * .95 + 14;
+    const st = new THREE.MeshLambertMaterial({ map: rockTex(), color: 0xd8d0b8, emissive: 0x3a362c }), moss = new THREE.MeshLambertMaterial({ color: 0x5a8a44, emissive: 0x16240e });
+    const grp = new THREE.Group(), box = (w, hh, d, x, y, z, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), m || st); b.position.set(x, y, z); grp.add(b); return b; };
+    const TH = 46; for (let k = 0; k < 9; k++) { const Wk = 2 * gapH + 2 * Math.max(40, 300 - k * 34), Lk = L + 140 - k * 40, yb = k * TH; if (Lk < 120) break;
+      if (yb < clear) { const sw = Wk / 2 - gapH; for (const sd of [-1, 1]) { box(Lk, TH, sw, 0, yb + TH / 2, sd * (gapH + sw / 2)); box(Lk + 4, 6, sw + 4, 0, yb + TH - 1, sd * (gapH + sw / 2), moss); } }
+      else { box(Lk, TH, Wk, 0, yb + TH / 2, 0); box(Lk + 4, 6, Wk + 4, 0, yb + TH - 1, 0, moss); } }
+    const topY = Math.ceil(clear / TH) * TH + 4 * TH; box(90, 50, 90, 0, topY + 25, 0); const flame = new THREE.Mesh(new THREE.ConeGeometry(16, 50, 8), new THREE.MeshBasicMaterial({ color: 0x7aff6a, transparent: true, opacity: .85 })); flame.position.set(0, topY + 75, 0); grp.add(flame);   // the shrine and its cursed flame
+    const eyeM = new THREE.MeshBasicMaterial({ color: 0xff3a2a }), glowM = new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: .3 }), fire = new THREE.MeshBasicMaterial({ color: 0xffa040 });
+    for (const sd of [-1, 1]) { const x = sd * (L / 2 + 70), yTop = clear + 6;   // each doorway: a heavy lintel, two pillars, eyes above, torches either side
+      box(30, 40, 2 * gapH + 40, x, yTop + 20, 0); for (const z of [-1, 1]) box(34, yTop, 30, x, yTop / 2, z * (gapH + 12));
+      for (const z of [-1, 1]) { const e = new THREE.Mesh(new THREE.BoxGeometry(6, 14, 26), eyeM); e.position.set(x + sd * 18, yTop + 70, z * 40); grp.add(e); const g2 = new THREE.Mesh(new THREE.SphereGeometry(24, 10, 8), glowM); g2.position.copy(e.position); grp.add(g2);
+        const tc = box(8, 50, 8, x + sd * 14, 25, z * (gapH + 40)); const f = new THREE.Mesh(new THREE.ConeGeometry(7, 18, 6), fire); f.position.set(x + sd * 14, 60, z * (gapH + 40)); grp.add(f); } }
+    grp.position.set(cx, base, cz); grp.rotation.y = -Math.atan2(uz, ux); scene.add(grp); roadObjs.push(grp);
   }
   function buildDam(b, t) {   // 🌊 the dam: a tall concrete wall with buttresses, a railed walkway on top under thick snow, and half-frozen waterfalls pouring down its road side, icicles hanging off the lip
     const g0 = h(b.x, b.y), grp = new THREE.Group(), a = b.a || 0, nx = -Math.sin(a), nz = Math.cos(a);
@@ -978,6 +995,18 @@ export function create(A) {
       put(new THREE.BoxGeometry(40 * S, 6, W * .6), dark, D / 2 + 20 * S, 40 * S, 0); for (const z of [-1, 1]) { put(new THREE.BoxGeometry(5, 40 * S, 5), dark, D / 2 + 38 * S, 20 * S, z * W * .28); put(new THREE.SphereGeometry(6, 8, 6), win, D / 2 + 38 * S, 44 * S, z * W * .28); }   // the porch and its lanterns
       put(new THREE.BoxGeometry(3, 44 * S, 30 * S), dark, D / 2 + 1, 22 * S, 0);   // the door
       grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "golem") {   // 🗿 a Stone Golem: a chunky, mossy block body, huge fists on long arms, a small head with glowing red eyes, moss and vines on its shoulders
+      const st = new THREE.MeshLambertMaterial({ map: rockTex(), color: 0xd0c8b0, emissive: 0x3a362c, flatShading: true }), moss = L(0x5a8a44, 0x16240e), eye = new THREE.MeshBasicMaterial({ color: 0xff3a2a });
+      put(new THREE.BoxGeometry(70, 80, 90), st, 0, 95, 0).rotation.y = .05;   // body
+      put(new THREE.BoxGeometry(60, 34, 70), st, 0, 30, 0);   // hips
+      for (const z of [-1, 1]) { put(new THREE.BoxGeometry(30, 40, 30), st, 0, 10, z * 26);   // stubby legs
+        const arm = put(new THREE.BoxGeometry(26, 80, 26), st, 4, 90, z * 62); arm.rotation.x = z * .12; put(new THREE.BoxGeometry(40, 40, 40), st, 10, 40, z * 66);   // long arms, huge fists
+        put(new THREE.BoxGeometry(34, 10, 34), moss, 0, 138, z * 40); }   // moss on the shoulders
+      put(new THREE.BoxGeometry(40, 34, 44), st, 10, 150, 0);   // the head
+      for (const z of [-1, 1]) { put(new THREE.BoxGeometry(4, 6, 10), eye, 31, 154, z * 11); const gl = put(new THREE.SphereGeometry(9, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: .25 }), 34, 154, z * 11); gl.scale.set(.5, 1, 1); }
+      put(new THREE.BoxGeometry(3, 4, 22), L(0x1a1814, 0x000000), 31, 140, 0);   // a grim mouth
+      for (let k = 0; k < 4; k++) { const v = put(new THREE.CylinderGeometry(1.5, 1.5, 40 + k * 8, 4), moss, -20 + k * 12, 110, (k % 2 ? 1 : -1) * 44); v.rotation.x = .1; }   // hanging vines
+      grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y); golemM.push({ g: grp, o, y: g0 });
     } else if (o.k === "xpillar" && o.stone) { return;   // (built from El Nath's ice stone pictures instead, in buildIceStones)
     } else if (o.k === "xpillar") {   // 💎 a crystal standing in the cave road: a tall faceted gem with little ones round its foot, and a pool of light under it
       const H = o.h || 70, c = [0x7fe8ff, 0xc4a4ff, 0xffb0e8][Math.abs(Math.round(o.x * .7 + o.y)) % 3], cl = gemCluster(c, H, H * .18, o.x * .01); grp.add(cl);
@@ -1037,7 +1066,7 @@ export function create(A) {
       F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
     F.pts.geometry.attributes.position.needsUpdate = true;
   }
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [], gondM = [];
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [], gondM = [], golemM = [];
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -1184,9 +1213,9 @@ export function create(A) {
   const mdls = {};   // per-frame pools of moving 3D models (the living ice blocks)
   function mdl(kind, x, y, z, a, tt) {
     const P = mdls[kind] || (mdls[kind] = { list: [], i: 0 }); let g = P.list[P.i++];
-    if (!g) { g = kind === "freezie" ? freezieModel() : kind === "snowball" ? snowballModel() : new THREE.Group(); scene.add(g); P.list.push(g); }
+    if (!g) { g = kind === "freezie" ? freezieModel() : kind === "snowball" ? snowballModel() : kind === "stoneball" ? snowballModel(true) : new THREE.Group(); scene.add(g); P.list.push(g); }
     g.visible = true;
-    if (kind === "snowball") { g.position.set(x, h(x, y) + 30, y); g.rotation.set(tt * 4 + x * .01, -a, 0); return; }   // (a giant snowball rolls) const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
+    if (kind === "snowball" || kind === "stoneball") { g.position.set(x, h(x, y) + 30, y); g.rotation.set(tt * 4 + x * .01, -a, 0); return; }   // (a giant snowball rolls) const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
   }
   const boxes = []; let bi = 0;
   function box(x, y, tt, i, z = 0) {
@@ -1296,6 +1325,7 @@ export function create(A) {
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
     if (fountM) fountStep(performance.now() / 1000);
     for (const f of flowM) f.offset.y = performance.now() / 1000 * .22;
+    for (const q of golemM) { const z = q.o.sz || 0; q.g.position.y = q.y + z * .55; q.g.rotation.z = z > 1 ? Math.sin(z * .05) * .06 : 0; }   // 🗿 the Golems' stomp
     if (gondM.length) { const now = performance.now() / 1000; for (const q of gondM) { const f = ((now * q.sp + q.ph) % 2), u = f < 1 ? f : 2 - f, L = q.line, p = L.a.clone().lerp(L.b, u); p.addScaledVector(L.off, f < 1 ? 1 : -1); q.g.position.copy(p); q.g.rotation.z = Math.sin(now * 1.3 + q.ph) * .04; } }   // 🚡 gondolas gliding up one cable and down the other   // the dam's half-frozen waterfalls, trickling slowly
     if (auroraM.length) { const now = performance.now() / 1000; for (const q of auroraM) { const pa = q.m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { const b = q.base[v]; pa.setY(v, b[1] + Math.sin(now * .5 + b[3] * 3 + q.ph) * 40 * b[4]); pa.setZ(v, b[2] + Math.sin(now * .35 + b[3] * 5 + q.ph) * 90); } pa.needsUpdate = true; q.m.material.opacity = .62 + Math.sin(now * .7 + q.ph) * .15; } }
     for (const q of balloonM) q.g.position.y = q.y + Math.sin(performance.now() / 1000 * 2 + q.o.x) * (q.o.bob || 0);   // the balloons sway up and down
