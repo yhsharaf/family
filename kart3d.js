@@ -219,9 +219,9 @@ export function create(A) {
         const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
         const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
       const R0 = t.ROAD / 2 + t.CURB + 14;
-      shell(R0, cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);   // the crystal (or rock) inside
-      shell(R0 + 16, new THREE.MeshLambertMaterial({ color: 0xeef5fc, side: THREE.DoubleSide, emissive: 0x2a3a50 }), .8);                // a mound of snow over it
-      if (cv.rock) continue;
+      shell(R0, cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);   // the crystal (or rock) inside
+      shell(R0 + 16, new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound || 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), .8);                // a mound of snow over it
+      if (cv.rock || cv.temple) continue;
       const RP = [], RI = [];   // the red rail (one side, like Double Dash!!)
       for (let i = cv.a, r = 0; i <= cv.b; i += 2, r++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = t.ROAD / 2 + t.CURB + 6, x = p[0] - Math.sin(a) * o, y = p[1] + Math.cos(a) * o, gz = h(x, y);
         RP.push(x, gz, y, x, gz + 16, y); if (r) { const b = r * 2; RI.push(b - 2, b, b - 1, b - 1, b, b + 1); } }
@@ -245,11 +245,11 @@ export function create(A) {
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3, [], altBare); }
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     for (const b of t.buildings || []) {
-      if (b.ice || b.dam) {   // a wall or tower of ice blocks, or the concrete dam (no roof)
-        const T0 = b.dam ? damTex() : iceTex(), U = b.dam ? 220 : 90, V = b.dam ? 220 : 45, em = b.dam ? 0x3a3a38 : 0x3a5f80;
+      if (b.ice || b.dam || b.stone) {   // a wall or tower of ice blocks, the concrete dam, or a stone pillar (no roof)
+        const T0 = b.dam ? damTex() : b.stone ? rockTex() : iceTex(), U = b.dam ? 220 : b.stone ? 120 : 90, V = b.dam ? 220 : b.stone ? 120 : 45, em = b.dam ? 0x3a3a38 : b.stone ? 0x2a2630 : 0x3a5f80;
         const tx = T0.clone(); tx.needsUpdate = true; tx.repeat.set(Math.max(1, b.w / U), Math.max(1, b.h / V));
         const tz = T0.clone(); tz.needsUpdate = true; tz.repeat.set(Math.max(1, b.d / U), Math.max(1, b.h / V));
-        const mx = new THREE.MeshLambertMaterial({ map: tx, emissive: em }), mz = new THREE.MeshLambertMaterial({ map: tz, emissive: em }), top = new THREE.MeshLambertMaterial({ color: b.dam ? 0xb8b4ac : 0xeaf6ff, emissive: em });
+        const mx = new THREE.MeshLambertMaterial({ map: tx, emissive: em }), mz = new THREE.MeshLambertMaterial({ map: tz, emissive: em }), top = new THREE.MeshLambertMaterial({ color: b.dam ? 0xb8b4ac : b.stone ? 0x7a7480 : 0xeaf6ff, emissive: em });
         const m = new THREE.Mesh(BOX, [mz, mz, top, top, mx, mx]); m.scale.set(b.w, b.h, b.d); m.rotation.y = -(b.a || 0); m.position.set(b.x, h(b.x, b.y) + b.h / 2 - 4, b.y); scene.add(m); roadObjs.push(m);
         continue;
       }
@@ -301,7 +301,12 @@ export function create(A) {
       g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(ox + 6, y + 5, B * .35, 3); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   // ❄ the ice cave's walls: blue crystal facets, darker deep inside
-  let rockT = null, damT = null;
+  let rockT = null, damT = null, goldT = null;
+  // 🛕 the golden temple: sandstone blocks with gold trim and carved bands
+  const goldTex = () => goldT || (goldT = (() => { const c = canvas(256, 256), g = c.getContext("2d"), B = 64;
+    for (let y = 0; y < 256; y += B / 2) for (let x = -B; x < 256; x += B) { const ox = x + ((y / (B / 2)) & 1) * B / 2; g.fillStyle = ["#c8a25a", "#b8914a", "#d4b06a"][((x + y) / 32 & 3) % 3]; g.fillRect(ox, y, B, B / 2); g.strokeStyle = "#7a5a2a"; g.lineWidth = 2; g.strokeRect(ox + 1, y + 1, B - 2, B / 2 - 2); }
+    g.fillStyle = "#ffd23f"; g.fillRect(0, 120, 256, 8); g.fillStyle = "#8a6a2a"; for (let x = 4; x < 256; x += 24) { g.beginPath(); g.moveTo(x, 150); g.lineTo(x + 10, 140); g.lineTo(x + 20, 150); g.closePath(); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   // 🌊 the dam: pale concrete panels with water pouring down it in streams
   const damTex = () => damT || (damT = (() => { const c = canvas(256, 256), g = c.getContext("2d"); g.fillStyle = "#c9c6bf"; g.fillRect(0, 0, 256, 256);
     g.strokeStyle = "rgba(120,115,105,.6)"; g.lineWidth = 2; for (let x = 0; x <= 256; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 256); g.stroke(); } for (let y = 0; y <= 256; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(256, y); g.stroke(); }

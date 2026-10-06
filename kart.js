@@ -69,7 +69,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
-  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [];
+  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
   let best = -1, bd = 1e12;
@@ -520,24 +520,52 @@ const TRACKS = {
       };
     },
   },
+  // 2. DK Jungle (Mario Kart 7 / 8): out of the start into the jungle, where the road splits round a giant tree with roots to trick off; a dash
+  // panel onto the giant red flower that bounces you on; the high road curving down past the tree house, stumps wandering across (the Tiki
+  // Goons); the long wooden bridge; the second jungle's S; two jumps over a chasm into the golden temple (a right, a U-turn, a dash up the
+  // slope); a glide out of the temple over the shallow lake past the stone pillars; the lakeside run and the last split with trick ramps.
   sw2: {
-    id: "sleepy2", cup: "sleepy", music: "k_sleepy2", name: "Swamp of Sleep", sub: "misty swamp water · Ligators · rotten logs", icon: "🐊",
-    ctrl: [[300, 1700], [300, 1100], [600, 800], [900, 950], [1150, 750], [1000, 450], [1250, 200], [1650, 250], [1850, 600], [1700, 950], [1400, 1100], [1500, 1400], [1800, 1600],
-      [1600, 1900], [1000, 1800], [650, 1900]],
-    theme: TH.swamp, art: { sky: "media/kart/sleepy/sky2.webp", strip: "media/kart/sleepy/strip2.webp" },
-    near: ["sw_fern", "sw_bush", "sw_leaf", "sw_bell", "sw_log", "sw_moss", "sw_lily"],
-    far: ["sw_deadtree", "sw_deadtree2", "sw_moss", "sw_tree", "sw_lily2", "sw_boat"], mobs: ["ligator", "curse_eye", "evil_eye", "drake"],
-    build(F) {
-      const [lx, ly] = at(F(.42), 270);
+    id: "jungle", scale: 1.6, road: 180, cup: "sleepy", music: "k_sleepy2", name: "DK Jungle", sub: "giant flower bounce · golden temple · glide over the lake", icon: "🛕",
+    ctrl: [[1626, 1403, 40], [1600, 1203, 44], [1741, 1075, 50], [1818, 973, 54], [1792, 845, 58], [1741, 742, 60], [1702, 614, 62], [1664, 461, 62], [1638, 333, 60], [1536, 192, 56], [1434, 179, 52],
+      [1280, 282, 46], [1178, 410, 40], [1075, 486, 36], [922, 520, 34], [800, 470, 34], [680, 440, 34], [600, 520, 34], [660, 630, 36], [780, 700, 40], [800, 800, 44], [755, 890, 48], [690, 1000, 52],
+      [600, 1170, 60], [500, 1260, 66], [370, 1230, 70], [250, 1290, 72], [240, 1410, 74], [330, 1480, 74], [450, 1505, 74], [614, 1536, 72], [768, 1600, 60], [845, 1702, 20], [1075, 1725, 12],
+      [1331, 1766, 10], [1580, 1805, 12], [1720, 1790, 16], [1800, 1710, 22], [1770, 1620, 28], [1680, 1560, 34], [1640, 1480, 38]],
+    theme: { ...TH.sleepy, road: "dirt", grass: ["#3f6a2a", "#386026"], tufts: 14000, flowers: 1200 }, art: { sky: "media/duel/bg_sleepy.webp", strip: "media/kart/sleepy/strip2.webp" },
+    near: ["sw_fern", "sw_bush", "sw_leaf", "sw_shrooms", "sw_vine", "sw_flower"], far: ["sw_tree", "sw_tree", "sw_treehouse", "sw_temple", "sw_ruin", "sw_ruin2"],
+    mobs: ["stump", "evil_eye", "curse_eye"],
+    build() {
+      makeSnowArt();
+      const u = d => Math.round(d / SPC), coins = [], pads = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      const fa = I(1741, 1075), fb = I(1720, 760);                                            // the split round the giant tree
+      pads.push({ t: "boost", i: I(1712, 680), len: 8, o: 0, w: 70 }, { t: "shroom", i: I(1702, 614), len: 8, o: 0, w: 120, col: "r" });   // dash panel, then the giant red flower
+      const bridge = { a: I(1280, 282), b: I(1075, 486) };                                     // 🪵 the long wooden bridge
+      // two jumps over the chasm, dash panels before each
+      const j1 = I(778, 860), j2 = I(705, 975);
+      pads.push({ t: "boost", i: j1 - 16, len: 6, o: 0, w: 70 }, { t: "bigramp", i: j1 - 5, len: 5, o: 0, w: ROAD }, { t: "boost", i: j2 - 16, len: 6, o: 0, w: 70 }, { t: "bigramp", i: j2 - 5, len: 5, o: 0, w: ROAD });   // (big jumps: they carry you over even if you come in slow)
+      const temple = { a: I(600, 1170), b: I(560, 1525), temple: true };
+      pads.push({ t: "boost", i: I(330, 1480), len: 8, o: 0, w: 70 });                        // the dash up the temple slope
+      const gl = I(700, 1570); pads.push({ t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD });     // 🪂 out of the temple, over the lake
+      // the last split: a rock in the middle, a trick ramp each side
+      const sp = I(1790, 1690);
+      pads.push({ t: "ramp", i: sp, len: 6, o: -55, w: 60 }, { t: "ramp", i: sp, len: 6, o: 55, w: 60 });
+      row(I(1600, 1203), I(1741, 1075), 5, 0); row(bridge.a + 6, bridge.b - 6, 7, 0); row(I(1075, 1725), I(1500, 1790), 7, j => (j & 1 ? 35 : -35));
       return {
-        lake: { cx: lx, cy: ly, rx: 170, ry: 120, kind: "swamp" },
-        pads: [pad("boost", F(.04), 0, 60), pad("boost", F(.3), 24, 54), pad("boost", F(.58), -24, 54), pad("boost", F(.86), 0, 56), pad("bigramp", F(.72), 0, ROAD, 7),
-          pad("mud", F(.17), 0, ROAD, 18), pad("mud", F(.48), 0, ROAD, 14), pad("slime", F(.1), 52, 40, 8), pad("slime", F(.38), -52, 40, 8), pad("slime", F(.64), 52, 40, 8)],
-        coins: [...coinRow(F(.02), F(.08), 6, 0), ...coinRow(F(.32), F(.37), 5, -20), ...coinRow(F(.6), F(.66), 6, j => (j & 1 ? 24 : -24)),
-          ...[0, 1, 2, 3, 4].map(n => { const [x, y] = at(F(.72) + 12 + n * 5, 0); return { x, y, z: 60, got: false }; })],
-        pigs: [{ i: F(.24), ph: 0, k: "ligator", sp: .7 }, { i: F(.52), ph: 2, k: "ligator", sp: .7 }, { i: F(.8), ph: 4, k: "curse_eye", sp: 1.3 }],
-        boxes: [...boxRow(F(.12), [-56, -19, 19, 56]), ...boxRow(F(.44), [-54, -18, 18, 54]), ...boxRow(F(.76), [-56, -19, 19, 56])],
-        extra(push) { for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28, x = lx + Math.cos(a) * 200, y = ly + Math.sin(a) * 150; if (roadDist(x, y) > ROAD / 2 + 30) push(x, y, k % 2 ? "sw_deadtree" : "sw_log"); } },
+        gaps: [{ a: j1, b: j1 + u(75), kind: "chasm", caps: [] }, { a: j2, b: j2 + u(75), kind: "chasm", caps: [] }],
+        lake: { cx: ws(930), cy: ws(1660), rx: ws(230), ry: ws(120), kind: "shallow" },
+        caves: [temple], planks: [bridge], pads, coins,
+        fork: { a: fa, b: fb, via: [[ws(1680), ws(960)], [ws(1665), ws(850)]], width: 140, style: "dirt", pads: [{ t: "ramp", j: .45, len: 6, o: 0, w: 100 }] },
+        hedges: [{ i: sp + 3, o: 0, w: 46, h: 40, sprite: "ice_rock" }],   // the rock between the last two trick ramps
+        pigs: [{ i: I(1536, 192), ph: 0, k: "stump", sp: .55, soft: true, s: .55 }, { i: I(1434, 179) + 10, ph: 2.2, k: "stump", sp: .5, soft: true, s: .55 }, { i: I(1178, 410), ph: 4, k: "stump", sp: .6, soft: true, s: .55 }],
+        boxes: [...boxRow(I(1600, 1203), [-60, -20, 20, 60]), ...boxRow(I(922, 520), [-60, -20, 20, 60]), ...boxRow(I(1331, 1766), [-60, -20, 20, 60])],
+        extra(push) {
+          { const [x, y] = at(Math.round((fa + fb) / 2), -95); OBJS.push({ x, y, k: "sw_tree", s: 2.4, r: 50, z: 0 }); }   // 🌳 the giant tree in the split
+          { const [x, y] = at(I(1434, 179), -(ROAD / 2 + CURB + 140)); OBJS.push({ x, y, k: "sw_treehouse", s: 1.4, r: 50, z: 0 }); }   // the tree house up on the high road
+          for (let i = bridge.a; i <= bridge.b; i += 10) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 4)); OBJS.push({ x, y, k: "posts", s: .3, r: 0, z: 0 }); }   // the bridge's rails
+          for (const [x, y] of [[860, 1600], [990, 1700], [1080, 1610], [800, 1710]]) { const [bx, by] = [ws(x), ws(y)]; if (roadDist(bx, by) > ROAD / 2 + 60) BUILDINGS.push({ x: bx, y: by, w: 44, d: 44, h: 170, a: .4, stone: true }); }   // 🗿 the pillars in the lake
+          for (const [x, y, sc] of [[420, 1360, 1.3], [180, 1150, 1.1], [520, 1660, 1]]) OBJS.push({ x: ws(x), y: ws(y), k: "sw_temple", s: sc, r: 40, z: 0 });
+          for (const [x, y] of [[1200, 900], [1400, 1300], [1000, 1200], [500, 800], [1300, 600], [300, 600]]) push(ws(x), ws(y), "sw_tree");
+        },
       };
     },
   },
@@ -684,7 +712,7 @@ function loadTrack(key) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
-  PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || [];
+  PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
   BARE = []; if (LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow")) for (let i = 0; i < N; i++) { const e = (o) => { const [x, y] = at(i, o); return inLake(x, y); }; if (e(ROAD / 2 + CURB) && e(-ROAD / 2 - CURB)) { const l = BARE[BARE.length - 1]; if (l && l.b === i) l.b = i + 1; else BARE.push({ a: i, b: i + 1 }); } }   // no curbs across the rink
   MOLES = f.moles || []; CHOMPS = f.chomps || []; WANDER = f.wander || []; BUILDINGS = [];
@@ -899,6 +927,9 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   cobbles(N, i => PTS[i], tangent, ROAD, RS); cobbles(AN, j => ALT[j], altTan, ALT_ROAD, ALT_STYLE === "planks" ? "planks" : RS);
   }
   if (LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow")) { g.globalAlpha = LAKE.kind === "ice" ? .88 : .8; lake(); g.globalAlpha = 1; }
+  for (const pl of PLANKS) {   // 🪵 a wooden bridge: boards across the road
+    for (let i = pl.a; i < pl.b; i += .5) { const [x0, y0] = at(i, -ROAD / 2), [x1, y1] = at(i, ROAD / 2); g.strokeStyle = (Math.floor(i * 2) & 1) ? "#8a5a32" : "#9a6a3a"; g.lineWidth = SPC * .5 + .6; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+    g.strokeStyle = "rgba(50,30,15,.6)"; g.lineWidth = 1.2; for (let i = pl.a; i < pl.b; i += 1.6) { const [x0, y0] = at(i, -ROAD / 2), [x1, y1] = at(i, ROAD / 2); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); } }
   for (const st of STREAMS) {   // 🌊 a stream of water running down the middle of the road
     g.lineJoin = g.lineCap = "round"; g.beginPath(); for (let i = st.a; i <= st.b; i++) { const p = PTS[i % N]; i === st.a ? g.moveTo(p[0], p[1]) : g.lineTo(p[0], p[1]); }
     g.strokeStyle = "rgba(70,160,230,.75)"; g.lineWidth = st.w; g.stroke(); g.strokeStyle = "rgba(220,245,255,.7)"; g.lineWidth = 2;
@@ -907,7 +938,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
     g.save(); g.translate(lf.x, lf.y); g.rotate(lf.a); g.fillStyle = "#3f9a3a"; g.beginPath(); g.ellipse(0, 0, lf.r * 1.25, lf.r * .8, 0, 0, 7); g.fill();
     g.fillStyle = "#5cc04e"; g.beginPath(); g.ellipse(0, 0, lf.r * 1.15, lf.r * .7, 0, 0, 7); g.fill(); g.strokeStyle = "#2f7a2c"; g.lineWidth = 3; g.beginPath(); g.moveTo(-lf.r * 1.1, 0); g.lineTo(lf.r * 1.1, 0); g.stroke();
     for (const sx of [-.6, -.2, .2, .6]) for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sx * lf.r, 0); g.lineTo((sx + .25) * lf.r, sd * lf.r * .55); g.stroke(); } g.restore(); }
-  for (const cv of CAVES) if (!cv.rock) {   // ❄ the ice cave's floor: glassy blue ice
+  for (const cv of CAVES) if (!cv.rock && !cv.temple) {   // ❄ the ice cave's floor: glassy blue ice
     g.lineJoin = g.lineCap = "round"; g.beginPath(); for (let i = cv.a; i <= cv.b; i++) { const p = PTS[i % N]; i === cv.a ? g.moveTo(p[0], p[1]) : g.lineTo(p[0], p[1]); }
     g.strokeStyle = "rgba(110,175,235,.5)"; g.lineWidth = ROAD; g.stroke(); g.strokeStyle = "rgba(220,242,255,.45)"; g.lineWidth = 3; for (const o of [-40, 25]) { g.beginPath(); for (let i = cv.a; i <= cv.b; i += 2) { const [x, y] = at(i, o); i === cv.a ? g.moveTo(x, y) : g.lineTo(x, y); } g.stroke(); } }
   if (!only) { let acc = 0;   // speed bands
@@ -1287,7 +1318,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=47"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=48"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
