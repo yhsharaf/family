@@ -431,10 +431,16 @@ export function create(A) {
         const m = new THREE.Mesh(BOX, [mz, mz, top, top, mx, mx]); m.scale.set(b.w, b.h, b.d); m.rotation.y = -(b.a || 0); m.position.set(b.x, h(b.x, b.y) + b.h / 2 - 4, b.y); scene.add(m); roadObjs.push(m);
         continue;
       }
-      const gnd = h(b.x, b.y), wallM = new THREE.MeshBasicMaterial({ map: windowsTex(b.wall, Math.max(2, Math.round(b.w / 70)), 2) }), plain = new THREE.MeshBasicMaterial({ color: new THREE.Color(b.wall).multiplyScalar(.92) }), roofM = new THREE.MeshBasicMaterial({ color: b.roof });   // shown in their true colours: a white house with a pink roof, even in shade
+      const gnd = h(b.x, b.y), wallM = new THREE.MeshBasicMaterial({ map: b.hospital ? hospWallTex(b.wall, Math.max(2, Math.round(b.w / 70))) : windowsTex(b.wall, Math.max(2, Math.round(b.w / 70)), 2) }), plain = new THREE.MeshBasicMaterial({ color: new THREE.Color(b.wall).multiplyScalar(.92) }), roofM = new THREE.MeshBasicMaterial({ color: b.roof });   // shown in their true colours: a white house with a pink roof, even in shade
       const body = new THREE.Mesh(BOX, [plain, plain, plain, plain, wallM, wallM]); body.scale.set(b.w, b.h, b.d); body.position.set(b.x, gnd + b.h / 2, b.y); scene.add(body); roadObjs.push(body);
-      const roof = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM); roof.rotation.y = Math.PI / 4; roof.scale.set(b.w * .74, b.h * .55, b.d * .9); roof.position.set(b.x, gnd + b.h + b.h * .275, b.y); scene.add(roof); roadObjs.push(roof);
-      if (b.tower) { const tw = new THREE.Mesh(BOX, [plain, plain, plain, plain, wallM, wallM]); tw.scale.set(b.w * .22, b.h * 1.6, b.d * 1.1); tw.position.set(b.x, gnd + b.h * .8, b.y - 4); scene.add(tw); roadObjs.push(tw);
+      if (b.hospital) {   // a flat roof with a pink trim (a hospital, not a pointed house)
+        const slab = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({ color: 0xe9e2d8 })); slab.scale.set(b.w + 12, 6, b.d + 12); slab.position.set(b.x, gnd + b.h + 3, b.y); scene.add(slab); roadObjs.push(slab);
+        const trim = new THREE.Mesh(BOX, roofM); trim.scale.set(b.w + 16, 10, b.d + 16); trim.position.set(b.x, gnd + b.h - 2, b.y); scene.add(trim); roadObjs.push(trim);
+      } else { const roof = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM); roof.rotation.y = Math.PI / 4; roof.scale.set(b.w * .74, b.h * .55, b.d * .9); roof.position.set(b.x, gnd + b.h + b.h * .275, b.y); scene.add(roof); roadObjs.push(roof); }
+      if (b.tower && b.hospital) {   // the hospital's centre tower: taller, the red cross up high, a pink cap
+        const twF = new THREE.MeshBasicMaterial({ map: crossTex() }), tw = new THREE.Mesh(BOX, [plain, plain, plain, plain, twF, twF]); tw.scale.set(b.w * .18, b.h * 1.9, b.d * 1.25); tw.position.set(b.x, gnd + b.h * .95, b.y - 4); scene.add(tw); roadObjs.push(tw);
+        const cap = new THREE.Mesh(BOX, roofM); cap.scale.set(b.w * .2, 10, b.d * 1.4); cap.position.set(b.x, gnd + b.h * 1.9 + 5, b.y - 4); scene.add(cap); roadObjs.push(cap);
+      } else if (b.tower) { const twF = b.hospital ? new THREE.MeshBasicMaterial({ map: crossTex() }) : wallM, tw = new THREE.Mesh(BOX, [plain, plain, plain, plain, twF, twF]);   // (a hospital: the big red cross on the tower) tw.scale.set(b.w * .22, b.h * 1.6, b.d * 1.1); tw.position.set(b.x, gnd + b.h * .8, b.y - 4); scene.add(tw); roadObjs.push(tw);
         const tr = new THREE.Mesh(new THREE.CylinderGeometry(0, 1, 1, 4, 1), roofM); tr.rotation.y = Math.PI / 4; tr.scale.set(b.w * .18, b.h * .7, b.d * .85); tr.position.set(b.x, gnd + b.h * 1.6 + b.h * .35, b.y - 4); scene.add(tr); roadObjs.push(tr); }
     }
     // 🌿 hedge blocks (Pets Park's maze): solid, leafy cubes
@@ -464,6 +470,18 @@ export function create(A) {
     }
   }
   let caps = [], capT = 0, gapsBuilt = [], extraObjs = [], hedgeT = null;
+  // 🏥 the Pet Hospital: white walls with a red band and blue windows; the tower carries a big red cross and a paw
+  const hospWallTex = (wall, cols) => { const c = canvas(256, 128), g = c.getContext("2d"); g.fillStyle = wall; g.fillRect(0, 0, 256, 128);
+    g.fillStyle = "#e8352d"; g.fillRect(0, 54, 256, 8); g.fillStyle = "#f07ab0"; g.fillRect(0, 120, 256, 8);
+    for (let i = 0; i < cols; i++) for (const y of [16, 72]) { const x = (i + .5) * 256 / cols - 11; g.fillStyle = "#8fd0ff"; g.fillRect(x, y, 22, 30); g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(x + 2, y + 2, 7, 26); g.strokeStyle = "#c9c2b8"; g.lineWidth = 2; g.strokeRect(x, y, 22, 30); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+  let crossT = null;
+  const crossTex = () => crossT || (crossT = (() => { const c = canvas(128, 256), g = c.getContext("2d"); g.fillStyle = "#fbf7f2"; g.fillRect(0, 0, 128, 256);
+    g.fillStyle = "#ffffff"; g.beginPath(); g.arc(64, 70, 46, 0, 7); g.fill(); g.strokeStyle = "#e8352d"; g.lineWidth = 6; g.stroke();
+    g.fillStyle = "#e8352d"; g.fillRect(52, 36, 24, 68); g.fillRect(30, 58, 68, 24);   // the red cross
+    g.fillStyle = "#f07ab0"; g.beginPath(); g.ellipse(64, 160, 16, 14, 0, 0, 7); g.fill(); for (const [dx, dy] of [[-16, -12], [-6, -22], [6, -22], [16, -12]]) { g.beginPath(); g.ellipse(64 + dx, 160 + dy, 6, 7, 0, 0, 7); g.fill(); }   // a paw
+    g.fillStyle = "#8fd0ff"; g.fillRect(46, 200, 36, 44); g.strokeStyle = "#c9c2b8"; g.lineWidth = 3; g.strokeRect(46, 200, 36, 44);   // the glass doors
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })());
   const windowsTex = (wall, cols, rows) => { const c = canvas(256, 128), g = c.getContext("2d"); g.fillStyle = wall; g.fillRect(0, 0, 256, 128);
     for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) { const x = (i + .5) * 256 / cols - 12, y = (j + .5) * 128 / rows - 18; g.fillStyle = "#8fd0ff"; g.fillRect(x, y, 24, 34); g.fillStyle = wall; g.fillRect(x + 11, y, 2, 34); g.fillRect(x, y + 16, 24, 2); g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(x - 2, y + 34, 28, 3); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };

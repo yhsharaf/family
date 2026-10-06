@@ -354,7 +354,7 @@ const TRACKS = {
       const chomp = (d, o, k, ph) => { const [ax, ay] = at(pa + u(d), o); return { ax, ay, k, ph, R: 78, s: 1.45 }; };
       // 🗺️ the journey round the park: each area's name pops up as you reach it, with a signpost by the road
       const areas = [[0, "plaza", "🐾 Pet Plaza"], [I(1036, 1303), "fountain", "⛲ Fountain Circle"], [I(406, 1119), "climb", "🌸 Blossom Climb"], [pa - 25, "maze", "🌿 Hedge Maze"],
-        [I(1717, 392), "peace", "☮️ Peace Garden"], [I(1700, 1250) - 10, "bunny", "🐰 Bunny Trail"], [porch - u(110), "porch", "🏰 Mansion Porch"], [I(1165, 1827), "home", "🎀 Home Stretch"]].map(([i, k, name]) => ({ i, k, name }));
+        [I(1717, 392), "peace", "☮️ Peace Garden"], [I(1700, 1250) - 10, "bunny", "🐰 Bunny Trail"], [porch - u(110), "porch", "🏥 Pet Hospital"], [I(1165, 1827), "home", "🎀 Home Stretch"]].map(([i, k, name]) => ({ i, k, name }));
       // 🐾 the last lap: the pets got loose! they dash back and forth across the home stretch
       const loose = ["puppy", "kitty", "husky", "panda", "pinkbunny", "dino"].map((k, n) => ({ i: I(1060, 1790) + (n % 3) * 5 + Math.floor(n / 3) * 16, ph: n * 1.1, k: `pet_${k}_move0`, sp: .9, soft: true, herd: true, s: .95, lap: 3 }));
       return {
@@ -373,18 +373,18 @@ const TRACKS = {
         coins,
         boxes: [...boxRow(I(420, 1115), [-60, -20, 20, 60]), ...boxRow(pa + u(380), [-70, 70]), ...boxRow(porch + u(150), [-50, 0, 50]).map(b => ({ ...b, z: 62 }))],
         extra(push) {
-          const [tx, ty] = at(I(1030, 1400), ROAD / 2 + CURB + 70); OBJS.push({ x: tx, y: ty, k: "topiary", s: 1, r: 40, z: 0 });   // the giant hedge pet by the start
+          { const [tx, ty] = at(pa - 12, -(ROAD / 2 + CURB + 75)); OBJS.push({ x: tx, y: ty, k: "topiary", s: .85, r: 40, z: 0 }); }   // 🐱 the hedge cat, guarding the entrance to the hedge maze
           OBJS.push({ x: ws(1050), y: ws(1030), k: "fountain", s: .8, r: 0, z: 0 });                                       // the fountain in its moat
-          BUILDINGS.push({ x: ws(1420), y: ws(2008), w: ws(600), d: 70, h: 120, wall: "#fbf7f2", roof: "#f07ab0", tower: true });   // the white mansion with the pink roof (3D)
+          BUILDINGS.push({ x: ws(1420), y: ws(2008), w: ws(600), d: 70, h: 120, wall: "#fbf7f2", roof: "#f07ab0", tower: true, hospital: true });   // 🏥 the Pet Hospital by the porch (3D): white, a red band, a big red cross on the tower
+          for (let i = OBJS.length - 1; i >= 0; i--) { const o = OBJS[i], dx = Math.abs(o.x - ws(1420)), dy = ws(2008) - o.y; if (dx < ws(330) && dy > 0 && dy < 330 && !String(o.k).startsWith("pet_")) OBJS.splice(i, 1); }   // (a clear lawn in front of it)
           for (const [x, y] of [[640, 640], [1420, 640], [520, 1500]]) OBJS.push({ x: ws(x), y: ws(y), k: "gazebo", s: .8, r: 30, z: 0 });
           for (const [x, y, z] of [[700, 1300, 330], [1500, 500, 380], [300, 1600, 300]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1, r: 0, z, bob: 18 });
           for (const [x, y, k] of [[870, 1300, "bush"], [1350, 1450, "bush"], [430, 900, "tree"], [1600, 1100, "tree"]]) push(ws(x), ws(y), k);
-          for (let i = I(1730, 1300), n = 0; i <= I(1758, 1735); i += 8, n++) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 9)); push(x, y, n % 3 ? "sunflower" : "redshrooms", .5, 0); }   // 🌻 flowers lining the bunny path, flicking past
-          for (const [a, b] of [[I(406, 1119), I(273, 544)], [I(1717, 392), I(1643, 981)]]) for (let i = a, n = 0; i <= b; i += 10, n++) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 10)); push(x, y, n % 2 ? "redshrooms" : "sunflower", .46, 0); }   // 🌸 more along the climb and the peace garden
-          // 🐾 pets cheering by the start line, bouncing
-          ["husky", "kitty", "puppy", "panda", "pinkbunny", "dino", "elephant", "babydragon", "monkey", "penguin", "whitebunny", "blackpig"].forEach((k, n) => { const sd = n % 2 ? 1 : -1, [x, y] = at(((n >> 1) * 7 - 18 + N) % N, sd * (ROAD / 2 + CURB + 34 + (n % 3) * 22)); OBJS.push({ x, y, k: `pet_${k}_stand00`, s: .95, r: 0, z: 0, bob: 10, mob: true }); });
-          // 🪧 a signpost at the start of every area
-          for (const a of areas) if (a.i > 5) { const [x, y] = at(a.i, ROAD / 2 + CURB + 44); OBJS.push({ x, y, k: "areasign_" + a.k, s: .55, r: 10, z: 0 }); }
+          // 🐾 pets here and there round the park, watching the race and bouncing
+          ["husky", "kitty", "puppy", "panda", "pinkbunny", "dino", "elephant", "babydragon", "monkey", "penguin", "whitebunny", "blackpig"].forEach((k, n) => { const sd = n % 2 ? 1 : -1, [x, y] = at(Math.round(N * (n + .55) / 12) % N, sd * (ROAD / 2 + CURB + 40 + (n % 3) * 28)); OBJS.push({ x, y, k: `pet_${k}_stand00`, s: .9, r: 0, z: 0, bob: 10, mob: true }); });
+          // 🌸 a few flower clusters at the nice spots (not rows of them)
+          for (const [i, o] of [[I(1220, 1188), -1], [I(245, 1082), 1], [I(337, 360), 1], [I(1772, 613), -1], [I(1600, 1838), 1], [I(1036, 1754), -1]]) { const cl = [["sunflower", 0, 0], ["redshrooms", 22, 14], ["sunflower", -20, 18], ["redshrooms", 8, -18]];
+            for (const [k, dx, dy] of cl) { const [x, y] = at(i, o * (ROAD / 2 + CURB + 40)); push(x + dx, y + dy, k, .5, 0); } }
         },
       };
     },
@@ -1493,12 +1493,21 @@ function makePetsArt() {
     g.fillStyle = "#a0703c"; g.fillRect(44, 142, 32, 24); });
   IMG.chain_post = mk(20, 44, g => { g.fillStyle = "#6b4426"; g.fillRect(6, 4, 8, 40); g.fillStyle = "#8a8d96"; g.beginPath(); g.arc(10, 8, 6, 0, 7); g.fill(); });
 }
-function makeTopiary(pet) {   // 🌿 a giant pet clipped from hedge, on a hedge plinth
-  const sc = 4, w = pet.width * sc, h = pet.height * sc, c = document.createElement("canvas"); c.width = w + 20; c.height = h + 60; const g = c.getContext("2d");
-  g.imageSmoothingEnabled = false; g.drawImage(pet, 10, 0, w, h); g.globalCompositeOperation = "source-atop";
-  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#6ad05a"); gr.addColorStop(1, "#2e8a2a"); g.fillStyle = gr; g.fillRect(0, 0, c.width, h);
-  for (let k = 0; k < 400; k++) { g.fillStyle = Math.random() < .5 ? "rgba(20,80,20,.35)" : "rgba(160,240,140,.3)"; g.fillRect(Math.random() * c.width, Math.random() * h, 4, 4); }
-  g.globalCompositeOperation = "source-over"; g.fillStyle = "#3a8a30"; g.fillRect(0, h, c.width, 60); g.fillStyle = "#4ea83e"; g.fillRect(0, h, c.width, 12); return c;
+function makeTopiary(pet) {   // 🌿 a giant pet clipped from hedge: a smooth leafy silhouette (darker edges, lit on top, a few flowers) on a pink-and-white planter
+  const sc = 6, w = Math.round(pet.width * sc), h = Math.round(pet.height * sc), W = w + 24, H = h + 70, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const mask = document.createElement("canvas"); mask.width = W; mask.height = h + 12; const m = mask.getContext("2d"); m.imageSmoothingEnabled = true; m.drawImage(pet, 12, 6, w, h);   // (smoothed: round, clipped edges)
+  const leafy = (ctx, base, dark, light) => { ctx.globalCompositeOperation = "source-atop"; ctx.fillStyle = base; ctx.fillRect(0, 0, W, h + 12);
+    for (let k = 0; k < 900; k++) { const v = Math.random(); ctx.fillStyle = v < .4 ? dark : v < .8 ? light : "rgba(255,255,255,.18)"; ctx.beginPath(); ctx.ellipse(Math.random() * W, Math.random() * (h + 12), 3 + Math.random() * 5, 2 + Math.random() * 3, Math.random() * 3, 0, 7); ctx.fill(); }
+    const gr = ctx.createLinearGradient(0, 0, 0, h + 12); gr.addColorStop(0, "rgba(255,255,190,.22)"); gr.addColorStop(.6, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,40,0,.35)"); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, h + 12); ctx.globalCompositeOperation = "source-over"; };
+  const edge = document.createElement("canvas"); edge.width = W; edge.height = h + 12; const e = edge.getContext("2d"); e.drawImage(mask, 0, 0); e.globalCompositeOperation = "source-in"; e.fillStyle = "#1f5e1c"; e.fillRect(0, 0, W, h + 12);
+  for (const [dx, dy] of [[-3, 0], [3, 0], [0, 3], [0, -2]]) g.drawImage(edge, dx, dy);   // a darker clipped rim
+  const body = document.createElement("canvas"); body.width = W; body.height = h + 12; const b = body.getContext("2d"); b.drawImage(mask, 0, 0); leafy(b, "#3f9a34", "rgba(25,90,25,.55)", "rgba(120,215,95,.5)");
+  for (let k = 0; k < 9; k++) { const x = 20 + Math.random() * (W - 40), y = 20 + Math.random() * (h - 30); if (m.getImageData(x, y, 1, 1).data[3] < 200) continue;   // a few flowers in the leaves
+    b.fillStyle = ["#ff8fc4", "#ffffff", "#ff8fc4"][k % 3]; for (let q = 0; q < 5; q++) { b.beginPath(); b.arc(x + Math.cos(q * 1.26) * 4, y + Math.sin(q * 1.26) * 4, 3, 0, 7); b.fill(); } b.fillStyle = "#ffe48a"; b.beginPath(); b.arc(x, y, 2.4, 0, 7); b.fill(); }
+  g.drawImage(body, 0, 0);
+  const py = h + 8; g.fillStyle = "#c8558a"; g.beginPath(); g.moveTo(14, py + 6); g.lineTo(W - 14, py + 6); g.lineTo(W - 30, H - 4); g.lineTo(30, H - 4); g.closePath(); g.fill();   // the pink planter
+  g.fillStyle = "#f07ab0"; g.fillRect(24, py + 22, W - 48, 14); g.fillStyle = "#fbf7f2"; g.beginPath(); g.roundRect(8, py - 2, W - 16, 14, 7); g.fill();   // a white rim and a band
+  return c;
 }
 function placeStart(push) {
   if (!IMG.arch_post || (T.gate === "market" && IMG.mp_sign && IMG.mk_banner && IMG.mk_banner.height !== 200)) makeArchArt();   // (again once the Market Place sign has loaded)
@@ -1599,7 +1608,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=89"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=91"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
