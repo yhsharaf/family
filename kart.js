@@ -1526,7 +1526,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=64"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=66"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2570,7 +2570,7 @@ function render() {
     if (sx < -120 || sx > W + 120) return;
     vis.push({ im, fz, sx, sc, z, flip, shadow, px: im.px });
   };
-  const addDraw = G3 ? (x, y, draw) => { const p = G3.proj(x, y); if (!p || p.d > 1500 || p.sx < -80 || p.sx > W + 80 || G3.hidden(x, y)) return; vis.push({ fz: p.d, sx: p.sx, gy: p.sy, sc: p.sc, draw }); } : (x, y, draw) => {
+  const addDraw = G3 ? (x, y, draw, lift = 0) => { const p = G3.proj(x, y, 0, lift); if (!p || p.d > 1500 || p.sx < -80 || p.sx > W + 80 || G3.hidden(x, y, 4 + lift)) return; vis.push({ fz: p.d, sx: p.sx, gy: p.sy, sc: p.sc, draw }); } : (x, y, draw) => {
     const rx = x - cx, ry = y - cy, fz = rx * ca + ry * sa;
     if (fz < 6 || fz > 1300) return;
     const sx = W / 2 + (-rx * sa + ry * ca) * FO / fz;
@@ -2578,7 +2578,7 @@ function render() {
     vis.push({ fz, sx, draw });
   };
   if (G3) {   // 3D karts (with a name tag, stars and ink drawn on top), 3D item boxes
-    for (const r of RIV) if (!r.gone) { G3.kart(r, { color: r.color, img: r.img, dt: dt3, boo: r.boo > 0 }); addDraw(r.x, r.y, (sx, gy, sc, fz) => rivalTag(r, sx, gy, sc, fz)); }
+    for (const r of RIV) if (!r.gone) { G3.kart(r, { color: r.color, img: r.img, dt: dt3, boo: r.boo > 0 }); addDraw(r.x, r.y, (sx, gy, sc, fz) => rivalTag(r, sx, gy, sc, fz), G3.liftOf(r)); }
     if (mode !== "tt") BOXES.forEach((b, i) => { if (b.t <= 0) G3.box(b.x, b.y, tt, i, b.z || 0); });
     if (mode === "tt" && state !== "menu") for (const [g, gd, col, img, skip] of [[GH3.top, topGhost && topGhost.data, "#e8b43a", topGhost && topGhost.img], [GH3.me, ghost, "#c8232c", IMG.me, topGhost && topGhost.name === me]]) {
       const gs = gd && !skip ? ghostAt(K.t, gd) : null; if (gs) { Object.assign(g, { x: gs.x, y: gs.y, a: gs.a, z: gs.z, v: 200 }); G3.kart(g, { color: col, img, ghost: true, dt: dt3 }); } }
@@ -2679,9 +2679,9 @@ function render() {
     if (r.rocket > 0 && IMG.it_rocket) { const im = IMG.it_rocket, w = 30 * sc, y = gy - (r.z || 0) * sc - 30 * sc;
       ctx.globalCompositeOperation = "lighter"; for (let n = 0; n < 3; n++) { ctx.fillStyle = ["#fff6c0", "#ffb02e", "#ff5a1e"][n]; ctx.beginPath(); ctx.arc(sx + (Math.random() - .5) * 4 * sc, y + w * .55 + n * 4 * sc, Math.max(1, (6 - n * 1.5) * sc), 0, 7); ctx.fill(); }
       ctx.globalCompositeOperation = "source-over"; ctx.drawImage(im, sx - w / 2, y - w / 2, w, w * im.height / im.width); }
-    if (r.piranha > 0 && IMG.it_piranha) { const im = IMG.it_piranha, bite = r.bite > 0 ? 1 + r.bite * 1.6 : 1, h = 24 * sc * bite, w = h * im.width / im.height, p = proj(r.x + Math.cos(r.a) * 14, r.y + Math.sin(r.a) * 14);
+    if (r.piranha > 0 && IMG.it_piranha) { const im = IMG.it_piranha, bite = r.bite > 0 ? 1 + r.bite * 1.6 : 1, h = 24 * sc * bite, w = h * im.width / im.height, fx = r.x + Math.cos(r.a) * 14, fy = r.y + Math.sin(r.a) * 14, p = G3 ? (q => q && [q.sx, q.sy, q.sc])(G3.proj(fx, fy, 0, G3.liftOf(r))) : proj(fx, fy);
       const px = p ? p[0] : sx, py = p ? p[1] : gy; ctx.drawImage(im, px - w / 2, py - (r.z || 0) * sc - h, w, h); }
-    ctx.restore(); });
+    ctx.restore(); }, G3 ? G3.liftOf(r) : 0);
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
   for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
@@ -2846,7 +2846,7 @@ function snowfall(n) {
 function drawKart(k) { ctx.save(); if (k.boo > 0) ctx.globalAlpha = .35; drawKart0(k); ctx.restore(); }   // 👻 see-through while Jr. Wraith hides you
 function drawKart0(k) {
   if (k.watch) return;   // watching: there's no kart of yours
-  const CH = CAMH + Math.min(k.z, 130) * .35, p3 = G3 && G3.proj(k.x, k.y), p3z = G3 && G3.proj(k.x, k.y, Math.max(0, k.z) + 6);
+  const CH = CAMH + Math.min(k.z, 130) * .35, kl = G3 ? G3.liftOf(k) : 0, p3 = G3 && G3.proj(k.x, k.y, 0, kl), p3z = G3 && G3.proj(k.x, k.y, Math.max(0, k.z) + 6, kl);
   if (G3 && !(p3 && p3z)) return;
   const gy = G3 ? p3.sy : HOR + CH * FOCAL / CD, gy0 = G3 ? p3z.sy + Math.min(k.z * p3.sc * .45, H * .2) : HOR + CAMH * FOCAL / CD, sc = G3 ? p3.sc : FOCAL / CD, x = G3 ? p3.sx : W / 2 + k.steer * 4;
   const hop = k.hop > 0 ? Math.sin((k.hop / .18) * Math.PI) * 6 : 0, rumble = k.off && k.v > 40 ? (Math.random() - .5) * 2 : 0;

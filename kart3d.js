@@ -27,7 +27,10 @@ export function create(A) {
 
   // ---------------------------------------------------------------- ground: heights, terrain mesh, sky
   let G = 8, GN = WORLD / G + 1;
-  let HG = new Float32Array(GN * GN), terrain = null, plain = null, skyMesh = null, key = null, skyRefs = [];
+  let HG = new Float32Array(GN * GN), terrain = null, plain = null, skyMesh = null, key = null, skyRefs = [], RE = null;   // RE: the road's height at each track point
+  // 🪁 in the air (a jump, a glide, a mushroom bounce) a kart's height counts from the road it left, not from whatever is below it (a ravine,
+  // the slope far under a glide): off the road the ground can be far lower. How far above the ground that puts it:
+  const airLift = r => { if (!(r.z > 0) || !RE || r.idx == null) return 0; const g = h(r.x, r.y), e = RE[Math.max(0, Math.min(RE.length - 1, r.idx | 0))]; return Math.max(0, e - g); };
   const h = (x, y) => {
     const fx = Math.max(0, Math.min(GN - 1.001, x / G)), fy = Math.max(0, Math.min(GN - 1.001, y / G)), i = fx | 0, j = fy | 0, ax = fx - i, ay = fy - j, o = j * GN + i;
     return (HG[o] * (1 - ax) + HG[o + 1] * ax) * (1 - ay) + (HG[o + GN] * (1 - ax) + HG[o + GN + 1] * ax) * ay;
@@ -48,7 +51,7 @@ export function create(A) {
   }
   function buildGround(t) {
     if (t.WORLD && t.WORLD !== WORLD) { WORLD = t.WORLD; const n = Math.round(WORLD / (WORLD > 3200 ? 12 : 8)); G = WORLD / n; GN = n + 1; HG = new Float32Array(GN * GN); }   // (a big world gets a coarser ground grid, so it stays light)
-    const E = profile(t), wsum = new Float64Array(GN * GN), hsum = new Float64Array(GN * GN), dmin = new Float32Array(GN * GN).fill(1e9), near = new Int32Array(GN * GN).fill(-1);
+    const E = profile(t); RE = E; const wsum = new Float64Array(GN * GN), hsum = new Float64Array(GN * GN), dmin = new Float32Array(GN * GN).fill(1e9), near = new Int32Array(GN * GN).fill(-1);
     const MT = !!t.theme.mountain, R = MT ? 640 : 300, rc = Math.ceil(R / G);   // (a mountain: the slope runs smoothly between the switchbacks)
     const splat = (px, py, e, idx = -1) => {
       const ci = Math.round(px / G), cj = Math.round(py / G);
@@ -543,7 +546,8 @@ export function create(A) {
       m.mats.forEach((mt, i) => { const [tr, op, dw] = m.base[i]; mt.transparent = m.booOn || tr; mt.opacity = m.booOn ? .22 : op; mt.depthWrite = m.booOn ? false : dw; mt.needsUpdate = true; });
       m.driver.material.opacity = m.booOn ? .3 : (m.ghost ? .5 : 1); m.driver.material.transparent = true; m.faded = m.booOn; }
     const gx = r.x, gy = r.y, a = r.a || 0, ca = Math.cos(a), sa = Math.sin(a);
-    m.root.position.set(gx, h(gx, gy), gy); m.root.rotation.y = -a;
+    const al = airLift(r); m.lift = m.lift == null ? al : m.lift + (al - m.lift) * Math.min(1, (o.dt || .016) * (al > m.lift ? 20 : 8));   // (eased, so landing off the road doesn't jump)
+    m.root.position.set(gx, h(gx, gy) + m.lift, gy); m.root.rotation.y = -a;
     // lean with the ground: nose up on a climb, tipped on a side slope
     const f = h(gx + ca * 11, gy + sa * 11) - h(gx - ca * 11, gy - sa * 11), sd = h(gx - sa * 8, gy + ca * 8) - h(gx + sa * 8, gy - ca * 8);
     m.tilt.rotation.set(Math.atan2(sd, 16) * .9, 0, Math.atan2(f, 22));
@@ -590,15 +594,18 @@ export function create(A) {
     let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * 7);   // the camera swings round a moment after the kart
     const dist = 58 + 9 * (o.fov || 0), up = 37 + Math.min(k.z || 0, 260) * .95;   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
     const gx = k.x - Math.cos(cam.yaw) * dist, gz = k.y - Math.sin(cam.yaw) * dist;
-    const want = Math.max(h(k.x, k.y), h(gx, gz) - 6) + up;
-    cam.y = o.snap || !cam.y ? want : cam.y + (want - cam.y) * Math.min(1, o.dt * 6);
+    const lift = airLift(k); cam.lift = o.snap || cam.lift == null ? lift : cam.lift + (lift - cam.lift) * Math.min(1, o.dt * (lift > cam.lift ? 20 : 6));
+    const kh = h(k.x, k.y) + cam.lift, base = Math.max(kh, h(gx, gz) - 6), want = base + up;   // (flying off the road: follow the road's height, not the ravine under you)
+    // the ground part eases (hills, bumps); the jump / glide height follows almost at once, or a fast take-off leaves the camera level with the kart
+    const zu = up - 37; cam.base = o.snap || cam.base == null ? base : cam.base + (base - cam.base) * Math.min(1, o.dt * 6); cam.zu = o.snap || cam.zu == null ? zu : cam.zu + (zu - cam.zu) * Math.min(1, o.dt * 16);
+    cam.y = cam.base + 37 + cam.zu;
     camera.position.set(gx, Math.max(cam.y, h(gx, gz) + 5), gz);
-    look.set(k.x + Math.cos(cam.yaw) * 56, h(k.x + Math.cos(cam.yaw) * 56, k.y + Math.sin(cam.yaw) * 56) * .5 + h(k.x, k.y) * .5 + 2 + Math.min(k.z || 0, 260) * .95, k.y + Math.sin(cam.yaw) * 56);   // rises with you in a jump (no tilting up at the sky)
+    look.set(k.x + Math.cos(cam.yaw) * 56, Math.max(h(k.x + Math.cos(cam.yaw) * 56, k.y + Math.sin(cam.yaw) * 56), kh - 40) * .5 + kh * .5 + 2 + Math.min(k.z || 0, 260) * .95, k.y + Math.sin(cam.yaw) * 56);   // rises with you in a jump (no tilting up at the sky)
     if (o.intro != null && o.intro < 1 && o.grid) {   // before the start: from in front of the grid (everyone facing you), swooping up and round to behind your kart
       const [qx, qy, qa] = o.grid, e = o.intro * o.intro * (3 - 2 * o.intro), fx = qx + Math.cos(qa) * 170, fz = qy + Math.sin(qa) * 170;
       tmp.set(fx, h(fx, fz) + 38, fz).lerp(camera.position, e); tmp.y += Math.sin(Math.PI * e) * 45; camera.position.copy(tmp);
       tmp.set(qx - Math.cos(qa) * 20, h(qx, qy) + 10, qy - Math.sin(qa) * 20).lerp(look, e); look.copy(tmp);
-      cam.yaw = a; cam.y = want;
+      cam.yaw = a; cam.y = want; cam.base = base; cam.zu = zu;
     }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
     camera.lookAt(look);
@@ -627,13 +634,13 @@ export function create(A) {
     renderer.render(scene, camera);
   }
   // where a world spot shows up on the screen (in the game's 320-wide units), and how many screen units one world unit is there
-  function proj(x, y, z = 0) {
-    tmp.set(x, h(x, y) + z, y); const d = tmp.clone().sub(camera.position).dot(fwd); if (d < 4) return null;
+  function proj(x, y, z = 0, lift = 0) {
+    tmp.set(x, h(x, y) + z + lift, y); const d = tmp.clone().sub(camera.position).dot(fwd); if (d < 4) return null;
     tmp.project(camera); const f = VH / 2 / Math.tan(camera.fov * Math.PI / 360);
     return { sx: (tmp.x + 1) / 2 * VW, sy: (1 - tmp.y) / 2 * VH, sc: f / d, d };
   }
   // is a spot hidden behind a hill?
-  function hidden(x, y, z = 4) {
+  function hidden(x, y, z = 4) {   // (z: height above the ground there)
     const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z, ty = h(x, y) + z;
     for (let i = 1; i < 10; i++) { const t = i / 10, px = cx + (x - cx) * t, pz = cz + (y - cz) * t; if (h(px, pz) > cy + (ty - cy) * t + 2) return true; }
     return false;
@@ -641,5 +648,6 @@ export function create(A) {
   function resize(w, hh) { renderer.setSize(w, hh, false); }
   function clearKarts() { for (const m of karts.values()) scene.remove(m.root); karts.clear(); cam.yaw = null; }
   const snap = () => { renderer.render(scene, camera); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
-  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
+  const liftOf = r => { const m = karts.get(r); return m && m.lift != null ? m.lift : airLift(r); };   // how high above the ground a kart is drawn (for the 2D bits on top: name tags, held items)
+  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, liftOf, camera, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
 }
