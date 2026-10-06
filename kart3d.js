@@ -25,7 +25,7 @@ export function create(A) {
   const sun = new THREE.DirectionalLight(0xfff4e0, 1.5); sun.position.set(-.45, 1, .3); scene.add(sun);
   const BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 18);
 
-  // ---------------------------------------------------------------- ✨ the next-gen look (a prototype, on Oink Oink Meadows for now): the sun
+  // ---------------------------------------------------------------- ✨ the next-gen look (an experiment, switched off): the sun
   // casts real shadows, every picture standing in the world gets a soft shadow on the ground, the picture goes through filmic colour, bright
   // things glow, and each cup has its own light and colour grade. Quality: 2 = computers, 1 = phones, 0 = off (the old look).
   let Q = (() => { try { const v = localStorage.getItem("kart_q"); return v != null ? +v : A.touch ? 1 : 2; } catch (e) { return A.touch ? 1 : 2; } })(), NG = false, mood = null;
@@ -86,7 +86,7 @@ export function create(A) {
   // switch the look for a track: its cup's mood (prototype: Oink Oink Meadows, or every track with localStorage kart_ng = "all")
   function applyLook(t) {
     let all = false; try { all = localStorage.getItem("kart_ng") === "all"; } catch (e) {}
-    const want = Q >= 1 && (t.key === "henesys" || all) && !!MOODS[t.cup] ? MOODS[t.cup] : null, was = NG;
+    const want = Q >= 1 && all && !!MOODS[t.cup] ? MOODS[t.cup] : null, was = NG;   // (off by default: the guild preferred the original look; localStorage kart_ng = "all" to try it)
     NG = !!want; mood = want; blobs.visible = NG;
     if (NG) { sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI;
       sun.castShadow = true; const ms = Q >= 2 ? 2048 : 1024; if (sun.shadow.mapSize.x !== ms) { sun.shadow.mapSize.set(ms, ms); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } } }
