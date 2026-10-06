@@ -237,7 +237,7 @@ const TRACKS = {
   // round the far side and cross the big abyss on two rows of trampoline mushrooms (steer to pick a row), then race the hopping mushrooms
   // (the Goombas' job) round the bottom U-turn back to the start. Wide beginner road; fall in and you're put back before the gap.
   town: {
-    id: "gorge", scale: 1.75, road: 200, gate: "market", cup: "henesys", art: HEN_ART, music: "town", name: "Mushroom Gorge", sub: "trampoline mushrooms · the abyss · market start", icon: "🌼",
+    id: "gorge", scale: 1.75, road: 200, gate: "market", cup: "henesys", art: HEN_ART, music: "town", name: "Mushroom Canyon", sub: "trampoline mushrooms · the abyss · market start", icon: "🌼",
     ctrl: [[1868, 1432, 0], [1878, 1211, 8], [1896, 1040, 18], [1911, 881, 30], [1880, 790, 34], [1800, 735, 42], [1710, 712, 47], [1645, 670, 51], [1612, 595, 54], [1604, 500, 57],
       [1605, 366, 60], [1572, 231, 66], [1470, 138, 72], [1320, 118, 74], [1200, 150, 72], [1110, 230, 68], [993, 262, 60], [858, 305, 52], [723, 362, 44], [628, 423, 40],
       [463, 440, 36], [297, 538, 30], [213, 709, 24], [279, 888, 18], [437, 1028, 14], [718, 1138, 10], [973, 1285, 6], [1228, 1432, 2], [1420, 1560, 0], [1520, 1720, -4],
@@ -337,7 +337,7 @@ const TRACKS = {
   // straight into a long row of mesos, penguins sliding across the road, snowmen with red scarves standing in it, slippery ice patches,
   // a ramp down into the thin-ice basin with a hole in the ice in the middle, boost pads back out, and the snowy S-bends home.
   en1: {
-    id: "snowland", scale: 1.22, road: 180, gate: "ice", cup: "elnath", music: "k_elnath1", name: "Snow Land", sub: "penguins · snowmen · the thin-ice basin", icon: "⛄",
+    id: "snowland", scale: 1.22, road: 180, gate: "ice", cup: "elnath", music: "k_elnath1", name: "Penguin Snowfield", sub: "penguins · snowmen · the thin-ice basin", icon: "⛄",
     ctrl: [[242, 1420, 0], [242, 990, 6], [262, 840, 10], [330, 748, 14], [472, 722, 18], [702, 689, 22], [817, 517, 26], [886, 302, 30], [1070, 225, 32], [1438, 238, 30], [1691, 388, 26],
       [1829, 646, 22], [1815, 900, 18], [1765, 1030, 16], [1620, 1060, 15], [1470, 1010, 14], [1254, 900, 12], [1070, 904, 12], [923, 1012, 10], [932, 1205, 8], [1116, 1313, 6], [1438, 1356, 6], [1737, 1377, 8],
       [1852, 1528, 10], [1815, 1721, 8], [1622, 1807, 6], [1300, 1798, 4], [1070, 1721, 4], [909, 1571, 6], [748, 1592, 4], [610, 1700, 2], [472, 1786, 0], [288, 1764, 0], [233, 1592, 0]],
@@ -377,7 +377,7 @@ const TRACKS = {
   // cave (red rail along one wall); over the top past the snowmen and back along the Freezies' stretch, where blocks of living ice slide across.
   // Deep snow off the road everywhere. A full moon, pines and towers of ice blocks round it all.
   en2: {
-    id: "sherbet", scale: 1.36, road: 180, gate: "ice", cup: "elnath", music: "k_elnath2", name: "Sherbet Land", sub: "the skating rink · ice cave · Freezies", icon: "🧊",
+    id: "sherbet", scale: 1.36, road: 180, gate: "ice", cup: "elnath", music: "k_elnath2", name: "Frost Rink", sub: "the skating rink · ice cave · living ice blocks", icon: "🧊",
     ctrl: [[256, 1062, 20], [346, 1216, 16], [456, 1382, 10], [614, 1485, 4], [794, 1510, 2], [960, 1580, 0], [1120, 1660, 0], [1331, 1664, 0], [1536, 1590, 0], [1740, 1505, 4],
       [1860, 1482, 6], [1935, 1420, 9], [1948, 1340, 11], [1885, 1268, 13], [1741, 1215, 16], [1536, 1140, 20], [1331, 1165, 24], [1180, 1165, 27], [1075, 1105, 29], [1055, 1000, 30],
       [1115, 905, 28], [1120, 790, 24], [1010, 700, 20], [880, 640, 18], [840, 530, 18], [910, 445, 18], [1050, 420, 18], [1200, 420, 19], [1320, 380, 20], [1360, 290, 22],
@@ -480,13 +480,13 @@ const TRACKS = {
       };
     },
   },
-  // ---- Sleepywood Cup 🌙: the deep forest. Fun to challenging: Wild Woods, DK Jungle, Boo Lake.
+  // ---- Sleepywood Cup 🌙: the deep forest. Fun to challenging: Treetop Village, Golden Temple Jungle, Phantom Lake.
   // 1. Wild Woods (Mario Kart 8): up the trunk of a giant tree from the start; the road splits (coins one way, trick ramps the other); through
   // the tree-house village where the mushrooms live; off the end of the village on a glider, over the void to a round platform; down the
   // winding boardwalk with a stream running down its middle; out into the shallow pond with giant leaves carrying boost pads; one last ramp
   // over the water onto the boardwalk, and the detour round to the line.
   sw1: {
-    id: "woods", scale: 1.7, road: 180, cup: "sleepy", music: "k_sleepy1", name: "Wild Woods", sub: "the giant tree · tree-house village · glider · leaf pond", icon: "🌳",
+    id: "woods", scale: 1.7, road: 180, cup: "sleepy", music: "k_sleepy1", name: "Treetop Village", sub: "the giant tree · tree-house village · glider · leaf pond", icon: "🌳",
     ctrl: [[328, 640, 70], [328, 486, 78], [384, 358, 88], [538, 256, 98], [742, 210, 106], [947, 192, 112], [1101, 243, 116], [1203, 371, 118], [1357, 474, 120], [1536, 499, 122],
       [1690, 550, 122], [1766, 678, 122], [1690, 806, 121], [1562, 870, 120], [1075, 1050, 80], [947, 1126, 77], [858, 1242, 72], [883, 1344, 66], [1011, 1421, 58], [1101, 1536, 48],
       [1075, 1651, 38], [947, 1741, 28], [794, 1741, 18], [640, 1664, 6], [538, 1536, 0], [486, 1382, 0], [499, 1229, 8], [512, 1075, 24], [550, 909, 40], [461, 814, 52], [358, 755, 62]],
@@ -535,7 +535,7 @@ const TRACKS = {
   // Goons); the long wooden bridge; the second jungle's S; two jumps over a chasm into the golden temple (a right, a U-turn, a dash up the
   // slope); a glide out of the temple over the shallow lake past the stone pillars; the lakeside run and the last split with trick ramps.
   sw2: {
-    id: "jungle", scale: 1.6, road: 180, cup: "sleepy", music: "k_sleepy2", name: "DK Jungle", sub: "giant flower bounce · golden temple · glide over the lake", icon: "🛕",
+    id: "jungle", scale: 1.6, road: 180, cup: "sleepy", music: "k_sleepy2", name: "Golden Temple Jungle", sub: "giant flower bounce · golden temple · glide over the lake", icon: "🛕",
     ctrl: [[1626, 1403, 40], [1600, 1203, 44], [1741, 1075, 50], [1818, 973, 54], [1792, 845, 58], [1741, 742, 60], [1702, 614, 62], [1664, 461, 62], [1638, 333, 60], [1536, 192, 56], [1434, 179, 52],
       [1280, 282, 46], [1178, 410, 40], [1075, 486, 36], [922, 520, 34], [800, 470, 34], [680, 440, 34], [600, 520, 34], [660, 630, 36], [780, 700, 40], [800, 800, 44], [755, 890, 48], [690, 1000, 52],
       [600, 1170, 60], [500, 1260, 66], [370, 1230, 70], [250, 1290, 72], [240, 1410, 74], [330, 1480, 74], [450, 1505, 74], [614, 1536, 72], [768, 1600, 60], [845, 1702, 20], [1075, 1725, 12],
@@ -585,7 +585,7 @@ const TRACKS = {
   // the lake: the long diagonal and the twisting J are underwater, with Fish Bones swimming across; three ramps carry you up out of the water
   // to the line. Fall off the edge and you're fished out of the lake. Ghosts drift over the water.
   sw3: {
-    id: "boolake", scale: 1.28, road: 180, cup: "sleepy", music: "k_sleepy3", name: "Boo Lake", sub: "boardwalk over the lake · the underwater stretch · Fish Bones", icon: "👻",
+    id: "boolake", scale: 1.28, road: 180, cup: "sleepy", music: "k_sleepy3", name: "Phantom Lake", sub: "boardwalk over the lake · the underwater stretch · Bone Fish", icon: "👻",
     ctrl: [[294, 768, 20], [294, 512, 20], [320, 294, 20], [448, 205, 20], [678, 205, 20], [973, 205, 20], [1267, 225, 20], [1403, 346, 20], [1413, 576, 20], [1408, 819, 20], [1423, 1050, 20],
       [1567, 1229, 18], [1715, 1385, 14], [1790, 1510, 10], [1745, 1625, 4], [1605, 1630, -10], [1470, 1465, -30], [1216, 1183, -42], [993, 973, -46], [781, 781, -46], [614, 799, -46], [525, 960, -46],
       [527, 1203, -44], [594, 1382, -40], [748, 1449, -34], [824, 1592, -30], [748, 1751, -26], [525, 1792, -20], [320, 1702, -12], [276, 1472, -2], [282, 1203, 8], [287, 986, 16]],
@@ -619,12 +619,12 @@ const TRACKS = {
       };
     },
   },
-  // ---- Zakum Cup 🔥: normal 3-lap races. Fun to challenging: Thwomp Ruins, Wario's Gold Mine, Grumble Volcano.
+  // ---- Zakum Cup 🔥: normal 3-lap races. Fun to challenging: Golem Ruins, Dead Mine Rails, Zakum's Volcano.
   zk1: {
     // 1. Thwomp Ruins (Mario Kart 8): stone ruins in the Zakum mine. The start straight and two lefts; the long tunnel along the top where Rollers
     // roll out across the road; out of it the road splits round a pool (stay right past a Thwomp, go left past another, or splash straight across
     // the shallow water); in through the Thwomp-mouth tunnel; the zig-zag past two more Thwomps; and a glide off the ledge back down to the line.
-    id: "thwomp", scale: 1.7, road: 180, cup: "zakum", music: "k_zakum1", name: "Thwomp Ruins", sub: "Thwomps · Rollers in the tunnel · the pool split · glide home", icon: "🗿",
+    id: "thwomp", scale: 1.7, road: 180, cup: "zakum", music: "k_zakum1", name: "Golem Ruins", sub: "Block Golems · boulders in the tunnel · the pool split · glide home", icon: "🗿",
     ctrl: [[1567, 768, 40], [1536, 563, 44], [1510, 384, 48], [1382, 302, 50], [1203, 320, 50], [1050, 461, 48], [845, 384, 44], [589, 243, 38], [307, 179, 32], [141, 294, 26], [159, 525, 18],
       [218, 691, 12], [525, 845, 10], [563, 1101, 10], [512, 1280, 14], [576, 1459, 22], [678, 1741, 30], [845, 1766, 32], [1024, 1640, 34], [1150, 1580, 36], [1300, 1640, 38], [1485, 1592, 46],
       [1766, 1395, 58], [1792, 1203, 40], [1690, 1024, 38], [1613, 896, 39]],
@@ -658,7 +658,7 @@ const TRACKS = {
     // the bottom) and up again; round the top and into the tunnel where bats flit about; inside the mine a right, down and up, then a ramp with a
     // boost across the dark chasm; mine carts trundle along the rails (bump one and it shoves you on); out of the mine down the dipping road and
     // the twisting stretch, and a right at the line. No railings in the mine or on the twisty bit: drive off the edge and you fall.
-    id: "goldmine", scale: 1.65, road: 180, cup: "zakum", music: "k_zakum2", name: "Wario's Gold Mine", sub: "mine carts · the chasm jump · no railings", icon: "⛏️",
+    id: "goldmine", scale: 1.65, road: 180, cup: "zakum", music: "k_zakum2", name: "Dead Mine Rails", sub: "mine carts · the chasm jump · no railings", icon: "⛏️",
     ctrl: [[179, 1306, 60], [307, 1126, 58], [480, 1010, 40], [640, 922, 30], [768, 768, 42], [845, 512, 56], [800, 330, 60], [740, 200, 60], [790, 110, 58], [920, 95, 56], [1178, 230, 52],
       [1536, 435, 44], [1860, 500, 36], [1930, 666, 24], [1880, 820, 30], [1818, 930, 40], [1754, 1120, 26], [1741, 1280, 18], [1613, 1459, 10], [1357, 1613, 20], [1101, 1677, 30], [845, 1638, 36],
       [512, 1562, 46], [260, 1510, 54], [150, 1420, 58]],
@@ -691,7 +691,7 @@ const TRACKS = {
     // lava). Down from the line to the split round a rock; up the far side and leap the hexagon stepping stones; through the cave in the
     // volcano's flank and glide out of it; round the summit hairpin and back down to the line. The volcano lobs fireballs onto the road
     // (watch for their shadows), and on laps 2 and 3 more of the road crumbles away into the lava.
-    id: "volcano", scale: 1.42, road: 180, cup: "zakum", music: "k_zakum3", name: "Grumble Volcano", sub: "lava all round · fireballs · the road crumbles on later laps", icon: "🌋",
+    id: "volcano", scale: 1.42, road: 180, cup: "zakum", music: "k_zakum3", name: "Zakum's Volcano", sub: "lava all round · fireballs · the road crumbles on later laps", icon: "🌋",
     ctrl: [[576, 1190, 40], [666, 1382, 34], [794, 1510, 28], [860, 1700, 22], [1040, 1820, 20], [1300, 1830, 22], [1530, 1780, 26], [1792, 1638, 30], [1870, 1520, 34], [1792, 1400, 38], [1600, 1310, 42],
       [1430, 1200, 48], [1340, 1080, 54], [1270, 950, 60], [1210, 840, 64], [1150, 720, 68], [1060, 590, 72], [900, 520, 76], [800, 430, 80], [860, 330, 84], [1020, 300, 88], [1180, 260, 90], [1240, 150, 90],
       [1130, 50, 90], [880, 60, 90], [620, 100, 88], [400, 160, 84], [210, 260, 78], [200, 400, 70], [330, 520, 62], [420, 770, 54], [500, 1000, 46]],
@@ -727,12 +727,12 @@ const TRACKS = {
       };
     },
   },
-  // ---- Ludibrium Cup 🧸: the toy town and its clocktower. Fun to challenging: Tick-Tock Clock, Rainbow Road (SNES), Rainbow Road (Wii).
+  // ---- Ludibrium Cup 🧸: the toy town and its clocktower. Fun to challenging: Ludibrium Clocktower, Toybox Rainbow, Starlight Rainbow.
   ld1: {
     // 1. Tick-Tock Clock (Mario Kart DS / 8): inside Ludibrium's clocktower. The two long diagonals cross over the giant clock face, where the
     // hands sweep round (they knock you spinning); pendulums swing across the road; turning gears carry you round with them; the open stretches
     // at the top and round the far corner have no railings (into the clockwork you go); the big gears near the end throw you forward.
-    id: "ticktock", scale: 1.38, road: 180, cup: "ludi", fall: "⚙️ Into the clockwork!", music: "k_ludi3", name: "Tick-Tock Clock", sub: "the giant clock · pendulums · turning gears", icon: "🕰️",
+    id: "ticktock", scale: 1.38, road: 180, cup: "ludi", fall: "⚙️ Into the clockwork!", music: "k_ludi3", name: "Ludibrium Clocktower", sub: "the giant clock · pendulums · turning gears", icon: "🕰️",
     ctrl: [[1114, 1664, 20], [1434, 1600, 22], [1620, 1500, 24], [1590, 1330, 30], [1470, 1150, 36], [1331, 883, 40], [1203, 614, 48], [1100, 330, 56], [1150, 160, 60], [1357, 115, 62], [1766, 102, 62],
       [1882, 200, 60], [1766, 410, 54], [1587, 640, 46], [1331, 883, 40], [1203, 1101, 36], [1080, 1230, 34], [880, 1420, 30], [700, 1520, 28], [560, 1470, 26], [440, 1360, 24], [340, 1360, 23],
       [250, 1450, 22], [170, 1600, 20], [190, 1810, 18], [410, 1843, 18], [768, 1766, 18], [973, 1702, 19]],
@@ -762,7 +762,7 @@ const TRACKS = {
     // 2. Rainbow Road (Super Mario Kart, as remade for Mario Kart 7 / 8): a road of glowing rainbow tiles over the night sky above Ludibrium.
     // No railings anywhere (fall off and you're fished back out of space), tight right-angle turns and hairpins, rainbow Thwomps slamming down
     // on the corners, a hole in the middle of the bottom straight (go either side), and Ludibrium's toy houses far below.
-    id: "rrsnes", scale: 1.12, road: 180, cup: "ludi", fall: "🌌 Lost in space!", music: "k_ludi1", name: "Rainbow Road (SNES)", sub: "no railings · rainbow Thwomps · hairpins", icon: "🌈",
+    id: "rrsnes", scale: 1.12, road: 180, cup: "ludi", fall: "🌌 Lost in space!", music: "k_ludi1", name: "Toybox Rainbow", sub: "no railings · rainbow Block Golems · hairpins", icon: "🌈",
     ctrl: [[240, 930, 30], [240, 470, 32], [300, 280, 34], [480, 200, 36], [1320, 198, 36], [1520, 260, 36], [1590, 440, 34], [1590, 780, 32], [1518, 900, 30], [1320, 942, 30], [900, 942, 30],
       [750, 1008, 30], [702, 1170, 30], [750, 1302, 30], [930, 1350, 30], [1680, 1350, 32], [1840, 1395, 34], [1910, 1520, 36], [1920, 1740, 36], [1860, 1860, 34], [1650, 1890, 32], [1110, 1890, 30],
       [510, 1890, 30], [318, 1854, 30], [222, 1710, 30], [222, 1230, 30]],
@@ -793,7 +793,7 @@ const TRACKS = {
     // trick ramps; the wavy straight with item boxes and star bits; another dash ramp; the twisting holes section (red ramps round the holes);
     // a sharp left, a long right and the Star Shooter, which fires you through three star rings over the void; up a left with dash panels to the
     // ring ramp over a gap; the split round a hole with dash panels each side; and the last wide U-turn through the starry tunnel to the line.
-    id: "rrwii", scale: 1.15, road: 170, cup: "ludi", fall: "🌍 Fell toward the Earth!", music: "k_ludi2", name: "Rainbow Road (Wii)", sub: "the Star Shooter · star rings · no railings", icon: "🌠",
+    id: "rrwii", scale: 1.15, road: 170, cup: "ludi", fall: "🌍 Fell toward the Earth!", music: "k_ludi2", name: "Starlight Rainbow", sub: "the Star Cannon · star rings · no railings", icon: "🌠",
     ctrl: [[300, 1720, 140], [700, 1730, 120], [1000, 1730, 96], [1250, 1700, 90], [1450, 1640, 104], [1650, 1560, 110], [1820, 1440, 108], [1860, 1250, 106], [1840, 1060, 104], [1750, 930, 102],
       [1600, 930, 100], [1540, 1060, 98], [1420, 1200, 92], [1200, 1250, 100], [1000, 1210, 92], [820, 1240, 96], [640, 1170, 94], [520, 1020, 92], [600, 860, 90], [780, 780, 92], [880, 640, 94],
       [1060, 520, 98], [1300, 520, 104], [1500, 600, 110], [1820, 520, 70], [1880, 340, 74], [1760, 200, 80], [1500, 170, 84], [1200, 180, 86], [880, 200, 86], [600, 240, 84], [420, 330, 82],
@@ -836,8 +836,8 @@ const CUPS = {
   henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "town", "forest"], rule: "" },
   elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: brake early and drift round the corners" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Deep in the forest: boardwalks, ponds and gliders" },
-  zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Thwomps, mine carts and lava: no railings in places, so mind the edges" },
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 The clocktower and two Rainbow Roads: no railings on the rainbows, so mind the edges" },
+  zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Block Golems, mine carts and lava: no railings in places, so mind the edges" },
+  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 The clocktower and two rainbow roads: no railings on the rainbows, so mind the edges" },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
 function loadTrack(key) {
@@ -2042,7 +2042,7 @@ const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, 
   },
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, engineLoop: (ac, f) => engineLoop(ac, f), get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
       const A = PTS[a], Bp = PTS[b], dl = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), dt = (b - a) * SPC; if (dl < 260 || dl > 1100 || dt - dl < 450 || dt - dl > 1100) continue;
       const pts = shapeCut(a, b, [], w, kind); if (!pts) continue; const score = shapeCut.k * 2000 - Math.abs(dt - dl - 750); if (!best || score > best.score) best = { a, b, pts: pts.map(p => p.map(Math.round)), score, k: shapeCut.k }; }
@@ -2114,9 +2114,9 @@ function petStep(r, air, tt) {
       if (into < 0) { const tx = hx - nx * into, ty = hy - ny * into; if (Math.hypot(tx, ty) > .05) r.a = r.ma = Math.atan2(ty, tx); }
       if (!(r.hedgeT > performance.now())) { r.hedgeT = performance.now() + 500; r.v = Math.min(r.v, 160); if (r === K) { bumpSound(); K.shake = Math.max(K.shake, .15); } } } }
   { const now = performance.now() / 1000;
-    for (const t of THWOMPS) { const d = Math.hypot(r.x - t.x, r.y - t.y), z = thwompZ(t, now), R0 = 38;
-      if (d < R0 && z < 12 && r.z < 30 && thwompZ(t, now - .06) > 12) { r.squash = 1.1; r.v = 0; if (r === K) { spinOut("🗿 Squashed by a Thwomp!"); K.shake = .4; } else hit(r); }   // 💥 slammed
-      else if (d < R0 + 10 && z < 40 && d > 0) { const nx = (r.x - t.x) / d, ny = (r.y - t.y) / d; r.x = t.x + nx * (R0 + 10); r.y = t.y + ny * (R0 + 10); r.v = Math.min(r.v, 150); } } }   // a Thwomp on the ground is a solid block
+    for (const t of THWOMPS) { const d = Math.hypot(r.x - t.x, r.y - t.y), z = thwompZ(t, now), R0 = 38, ph = ((now + t.ph) % t.T) / t.T, slam = Math.floor((now + t.ph) / t.T);
+      if (d < R0 && ph >= .55 && ph < .66 && z < 30 && r.z < 30 && r.thwSlam !== slam) { r.thwSlam = slam; r.squash = 1.1; r.v = 0; if (r === K) { spinOut("🗿 Squashed by a Block Golem!"); K.shake = .4; } else hit(r); }   // 💥 caught under it as it lands (any frame rate)
+      else if (d < R0 + 10 && ph >= .66 && z === 0 && d > 0) { const nx = (r.x - t.x) / d, ny = (r.y - t.y) / d; r.x = t.x + nx * (R0 + 10); r.y = t.y + ny * (R0 + 10); r.v = Math.min(r.v, 150); } } }   // a Thwomp on the ground is a solid block
   { const now = performance.now() / 1000;
     for (const c of CARTS) { const q = cartAt(c, now); if (Math.abs(r.z) < 20 && Math.hypot(r.x - q.x, r.y - q.y) < 24 && !(r.cartT > now)) { r.cartT = now + 1; giveBoost(r, .7, 100); if (r === K) { flash("🛒 Cart boost!", 700); padSound(); } } } }   // 🛒 bump a mine cart: it shoves you on (like Mario Kart 8's)
   { const now = performance.now() / 1000;
@@ -2339,7 +2339,7 @@ function step(dt) {
   if (k.bonk > 0) k.bonk -= dt;
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
-    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "fishbone" ? "🐟 Fish Bone!" : p.k === "roller" ? "🪨 Roller!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Ice block!" : p.k === "fishbone" ? "🐟 Bone Fish!" : p.k === "roller" ? "🪨 Boulder!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }
   if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b) && !(k.rescue > 0)) { rescue(k, T.fall || (T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!")); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
@@ -3222,9 +3222,14 @@ function mpShowWaiting(total) {
 function mpShowResults(res) {
   if (state !== "done" || !res) return;
   const mine = res.find(r => r.name === MP.me);
-  if (MP.tallied !== MP.raceNo) { MP.tallied = MP.raceNo; for (const r of res) MP.tally[r.name] = (MP.tally[r.name] || 0) + (GP_PTS[r.place - 1] || 0); }   // this room's own standings, for everyone
+  if (MP.tallied !== MP.raceNo) { MP.tallied = MP.raceNo; for (const r of res) { MP.tally[r.name] = (MP.tally[r.name] || 0) + (GP_PTS[r.place - 1] || 0); if (r.bot) (MP.tBots ||= {})[r.name] = 1; }   // this room's own standings, for everyone
+    const rk = String(MP.track).split("@")[0], C = CUPS[cupOf(rk)], ci = C.tracks.indexOf(rk);   // 🏆 the cup goes on: 10 seconds to look at the results, then everyone is taken to the next track
+    MP.next = TRACKS[rk] && ci >= 0 && ci < C.tracks.length - 1 ? { t: C.tracks[ci + 1], n: ci + 2, at: performance.now() + 10000, cc: roomCC(), cup: cupOf(rk) } : null;
+    if (MP.next && MP.host === MP.me) { cup = MP.next.cup; track = MP.next.t; }
+    if (MP.next && MP.host !== MP.me) setTimeout(() => { if (MP.next && !mpReadyInfo().mine) mpReady(true); }, 600);   // (everyone's ready for the next race automatically)
+  }
   $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
-    <p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">👥 Room ${MP.code} · ${esc(TRACKS[String(MP.track).split("@")[0]] ? TRACKS[String(MP.track).split("@")[0]].name : "")} · ${CCS[raceCC].label}</p>
+    <p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">👥 Room ${MP.code} · ${(() => { const rk = String(MP.track).split("@")[0], C = CUPS[cupOf(rk)]; return TRACKS[rk] ? `${C.icon} ${esc(C.name)} race ${C.tracks.indexOf(rk) + 1}/3: ${esc(TRACKS[rk].name)}` : ""; })()} · ${CCS[raceCC].label}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${r.bot ? botImg(r.name) : spriteOf(r.name)}" alt=""></td><td>${r.bot ? "🤖 " : ""}${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
     <p class="k-rank">${res[0] && res[0].counted === false ? (res[0].humans != null && res[0].humans < 2 ? "⚠️ Races need at least 2 real players to count: no points or times this time." : `⚠️ Only races with 4 or more racers count: no points or times saved this time (${res[0].n} racers).`) : "🏆 Points and times saved (guild members only)."}</p>
@@ -3235,19 +3240,32 @@ function mpShowResults(res) {
 // after a room race: the host picks the next cup and track right here; everyone else watches the room standings (and a dancing Balrog)
 function mpNextHtml() {
   const host = MP.host === MP.me, rk = roomTrack(), t = TRACKS[rk], here = new Set(MP.players.map(p => p.name)), R = mpReadyInfo();
-  const order = Object.entries(MP.tally).filter(([n]) => here.has(n)).sort((a, b) => b[1] - a[1]);
-  const stand = order.length ? `<div class="k-stand"><b>🏆 Room standings</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${spriteOf(n)}" alt="">${esc(n)} <em>${p}</em></span>`).join("")}</div>` : "";
+  if (MP.next) {   // 🏆 in the middle of a cup: the standings, and a countdown to the next track
+    const nt = TRACKS[MP.next.t], left = Math.max(0, Math.ceil((MP.next.at - performance.now()) / 1000));
+    const order = Object.entries(MP.tally).filter(([n]) => here.has(n) || (MP.tBots || {})[n]).sort((a, b) => b[1] - a[1]);
+    return `<div class="k-stand"><b>🏆 ${esc(CUPS[MP.next.cup].name)} standings</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${(MP.tBots || {})[n] ? botImg(n) : spriteOf(n)}" alt="">${(MP.tBots || {})[n] ? "🤖 " : ""}${esc(n)} <em>${p}</em></span>`).join("")}</div>
+      <div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>🏁 Race ${MP.next.n}/3: ${nt.icon} ${esc(nt.name)}</b><small id="kCupNext">${left > 0 ? `Starting in ${left}…` : "Starting…"}</small></div></div>
+      <div class="row"><button class="sk-btn sk-private" data-a="lobby">🏠 Back to the lobby</button><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
+  }
+  const order = Object.entries(MP.tally).filter(([n]) => here.has(n) || (MP.tBots || {})[n]).sort((a, b) => b[1] - a[1]);
+  const stand = order.length ? `<div class="k-stand"><b>🏆 ${(() => { const lk = String(MP.track).split("@")[0], C = TRACKS[lk] && CUPS[cupOf(lk)]; return C && MP.results && C.tracks.indexOf(lk) === C.tracks.length - 1 ? `${esc(C.name)} final standings` : "Room standings"; })()}</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${(MP.tBots || {})[n] ? botImg(n) : spriteOf(n)}" alt="">${(MP.tBots || {})[n] ? "🤖 " : ""}${esc(n)} <em>${p}</em></span>`).join("")}</div>` : "";
   const pick = host ? `<p class="kt-pickhead">👑 You're the host: pick the next race</p>
       <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("")}</div>
-      <div class="kt-trackpick">${CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("")}</div>
+      <p class="k-diff">${CUPS[cup].tracks.map(k => `${TRACKS[k].icon} ${TRACKS[k].name}`).join(" → ")}</p>
       <div class="kt-diff">${Object.entries(CCS).map(([k, c]) => `<button type="button" data-cc="${k}" class="${+k === cc ? "on" : ""}">${c.label}</button>`).join("")}</div>
       ${playerList()}${botPick()}<p class="k-diff">${countNote()}</p>
-      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${(humansIn() < 2 && !botsWant) || !R.all ? "disabled" : ""}>${R.all ? `🏁 Race ${t.icon} ${esc(t.name)} · ${CCS[cc].label.split(" ")[1]}!` : `⏳ Waiting for ${R.waiting.length} to be ready…`}</button></div>
+      <div class="row"><button class="sk-btn bd-play" data-a="mpgo" ${(humansIn() < 2 && !botsWant) || !R.all ? "disabled" : ""}>${R.all ? `🏁 Start the ${esc(CUPS[cup].name)} · ${CCS[cc].label.split(" ")[1]}!` : `⏳ Waiting for ${R.waiting.length} to be ready…`}</button></div>
       ${humansIn() < 2 && !botsWant ? `<p class="k-diff">Everyone else left… waiting for someone to join (or turn on 🤖).</p>` : !R.all ? `<p class="k-diff">Waiting for ${R.waiting.map(esc).join(", ")} to press Ready ✋</p>` : ""}`
     : `${readyBtn(R.mine)}${playerList()}<div class="k-wait"><img class="k-dance" src="media/mobs/anim/jr_balrog.gif" alt=""><div><b>⏳ ${esc(MP.host || "The host")} 👑 is picking the next race</b>
-      <small>Next up: ${t.icon} ${esc(t.name)} · ${CCS[roomCC()].label}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
-  return `${stand}${pick}<div class="row"><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
+      <small>Next up: ${CUPS[cupOf(rk)].icon} ${esc(CUPS[cupOf(rk)].name)} (3 races) · ${CCS[roomCC()].label}${CUPS[cupOf(rk)].rule ? ` · ${CUPS[cupOf(rk)].rule}` : ""}</small></div></div>`;
+  return `${stand}${pick}<div class="row"><button class="sk-btn sk-private" data-a="lobby">🏠 Back to the lobby</button><button class="sk-btn sk-private" data-a="mpleave">🚪 Leave the room</button></div>`;
 }
+setInterval(() => {
+  if (!MP.next || !MP.code) return;
+  if (state !== "done" || $k("#kResult").hidden) { if (state === "menu") MP.next = null; return; }   // (gone back to the lobby: the cup stops)
+  const el = $k("#kCupNext"), left = Math.max(0, Math.ceil((MP.next.at - performance.now()) / 1000)); if (el) el.textContent = left > 0 ? `Starting in ${left}…` : "Starting…";
+  if (MP.host === MP.me && left <= 0 && !(MP.next.tryAt > performance.now())) { MP.next.tryAt = performance.now() + 1500; track = MP.next.t; cup = MP.next.cup; mpStart(); }
+}, 500);
 function mpRedrawNext() { const el = $k("#kNext"); if (el && !$k("#kResult").hidden) el.innerHTML = mpNextHtml(); }
 // ----- rooms: create / join / poll / start / leave
 // no name yet: take them to the name box (scroll there, focus it, shake it) instead of just showing an error at the bottom
@@ -3323,7 +3341,8 @@ async function mpPoll(first) {
     if (data.status === "racing" && spec && !MP.watching && state === "menu") mpWatch(data);   // 👀 joined mid-race: watch it
     if (MP.watching && data.status !== "racing") stopWatch();
     if (data.status === "racing" && !spec && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in > -4) {
-      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null; MP.endAt = 0; MP.firstName = null;
+      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null; MP.endAt = 0; MP.firstName = null; MP.next = null;
+      { const st = String(data.track || "").split("@")[0]; if (TRACKS[st] && CUPS[cupOf(st)].tracks.indexOf(st) === 0) { MP.tally = {}; MP.tBots = {}; } }   // 🏆 a cup's first race: fresh room standings
       if (mode !== "mp") { mode = "mp"; drawMode(); }
       start();
     }
@@ -3574,7 +3593,7 @@ function showBest() {
   let b = null; try { b = JSON.parse(store.get(key)); } catch (e) {}
   $k("#kMine").innerHTML = b && b.race ? `🏆 Your best: ${bt.open ? "run" : "race"} <b>${fmt(b.race)}</b>${bt.open ? "" : ` · lap <b>${fmt(b.lap)}</b>`}` : "No time yet on this track. Go set one!";
 }
-$k("#kGo").onclick = () => { if (mode === "mp") { askFull(); mpStart(); } else start(); };
+$k("#kGo").onclick = () => { if (mode === "mp") { track = CUPS[cup].tracks[0]; MP.next = null; askFull(); mpStart(); } else start(); };
 // the room's track as everyone should see it: the host's own pick, or what the host last told the room
 const roomTrack = () => { const st = String(MP.track || "").split("@")[0]; return MP.host === MP.me ? track : TRACKS[MP.pick] ? MP.pick : TRACKS[st] ? st : "henesys"; };
 const roomCC = () => { const sc = String(MP.track || "").split("@")[1]; return MP.host === MP.me ? cc : MP.pick ? (MP.pickCC || 150) : CCS[sc] ? +sc : 150; };
@@ -3585,12 +3604,13 @@ function drawTrack(light) {
   $k("#kCupPick").innerHTML = Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("");
   $k("#kCupPick").hidden = pickHidden;
   $k("#kTrackPick").innerHTML = CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("");
-  $k("#kTrackPick").hidden = mode === "gp" || pickHidden;
+  $k("#kTrackPick").hidden = mode === "gp" || mode === "mp" || pickHidden;   // (multiplayer races whole cups)
   $k("#kCC").hidden = pickHidden || mode === "tt";   // Time Trial is always 150cc
   const rule = C.rule ? `<small class="kt-rule">${C.rule}</small>` : "";
   $k("#kPickHead").hidden = !(mode === "mp" && (!inRoom || MP.host === MP.me));
-  $k("#kPickHead").textContent = inRoom ? "👑 Pick the cup and track for this race" : "Pick the cup and track for your room";
+  $k("#kPickHead").textContent = inRoom ? "👑 Pick the cup: its 3 races are played one after another" : "Pick the cup for your room";
   $k("#kTrackCard").innerHTML = mode === "gp" ? `<b>🏆 ${C.name}</b><small>${C.tracks.map(c => TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}</small>${rule}`
+    : mode === "mp" ? `<b>🏆 ${C.name}: 3 races in a row</b><small>${C.tracks.map(c => (inRoom && c === rk ? "▶ " : "") + TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}${inRoom ? " · " + CCS[roomCC()].label : ""}</small>${rule}${!inRoom ? `<small>Make a room and you're the host 👑: your room races this cup.</small>` : ""}`
     : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : "3 laps"} · ${inRoom ? CCS[roomCC()].label + " · " : ""}${t.sub}</small>${rule}${mode === "mp" && !inRoom ? `<small>Make a room and you're the host 👑: this is the first race.</small>` : ""}`;
   $k(".kt-track img").src = (t.art || HEN_ART).sky;
   if (mode === "gp") $k("#kGo").textContent = `🏆 Start the ${C.name}!`;
@@ -3660,16 +3680,17 @@ $k("#kLeave").onclick = () => {
   quit();
 };
 $k("#kResult").addEventListener("click", e => {
+  const rb0 = e.target.closest("[data-ready]"); if (rb0) { mpReady(rb0.dataset.ready === "1"); return; }   // (these buttons have no data-a: handle them first)
+  const bb0 = e.target.closest("[data-bots]"); if (bb0) { setBots(+bb0.dataset.bots); return; }
   const a = e.target.closest("[data-a]"); if (!a) return;
   if (a.dataset.a === "again") { if (mode === "gp") gp = null; start(); }
   if (a.dataset.a === "next") { gp.race++; start(); }
   if (a.dataset.a === "podium") podium();
   if (a.dataset.a === "back") { gp = null; quit(); }
   if (a.dataset.a === "room") quit();
-  if (a.dataset.a === "mpgo") { a.disabled = true; askFull(); mpStart(); }
-  const rb = e.target.closest("[data-ready]"); if (rb) mpReady(rb.dataset.ready === "1");
-  const bb = e.target.closest("[data-bots]"); if (bb) setBots(+bb.dataset.bots);
-  if (a.dataset.a === "mpleave") { mpLeave(); quit(); }
+  if (a.dataset.a === "mpgo") { a.disabled = true; track = CUPS[cup].tracks[0]; MP.next = null; askFull(); mpStart(); }   // (a new cup starts at its first race)
+  if (a.dataset.a === "lobby") { MP.next = null; quit(); drawRoom(); }   // back to the room's lobby (you stay in the room)
+  if (a.dataset.a === "mpleave") { MP.next = null; mpLeave(); quit(); }
 });
 $k("#kResult").addEventListener("click", e => {   // the host's cup / track pick on the results screen
   const c = e.target.closest("[data-c]"), t = e.target.closest("[data-t]"), v = e.target.closest("[data-cc]"); if (!c && !t && !v) return;
@@ -3732,73 +3753,27 @@ function noise(ac) {
   return noiseBuf;
 }
 let screechAt = 0, crunchAt = 0;
-// 🏎️ the engine: a modelled V8 (like a Dodge Charger) instead of a buzzing oscillator. Each loop is real combustion pulses:
-// 8 cylinders firing with the cross-plane V8's uneven rhythm (that's the muscle-car burble), every pulse ringing through
-// exhaust-pipe resonances, then a little saturation. Two loops (low and high rpm) blend as the revs climb; on top a quiet
-// turbo whistle (Supra style) rises with speed. Made once in the browser, nothing downloaded.
-const ENGBUF = {};
-function engineLoop(ac, fire) {
-  const key = fire + ":" + ac.sampleRate; if (ENGBUF[key]) return ENGBUF[key];
-  const sr = ac.sampleRate, n = 32, len = Math.round(n / fire * sr), d = new Float32Array(len), per = sr / fire;
-  const amp = [1, .62, .9, .55, .97, .7, .84, .6], jit = [0, .07, -.04, .09, -.02, .06, -.07, .03];   // uneven V8 firing
-  const RES = [[fire * 1.0, .034, 1], [fire * 2.02, .02, .8], [235, .016, .7], [610, .008, .38], [1450, .0035, .1]];   // pipe + body resonances [Hz, decay s, level]
-  let seed = 9; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let k = 0; k < n; k++) {
-    const t0 = (k + jit[k % 8] * .5) * per, A = amp[k % 8] * (.92 + rnd() * .16), ph = RES.map(() => rnd() * 6.28), plen = Math.round(.09 * sr);
-    for (let i = 0; i < plen; i++) {
-      const t = i / sr; let v = 0;
-      for (let r = 0; r < RES.length; r++) { const [f, dc, lv] = RES[r]; v += lv * Math.exp(-t / dc) * Math.sin(6.2832 * f * t + ph[r]); }
-      v += (rnd() * 2 - 1) * .2 * Math.exp(-t / .004);   // the bang itself
-      d[(Math.round(t0) + i) % len] += A * v;
-    }
-  }
-  let peak = 0; for (let i = 0; i < len; i++) { d[i] = Math.tanh(d[i] * .9); peak = Math.max(peak, Math.abs(d[i])); }
-  for (let i = 0; i < len; i++) d[i] /= peak || 1;
-  const buf = ac.createBuffer(1, len, sr); buf.getChannelData(0).set(d); return (ENGBUF[key] = buf);
-}
-// the real engine: two loops cut from a recording of a Maserati GranTurismo S V8 (lmartins, Freesound, CC BY 4.0):
-// idle (~55 Hz rumble) and high revs (~130 Hz). They're re-pitched with your revs and blended; the modelled V8 above is only the fallback.
-const REAL = { idle: null, high: null, base: { idle: 55, high: 130 }, loading: false };
-async function loadRealEngine() {
-  const ac = window.getAC && window.getAC(); if (!ac || REAL.loading || REAL.idle) return; REAL.loading = true;
-  try {
-    const get = async u => { const r = await fetch(u); const b = await r.arrayBuffer(); return await new Promise((ok, no) => ac.decodeAudioData(b, ok, no)); };
-    [REAL.idle, REAL.high] = await Promise.all([get("media/kart/sound/eng_idle.wav?v=2"), get("media/kart/sound/eng_high.wav?v=2")]);
-    if (eng && !eng.real) stopEngine();   // swap the fallback for the real one
-  } catch (e) { REAL.idle = REAL.high = null; } finally { REAL.loading = false; }
-}
-function engine() {
+function engine() {   // 🏎️ a little go-kart engine, like Mario Kart's: a soft, light buzz whose pitch rises smoothly with your speed (no roar, no turbo, no "pssh")
   const ac = window.getAC && window.getAC(); if (!ac || state === "menu") return;
-  if (!REAL.idle && !REAL.loading) loadRealEngine();
   if (!eng) {
-    const real = !!(REAL.idle && REAL.high);
-    const mk = (buf, fire) => { const src = ac.createBufferSource(), g = ac.createGain(); src.buffer = buf || engineLoop(ac, fire); src.loop = true; g.gain.value = 0; src.connect(g); src.start(); return { src, g }; };
-    const lo = mk(real && REAL.idle, 40), hi = mk(real && REAL.high, 120), f = ac.createBiquadFilter(), g = ac.createGain();
-    f.type = "lowpass"; f.frequency.value = 1800; f.Q.value = .7; g.gain.value = 0;
-    lo.g.connect(f); hi.g.connect(f); f.connect(g).connect(ac.destination);
-    const tb = ac.createOscillator(), tg = ac.createGain(); tb.type = "sine"; tg.gain.value = 0; tb.connect(tg).connect(ac.destination); tb.start();   // turbo
-    const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();   // wind
-    n.buffer = noise(ac); n.loop = true; nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .6; ng.gain.value = 0;
-    n.connect(nf).connect(ng).connect(ac.destination); n.start();
-    eng = { lo, hi, f, g, tb, tg, n, ng, nf, lastV: 0, real, bl: real ? REAL.base.idle : 40, bh: real ? REAL.base.high : 120 };
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator(), m1 = ac.createGain(), m2 = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain();
+    o1.type = "sawtooth"; o2.type = "square"; m1.gain.value = .55; m2.gain.value = .25; f.type = "lowpass"; f.Q.value = .5; g.gain.value = 0;
+    const lfo = ac.createOscillator(), lg = ac.createGain(), trem = ac.createGain(); lfo.type = "sine"; lg.gain.value = .3; trem.gain.value = .7;   // the putter of a small engine
+    lfo.connect(lg).connect(trem.gain);
+    o1.connect(m1).connect(f); o2.connect(m2).connect(f); f.connect(trem).connect(g).connect(ac.destination); o1.start(); o2.start(); lfo.start();
+    const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();   // a breath of wind at speed
+    n.buffer = noise(ac); n.loop = true; nf.type = "bandpass"; nf.frequency.value = 900; nf.Q.value = .6; ng.gain.value = 0; n.connect(nf).connect(ng).connect(ac.destination); n.start();
+    eng = { o1, o2, f, g, lfo, n, ng, nf };
   }
-  const v = Math.abs(K.v); let f = v / VMAX; f = f > 1 ? 1 + (1 - 1 / f) : f;
-  // revs: climb through each gear, drop at 1/3 and 2/3 of top speed like gear changes, and keep rising in a boost
-  const gear = .6 + .35 * (.9 * f + 3 * ((Math.min(f, 1) % (1 / 3)))), t = ac.currentTime;
-  const fire = eng.real ? (55 + Math.max(0, gear - .6) * 400) * (f > 1 ? f : 1) : (40 + Math.max(0, gear - .6) * 560) * (f > 1 ? f : 1);
-  const mix = eng.real ? Math.max(0, Math.min(1, (fire - 72) / 52)) : Math.max(0, Math.min(1, (fire - 85) / 70));   // low loop -> high loop
-  eng.lo.src.playbackRate.setTargetAtTime(Math.min(3, fire / eng.bl), t, .05); eng.hi.src.playbackRate.setTargetAtTime(Math.max(.6, fire / eng.bh), t, .05);
-  eng.lo.g.gain.setTargetAtTime(1 - mix, t, .08); eng.hi.g.gain.setTargetAtTime(mix, t, .08);
-  const on = state !== "done", thr = state === "race" && K.v > 0 ? 1 : .55;   // on the gas it's louder and brighter
-  eng.g.gain.setTargetAtTime(on ? (eng.real ? .21 + Math.min(.14, v / 2000) : .16 + Math.min(.12, v / 2600)) * thr : 0, t, .1);
-  eng.f.frequency.setTargetAtTime(eng.real ? 2200 + fire * 14 * thr : 520 + fire * 9 * thr, t, .1);
-  eng.tb.frequency.setTargetAtTime(1800 + v * 11, t, .2); eng.tg.gain.setTargetAtTime(state === "race" ? Math.min(.012, (v / VMAX) ** 2 * .01) : 0, t, .2);
-  if (state === "race" && eng.lastV > 200 && (v < eng.lastV - 60 || K.spin > 0) && t - (eng.bov || 0) > 1.2) { eng.bov = t; noiseHit(2400, .35, .06, 1.2, 900); }   // blow-off valve "pssh" when you lose speed fast
-  eng.lastV = eng.lastV * .9 + v * .1;
-  eng.ng.gain.setTargetAtTime(state === "race" ? Math.min(.05, (v / VMAX) ** 2 * .035) : 0, t, .15);
-  eng.nf.frequency.setTargetAtTime(700 + v * 2.5, t, .2);
-  if (K.drift && state === "race" && t - screechAt > .17) { screechAt = t; noiseHit(2600, .12, .035, 8); }   // tyre screech
-  if (K.off && v > 60 && K.z <= 0 && state === "race" && t - crunchAt > .1) { crunchAt = t; noiseHit(300, .08, .05, 1.5); }   // grass crunch
+  const v = Math.abs(K.v), t = ac.currentTime, p = Math.min(1.3, v / VMAX), boost = K.boost > 0 ? 1.12 : 1;
+  const hz = (68 + 150 * p) * boost;   // idle putter up to a happy high buzz
+  eng.o1.frequency.setTargetAtTime(hz, t, .08); eng.o2.frequency.setTargetAtTime(hz * 1.006, t, .08); eng.lfo.frequency.setTargetAtTime(hz / 4, t, .08);
+  eng.f.frequency.setTargetAtTime(500 + hz * 4, t, .1);
+  const on = state !== "done", thr = state === "race" && K.v > 0 ? 1 : .6;
+  eng.g.gain.setTargetAtTime(on ? (.035 + .025 * Math.min(1, p)) * thr : 0, t, .12);   // quiet: it sits under the music
+  eng.ng.gain.setTargetAtTime(state === "race" ? Math.min(.02, p * p * .015) : 0, t, .15); eng.nf.frequency.setTargetAtTime(700 + v * 2.5, t, .2);
+  if (K.drift && state === "race" && t - screechAt > .2) { screechAt = t; noiseHit(2600, .1, .018, 8); }   // a soft tyre squeal while drifting
+  if (K.off && v > 60 && K.z <= 0 && state === "race" && t - crunchAt > .12) { crunchAt = t; noiseHit(300, .08, .03, 1.5); }   // grass under the wheels
 }
 function noiseHit(freq, dur, vol, q = 1, sweep) {
   const ac = window.getAC && window.getAC(); if (!ac) return;
@@ -3810,7 +3785,7 @@ function noiseHit(freq, dur, vol, q = 1, sweep) {
 const burstSound = pow => { const v = .05 + pow / 2400; tone(180, .35, "sawtooth", v, 900); noiseHit(800, .4, v * 1.4, .8, 3500); };   // boost: a rising roar + a whoosh
 const whooshSound = () => noiseHit(1500, .25, .05, 1, 400);   // letting go of a drift
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopEngine(); });
-function stopEngine() { if (eng) { try { eng.lo.src.stop(); eng.hi.src.stop(); eng.tb.stop(); eng.n.stop(); } catch (e) {} eng = null; } }
+function stopEngine() { if (eng) { try { eng.o1.stop(); eng.o2.stop(); eng.lfo.stop(); eng.n.stop(); } catch (e) {} eng = null; } }
 function tone(f, dur, type = "square", vol = .08, f2) {
   const ac = window.getAC && window.getAC(); if (!ac) return;
   const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t);
