@@ -362,19 +362,21 @@ export function create(A) {
     }
     // ❄ ice caves: a crystal arch over the road (open at both ends), with a red rail along its foot
     for (const cv of t.caves || []) {
-      const shell = (R0, mat, ht) => { const K = 18, P = [], UV = [], IX = []; let rows = 0, L = 0;
+      const shell = (R0, mat, ht, ext = 0) => { const K = 18, P = [], UV = [], IX = []; let rows = 0, L = 0;
         for (let i = cv.a; i <= cv.b; i += 2, rows++) {
-          const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), base = h(p[0], p[1]); if (rows) L += 2 * t.SPC;
-          for (let k = 0; k <= K; k++) { const th2 = Math.PI * k / K, o = -Math.cos(th2) * R0, y = Math.sin(th2) * R0 * ht; P.push(p[0] - Math.sin(a) * o, base + y - 6, p[1] + Math.cos(a) * o); UV.push(k / K * 3, L / 160); }
+          const sm = ext ? 10 : 1, p = t.PTS[i % t.N], p0 = t.PTS[(i - sm + t.N) % t.N], q = t.PTS[(i + sm + 1) % t.N], a = Math.atan2(q[1] - p0[1], q[0] - p0[0]), base = h(p[0], p[1]); if (rows) L += 2 * t.SPC;   // (a big cave turns with the road smoothly, so its walls never fold on a tight bend)
+          let inS = 0, inF = 1; if (ext) { const pa = t.PTS[(i - 2 * sm + t.N) % t.N], qb = t.PTS[(i + 2 * sm) % t.N], a1 = Math.atan2(p[1] - pa[1], p[0] - pa[0]), a2 = Math.atan2(qb[1] - p[1], qb[0] - p[0]); let da = a2 - a1; da = Math.atan2(Math.sin(da), Math.cos(da));
+            const rt = Math.hypot(qb[0] - pa[0], qb[1] - pa[1]) / Math.max(1e-3, 2 * Math.abs(da)); inS = Math.sign(da); inF = Math.min(1, Math.max(rt * .8, t.ROAD / 2 + t.CURB + 26) / R0); }   // on a tight bend the inside wall comes in (so it never folds over)
+          for (let k = 0; k <= K; k++) { const th2 = -ext + (Math.PI + 2 * ext) * k / K; let o = -Math.cos(th2) * R0; if (o * inS > 0) o *= inF; const y = Math.sin(th2) * R0 * ht; P.push(p[0] - Math.sin(a) * o, base + y - 6, p[1] + Math.cos(a) * o); UV.push(k / K * 3, L / 160); }
         }
         for (let r = 0; r < rows - 1; r++) for (let k = 0; k < K; k++) { const a = r * (K + 1) + k, b = a + K + 1; IX.push(a, b, a + 1, a + 1, b, b + 1); }
         const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
         const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
-      const R0 = t.ROAD / 2 + t.CURB + 14;
-      shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : cv.crystal ? new THREE.MeshLambertMaterial({ map: caveTex(), color: 0x5a6fa8, side: THREE.DoubleSide, emissive: 0x0a1838 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);   // (the crystal cave is dark inside: its glowing crystals light it)   // the crystal (or rock) inside
-      shell(R0 + 16, cv.crystal ? new THREE.MeshLambertMaterial({ color: 0xbfdcff, side: THREE.DoubleSide, emissive: 0x2a4a7a, flatShading: true }) : new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), .8);
-      if (cv.crystal) crystalCave(t, cv, R0);                // a mound of snow over it
-      if (cv.rock || cv.temple || cv.star) continue;
+      const R0 = cv.half || t.ROAD / 2 + t.CURB + 14, HTR = cv.half ? .85 : .72, EXT = cv.half ? .2 : 0;   // (the crystal cave is a big one)
+      shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : cv.crystal ? new THREE.MeshLambertMaterial({ map: caveTex(), color: 0x5a6fa8, side: THREE.DoubleSide, emissive: 0x0a1838 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), HTR, EXT);   // (the crystal cave is dark inside: its glowing crystals light it)   // the crystal (or rock) inside
+      shell(R0 + 16, cv.crystal ? new THREE.MeshLambertMaterial({ color: 0xbfdcff, side: THREE.DoubleSide, emissive: 0x2a4a7a, flatShading: true }) : new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), HTR + .08, EXT);
+      if (cv.crystal) crystalCave(t, cv, R0, R0 * HTR);                // a mound of snow over it
+      if (cv.rock || cv.temple || cv.star || cv.crystal) continue;
       const RP = [], RI = [];   // the red rail (one side, like Double Dash!!)
       for (let i = cv.a, r = 0; i <= cv.b; i += 2, r++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = t.ROAD / 2 + t.CURB + 6, x = p[0] - Math.sin(a) * o, y = p[1] + Math.cos(a) * o, gz = h(x, y);
         RP.push(x, gz, y, x, gz + 16, y); if (r) { const b = r * 2; RI.push(b - 2, b, b - 1, b - 1, b, b + 1); } }
@@ -614,18 +616,63 @@ export function create(A) {
   }
   const glowDisc = (() => { let t = null; return () => t || (t = ctex(64, 64, (g, W) => { const gr = g.createRadialGradient(W / 2, W / 2, 2, W / 2, W / 2, W / 2); gr.addColorStop(0, "rgba(255,255,255,.9)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, W, W); })); })();
   function addGlow(x, y, z, r, c) { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 24), new THREE.MeshBasicMaterial({ map: glowDisc(), color: c, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(x, y + 1.2, z); scene.add(m); roadObjs.push(m); }
-  function crystalCave(t, cv, R0) {   // 💎 the crystal cave: crystal clusters along the foot of both walls lighting it, icicles hanging from the roof, a crown of big clusters on the hill outside and a crystal gateway at each end
+  // 🧊 El Nath's ice stones (maplestory.io) made solid: each picture's outline cut out and given thickness, the painting on its front and back, frosty bevelled ice round the sides
+  let stoneKey = null; const stoneGeos = new Map();
+  function stoneGeo(im) {
+    if (stoneGeos.has(im)) return stoneGeos.get(im);
+    const W = im.width, H = im.height, c = canvas(W, H), g = c.getContext("2d"); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, W, H).data, L = [], R = [];
+    const ra = [], rb = []; for (let y = 0; y < H; y++) { let a = -1, b = -1; for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 90) { if (a < 0) a = x; b = x; } ra.push(a); rb.push(b); }
+    const rows = ra.map((a, y) => y).filter(y => ra[y] >= 0), y0 = rows[0], y1 = rows[rows.length - 1], avg = (arr, y, r) => { let sm = 0, n = 0; for (let j = Math.max(y0, y - r); j <= Math.min(y1, y + r); j++) if (arr[j] >= 0) { sm += arr[j]; n++; } return sm / n; };   // (a smooth outline: each side averaged over nearby rows)
+    for (let y = y0; y <= y1; y = y < y1 && y + 5 > y1 ? y1 : y + 5) { L.push([avg(ra, y, 4) - W / 2, H - y]); R.push([avg(rb, y, 4) + 1 - W / 2, H - y]); if (y === y1) break; }
+    const sh = new THREE.Shape(); L.forEach(([x, y], k) => k ? sh.lineTo(x, y) : sh.moveTo(x, y)); for (let k = R.length - 1; k >= 0; k--) sh.lineTo(R[k][0], R[k][1]); sh.closePath();
+    const D = W * .34, geo = new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: true, bevelThickness: D * .18, bevelSize: W * .025, bevelSegments: 3, curveSegments: 1 }); geo.translate(0, 0, -D / 2);
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.repeat.set(1 / W, 1 / H); tx.offset.set(.5, 0); tx.magFilter = THREE.NearestFilter;
+    const mats = [new THREE.MeshLambertMaterial({ map: tx, alphaTest: .35, emissive: 0x1a2c48 }), new THREE.MeshLambertMaterial({ color: 0x8eaed0, emissive: 0x16283e, flatShading: true })];
+    const r = { geo, mats, H }; stoneGeos.set(im, r); return r;
+  }
+  function iceStone(im, x, z, y, hh, face, lean = 0) {   // one solid stone, hh tall, its painted front facing the angle `face`
+    const s = stoneGeo(im), m = new THREE.Mesh(s.geo, s.mats), k = hh / s.H; m.scale.set(k, k, k); m.position.set(x, y - 3, z); m.rotation.set(lean, Math.PI / 2 - face, 0); scene.add(m); roadObjs.push(m); return m;
+  }
+  function buildIceStones(t) {
+    const ims = t.iceStones; let sd0 = 47; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+    for (const o of t.props3d || []) if (o.stone) { iceStone(ims[Math.abs(Math.round(o.x + o.y)) % 6], o.x, o.y, h(o.x, o.y), (o.h || 70) * 1.15, o.fa); addGlow(o.x, h(o.x, o.y), o.y, (o.h || 70) * .55, 0x9fd8ff); }   // the stones standing in the road
+    for (const cv of t.caves || []) if (cv.crystal) {
+      const W = cv.half || 160, pt = (i, o) => { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]); return [p[0] - Math.sin(a) * o, p[1] + Math.cos(a) * o, RE[i % t.N], a]; };
+      for (let i = cv.a + 12; i <= cv.b - 12; i += 16 + Math.floor(rr() * 24)) { const sd = rr() < .5 ? -1 : 1, sz = .5 + rr() * rr() * 1.4, [x, z, base, a] = pt(i, sd * (W - 18 - sz * 6));   // along the walls, all sizes, facing the road
+        iceStone(ims[Math.floor(rr() * 6)], x, z, base, 40 + sz * 40, a - sd * Math.PI / 2 + (rr() - .5) * .6); }
+      for (const i of [cv.a, cv.b]) for (const sd of [-1, 1]) { const [x, z, base, a] = pt(i, sd * (W + 40)); iceStone(ims[sd > 0 ? 5 : 3], x, z, base, 130, a + (i === cv.a ? Math.PI : 0)); }   // big stones guarding each entrance
+    }
+  }
+  function rockyCave(t, cv) {   // a cave, not a tube: a wide floor, uneven walls bulging in and out, a lumpy high roof; a snowy rock hill over it
+    const W = cv.half || 160, HT = cv.height || 150, N = t.N, P = t.PTS, K = 30, seed = 13;
+    const build = (dw, dh, amp, sd2, mat) => { const pos = [], uv = [], ix = []; let rows = 0, L = 0, prev = null;
+      for (let i = cv.a; i <= cv.b; i += 2, rows++) {
+        const p = P[i % N], q = P[(i + 2) % N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), base = RE[i % N], nx = -Math.sin(a), nz = Math.cos(a); if (prev) L += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p;
+        const wR = W * (1 + .14 * (vnoise(L / 260, 3.1, seed) - .5) * 2) + dw, hH = HT * (1 + .16 * (vnoise(L / 300, 7.7, seed) - .5) * 2) + dh, ends = Math.min(1, (i - cv.a) / 10, (cv.b - i) / 10);
+        const push = (o, y, u) => { pos.push(p[0] + nx * o, base + y, p[1] + nz * o); uv.push(u, L / 140); };
+        push(wR * 1.02, -70, 0);   // a skirt down into the ground, so no daylight shows under the walls
+        for (let k = 0; k <= K; k++) { const th = Math.PI * k / K, bump = 1 + amp * (vnoise(k * .55 + L / 90, L / 70 + k * .21, sd2) - .5) * 2 * (.4 + .6 * ends), ro = -Math.cos(th) * wR * bump, y = Math.sin(th) * hH * bump * (k === 0 || k === K ? 0 : 1);
+          push(ro, y - 4, k / K * 4); }
+        push(-wR * 1.02, -70, 4);
+      }
+      const R = K + 3; for (let r = 0; r < rows - 1; r++) for (let k = 0; k < R - 1; k++) { const a0 = r * R + k, b0 = a0 + R; ix.push(a0, b0, a0 + 1, a0 + 1, b0, b0 + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(ix); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mat); scene.add(m); roadObjs.push(m); };
+    build(0, 0, .2, seed, new THREE.MeshLambertMaterial({ map: caveTex(), color: 0x6a80b8, emissive: 0x0a1838, flatShading: true, side: THREE.DoubleSide }));   // the inside: dark rock-ice, faceted and uneven
+    build(48, 56, .1, seed + 5, new THREE.MeshLambertMaterial({ color: 0xeef5fc, emissive: 0x2a3a50, flatShading: true, side: THREE.DoubleSide }));   // the snowy hill over it
+    crystalCave(t, cv, W, HT);
+  }
+  function crystalCave(t, cv, R0, HT = R0 * .72) {   // 💎 the crystal cave: crystal clusters along the foot of both walls lighting it, icicles hanging from the roof, a crown of big clusters on the hill outside and a crystal gateway at each end
     const cols = [0x7fe8ff, 0xc4a4ff, 0x9fd8ff, 0xffb0e8], place = (m, x, y, z) => { m.position.set(x, y, z); scene.add(m); roadObjs.push(m); return m; };
     const icy = new THREE.MeshPhongMaterial({ color: 0xeaf6ff, emissive: 0x4a6a90, specular: 0xffffff, shininess: 120, flatShading: true, transparent: true, opacity: .85 });
-    const pt = (i, o) => { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]); return [p[0] - Math.sin(a) * o, p[1] + Math.cos(a) * o, h(p[0], p[1]), a]; };
-    for (let i = cv.a + 6, n = 0; i <= cv.b - 6; i += 11, n++) for (const sd of [-1, 1]) {   // little clusters at the foot of the walls, alternating sides, each with a pool of coloured light
-      if ((n + (sd > 0 ? 1 : 0)) % 2) continue; const c = cols[(n + (sd > 0 ? 2 : 0)) % 4], [x, z, base, a] = pt(i, sd * (R0 - 12)), g = gemCluster(c, 30 + (n * 7 % 3) * 8, 6, n);
-      g.rotation.set(Math.sin(a) * sd * .35, n, -Math.cos(a) * sd * .35); place(g, x, base - 3, z); addGlow(x - Math.sin(a) * -sd * 16, base, z + Math.cos(a) * -sd * 16, 30, c);
-    }
-    for (let i = cv.a + 10, n = 0; i <= cv.b - 10; i += 13, n++) for (const off of [-.5, .5]) { const [x, z, base] = pt(i, off * R0), hh = 18 + (n * 7 % 3) * 6, ic = new THREE.Mesh(new THREE.ConeGeometry(3.5 + (n % 2), hh, 6), icy);   // icicles over the sides of the road
-      ic.rotation.x = Math.PI; place(ic, x, base + Math.sqrt(1 - off * off) * R0 * .72 - 6 - hh / 2, z); }
-    for (let i = cv.a + 20, n = 0; i <= cv.b - 20; i += 34, n++) { const [x, z, base, a] = pt(i, (n % 2 ? 1 : -1) * R0 * .25), g = gemCluster(0xcfe4ff, 110 + (n % 3) * 30, 14, n); g.rotation.y = n; place(g, x, base + R0 * .62, z); }   // a crown of big clusters along the hilltop
-    for (const i of [cv.a, cv.b]) for (const sd of [-1, 1]) { const [x, z, base, a] = pt(i, sd * (R0 + 18)), g = gemCluster(sd > 0 ? 0x9fd8ff : 0xc4a4ff, 120, 15, sd); g.rotation.set(Math.sin(a) * sd * .18, 0, -Math.cos(a) * sd * .18); place(g, x, base - 6, z); addGlow(x, base, z, 46, sd > 0 ? 0x9fd8ff : 0xc4a4ff); }   // the gateway
+    const pt = (i, o) => { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]); return [p[0] - Math.sin(a) * o, p[1] + Math.cos(a) * o, RE[i % t.N], a]; };
+    if (!t.iceStones) { let sd0 = 31; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;   // crystals tucked against the walls, far from the road: uneven gaps, all sizes from little to big
+      for (let i = cv.a + 12; i <= cv.b - 12; i += 14 + Math.floor(rr() * 22)) { const sd = rr() < .5 ? -1 : 1, c = cols[Math.floor(rr() * 4)], sz = .45 + rr() * rr() * 1.6, [x, z, base, a] = pt(i, sd * (R0 - 8 - sz * 4)), g = gemCluster(c, 34 * sz + 10, 6 * Math.sqrt(sz) + 2, rr() * 6);
+        g.rotation.set(-Math.sin(a) * sd * .22, rr() * 6, Math.cos(a) * sd * .22); place(g, x, base - 4, z); if (sz > .9) addGlow(x - Math.sin(a) * -sd * 12, base, z + Math.cos(a) * -sd * 12, 18 + sz * 12, c); } }
+    for (let i = cv.a + 10, n = 0; i <= cv.b - 10; i += 18, n++) for (const off of [-.5, .5]) { const [x, z, base] = pt(i, off * R0), hh = 18 + (n * 7 % 3) * 6, ic = new THREE.Mesh(new THREE.ConeGeometry(3.5 + (n % 2), hh, 6), icy);   // icicles over the sides of the road
+      ic.rotation.x = Math.PI; place(ic, x, base + Math.sqrt(1 - off * off) * HT * .8 - 6 - hh / 2, z); }
+    if (cv.crown) for (let i = cv.a + 20, n = 0; i <= cv.b - 20; i += 34, n++) { const [x, z, base, a] = pt(i, (n % 2 ? 1 : -1) * R0 * .25), g = gemCluster(0xcfe4ff, 110 + (n % 3) * 30, 14, n); g.rotation.y = n; place(g, x, base + HT + 30, z); }   // a crown of big clusters along the hilltop
+    if (!t.iceStones) for (const i of [cv.a, cv.b]) for (const sd of [-1, 1]) { const [x, z, base, a] = pt(i, sd * (R0 + 60)), g = gemCluster(sd > 0 ? 0x9fd8ff : 0xc4a4ff, 90, 12, sd); g.rotation.set(Math.sin(a) * sd * .18, 0, -Math.cos(a) * sd * .18); place(g, x, base - 6, z); addGlow(x, base, z, 46, sd > 0 ? 0x9fd8ff : 0xc4a4ff); }   // the gateway
   }
   function buildAurora(t) {   // 🌌 the northern lights: green and pink curtains rippling slowly across the night sky
     const tex = ctex(256, 256, (g, W, H) => {   // curtains of light: bright rays (green below, fading to pink at the top) with dark gaps between them
@@ -698,7 +745,7 @@ export function create(A) {
     }
     if (t.drifts) {   // soft snow drifts heaped along the roadside (never on the road)
       const spots = [];
-      for (let i = 0; i < N; i += 16) for (const sd of [-1, 1]) { const [tx, ty] = tan(i), w = 22 + rnd() * 26, o = sd * (half + 14 + w), p = P[i], x = p[0] - ty * o, z = p[1] + tx * o;
+      for (let i = 0; i < N; i += 16) for (const sd of [-1, 1]) { if ((t.caves || []).some(c => i >= c.a - 12 && i <= c.b + 12)) continue; const [tx, ty] = tan(i), w = 22 + rnd() * 26, o = sd * (half + 14 + w), p = P[i], x = p[0] - ty * o, z = p[1] + tx * o;
         if (rnd() < .35 || rd(x, z) < half + 10 + w) continue; spots.push([x, z, Math.atan2(ty, tx), 40 + rnd() * 60, 10 + rnd() * 14, w]); }
       const m = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 8, 0, 6.283, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x505868 }), spots.length), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), U = new THREE.Vector3(0, 1, 0);
       spots.forEach(([x, z, a, l, hh, w], k) => { Q.setFromAxisAngle(U, -a); M.compose(new THREE.Vector3(x, h(x, z) - 2, z), Q, new THREE.Vector3(l, hh, w)); m.setMatrixAt(k, M); });
@@ -747,9 +794,10 @@ export function create(A) {
       cr(0, 0, H, H * .085, 0, 0);
       for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + .4, d = H * (.1 + (k % 2) * .05); cr(Math.cos(a) * d, Math.sin(a) * d, H * (.38 + ((k * 37) % 5) * .07), H * (.045 + (k % 3) * .01), Math.sin(a) * .35, -Math.cos(a) * .35); }
       grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "xpillar" && o.stone) { return;   // (built from El Nath's ice stone pictures instead, in buildIceStones)
     } else if (o.k === "xpillar") {   // 💎 a crystal standing in the cave road: a tall faceted gem with little ones round its foot, and a pool of light under it
-      const H = o.h || 70, c = [0x7fe8ff, 0xc4a4ff, 0xffb0e8][Math.abs(Math.round(o.x * .7 + o.y)) % 3], cl = gemCluster(c, H, 14, o.x * .01); grp.add(cl);
-      grp.position.set(o.x, g0, o.y); addGlow(o.x, g0, o.y, 40, c);
+      const H = o.h || 70, c = [0x7fe8ff, 0xc4a4ff, 0xffb0e8][Math.abs(Math.round(o.x * .7 + o.y)) % 3], cl = gemCluster(c, H, H * .18, o.x * .01); grp.add(cl);
+      grp.position.set(o.x, g0, o.y); addGlow(o.x, g0, o.y, H * .5, c);
     } else if (o.k === "snowman_big") {   // ⛄ a fat, cute snowman: a chubby body, a big round head, rosy cheeks, a little smile, shiny eyes, a red beanie with a bobble, a scarf and mittens
       const H = o.h || 120 * (o.s || .8), sn = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x505868 }), red = L(0xe8443a, 0x3a0808), coal = L(0x2a2a30, 0x000000), S1 = new THREE.SphereGeometry(1, 24, 16);
       const rb = H * .3, rh = H * .25, yb = rb * .92, yh = yb + rb * .78 + rh * .72;
@@ -906,7 +954,8 @@ export function create(A) {
   }
   function sync(t) {
     let built = false;
-    if (key !== t.key) { key = t.key; buildGround(t); skyRefs = []; built = true; }
+    if (key !== t.key) { key = t.key; stoneKey = null; buildGround(t); skyRefs = []; built = true; }
+    if (t.iceStones && t.iceStones.every(Boolean) && stoneKey !== key) { stoneKey = key; buildIceStones(t); }   // (once their pictures have loaded)
     if (skyRefs[0] !== t.sky || skyRefs[1] !== t.strip || skyRefs[2] !== t.moon || !skyMesh) { skyRefs = [t.sky, t.strip, t.moon]; buildSky(t); built = true; }
     lastT = t; if (built) applyLook(t);
   }

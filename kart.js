@@ -463,7 +463,7 @@ const TRACKS = {
       [1860, 1482, 6], [1935, 1420, 9], [1948, 1340, 11], [1885, 1268, 13], [1741, 1215, 16], [1536, 1140, 20], [1331, 1165, 24], [1150, 1178, 25], [950, 1172, 26], [790, 1100, 27],
       [720, 970, 28], [800, 875, 29], [930, 900, 30], [1065, 865, 30], [1105, 775, 26], [1010, 700, 20], [880, 640, 18], [840, 530, 18], [910, 445, 18], [1050, 420, 18], [1200, 420, 19], [1320, 380, 20], [1360, 290, 22],
       [1290, 200, 24], [1120, 165, 24], [940, 185, 24], [790, 235, 24], [614, 300, 22], [410, 280, 22], [200, 310, 22], [140, 460, 22], [200, 610, 22], [170, 770, 22], [205, 925, 21]],
-    theme: { ...TH.elnathNight, flowers: 400, tufts: 0, road: "snow", curb: ["#3a5fc0", "#eef4ff"], aurora: true, fairy: true, drifts: true, moon: true }, art: { sky: "media/kart/elnath/sky3n.webp?v=1", strip: "media/kart/elnath/strip3.webp" },
+    theme: { ...TH.elnathNight, flowers: 400, tufts: 0, road: "snow", curb: ["#3a5fc0", "#eef4ff"], aurora: true, fairy: true, drifts: true, moon: true, iceStones: true }, art: { sky: "media/kart/elnath/sky3n.webp?v=1", strip: "media/kart/elnath/strip3.webp" },
     near: ["en_pine", "en_pine3", "en_pine2"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines"], mobs: ["jr_yeti", "pepe"],
     build() {
       makeSnowArt();
@@ -481,8 +481,8 @@ const TRACKS = {
       // 🧊 the Freezies: blocks of ice sliding to and fro across the last stretch (they spin you out, like Mario Kart 8's)
       const freezies = [[I(700, 270), 0], [I(560, 290), 1.6], [I(420, 282), 3.2], [I(290, 290), .8], [I(190, 340), 2.4]].map(([i, ph]) => ({ i, ph, k: "freezie", sp: .55, s: .55 }));
       return {
-        caves: [{ a: cave.a, b: cave.b, crystal: true }],   // the long crystal cave winding through the S-bends (glowing crystals inside, big crystals crowning it)
-        hedges: [...[[.14, -42, 30, 62], [.2, 42, 30, 62], [.26, -42, 30, 62], [.42, 0, 34, 80], [.86, 0, 34, 80]].map(([f, o, w, h]) => ({ i: cf(f), o, w, h, sprite: "xpillar" }))],   // crystals in the cave road: a slalom down the long straight, then two big ones splitting the road into two lanes (none in the blind corners)
+        caves: [{ a: cave.a, b: cave.b, crystal: true, half: 160, height: 150 }],   // the long crystal cave winding through the S-bends (glowing crystals inside, big crystals crowning it)
+        hedges: [...[[.1, -44, 26, 46], [.19, 46, 32, 74], [.28, -40, 28, 56], [.44, 0, 38, 96], [.88, 0, 30, 64]].map(([f, o, w, h]) => ({ i: cf(f), o, w, h, sprite: "xpillar" }))],   // crystals in the cave road: a slalom down the long straight, then two big ones splitting the road into two lanes (none in the blind corners)
         pads: [{ t: "ice", rink: true, i: rink.a, len: rink.b - rink.a, o: 0, w: ROAD + 8 }],   // ⛸ the rink: one long sheet of ice the whole width of the road, following its curves
         fairy: { sides: [-1, 1].map(sd => { const ps = []; for (let i = rink.a; i <= rink.b; i += 16) ps.push(at(i, sd * (ROAD / 2 + CURB + 30))); return ps; }) },   // ✨ fairy lights strung along both edges of the rink
         coins,
@@ -1628,11 +1628,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0 }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=114"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=125"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2157,6 +2157,11 @@ function areaStep() {   // 🗺️ a new area: its name pops up
   if (areaAt < 0) { areaAt = cur; return; }   // (the grid sits in the last area: no shout at the start)
   if (cur !== areaAt) { pop(AREAS[cur].name, "#ffe9a8", true); areaAt = cur; }
 }
+function caveWall(c, i, x, y) {   // how far the cave wall is from the road's centre line on (x, y)'s side: closer on the inside of a tight bend (matching the 3D walls)
+  const p = PTS[i], pa = PTS[(i - 20 + N) % N], qb = PTS[(i + 20) % N], a1 = Math.atan2(p[1] - pa[1], p[0] - pa[0]), a2 = Math.atan2(qb[1] - p[1], qb[0] - p[0]); let da = a2 - a1; da = Math.atan2(Math.sin(da), Math.cos(da));
+  const rt = Math.hypot(qb[0] - pa[0], qb[1] - pa[1]) / Math.max(1e-3, 2 * Math.abs(da)), a = tangent(i), side = Math.sign(-(x - p[0]) * Math.sin(a) + (y - p[1]) * Math.cos(a));
+  return side === Math.sign(da) ? Math.min(c.half, Math.max(rt * .8, ROAD / 2 + CURB + 26)) : c.half;
+}
 function slideStep(tt) {   // 🐧 penguins sliding down the rims of the penguin slide, over and over
   for (const o of OBJS) if (o.slide) { const q = o.slide, f = (tt * q.sp + q.ph) % 1, [x, y] = at(Math.round(q.a + (q.b - q.a) * f), q.o); o.x = x; o.y = y; }
 }
@@ -2584,6 +2589,8 @@ function step(dt) {
   for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
     spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Ice block!" : p.k === "fishbone" ? "🐟 Bone Fish!" : p.k === "roller" ? "🪨 Boulder!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+  for (const c of CAVES) if (c.half && k.idx >= c.a + 1 && k.idx <= c.b - 1 && near.d > Math.min(c.half - 22, caveWall(c, near.i, k.x, k.y) - 22)) {   // 💎 the cave's walls are solid: no driving out through them
+    const [cx, cy] = at(near.i, 0), dx = k.x - cx, dy = k.y - cy, d = Math.hypot(dx, dy) || 1, lim = Math.min(c.half - 22, caveWall(c, near.i, k.x, k.y) - 22); k.x = cx + dx / d * lim; k.y = cy + dy / d * lim; if (k.bump <= 0) { k.v *= .7; k.bump = .3; bumpSound(); } k.drift = 0; }
   for (const c of CHUTES) if (!air && k.idx >= c.a && k.idx <= c.b && near.d > near.half + CURB - 6) {   // 🐧 the penguin slide's ice walls keep you in
     const [cx, cy] = at(near.i, 0), dx = k.x - cx, dy = k.y - cy, d = Math.hypot(dx, dy) || 1, lim = near.half + CURB - 6; k.x = cx + dx / d * lim; k.y = cy + dy / d * lim; k.v *= .97; k.drift = 0; }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }
@@ -3427,6 +3434,7 @@ async function loadArt() {
   }
   const art = T.art || HEN_ART;
   jobs.push(makeCrowd());
+  if (T.theme.iceStones) for (let n = 0; n < 6; n++) if (!IMG["en_ice" + n]) jobs.push(artImg(`media/kart/elnath/en_icestone${n}.webp?v=1`).then(im => { IMG["en_ice" + n] = im; }));   // 🧊 El Nath's ice stones (maplestory.io), built in 3D
   if (T.theme.moon && !IMG.en_moon) jobs.push(artImg("media/kart/elnath/moon.webp?v=1").then(im => { IMG.en_moon = im; }));   // 🌕 the night sky's moon (maplestory.io)
   if (TRACK_KEY === "ld3" && !IMG.papStand) jobs.push(Promise.all([...[0, 1, 2, 3, 4, 5].map(i => artImg(`media/kart/ludi/pap_stand${i}.webp`)), ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => artImg(`media/kart/ludi/pap_skill${i}.webp`))])
     .then(a => { if (a.every(Boolean)) { IMG.papStand = a.slice(0, 6); IMG.papSkill = a.slice(6); } }));
