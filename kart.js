@@ -61,7 +61,10 @@ function openPts(c) {
   return out;
 }
 // the current track (loadTrack fills these in)
-let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], FIREBALLS = [];
+let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], FIREBALLS = [], GEARS = [], HANDS = [], PENDS = [];
+// 🕰️ the clockwork: a hand's angle, a pendulum's bob (swinging across the road), a gear's turn
+const handAng = (h, now) => h.ph + now * h.sp;
+const pendAt = (p, now) => { const s = Math.sin(now * p.sp + p.ph), [x, y] = [p.base[0] - Math.sin(p.a) * s * p.amp, p.base[1] + Math.cos(p.a) * s * p.amp]; return { x, y, s }; };
 // 🔥 a fireball from the volcano: unseen high up, then it drops onto its spot and bursts
 const fireZ = (f, now) => { const p = ((now + f.ph) % f.T) / f.T; return p < .72 ? -1 : p < .9 ? 700 * (1 - (p - .72) / .18) : -1; };
 // 🛒 a mine cart rolls along the rails in its stretch of track, over and over
@@ -75,7 +78,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
-  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [];
+  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
   let best = -1, bd = 1e12;
@@ -112,8 +115,8 @@ function under(nv, x, y) {
 }
 const inPen = (idx, L) => !!PEN && idx >= PEN.a && idx <= PEN.b && Math.abs(L) < ROAD / 2 + 4;
 const inLake = (x, y) => !!LAKE && ((x - LAKE.cx) / LAKE.rx) ** 2 + ((y - LAKE.cy) / LAKE.ry) ** 2 < 1;
-const lakeFall = () => !!LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow";   // the frozen lake is safe to drive on (just slippery)
-const onRink = (x, y) => !!LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow") && inLake(x, y);   // ⛸ a frozen rink (or a shallow pond): all of it is road
+const lakeFall = () => !!LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow" && LAKE.kind !== "clock";   // the frozen lake is safe to drive on (just slippery)
+const onRink = (x, y) => (!!LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow" || LAKE.kind === "clock") && inLake(x, y)) || GEARS.some(g => Math.hypot(x - g.x, y - g.y) < g.r);   // (a clock face or a turning gear too)   // ⛸ a frozen rink (or a shallow pond): all of it is road
 function padAt(idx, l) {
   for (const p of PADS) { const di = OPEN ? idx - p.i : (idx - p.i + N) % N; if (di >= 0 && di <= p.len && Math.abs(l - p.o) < p.w / 2) return p; }
   return null;
@@ -616,7 +619,7 @@ const TRACKS = {
       };
     },
   },
-  // ---- Zakum Cup 🔥 (still the old runs; being rebuilt as normal races laid out like Wario's Gold Mine, Grumble Volcano and Thwomp Ruins)
+  // ---- Zakum Cup 🔥: normal 3-lap races. Fun to challenging: Thwomp Ruins, Wario's Gold Mine, Grumble Volcano.
   zk1: {
     // 1. Thwomp Ruins (Mario Kart 8): stone ruins in the Zakum mine. The start straight and two lefts; the long tunnel along the top where Rollers
     // roll out across the road; out of it the road splits round a pool (stay right past a Thwomp, go left past another, or splash straight across
@@ -721,24 +724,33 @@ const TRACKS = {
       };
     },
   },
-  // ---- Ludibrium Cup 🧸: every 15-30 seconds left and right swap, then swap back (with a ⚠️ warning before each)
+  // ---- Ludibrium Cup 🧸: the toy town and its clocktower. Fun to challenging: Tick-Tock Clock, Rainbow Road (SNES), Rainbow Road (Wii).
   ld1: {
-    id: "ludi1", cup: "ludi", music: "k_ludi1", name: "Ludibrium Town", sub: "toy houses · lollipop lane · Ratz", icon: "🏰",
-    ctrl: [[300, 1650], [300, 1000], [450, 550], [800, 300], [1150, 290], [1300, 560], [1150, 850], [950, 950], [880, 1250], [1150, 1450], [1450, 1300], [1580, 950], [1600, 520],
-      [1780, 260], [1930, 700], [1880, 1400], [1650, 1820], [1000, 1900], [550, 1850]],
-    theme: TH.ludi, art: { sky: "media/duel/bg_ludi.webp", strip: "media/kart/ludi/strip1.webp" },
-    near: ["ld_flower", "ld_flower2", "ld_lamp", "ld_lolly", "ld_parasol", "ld_tree4", "ld_flag", "ld_banner"],
-    far: ["ld_h1", "ld_h2", "ld_h3", "ld_h4", "ld_h7", "ld_h8", "ld_shop", "ld_tree", "ld_tree2", "ld_tree3"], mobs: ["ratz", "black_ratz", "brown_teddy", "panda_teddy", "trixter"],
-    build(F) {
+    // 1. Tick-Tock Clock (Mario Kart DS / 8): inside Ludibrium's clocktower. The two long diagonals cross over the giant clock face, where the
+    // hands sweep round (they knock you spinning); pendulums swing across the road; turning gears carry you round with them; the open stretches
+    // at the top and round the far corner have no railings (into the clockwork you go); the big gears near the end throw you forward.
+    id: "ticktock", scale: 1.38, road: 180, cup: "ludi", fall: "⚙️ Into the clockwork!", music: "k_ludi3", name: "Tick-Tock Clock", sub: "the giant clock · pendulums · turning gears", icon: "🕰️",
+    ctrl: [[1114, 1664, 20], [1434, 1600, 22], [1620, 1500, 24], [1590, 1330, 30], [1470, 1150, 36], [1331, 883, 40], [1203, 614, 48], [1100, 330, 56], [1150, 160, 60], [1357, 115, 62], [1766, 102, 62],
+      [1882, 200, 60], [1766, 410, 54], [1587, 640, 46], [1331, 883, 40], [1203, 1101, 36], [1080, 1230, 34], [880, 1420, 30], [700, 1520, 28], [560, 1470, 26], [440, 1360, 24], [340, 1360, 23],
+      [250, 1450, 22], [170, 1600, 20], [190, 1810, 18], [410, 1843, 18], [768, 1766, 18], [973, 1702, 19]],
+    theme: { ...TH.clock, flowers: 500 }, art: { sky: "media/kart/ludi/sky3.webp", strip: "media/kart/ludi/strip3.webp" },
+    near: ["ld_lamp", "ld_flower2", "ld_banner", "ld_fan"], far: ["ld_h1", "ld_h3", "ld_h5", "ld_clock", "ld_blocks", "ld_lego", "ld_tree2"], mobs: ["chronos", "master_chronos"],
+    build() {
+      const coins = [], pads = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      for (const [x, y] of [[768, 1766], [410, 1843]]) pads.push({ t: "boost", i: I(x, y), len: 10, o: 0, w: 90 });   // the big gears near the end, turning your way
+      row(I(1434, 1600), I(1590, 1330), 6, 0); row(I(1357, 115), I(1766, 102), 7, j => (j & 1 ? 40 : -40)); row(I(1080, 1230), I(700, 1520), 6, 0); row(I(190, 1810), I(768, 1766), 6, -35);
       return {
-        pads: [pad("boost", F(.04), 0, 60), pad("boost", F(.22), -24, 54), pad("boost", F(.44), 24, 54), pad("boost", F(.68), -24, 54), pad("boost", F(.86), 0, 56),
-          pad("ramp", F(.56), 0, ROAD, 9), pad("rock", F(.3), 0, ROAD, 20), pad("slime", F(.14), 52, 40, 8), pad("slime", F(.5), -52, 40, 8), pad("slime", F(.78), 52, 40, 8)],
-        coins: [...coinRow(F(.02), F(.08), 6, 0), ...coinRow(F(.24), F(.29), 5, j => (j & 1 ? 24 : -24)), ...coinRow(F(.6), F(.66), 6, 0), ...coinRow(F(.88), F(.93), 5, 20)],
-        pigs: [{ i: F(.18), ph: 0, k: "ratz", sp: 1.3 }, { i: F(.48), ph: 2, k: "black_ratz", sp: 1.3 }, { i: F(.75), ph: 4, k: "brown_teddy", sp: .9 }],
-        boxes: [...boxRow(F(.1), [-56, -19, 19, 56]), ...boxRow(F(.38), [-54, -18, 18, 54]), ...boxRow(F(.72), [-56, -19, 19, 56])],
+        lake: { cx: ws(1331), cy: ws(883), rx: ws(230), ry: ws(230), kind: "clock" },   // 🕰️ the giant clock face where the two diagonals cross
+        hands: [{ len: ws(205), w: 16, sp: .32, ph: 0 }, { len: ws(140), w: 26, sp: -.12, ph: 2 }],
+        gears: [{ i: I(880, 1420), r: 120, w: .55 }, { i: I(560, 1470), r: 120, w: -.55, col: 0xc8c8d8 }],
+        pendulums: [{ i: I(1590, 1330), amp: 110, sp: 1.6, ph: 0 }, { i: I(1150, 450), amp: 110, sp: 1.4, ph: 1.3 }],
+        ledges: [{ a: I(1150, 160), b: I(1766, 410) }, { a: I(170, 1600), b: I(410, 1843) }],
+        pads, coins,
+        boxes: [...boxRow(I(1620, 1500), [-60, -20, 20, 60]), ...boxRow(I(1882, 200), [-60, -20, 20, 60]), ...boxRow(I(340, 1360), [-60, -20, 20, 60])],
         extra(push) {
-          const [ax, ay] = at(F(.0) + 8, 0); push(ax, ay, "ld_arch", big("ld_arch", 1.3), 0);
-          for (let f = .6; f < .68; f += .01) for (const s of [-1, 1]) { const [x, y] = at(F(f), s * (ROAD / 2 + CURB + 12)); push(x, y, "ld_lolly"); }
+          { const [x, y] = at(14, -(ROAD / 2 + CURB + 60)); OBJS.push({ x, y, k: "ld_clock", s: 1.4, r: 30, z: 0 }); }   // ⏰ the alarm clock by the line
+          for (const [x, y, sc] of [[600, 900, 1.6], [1700, 1150, 1.4], [400, 400, 1.3], [1000, 1900, 1.2]]) OBJS.push({ x: ws(x), y: ws(y), k: "ld_clock", s: sc, r: 30, z: 0 });
         },
       };
     },
@@ -788,7 +800,7 @@ const CUPS = {
   henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "town", "forest"], rule: "" },
   elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: brake early and drift round the corners" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Deep in the forest: boardwalks, ponds and gliders" },
-  zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Outrun the rising lava · dodge the rolling boulders · fall off the road and you land in lava" },
+  zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Thwomps, mine carts and lava: no railings in places, so mind the edges" },
   ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 Left and right swap now and then (⚠️ warning first) · Clocktower Night: Papulatus shocks everyone on the ground" },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
@@ -819,7 +831,11 @@ function loadTrack(key) {
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
-  BARE = []; if (LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow")) for (let i = 0; i < N; i++) { const e = (o) => { const [x, y] = at(i, o); return inLake(x, y); }; if (e(ROAD / 2 + CURB) && e(-ROAD / 2 - CURB)) { const l = BARE[BARE.length - 1]; if (l && l.b === i) l.b = i + 1; else BARE.push({ a: i, b: i + 1 }); } }   // no curbs across the rink
+  HIDE = [];
+  GEARS = (f.gears || []).map(g => { const [x, y] = at(g.i, 0); return { ...g, x, y }; }); HANDS = f.hands || []; PENDS = (f.pendulums || []).map(p => ({ ...p, a: tangent(p.i), base: at(p.i, 0) }));
+  BARE = []; if (LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow" || LAKE.kind === "clock")) for (let i = 0; i < N; i++) { const e = (o) => { const [x, y] = at(i, o); return inLake(x, y); }; if (e(ROAD / 2 + CURB) && e(-ROAD / 2 - CURB)) { const l = BARE[BARE.length - 1]; if (l && l.b === i) l.b = i + 1; else BARE.push({ a: i, b: i + 1 }); } }   // no curbs across the rink
+  { const on = i => { const [x, y] = PTS[i]; return (LAKE && LAKE.kind === "clock" && inLake(x, y)) || GEARS.some(g => Math.hypot(x - g.x, y - g.y) < g.r - 10); };   // the road isn't drawn over the clock face or a gear: you drive on them
+    for (let i = 0; i < N; i++) if (on(i)) { const l = HIDE[HIDE.length - 1]; if (l && l.b === i) l.b = i + 1; else HIDE.push({ a: i, b: i + 1 }); } }
   MOLES = f.moles || []; CHOMPS = f.chomps || []; WANDER = f.wander || []; BUILDINGS = [];
   HOLES = (f.holes || []).map(h => { const [x, y] = at(h.i, h.o || 0); return { ...h, x, y }; });
   CARTS = f.carts || []; LEDGES = f.ledges || []; FIREBALLS = (f.fireballs || []).map(b => { const [x, y] = at(b.i, b.o || 0); return { T: 4.2, ...b, x, y }; });
@@ -988,10 +1004,17 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   const SURF = { icy: "#a2b0ee", garden: "#efe2c6", farm: "#d4a15c", planks: "#8a5a2e", dirt: "#b98b5a", cobble: "#bdb3a2", snow: "#dfe8f4", moss: "#5b5a4c", ruin: "#a08a62", basalt: "#4a4044", toy: "#f4f0ff" };
   const surface = (p, wd, st) => { p(); g.strokeStyle = SURF[st] || "#bdb3a2"; g.lineWidth = wd; g.stroke(); };
   const lake = () => {   // the forest lake (the wooden bridge crosses it), the swamp, or El Nath's frozen lake (drawn over the road: it's all ice)
-    const LC = { water: ["#2f6e2a", "#3d8de0", "#5aa8f0"], ice: ["#8fb4d8", "#bfe0fa", "#ffffff"], swamp: ["#1e3326", "#3d5e3a", "#6f8f4a"], shallow: ["#3f7a4a", "#4fb0a0", "#c8f4e8"] }[LAKE.kind || "water"];
+    const LC = { water: ["#2f6e2a", "#3d8de0", "#5aa8f0"], ice: ["#8fb4d8", "#bfe0fa", "#ffffff"], swamp: ["#1e3326", "#3d5e3a", "#6f8f4a"], shallow: ["#3f7a4a", "#4fb0a0", "#c8f4e8"], clock: ["#c8962a", "#e8dcc0", "#e8dcc0"] }[LAKE.kind || "water"];
     g.fillStyle = LC[0]; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx + 10, LAKE.ry + 10, 0, 0, 7); g.fill();
     g.fillStyle = LC[1]; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx, LAKE.ry, 0, 0, 7); g.fill();
     g.fillStyle = LC[2]; for (let k = 0; k < 40; k++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * .85; g.fillRect(LAKE.cx + Math.cos(a) * LAKE.rx * r, LAKE.cy + Math.sin(a) * LAKE.ry * r, 14, 3); }
+    if (LAKE.kind === "clock") {   // 🕰️ a giant clock face: a gold rim, the twelve hours, minute ticks, and a brass boss in the middle
+      g.strokeStyle = "#8a6a1a"; g.lineWidth = 10; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx - 4, LAKE.ry - 4, 0, 0, 7); g.stroke();
+      for (let k = 0; k < 60; k++) { const a = k / 60 * 6.283, r0 = k % 5 ? .9 : .82; g.strokeStyle = k % 5 ? "#9a8a70" : "#3a2a50"; g.lineWidth = k % 5 ? 3 : 8; g.beginPath(); g.moveTo(LAKE.cx + Math.cos(a) * LAKE.rx * r0, LAKE.cy + Math.sin(a) * LAKE.ry * r0); g.lineTo(LAKE.cx + Math.cos(a) * LAKE.rx * .95, LAKE.cy + Math.sin(a) * LAKE.ry * .95); g.stroke(); }
+      g.fillStyle = "#3a2a50"; g.font = `900 ${Math.round(LAKE.rx * .13)}px serif`; g.textAlign = "center"; g.textBaseline = "middle";
+      ["XII", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI"].forEach((t, k) => { const a = k / 12 * 6.283 - Math.PI / 2; g.fillText(t, LAKE.cx + Math.cos(a) * LAKE.rx * .7, LAKE.cy + Math.sin(a) * LAKE.ry * .7); });
+      g.fillStyle = "#c8962a"; g.beginPath(); g.arc(LAKE.cx, LAKE.cy, LAKE.rx * .1, 0, 7); g.fill();
+    }
     if (LAKE.kind === "ice") {   // ⛸ a skating rink: deeper blue in the middle, and the curly white marks of skates all over it
       const gr = g.createRadialGradient(LAKE.cx, LAKE.cy, 0, LAKE.cx, LAKE.cy, LAKE.rx); gr.addColorStop(0, "rgba(90,160,225,.55)"); gr.addColorStop(1, "rgba(150,205,245,0)");
       g.fillStyle = gr; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx, LAKE.ry, 0, 0, 7); g.fill();
@@ -1000,7 +1023,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
         g.beginPath(); g.arc(x, y, rr, a0, a0 + 1.5 + rnd() * 2.5); g.stroke(); }
     }
   };
-  if (LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow" && !only) lake();
+  if (LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow" && LAKE.kind !== "clock" && !only) lake();
   const cobbles = (n, pt, tan, wd, st) => { for (let i = 0; i < n; i++) {   // rows of flat cobbles across the road (or dirt specks, or planks)
     if (st === "planks") { if (i % 2) continue; const a = tan(i), ca = Math.cos(a), sa = Math.sin(a), x = pt(i)[0], y = pt(i)[1];
       g.strokeStyle = i % 4 ? "#a36c38" : "#6b4423"; g.lineWidth = 3; g.beginPath(); g.moveTo(x + sa * wd / 2, y - ca * wd / 2); g.lineTo(x - sa * wd / 2, y + ca * wd / 2); g.stroke(); continue; }
@@ -1034,6 +1057,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   cobbles(N, i => PTS[i], tangent, ROAD, RS); cobbles(AN, j => ALT[j], altTan, ALT_ROAD, ALT_STYLE === "planks" ? "planks" : RS);
   }
   if (LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow")) { g.globalAlpha = LAKE.kind === "ice" ? .88 : .8; lake(); g.globalAlpha = 1; }
+  if (LAKE && LAKE.kind === "clock" && !only) lake();   // (the road isn't drawn over the clock face, so it's painted on the ground)
   for (const pl of PLANKS) {   // 🪵 a wooden bridge: boards across the road
     for (let i = pl.a; i < pl.b; i += .5) { const [x0, y0] = at(i, -ROAD / 2), [x1, y1] = at(i, ROAD / 2); g.strokeStyle = (Math.floor(i * 2) & 1) ? "#8a5a32" : "#9a6a3a"; g.lineWidth = SPC * .5 + .6; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
     g.strokeStyle = "rgba(50,30,15,.6)"; g.lineWidth = 1.2; for (let i = pl.a; i < pl.b; i += 1.6) { const [x0, y0] = at(i, -ROAD / 2), [x1, y1] = at(i, ROAD / 2); g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); } }
@@ -1435,11 +1459,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=52"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=54"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2030,6 +2054,11 @@ function petStep(r, air, tt) {
     for (const c of CARTS) { const q = cartAt(c, now); if (Math.abs(r.z) < 20 && Math.hypot(r.x - q.x, r.y - q.y) < 24 && !(r.cartT > now)) { r.cartT = now + 1; giveBoost(r, .7, 100); if (r === K) { flash("🛒 Cart boost!", 700); padSound(); } } } }   // 🛒 bump a mine cart: it shoves you on (like Mario Kart 8's)
   { const now = performance.now() / 1000;
     for (const b of FIREBALLS) { const z = fireZ(b, now), z0 = fireZ(b, now - .06); if (z0 > 0 && z0 < 60 && (z < 0 || z < 12) && Math.hypot(r.x - b.x, r.y - b.y) < 42 && r.z < 40) { if (r === K) spinOut("🔥 Hit by a fireball!"); else hit(r); } } }   // 🔥 caught where a fireball lands
+  { const now = performance.now() / 1000;
+    if (!air) for (const g of GEARS) { const dx = r.x - g.x, dy = r.y - g.y; if (dx * dx + dy * dy < g.r * g.r) { r.x += -g.w * dy * (1 / 60); r.y += g.w * dx * (1 / 60); } }   // ⚙️ a turning gear carries you round with it
+    if (!air && LAKE) for (const h of HANDS) { const a = handAng(h, now), ux = Math.cos(a), uy = Math.sin(a), dx = r.x - LAKE.cx, dy = r.y - LAKE.cy, t = Math.max(0, Math.min(h.len, dx * ux + dy * uy)), d = Math.hypot(dx - ux * t, dy - uy * t);
+      if (d < h.w / 2 + 9 && !(r.handT > now) && d > 0) { r.handT = now + 1; const px = dx - ux * t, py = dy - uy * t; r.x += px / d * 14; r.y += py / d * 14; r.v *= .8; if (r === K) { bumpSound(); pop("🕰️ Clock hand!", "#ffb347", true); } } }   // (a nudge, not a spin: in Mario Kart 8 you can even drive on them)
+    for (const p of PENDS) { const q = pendAt(p, now); if (r.z < 30 && Math.hypot(r.x - q.x, r.y - q.y) < 28 && !(r.pendT > now)) { r.pendT = now + 1.2; if (r === K) spinOut("🕰️ Bonked by the pendulum!"); else hit(r); } } }
   if (air) for (const g of RINGS) if (Math.hypot(r.x - g.x, r.y - g.y) < 30 && Math.abs(r.z - g.z) < (g.r || 40) && r.ringT !== g) {   // ⭕ through a boost ring
     r.ringT = g; giveBoost(r, 1.2, 130); if (r === K) { padSound(); flash("⭕ Boost ring!", 700); } }
   if (air) return;
@@ -2245,7 +2274,7 @@ function step(dt) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
     spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "fishbone" ? "🐟 Fish Bone!" : p.k === "roller" ? "🪨 Roller!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }
-  if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b) && !(k.rescue > 0)) { rescue(k, T.cup === "zakum" && T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!"); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
+  if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b) && !(k.rescue > 0)) { rescue(k, T.fall || (T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!")); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
   for (const p of PENPIGS) {
     p.dx *= Math.pow(.6, dt); p.dy *= Math.pow(.6, dt);

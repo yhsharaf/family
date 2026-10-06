@@ -70,7 +70,7 @@ export function create(A) {
       const be = Math.min(x, y, WORLD - x, WORLD - y), hgt = base + Math.max(-20, (n - .32) * hillAmp) * smooth(edge + 90, edge + 520, d);
       HG[o] = hgt + (mean - hgt) * smooth(160, 0, be) * smooth(edge + 40, edge + 200, d);   // levels out to the open plain at the map's edge
     }
-    if (t.lake && (t.lake.kind === "ice" || t.lake.kind === "shallow")) {   // ⛸ a frozen rink (or a shallow pond) is dead flat, at the height of the road across it
+    if (t.lake && (t.lake.kind === "ice" || t.lake.kind === "shallow" || t.lake.kind === "clock")) {   // ⛸ a frozen rink (or a shallow pond) is dead flat, at the height of the road across it
       const L = t.lake; let sum = 0, n = 0; for (let i = 0; i < t.N; i++) if (((t.PTS[i][0] - L.cx) / L.rx) ** 2 + ((t.PTS[i][1] - L.cy) / L.ry) ** 2 < 1) { sum += E[i]; n++; }
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const q = Math.sqrt(((i * G - L.cx) / L.rx) ** 2 + ((j * G - L.cy) / L.ry) ** 2), w = smooth(1.35, 1.02, q); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
@@ -214,7 +214,7 @@ export function create(A) {
       altBare.push(...runs(t.AN, j => near(t.ALT[j][0], t.ALT[j][1], t.PTS, t.FORK_A - 80, t.FORK_B + 80, t.ROAD / 2 + t.CURB + t.ALT_ROAD / 2)));
       mainBare.push(...runs(t.N, i => (Math.abs(i - t.FORK_A) < 70 || Math.abs(i - t.FORK_B) < 70) && near(t.PTS[i][0], t.PTS[i][1], t.ALT, 0, t.AN, reach)));
     }
-    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5, t.gaps || [], mainBare);
+    ribbon(t.PTS, !t.OPEN, t.ROAD, roadMat(surfaceTex(RS, th, t.ROAD), decal), cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
     if (t.water) {   // 🪵 the boardwalk's piles, down into the lake
       const step = Math.max(1, Math.round(46 / t.SPC)), spots = [];
       for (let i = 0; i < t.N; i += step) { const p = t.PTS[i], q = t.PTS[(i + 1) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]); for (const sd of [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB - 3); spots.push([p[0] - Math.sin(a) * o, p[1] + Math.cos(a) * o]); } }
@@ -251,6 +251,17 @@ export function create(A) {
     holeM = []; lapFn = t.lapNow || null;
     for (const hl of t.holes || []) { const g = new THREE.Group(), lava = new THREE.Mesh(new THREE.CircleGeometry(hl.r, 28), new THREE.MeshBasicMaterial({ color: 0xff5a1a })), rim = new THREE.Mesh(new THREE.RingGeometry(hl.r, hl.r + 10, 28), new THREE.MeshBasicMaterial({ color: 0x2a1a14 }));
       for (const q of [lava, rim]) { q.rotation.x = -Math.PI / 2; g.add(q); } rim.position.y = .3; g.position.set(hl.x, h(hl.x, hl.y) + 1.4, hl.y); g.visible = false; scene.add(g); roadObjs.push(g); holeM.push({ hl, g }); }
+    // 🕰️ the clockwork: gears that turn (a toothed wheel set into the floor), the clock's hands sweeping round, pendulums swinging across the road
+    clockM = { gears: [], hands: [], pends: [], t };
+    for (const g of t.gears || []) { const grp = new THREE.Group(), mat = new THREE.MeshLambertMaterial({ color: g.col || 0xd8a83a, emissive: 0x2a1a00 }), dark = new THREE.MeshLambertMaterial({ color: 0x6a4a1a });
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(g.r, g.r, 6, 40), mat); disc.position.y = -2; grp.add(disc);
+      for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, tooth = new THREE.Mesh(BOX, mat); tooth.scale.set(18, 6, 14); tooth.position.set(Math.cos(a) * (g.r + 7), -2, Math.sin(a) * (g.r + 7)); tooth.rotation.y = -a; grp.add(tooth); }
+      for (let k = 0; k < 4; k++) { const sp = new THREE.Mesh(BOX, dark); sp.scale.set(g.r * 1.8, 1.4, 10); sp.rotation.y = k * Math.PI / 4; sp.position.y = 1.4; grp.add(sp); }
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 4, 20), dark); hub.position.y = 2; grp.add(hub);
+      grp.position.set(g.x, h(g.x, g.y) + 1, g.y); scene.add(grp); roadObjs.push(grp); clockM.gears.push({ g, grp }); }
+    if (t.lake) for (const hd of t.hands || []) { const m = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x3a2a50 })); m.scale.set(hd.len, 8, hd.w); scene.add(m); roadObjs.push(m); clockM.hands.push({ hd, m, y: h(t.lake.cx, t.lake.cy) + 5 }); }
+    for (const p of t.pends || []) { const grp = new THREE.Group(), rod = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x8a6a2a })), bob = new THREE.Mesh(new THREE.CylinderGeometry(26, 26, 8, 28), new THREE.MeshLambertMaterial({ color: 0xe8b83a, emissive: 0x3a2a00 }));
+      rod.scale.set(4, 300, 4); rod.position.y = -150; bob.rotation.x = Math.PI / 2; bob.position.y = -300; grp.add(rod, bob); const gz = h(p.base[0], p.base[1]); grp.position.set(p.base[0], gz + 330, p.base[1]); grp.rotation.order = "YXZ"; grp.rotation.y = -p.a; scene.add(grp); roadObjs.push(grp); clockM.pends.push({ p, grp }); }
     cartM = []; cartFn = t.cartAt || null;   // 🛒 mine carts: a wooden tub full of gold on little wheels
     for (const c of t.carts || []) { const g = new THREE.Group(), wood = new THREE.MeshLambertMaterial({ color: 0x6a4424 }), gold = new THREE.MeshLambertMaterial({ color: 0xffc83a, emissive: 0x6a4a00 }), iron = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
       const tub = new THREE.Mesh(BOX, wood); tub.scale.set(40, 18, 26); tub.position.y = 14; g.add(tub); const ore = new THREE.Mesh(new THREE.SphereGeometry(14, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), gold); ore.scale.set(1.3, .8, .85); ore.position.y = 23; g.add(ore);
@@ -334,7 +345,7 @@ export function create(A) {
       g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(ox + 6, y + 5, B * .35, 3); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   // ❄ the ice cave's walls: blue crystal facets, darker deep inside
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null;
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null;
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -536,6 +547,10 @@ export function create(A) {
   let VW = 320, VH = 180, shake = 0;
   const fwd = new THREE.Vector3(), tmp = new THREE.Vector3(), look = new THREE.Vector3();
   function begin(k, o) {
+    if (clockM) { const now = performance.now() / 1000, T = clockM.t;
+      for (const q of clockM.gears) q.grp.rotation.y = -now * q.g.w;
+      for (const q of clockM.hands) { const a = T.handAng(q.hd, now); q.m.position.set(T.lake.cx + Math.cos(a) * q.hd.len / 2, q.y, T.lake.cy + Math.sin(a) * q.hd.len / 2); q.m.rotation.y = -a; }
+      for (const q of clockM.pends) { const s = Math.sin(now * q.p.sp + q.p.ph); q.grp.rotation.x = -Math.asin(Math.max(-1, Math.min(1, s * q.p.amp / 300))); } }   // (the bob is where the game thinks it is)
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
     if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }
     if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
