@@ -78,7 +78,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let FINALMSG = null, AREAS = [], SPORES = [], areaAt = -1, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
-  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], HIDE = [];
+  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], FAIRY = null, HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
   let best = -1, bd = 1e12;
@@ -127,7 +127,7 @@ function penPigPos(p, tt) {
 }
 // road crossers: pigs (Henesys Loop), snails (Town Run, slow), mushrooms that hop (Mushroom Forest)
 const pigPos = (p, tt) => { const sp = p.sp || 1.25, o = Math.sin(tt * sp + p.ph) * (p.amp || ROAD / 2 + 8), [x, y] = at(p.i + (p.loop ? Math.cos(tt * sp + p.ph) * p.loop : 0), o);   // (loop: skating round in a ring)
-  return { x, y, dir: Math.cos(tt * sp + p.ph), z: p.hop ? Math.abs(Math.sin(tt * 5 + p.ph)) * 16 : 0 }; };
+  return { x, y, dir: Math.cos(tt * sp + p.ph), z: p.hop ? Math.abs(Math.sin(tt * 5 + p.ph)) * 16 : p.fly ? 5 + Math.sin(tt * 3 + p.ph) * 3 : 0 }; };
 function areaSign(name) {
   const c = document.createElement("canvas"); c.width = 300; c.height = 190; const g = c.getContext("2d"), txt = name.replace(/^\S+\s/, "");
   g.fillStyle = "#6b4426"; g.fillRect(52, 70, 18, 120); g.fillRect(230, 70, 18, 120);   // posts
@@ -460,8 +460,8 @@ const TRACKS = {
   en2: {
     id: "sherbet", scale: 1.36, road: 180, gate: "ice", cup: "elnath", music: "k_elnath2", name: "Frost Rink", sub: "the skating rink · ice cave · living ice blocks", icon: "🧊",
     ctrl: [[256, 1062, 20], [346, 1216, 16], [456, 1382, 10], [614, 1485, 4], [794, 1510, 2], [960, 1580, 0], [1120, 1660, 0], [1331, 1664, 0], [1536, 1590, 0], [1740, 1505, 4],
-      [1860, 1482, 6], [1935, 1420, 9], [1948, 1340, 11], [1885, 1268, 13], [1741, 1215, 16], [1536, 1140, 20], [1331, 1165, 24], [1180, 1165, 27], [1075, 1105, 29], [1055, 1000, 30],
-      [1115, 905, 28], [1120, 790, 24], [1010, 700, 20], [880, 640, 18], [840, 530, 18], [910, 445, 18], [1050, 420, 18], [1200, 420, 19], [1320, 380, 20], [1360, 290, 22],
+      [1860, 1482, 6], [1935, 1420, 9], [1948, 1340, 11], [1885, 1268, 13], [1741, 1215, 16], [1536, 1140, 20], [1331, 1165, 24], [1150, 1178, 25], [950, 1172, 26], [790, 1100, 27],
+      [720, 970, 28], [800, 875, 29], [930, 900, 30], [1065, 865, 30], [1105, 775, 26], [1010, 700, 20], [880, 640, 18], [840, 530, 18], [910, 445, 18], [1050, 420, 18], [1200, 420, 19], [1320, 380, 20], [1360, 290, 22],
       [1290, 200, 24], [1120, 165, 24], [940, 185, 24], [790, 235, 24], [614, 300, 22], [410, 280, 22], [200, 310, 22], [140, 460, 22], [200, 610, 22], [170, 770, 22], [205, 925, 21]],
     theme: { ...TH.elnathNight, flowers: 400, tufts: 0, road: "snow", curb: ["#3a5fc0", "#eef4ff"], aurora: true, fairy: true, drifts: true, moon: true }, art: { sky: "media/kart/elnath/sky3n.webp?v=1", strip: "media/kart/elnath/strip3.webp" },
     near: ["en_pine", "en_pine3", "en_pine2"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines"], mobs: ["jr_yeti", "pepe"],
@@ -471,20 +471,22 @@ const TRACKS = {
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
       row(I(400, 1310), I(600, 1478), 6, 0);                                    // down the hill to the rink
       row(I(1000, 1600), I(1400, 1650), 8, j => Math.sin(j * .9) * 70);        // weaving across the rink
-      row(I(1180, 1165), I(1115, 905), 6, 0);                                   // inside the ice cave
+      const cave = { a: I(1440, 1150), b: I(1105, 775) }, cf = f => Math.round(cave.a + (cave.b - cave.a) * f);   // 💎 the crystal cave: long and winding, crystal pillars to weave between, Leatties drifting across
+      row(cf(.08), cf(.22), 5, 0); row(cf(.62), cf(.78), 5, j => (j & 1 ? 35 : -35));   // inside the cave
       row(I(1120, 165), I(800, 235), 6, -35);                                   // over the top
       // ⛸ the rink's skaters: Jr. Yetis gliding round in rings (bump one and you spin out, like the Skating Shy Guys)
-      const skaters = [[I(1030, 1610), 0, 170, 16], [I(1200, 1665), 2.1, 190, 22], [I(1360, 1660), 4.2, 160, 16]]
+      const rink = { a: I(794, 1510), b: I(1536, 1590) };
+      const skaters = [[I(1030, 1610), 0, 70, 16], [I(1200, 1665), 2.1, 78, 22], [I(1360, 1660), 4.2, 66, 16]]
         .map(([i, ph, amp, loop]) => ({ i, ph, amp, loop, k: "jr_yeti", sp: .75, s: .5 }));
       // 🧊 the Freezies: blocks of ice sliding to and fro across the last stretch (they spin you out, like Mario Kart 8's)
       const freezies = [[I(700, 270), 0], [I(560, 290), 1.6], [I(420, 282), 3.2], [I(290, 290), .8], [I(190, 340), 2.4]].map(([i, ph]) => ({ i, ph, k: "freezie", sp: .55, s: .55 }));
       return {
-        lake: { cx: ws(1170), cy: ws(1625), rx: ws(330), ry: ws(130), kind: "ice" },   // the frozen rink
-        caves: [{ a: I(1440, 1150), b: I(1115, 820), crystal: true }],                 // the crystal cave through the S-bends (glowing crystals inside, big crystals crowning it)
-        hedges: [{ i: I(1060, 1630), o: 150, w: 40, h: 30, sprite: "ice_rock" }, { i: I(1290, 1665), o: -165, w: 40, h: 30, sprite: "ice_rock" }],   // little rock islands on the rink
-        pads: [],
+        caves: [{ a: cave.a, b: cave.b, crystal: true }],   // the long crystal cave winding through the S-bends (glowing crystals inside, big crystals crowning it)
+        hedges: [...[[.14, -42, 30, 62], [.2, 42, 30, 62], [.26, -42, 30, 62], [.42, 0, 34, 80], [.86, 0, 34, 80]].map(([f, o, w, h]) => ({ i: cf(f), o, w, h, sprite: "xpillar" }))],   // crystals in the cave road: a slalom down the long straight, then two big ones splitting the road into two lanes (none in the blind corners)
+        pads: [{ t: "ice", rink: true, i: rink.a, len: rink.b - rink.a, o: 0, w: ROAD + 8 }],   // ⛸ the rink: one long sheet of ice the whole width of the road, following its curves
+        fairy: { sides: [-1, 1].map(sd => { const ps = []; for (let i = rink.a; i <= rink.b; i += 16) ps.push(at(i, sd * (ROAD / 2 + CURB + 30))); return ps; }) },   // ✨ fairy lights strung along both edges of the rink
         coins,
-        pigs: [...skaters, ...freezies],
+        pigs: [...skaters, ...freezies, ...[[.33, 0], [.52, 2.2], [.7, 4.1]].map(([f, ph]) => ({ i: cf(f), ph, k: "leatty", sp: .8, soft: true, s: 1.4, fly: true }))],   // ❄ Leatties (El Nath's fluffy snow puffs) drifting back and forth across the cave (they bump you)
         boxes: [...boxRow(I(700, 1500), [-60, -20, 20, 60]), ...boxRow(I(1890, 1290), [-60, -20, 20, 60]), ...boxRow(I(1050, 420), [-60, -20, 20, 60])],
         extra(push) {
           // towers and walls of ice blocks round the rink and along the Freezies' stretch
@@ -949,7 +951,7 @@ function loadTrack(key) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
-  CHUTES = f.chutes || [];
+  CHUTES = f.chutes || []; FAIRY = f.fairy || null;
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
   HIDE = [];
@@ -1271,10 +1273,11 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       g.fillStyle = rp.length === 3 ? rp[1] : rp[0]; g.beginPath(); g.ellipse(x, y, z / 2, z * .4, 0, 0, 7); g.fill();
       g.fillStyle = rp.length === 3 ? rp[2] : rp[1]; g.beginPath(); g.ellipse(x - z * .15, y - z * .12, z * .18, z * .12, 0, 0, 7); g.fill();
     }
-    if (p.t === "ice" && TILEPAT.glacierExplorer) {   // ❄ black ice: a patch of real MapleStory glacier ice, a white frosty rim, glints
-      const sh = j => .55 + .45 * Math.sin(Math.PI * j / p.len), path = band(p.i, p.len, p.o, p.w, sh);
+    if (p.t === "ice" && TILEPAT.glacierExplorer) {   // ❄ black ice: a patch of real MapleStory glacier ice, a white frosty rim, glints (a rink: the full road width, edge to edge)
+      const sh = p.rink ? (j => .35 + .65 * Math.min(1, j / 4, (p.len - j) / 4)) : (j => .55 + .45 * Math.sin(Math.PI * j / p.len)), path = band(p.i, p.len, p.o, p.w, sh);
       g.save(); g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 5; path(); g.stroke(); g.restore(); tileFill("glacierExplorer", path, .95);
       g.fillStyle = "rgba(255,255,255,.8)"; for (let k = 0; k < p.len; k++) { const [x, y] = at(p.i + rnd() * p.len, p.o + (rnd() - .5) * p.w * .5); g.fillRect(x - 5, y - 1, 10, 2); }
+      if (p.rink) { g.strokeStyle = "rgba(255,255,255,.65)"; g.lineWidth = 1.6; for (let k = 0; k < p.len / 3; k++) { const [x, y] = at(p.i + 3 + rnd() * (p.len - 6), (rnd() - .5) * p.w * .7), rr = 14 + rnd() * 30, a0 = rnd() * 6.28; g.beginPath(); g.arc(x, y, rr, a0, a0 + 1.4 + rnd() * 2); g.stroke(); } }   // the curly marks of skates
     }
     else if (p.t === "ice") for (let j = 0; j <= p.len; j += .5) {   // a glassy patch of black ice
       const e = Math.sin(Math.PI * j / p.len), w2 = p.w / 2 * (.55 + .45 * e);
@@ -1375,7 +1378,7 @@ function lavaMap() {
 }
 // roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
 // s = world units per picture pixel, r = how solid it is
-const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
+const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse", "xpillar"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
 const PROPS = { treehouse: [.62, 0], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
   hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10],
   // Pets Park's little things: Henesys's own flowers and pet-park objects (maplestory.io, Map/Obj/acc1.img/grassySoil nature + pet)
@@ -1469,6 +1472,7 @@ function makeSnowArt() {
     for (const [x, w, h, c] of [[70, 34, 250, "#c9b8ff"], [38, 24, 170, "#b8d8ff"], [104, 26, 190, "#d8c8ff"], [20, 16, 110, "#cfe8ff"], [122, 16, 120, "#c0d0ff"]]) {
       const gr = g.createLinearGradient(x - w, 0, x + w, 0); gr.addColorStop(0, c); gr.addColorStop(.5, "#ffffff"); gr.addColorStop(1, c); g.fillStyle = gr;
       g.beginPath(); g.moveTo(x, 260 - h); g.lineTo(x + w / 2, 260 - h * .25); g.lineTo(x + w / 3, 260); g.lineTo(x - w / 3, 260); g.lineTo(x - w / 2, 260 - h * .25); g.closePath(); g.fill(); } });
+  IMG.xpillar = IMG.icicle;   // (the cave's crystal pillars, in the flat view)
   IMG.freezie = mk(110, 130, g => {   // 🧊 a Freezie: a crystal ice block with a jagged top, big eyes and a zig-zag grin
     const body = new Path2D(); body.moveTo(8, 126); body.lineTo(4, 50); body.lineTo(22, 30); body.lineTo(30, 44); body.lineTo(46, 6); body.lineTo(60, 34); body.lineTo(74, 14); body.lineTo(84, 40); body.lineTo(104, 46); body.lineTo(102, 126); body.closePath();
     const gr = g.createLinearGradient(0, 0, 110, 130); gr.addColorStop(0, "#e8f8ff"); gr.addColorStop(.45, "#9ad8fb"); gr.addColorStop(1, "#5aa6e0"); g.fillStyle = gr; g.fill(body);
@@ -1624,11 +1628,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, aurora: !!T.theme.aurora, fairy: T.theme.fairy && LAKE ? LAKE : null, peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0 }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0 }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=109"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=114"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2878,7 +2882,7 @@ function render() {
     ctx.fillStyle = "rgba(220,240,255,.55)"; const tb = performance.now() / 1000; for (let n = 0; n < 14; n++) { const x = (n * 53 + Math.sin(tb + n) * 6) % W, y = H - ((tb * 40 + n * 37) % H); ctx.beginPath(); ctx.arc(x, y, 1 + (n % 3) * .6, 0, 7); ctx.fill(); } }
   for (const cv of CAVES) if (k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .75);
-    g2.addColorStop(0, "rgba(160,220,255,0)"); g2.addColorStop(1, "rgba(10,40,90,.5)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }
+    g2.addColorStop(0, "rgba(160,220,255,0)"); g2.addColorStop(1, cv.crystal ? "rgba(8,20,60,.7)" : "rgba(10,40,90,.5)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }
   // inside the tree house tunnel: dark, with a warm glow ahead
   if (TUNNEL && k.idx >= TUNNEL.a && k.idx <= TUNNEL.b) {
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .7);
@@ -3423,6 +3427,7 @@ async function loadArt() {
   }
   const art = T.art || HEN_ART;
   jobs.push(makeCrowd());
+  if (T.theme.moon && !IMG.en_moon) jobs.push(artImg("media/kart/elnath/moon.webp?v=1").then(im => { IMG.en_moon = im; }));   // 🌕 the night sky's moon (maplestory.io)
   if (TRACK_KEY === "ld3" && !IMG.papStand) jobs.push(Promise.all([...[0, 1, 2, 3, 4, 5].map(i => artImg(`media/kart/ludi/pap_stand${i}.webp`)), ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(i => artImg(`media/kart/ludi/pap_skill${i}.webp`))])
     .then(a => { if (a.every(Boolean)) { IMG.papStand = a.slice(0, 6); IMG.papSkill = a.slice(6); } }));
   jobs.push(artImg(art.sky).then(im => { sky = im; }), (art.strip ? artImg(art.strip) : Promise.resolve(null)).then(im => { IMG.strip = im; }));   // (a track can go without a horizon strip)
