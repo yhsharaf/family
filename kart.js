@@ -1147,6 +1147,9 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
     g.fillStyle = rnd() < .5 ? "#5e3f22" : "#94683c"; g.beginPath(); g.ellipse(x, y, r, r * .6, rnd() * 3, 0, 7); g.fill();
   }
   if (PEN) for (const pos of [PEN.a, PEN.b]) for (let o = -ROAD / 2; o < ROAD / 2; o += 8) { const [x, y] = at(pos, o); g.fillStyle = "#6b4426"; g.fillRect(x - 3, y - 3, 6, 6); }   // fence rails
+  const tileFill = (set, path, alpha = 1) => { const c = TILEPAT[set]; if (!c) return false; const pat = g.createPattern(c, "repeat"); pat.setTransform(new DOMMatrix().scale(.75)); g.save(); g.globalAlpha = alpha; g.fillStyle = pat; path(); g.fill(); g.restore(); return true; };   // a shape filled with a MapleStory tile
+  const band = (i0, len, o, w, shape) => () => { g.beginPath(); for (let j = 0; j <= len; j += .5) { const e = shape(j), [x, y] = at(i0 + j, o - w / 2 * e); j ? g.lineTo(x, y) : g.moveTo(x, y); } for (let j = len; j >= 0; j -= .5) { const e = shape(j), [x, y] = at(i0 + j, o + w / 2 * e); g.lineTo(x, y); } g.closePath(); };
+  const blob = (x, y, a, rx, ry) => () => { g.beginPath(); g.ellipse(x, y, rx, ry, a, 0, 7); };
   for (const p of PADS) {
     if (p.t === "glide") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {   // 🪁 a glider ramp: blue with white chevrons
       const o1 = p.o - p.w / 2 + p.w * c / 10, o2 = o1 + p.w / 10 + .5, chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;
@@ -1166,10 +1169,13 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       const chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;   // arrows pointing down the track
       quad(p.i + j, o1, o2, j < .6 || j > p.len - .6 ? "#1e4f9a" : chev ? "#ffffff" : "#3d8de0");
     }
-    if (p.t === "rock") for (let k = 0; k < p.len * 16; k++) {   // gravel first, then fewer, bigger shaded rocks
+    const rockSet = T.cup === "elnath" ? "snowyLightrock" : "deepMine";
+    if (p.t === "rock" && TILEPAT[rockSet]) { for (let k = 0; k < Math.max(3, p.len / 3); k++) { const [x, y] = at(p.i + rnd() * p.len, p.o + (rnd() - .5) * p.w * .6), a = tangent(p.i) + (rnd() - .5) * .8, rx = 22 + rnd() * 22, ry = 14 + rnd() * 12;   // 🪨 rubble: patches of real MapleStory rock (snowy rock in El Nath)
+        g.save(); g.fillStyle = "rgba(30,24,20,.45)"; blob(x + 2, y + 3, a, rx + 3, ry + 3)(); g.fill(); g.restore(); tileFill(rockSet, blob(x, y, a, rx, ry)); } }
+    else if (p.t === "rock") for (let k = 0; k < p.len * 16; k++) {   // gravel first, then fewer, bigger shaded rocks
       const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .98); g.fillStyle = RS === "snow" ? "#c9d6ea" : RS === "toy" ? "#e8dcff" : rnd() < .5 ? "#8a8274" : "#6e675b"; g.fillRect(x - 1.5, y - 1, 3, 2);
     }
-    if (p.t === "rock") for (let k = 0; k < p.len * 4; k++) {
+    if (p.t === "rock" && !TILEPAT[rockSet]) for (let k = 0; k < p.len * 4; k++) {
       const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .9), z = 10 + rnd() * 10;
       g.fillStyle = "rgba(0,0,0,.35)"; g.beginPath(); g.ellipse(x + 3, y + 3, z / 2 + 1, z * .42, 0, 0, 7); g.fill();   // its shadow
       const rp = RS === "toy" ? [["#c8323c", "#ff5a64", "#ffb0b4"], ["#2a6ac8", "#5a9aff", "#b0d0ff"], ["#d8a020", "#ffd23f", "#fff0a0"], ["#2a9a3a", "#5ad06a", "#b8f0c0"]][Math.floor(rnd() * 4)]
@@ -1178,12 +1184,20 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       g.fillStyle = rp.length === 3 ? rp[1] : rp[0]; g.beginPath(); g.ellipse(x, y, z / 2, z * .4, 0, 0, 7); g.fill();
       g.fillStyle = rp.length === 3 ? rp[2] : rp[1]; g.beginPath(); g.ellipse(x - z * .15, y - z * .12, z * .18, z * .12, 0, 0, 7); g.fill();
     }
-    if (p.t === "ice") for (let j = 0; j <= p.len; j += .5) {   // a glassy patch of black ice
+    if (p.t === "ice" && TILEPAT.glacierExplorer) {   // ❄ black ice: a patch of real MapleStory glacier ice, a white frosty rim, glints
+      const sh = j => .55 + .45 * Math.sin(Math.PI * j / p.len), path = band(p.i, p.len, p.o, p.w, sh);
+      g.save(); g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 5; path(); g.stroke(); g.restore(); tileFill("glacierExplorer", path, .95);
+      g.fillStyle = "rgba(255,255,255,.8)"; for (let k = 0; k < p.len; k++) { const [x, y] = at(p.i + rnd() * p.len, p.o + (rnd() - .5) * p.w * .5); g.fillRect(x - 5, y - 1, 10, 2); }
+    }
+    else if (p.t === "ice") for (let j = 0; j <= p.len; j += .5) {   // a glassy patch of black ice
       const e = Math.sin(Math.PI * j / p.len), w2 = p.w / 2 * (.55 + .45 * e);
       quad(p.i + j, p.o - w2, p.o + w2, j % 2 < 1 ? "#a9d4f5" : "#bfe2fb");
       if (rnd() < .5) { const [x, y] = at(p.i + j, p.o + (rnd() - .5) * w2 * 1.6); g.fillStyle = "#ffffff"; g.fillRect(x - 4, y - 1, 8, 2); }
     }
-    if (p.t === "lava") { const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i);   // a bubbling pool of lava on the road
+    if (p.t === "lava" && TILEPAT.moltenRock) { const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i), rx = p.len * SPC / 2 + 8, ry = p.w / 2;   // 🔥 a patch of real MapleStory molten rock, glowing at its heart
+      g.save(); g.fillStyle = "#24100a"; blob(x, y, a, rx + 5, ry + 5)(); g.fill(); g.restore(); tileFill("moltenRock", blob(x, y, a, rx, ry));
+      const gr = g.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry)); gr.addColorStop(0, "rgba(255,170,40,.45)"); gr.addColorStop(1, "rgba(255,90,0,0)"); g.fillStyle = gr; blob(x, y, a, rx, ry)(); g.fill(); }
+    else if (p.t === "lava") { const [x, y] = at(p.i + p.len / 2, p.o), a = tangent(p.i);   // a bubbling pool of lava on the road
       g.save(); g.translate(x, y); g.rotate(a);
       g.fillStyle = "#3a1208"; g.beginPath(); g.ellipse(0, 0, p.len * 2.9, p.w / 2 + 4, 0, 0, 7); g.fill();
       g.fillStyle = "#e0401a"; g.beginPath(); g.ellipse(0, 0, p.len * 2.6, p.w / 2, 0, 0, 7); g.fill();
@@ -1194,7 +1208,8 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
       g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = "#3f9a2c"; g.beginPath(); g.ellipse(0, 0, p.len * SPC / 2 + 6, p.w / 2, 0, 0, 7); g.fill();
       g.fillStyle = "#58bb38"; g.beginPath(); g.ellipse(-2, -2, p.len * SPC / 2, p.w / 2 - 5, 0, 0, 7); g.fill();
       g.strokeStyle = "#2f7d22"; g.lineWidth = 1.6; for (let k = 0; k < 40; k++) { const bx = (rnd() - .5) * p.len * SPC, by = (rnd() - .5) * (p.w - 12); g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + 2, by - 5); g.stroke(); } g.restore(); }
-    if (p.t === "mud") for (let k = 0; k < p.len * 5; k++) {   // swamp mud across the road: slows you down
+    if (p.t === "mud" && TILEPAT.swamp) { for (let k = 0; k < Math.max(4, p.len / 2); k++) { const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w * .7), a = tangent(p.i) + (rnd() - .5), rx = 24 + rnd() * 26, ry = 16 + rnd() * 14; tileFill("swamp", blob(x, y, a, rx, ry), .95); } }   // 🌿 swamp mud: real Sleepywood swamp roots
+    else if (p.t === "mud") for (let k = 0; k < p.len * 5; k++) {   // swamp mud across the road: slows you down
       const [x, y] = at(p.i + rnd() * p.len, (rnd() - .5) * p.w), r = 6 + rnd() * 14;
       g.fillStyle = rnd() < .5 ? "#3e3a22" : "#5a5230"; g.beginPath(); g.ellipse(x, y, r, r * .6, rnd() * 3, 0, 7); g.fill();
     }
@@ -1507,7 +1522,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=59"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=60"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -3084,7 +3099,15 @@ async function start() {
   }, goIn);
 }
 let assetsReady = false;
+// 🧱 real MapleStory ground tiles (from maplestory.io) for the patches on the road: lava, ice, snow, swamp mud, mine rock
+const TILESETS = ["moltenRock", "glacierExplorer", "snowyLightrock", "swamp", "deepMine"], TILEPAT = {};
+async function loadTiles() {
+  await Promise.all(TILESETS.map(async set => { const ims = await Promise.all([0, 1, 2, 3].map(k => loadImg(`media/kart/tiles/${set}${k}.png?v=1`))); if (ims.some(im => !im)) return;
+    const c = document.createElement("canvas"); c.width = 180; c.height = 120; const g = c.getContext("2d"); ims.forEach((im, k) => g.drawImage(im, (k & 1) * 90, (k >> 1) * 60)); TILEPAT[set] = c; }));   // (the four tiles in a 2x2 block)
+  TRACK_KEY = null; if (G3E && G3E.reset) G3E.reset();   // (anything painted before they arrived is painted again)
+}
 async function prepare() {
+  await loadTiles();
   const mstrip = await loadImg("media/kart/meso.png?v=1"); IMG.meso = mstrip ? mesoFrames(mstrip) : null;
   [IMG.arrowIcon, IMG.arm, IMG.arrowShot] = await Promise.all([loadImg("media/kart/items/arrow_icon.png"), loadImg(B.M + "zarm_stand.gif"), loadImg("media/kart/items/arrow.png")]);   // the quiver (held as a shield) and the real arrow
   IMG.bombF = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map(i => loadImg(`media/kart/items/bomb${i}.png`)));   // 💣 Gunslinger's Grenade (MapleStory)

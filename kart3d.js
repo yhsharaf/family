@@ -636,5 +636,5 @@ export function create(A) {
   function resize(w, hh) { renderer.setSize(w, hh, false); }
   function clearKarts() { for (const m of karts.values()) scene.remove(m.root); karts.clear(); cam.yaw = null; }
   const snap = () => { renderer.render(scene, camera); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
-  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, resize, clearKarts, renderer, scene, get key() { return key; } };
+  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
 }
