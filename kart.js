@@ -1526,7 +1526,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=68"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=69"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1545,7 +1545,7 @@ let gp = null;   // { race, names, pts: { name: points } }
 let ghost = null, ghostRec = [];   // your best Time Trial run, sampled 10 times a second: [t, x, y, a, z]
 const ghostKey = () => `kart_ghost2:${ccId(TRACK_ID, raceCC)}:${me}`;
 // difficulty, picked before the race: rival speed, how hard they catch up, how often they grab items
-const DIFFS = { easy: { skill: .95, band: .07, pick: .4, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .6, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: .8, label: "Hard" } };
+const DIFFS = { easy: { skill: .95, band: .07, pick: .4, drift: .3, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .6, drift: .65, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: .8, drift: .9, label: "Hard" } };   // drift: how often a computer racer gets a mini-turbo out of a corner
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
 // speed classes like Mario Kart's: everything on the track moves slower (turning stays the same, so it's easier to steer)
 const CCS = { 50: { spd: .7, label: "🐢 50cc" }, 100: { spd: .85, label: "🏎️ 100cc" }, 150: { spd: 1, label: "🔥 150cc" } };
@@ -1705,7 +1705,7 @@ function makeRivals(keep) {
       const name = p.name, g = gridSpot(order.indexOf(name)), [x, y] = at(g.i, g.o), img = new Image(); img.src = p.bot ? botImg(name) : spriteOf(name);
       const r = { name, img, color: RIVAL_COLORS[n % RIVAL_COLORS.length], x, y, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0, finishT: 0,
         remote: true, net: null, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0, extra: 0, item: null, itemN: 0, itemT: 0, skill: VMAX, lane: 0, laneT: 9, bot: !!p.bot };
-      if (p.bot && host) Object.assign(r, { remote: false, lane: g.o, laneT: 1 + Math.random() * 2, skill: 226 + n * 3 + Math.random() * 10, lastPad: null, kingWas: 0 });   // 🤖 the host drives the bots
+      if (p.bot && host) Object.assign(r, { remote: false, lane: g.o, laneT: 1 + Math.random() * 2, skill: 235 + n * 1.2 + Math.random() * 4, lastPad: null, kingWas: 0 });   // 🤖 the host drives the bots
       return r;
     });
     DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BSHELLS = []; HORNS = []; BOXES.forEach(b => b.t = 0); return;
@@ -1714,10 +1714,10 @@ function makeRivals(keep) {
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   const names = keep || pool.slice(0, 7); while (names.length < 7) names.push(["Orange Mushroom", "Blue Snail", "Slime", "Pig", "Stump", "Green Mushroom", "Ribbon Pig"][names.length]);
   const slots = [0, 1, 2, 3, 5, 6, 7];   // you start 5th on the grid
-  RIV = names.map((name, n) => {
+  RIV = names.map((name, n) => {   // (their skills are close together, so the pack stays bunched)
     const g = gridSpot(slots[n]), [x, y] = at(g.i, g.o), img = new Image(); img.src = spriteOf(name);
     return { name, img, color: RIVAL_COLORS[n], x, y, finishT: 0, a: tangent((g.i + N) % N), v: 0, idx: (g.i + N) % N, lap: 0, cps: 0, prog: 0, done: false, finish: 0,
-      lane: g.o, laneT: 1 + Math.random() * 2, skill: 228 + n * 3 + Math.random() * 10, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0,
+      lane: g.o, laneT: 1 + Math.random() * 2, skill: 236 + n * 1.2 + Math.random() * 4, steer: 0, spin: 0, inv: 0, squash: 0, z: 0, vz: 0, boost: 0,
       item: null, itemN: 0, itemT: 0, lastPad: null, kingWas: 0 };
   });
   DROPS = []; SHOTS = []; ARMS = []; BOMBS = []; BOOMS = []; BSHELLS = []; HORNS = []; BOXES.forEach(b => b.t = 0);
@@ -1966,10 +1966,14 @@ function rivalStep(r, dt, tt) {
   const [tx, ty] = onFork ? altAt((near.alt ? near.j : nearAlt(r.x, r.y).j) + 12, Math.max(-ALT_ROAD / 2 + 12, Math.min(ALT_ROAD / 2 - 12, r.lane * .7))) : at(r.idx + 14, r.lane);
   let d = Math.atan2(ty - r.y, tx - r.x) - r.a; d = Math.atan2(Math.sin(d), Math.cos(d));
   // inked rivals don't swerve (like Mario Kart 8): they're a little slower and slippery, so they turn late
+  if (!air && r.v > 150 && Math.abs(d) > .18) r.cornerT = (r.cornerT || 0) + dt;   // 💨 the computer racers drift too: a mini-turbo out of a long corner
+  else if (Math.abs(d) < .08) { if (r.cornerT > .6 && !(r.spin > 0) && !r.done && Math.random() < DIFF().drift) { const i2 = OPEN ? Math.min(N - 1, r.idx + 30) : (r.idx + 30) % N; let ta = tangent(i2) - tangent(r.idx); ta = Math.atan2(Math.sin(ta), Math.cos(ta)); if (Math.abs(ta) < .3) giveBoost(r, Math.min(.8, .3 + r.cornerT * .3), 45); } r.cornerT = 0; }   // (only onto a straight, so it can't fling them off the next bend)
   const turn = Math.max(-2.6, Math.min(2.6, d * 4)); r.steer += (Math.sign(turn) * Math.min(1, Math.abs(turn) / 2) - r.steer) * Math.min(1, dt * 8);
   if (r.spin <= 0) r.a += turn * dt * Math.min(1, r.v / 80) * (r.ink > 0 ? .5 : 1);
-  const gap = (progOf(K) - progOf(r)) / N;   // + when you're ahead of them
-  const band = 1 + Math.max(-.13, Math.min(DIFF().band, gap * .7));
+  // 🧲 keep the race close (like Mario Kart): a computer racer behind every real player speeds up, one ahead of them all eases off
+  let gap = 0; { const hp = [K, ...RIV.filter(o => o.remote && !o.bot)].filter(o => !o.done).map(progOf), p = progOf(r);
+    if (hp.length) { const lo = Math.min(...hp), hi = Math.max(...hp); gap = p > hi ? (hi - p) / N : p < lo ? (lo - p) / N : 0; } }
+  const band = 1 + Math.max(-.1, Math.min(DIFF().band, gap * 1.2));
   boostTick(r, dt);
   const top = r.done ? (OPEN ? 0 : 140) : r.hyper > 0 ? VMAX + 50 : (!air && inPen(r.idx, L) ? 80 : off && !air ? 110 : r.skill * DIFF().skill * band * (r.small > 0 ? .72 : 1) * (r.ink > 0 ? .95 : 1)) + (r.extra || 0);
   if (r.spin > 0) r.v *= Math.pow(.3, dt); else r.v += (r.v < top ? (r.extra > 5 ? 800 : r.v < 120 ? 190 : 110) : -220) * dt;
@@ -2290,7 +2294,7 @@ function spinOut(msg) {
 const COINFX = [];
 // screen-space effects around your kart (sparks, streaks, dust, sparkles) and fire trails left on the road (world space)
 let PFX = [], FIRE = [], fxClock = 0, fxSpawn = 0, fireSpawn = 0;
-const sparkCol = (c, t) => c > 2.6 ? `hsl(${(t * 900) % 360},100%,65%)` : c > 1.7 ? (Math.random() < .5 ? "#ff5a2e" : "#ffb02e") : c > .8 ? (Math.random() < .5 ? "#4aa8ff" : "#c8ecff") : "#ffffff";
+const sparkCol = (c, t) => c > 2.4 ? `hsl(${(t * 900) % 360},100%,65%)` : c > 1.5 ? (Math.random() < .5 ? "#ff5a2e" : "#ffb02e") : c > .7 ? (Math.random() < .5 ? "#4aa8ff" : "#c8ecff") : "#ffffff";
 let INK = [];   // 🐙 ink splats on your screen (screen coordinates)
 function makeInk() {
   INK = [];
@@ -2409,13 +2413,16 @@ function step(dt) {
   // drifting: hold drift while turning, the longer you hold the bigger the boost when you let go
   if (racing && !air && k.spin <= 0 && inp.drift && !k.drift && Math.abs(inp.steer) > .25 && k.v > 140) { k.drift = Math.sign(inp.steer); k.charge = 0; k.hop = .18; hopSound(); }
   if (k.drift && (!inp.drift || k.v < 90)) {
-    if (k.charge > 2.6) { giveBoost(k, 2.5, 100); flash("🌈 Ultra boost!", 600); } else if (k.charge > 1.7) giveBoost(k, 1.2, 80); else if (k.charge > .8) giveBoost(k, .6, 60);
-    if (k.charge > .8) whooshSound();
+    // 💨 mini-turbos, named like Mario Kart's: the longer the drift, the bigger (and the bigger the shout)
+    if (k.charge > 2.4) { giveBoost(k, 2.2, 110); pop("🌈 ULTRA MINI-TURBO!", "#ff7ad9", true); K.shake = Math.max(K.shake, .12); buzz([20, 30, 40]); }
+    else if (k.charge > 1.5) { giveBoost(k, 1.3, 90); pop("🔥 SUPER MINI-TURBO!", "#ffa33a", true); buzz(25); }
+    else if (k.charge > .7) { giveBoost(k, .7, 72); pop("💨 Mini-Turbo!", "#8fd3ff"); }
+    if (k.charge > .7) { whooshSound(); k.mtN = (k.mtN || 0) + 1; }
     k.drift = 0; k.charge = 0;
   }
   let turn = k.steer * 2.1 * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? .8 : .5) : 1);
   if (k.drift) { turn = (k.drift * 1.55 + k.steer * .9) * Math.min(1, k.v / 110); if (!k.off) { const before = k.charge; k.charge += dt * Math.max(.4, 1 + .7 * k.steer * k.drift);   // steering into the turn charges faster
-    if ([.8, 1.7, 2.6].some(th => before < th && k.charge >= th)) tone(k.charge > 2.6 ? 1320 : k.charge > 1.7 ? 990 : 740, .1, "triangle", .06); } }
+    if ([.7, 1.5, 2.4].some(th => before < th && k.charge >= th)) tone(k.charge > 2.4 ? 1320 : k.charge > 1.5 ? 990 : 740, .1, "triangle", .06); } }
   k.a += turn * dt;
   // ❄️ El Nath: on ice the kart keeps going the way it was moving and only slowly follows where it's pointing
   const grip = MECH === "ice" ? (icy ? 1.7 : k.off ? 5 : 4) : 99;   // El Nath: slippery, but a turn can still be held
@@ -2477,6 +2484,8 @@ function step(dt) {
   if (mode === "tt" && (!ghostRec.length || k.t - ghostRec[ghostRec.length - 1][0] >= 100)) ghostRec.push([Math.round(k.t), Math.round(k.x), Math.round(k.y), +k.a.toFixed(2), Math.round(k.z)]);
   if (lapTick(k)) {
     k.laps.push(k.t - k.lapStart); k.lapStart = k.t; lapSound(); cheerSound();
+    { const lt = k.laps[k.laps.length - 1], key = `kart_bl:${ccId(TRACK_ID, raceCC)}:${me}`, pb = +store.get(key) || 0;   // ⚡ your best lap ever on this track, in any mode
+      if (lt > 5000 && (!pb || lt < pb)) { store.set(key, String(Math.round(lt))); if (pb) { setTimeout(() => { if (state === "race" || state === "done") { pop(`⚡ NEW BEST LAP!  −${((pb - lt) / 1000).toFixed(2)}s`, "#ffe14a", true); [880, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, .12, "square", .05), i * 90)); buzz([20, 40, 20]); } }, 700); } } }
     COINS.forEach(c => c.got = false);   // mesos come back every lap (the 10 max stays)
     if (k.lap >= LAPS) finish();
     else if (k.lap === LAPS - 1) { flash("🏁 FINAL LAP!", 1600); finalSound(); B.musicRate(1.15); fireworks(3); }   // fanfare, and the music speeds up
@@ -2496,14 +2505,14 @@ function render() {
   const over = Math.max(0, Math.min(1, (k.v - VMAX) / 110));
   CD += (CAMD * (1 + .28 * over + .22 * (k.kick || 0)) - CD) * .1;
   // boosts widen the view a little (the camera "pulls back"), which makes the speed feel bigger
-  k.fov = (k.fov || 0) + (((k.boost > 0 || k.hyper > 0) ? 1 : 0) - (k.fov || 0)) * .12;
+  k.fov = (k.fov || 0) + (((k.boost > 0 || k.hyper > 0 || k.rocket > 0) ? 1 : Math.max(0, Math.min(.45, (k.v - 200) / 160))) - (k.fov || 0)) * .12;   // the view widens with speed (a lot more on a boost)
   const FO = FOCAL * (1 - .19 * k.fov);
   const cx = k.x - ca * CD, cy = k.y - sa * CD;
   const now3 = performance.now(), dt3 = Math.min(.05, (now3 - (r3t || now3)) / 1000); r3t = now3;
   if (G3) {   // 🎮 real 3D: three.js draws the ground, hills, sky, karts and scenery; this canvas only gets the effects and the HUD on top
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxc.width, fxc.height); ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true;
     const gc = gridSpot(3), gi = (gc.i + N) % N, intro = state === "wait" ? 0 : state === "count" ? Math.max(0, Math.min(1, 1 - (countAt + 2100 - now3) / 3200)) : 1;
-    G3.sync(trackData()); G3.begin(k, { W, H, dt: dt3, fov: k.fov, shake: k.shake, snap: state === "wait", intro, grid: [...at(gi, 0), tangent(gi)] });
+    G3.sync(trackData()); G3.begin(k, { W, H, dt: dt3, fov: k.fov, roll: state === "race" ? -((k.drift || 0) * .045 + (k.steer || 0) * .015) : 0, shake: k.shake, snap: state === "wait", intro, grid: [...at(gi, 0), tangent(gi)] });
   }
   const CH = CAMH + Math.min(k.z, 130) * .35;
   if (!G3) {
@@ -2861,8 +2870,9 @@ function drawKart0(k) {
     fxSpawn = .02;
     if (k.drift && k.charge > .2) for (const side of [-1, 1]) for (let n = 0; n < 2; n++)   // drift sparks from the rear wheels
       PFX.push({ x: x + side * w * .42, y: y - 2, vx: side * (30 + Math.random() * 70) - k.drift * 20, vy: 20 + Math.random() * 70, t: .15, life: .15, size: 1.4 + Math.random() * 1.4, col: sparkCol(k.charge, now), kind: "spark" });
-    if (k.fov > .2 && state === "race") for (let n = 0; n < 2; n++) {   // speed streaks rushing past
-      const ang = Math.random() * Math.PI * 2, r0 = W * (.22 + Math.random() * .25), cxs = W / 2, cys = HOR + (H - HOR) * .32;
+    const boosting = k.boost > 0 || k.hyper > 0 || k.rocket > 0, nStreak = state !== "race" ? 0 : boosting ? 3 : k.v > VMAX * .95 && Math.random() < .35 ? 1 : 0;
+    for (let n = 0; n < nStreak; n++) {   // speed streaks rushing past (a few at top speed, a storm on a boost)
+      const ang = Math.random() * Math.PI * 2, r0 = W * (boosting ? .22 + Math.random() * .25 : .34 + Math.random() * .2), cxs = W / 2, cys = HOR + (H - HOR) * .32;
       PFX.push({ x: cxs + Math.cos(ang) * r0, y: cys + Math.sin(ang) * r0 * .55, vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 230, t: .14, life: .14, size: 1, col: "#ffffff", kind: "streak" });
     }
     if (k.off && k.v > 60 && k.z <= 0) { const side = Math.random() < .5 ? -1 : 1;   // dust off the road
@@ -2883,7 +2893,7 @@ function drawKart0(k) {
   }
   ctx.globalAlpha = 1;
   // a coloured glow under the kart while a drift is charged or a boost is on
-  const glow = k.drift && k.charge > .8 ? (k.charge > 2.6 ? `hsla(${(now * 900) % 360},100%,60%,` : k.charge > 1.7 ? "rgba(255,110,30," : "rgba(70,160,255,") : (k.extra || 0) > 20 ? "rgba(255,140,40," : null;
+  const glow = k.drift && k.charge > .7 ? (k.charge > 2.4 ? `hsla(${(now * 900) % 360},100%,60%,` : k.charge > 1.5 ? "rgba(255,110,30," : "rgba(70,160,255,") : (k.extra || 0) > 20 ? "rgba(255,140,40," : null;
   if (glow && !G3) { const g4 = ctx.createRadialGradient(x, gy, 2, x, gy, w * .9); g4.addColorStop(0, glow + ".55)"); g4.addColorStop(1, glow + "0)"); ctx.fillStyle = g4; ctx.fillRect(x - w, gy - w * .5, w * 2, w); }
   if (IMG.meso) for (const c of COINFX) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(IMG.meso[Math.floor(c.t * 16) % 4], x + c.x - 6.5, y - 30 + c.y, 13, 12); ctx.restore(); }
   let lift = 0;
@@ -3363,6 +3373,9 @@ function mpShowWaiting(total) {
     <td>${r === K ? (total == null ? "—" : fmt(total)) : r.done ? fmt(r.finishT) : "racing…"}</td></tr>`).join("")}</table>`;
   $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
 }
+const TROPHY = [null, ["🏆", "Gold"], ["🥈", "Silver"], ["🥉", "Bronze"]];
+const trophyHtml = t => `<div class="k-trophy r${t.rank}"><span>${TROPHY[t.rank][0]}</span><div><b>${TROPHY[t.rank][1]} Trophy!</b><small>${esc(CUPS[t.cup].name)}</small></div></div>`;
+const trophyMark = c => { const r = +store.get("kart_trophy:" + c) || 0; return r >= 1 && r <= 3 ? `<i class="kt-tro" title="${TROPHY[r][1]} trophy">${TROPHY[r][0]}</i>` : ""; };   // the best trophy you've won in a cup, on its button
 function mpShowResults(res) {
   if (state !== "done" || !res) return;
   const mine = res.find(r => r.name === MP.me);
@@ -3370,9 +3383,13 @@ function mpShowResults(res) {
     const rk = String(MP.track).split("@")[0], C = CUPS[cupOf(rk)], ci = C.tracks.indexOf(rk);   // 🏆 the cup goes on: 10 seconds to look at the results, then everyone is taken to the next track
     MP.next = TRACKS[rk] && ci >= 0 && ci < C.tracks.length - 1 ? { t: C.tracks[ci + 1], n: ci + 2, at: performance.now() + 10000, cc: roomCC(), cup: cupOf(rk), fails: 0 } : null;
     if (MP.next && MP.host === MP.me) { cup = MP.next.cup; track = MP.next.t; }
+    MP.trophy = null;   // 🏆 the end of a cup: a trophy for the top 3 in the room's standings (and the best one you've won is kept)
+    if (TRACKS[rk] && ci === C.tracks.length - 1) { const rank = Object.entries(MP.tally).sort((a, b) => b[1] - a[1]).findIndex(([n]) => n === MP.me) + 1;
+      if (rank >= 1 && rank <= 3) { MP.trophy = { rank, cup: cupOf(rk) }; const key = "kart_trophy:" + MP.trophy.cup; if (rank < (+store.get(key) || 9)) store.set(key, String(rank));
+        setTimeout(() => { finalSound(); confetti(); buzz([40, 60, 120]); }, 400); } }
     if (MP.next && MP.host !== MP.me) setTimeout(() => { if (MP.next && !mpReadyInfo().mine) mpReady(true); }, 600);   // (everyone's ready for the next race automatically)
   }
-  $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>
+  $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>${MP.trophy ? trophyHtml(MP.trophy) : ""}
     <p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">👥 Room ${MP.code} · ${(() => { const rk = String(MP.track).split("@")[0], C = CUPS[cupOf(rk)]; return TRACKS[rk] ? `${C.icon} ${esc(C.name)} race ${C.tracks.indexOf(rk) + 1}/3: ${esc(TRACKS[rk].name)}` : ""; })()} · ${CCS[raceCC].label}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${r.bot ? botImg(r.name) : spriteOf(r.name)}" alt=""></td><td>${r.bot ? "🤖 " : ""}${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
@@ -3394,7 +3411,7 @@ function mpNextHtml() {
   const order = Object.entries(MP.tally).sort((a, b) => b[1] - a[1]);   // (everyone who raced in this cup, even if they left)
   const stand = order.length ? `<div class="k-stand"><b>🏆 ${(() => { const lk = String(MP.track).split("@")[0], C = TRACKS[lk] && CUPS[cupOf(lk)]; return C && MP.results && C.tracks.indexOf(lk) === C.tracks.length - 1 ? `${esc(C.name)} final standings` : "Room standings"; })()}</b>${order.map(([n, p], i) => `<span class="${n === MP.me ? "you" : ""}">${["🥇", "🥈", "🥉"][i] || ordinal(i + 1)} <img src="${(MP.tBots || {})[n] ? botImg(n) : spriteOf(n)}" alt="">${(MP.tBots || {})[n] ? "🤖 " : ""}${esc(n)}${!here.has(n) && !(MP.tBots || {})[n] ? " <small>(left)</small>" : ""} <em>${p}</em></span>`).join("")}</div>` : "";
   const pick = host ? `<p class="kt-pickhead">👑 You're the host: pick the next race</p>
-      <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("")}</div>
+      <div class="kt-cuppick">${Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}${trophyMark(k)}</button>`).join("")}</div>
       <p class="k-diff">${CUPS[cup].tracks.map(k => `${TRACKS[k].icon} ${TRACKS[k].name}`).join(" → ")}</p>
       <div class="kt-diff">${Object.entries(CCS).map(([k, c]) => `<button type="button" data-cc="${k}" class="${+k === cc ? "on" : ""}">${c.label}</button>`).join("")}</div>
       ${playerList()}${botPick()}<p class="k-diff">${countNote()}</p>
@@ -3490,7 +3507,7 @@ async function mpPoll(first) {
     if (data.status === "racing" && spec && !MP.watching && state === "menu") mpWatch(data);   // 👀 joined mid-race: watch it
     if (MP.watching && data.status !== "racing") stopWatch();
     if (data.status === "racing" && !spec && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in > -4) {
-      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null; MP.endAt = 0; MP.firstName = null; MP.next = null;
+      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null; MP.endAt = 0; MP.firstName = null; MP.next = null; MP.trophy = null;
       { const st = String(data.track || "").split("@")[0]; if (TRACKS[st] && CUPS[cupOf(st)].tracks.indexOf(st) === 0) { MP.tally = {}; MP.tBots = {}; } }   // 🏆 a cup's first race: fresh room standings
       if (mode !== "mp") { mode = "mp"; drawMode(); }
       start();
@@ -3752,7 +3769,7 @@ function drawTrack(light) {
   if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
   const inRoom = mode === "mp" && !!MP.code, rk = inRoom ? roomTrack() : track, C = CUPS[inRoom ? cupOf(rk) : cup];
   const t = TRACKS[mode === "gp" ? C.tracks[0] : rk], pickHidden = mode === "mp" && !!MP.code && MP.host !== MP.me;
-  $k("#kCupPick").innerHTML = Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}</button>`).join("");
+  $k("#kCupPick").innerHTML = Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}${trophyMark(k)}</button>`).join("");
   $k("#kCupPick").hidden = pickHidden;
   $k("#kTrackPick").innerHTML = CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("");
   $k("#kTrackPick").hidden = mode === "gp" || mode === "mp" || pickHidden;   // (multiplayer races whole cups)

@@ -367,3 +367,14 @@ kbd.w { min-width: 54px; }
 .k-mesos { font-weight: 800; color: #b07a12 !important; margin: 4px 0; }
 /* phones: text boxes at 16px, or an iPhone zooms the whole page in when you tap one (the room chat after a race did this) */
 @media (pointer: coarse) { .kt input, .kt textarea, .kt select { font-size: 16px; } }
+/* 🏆 cup trophies: the banner at the end of a cup, and the best one won shown on each cup button */
+.kt-cuppick button { position: relative; }
+.kt-tro { position: absolute; top: -7px; right: -4px; font-style: normal; font-size: 15px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+.k-trophy { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px auto 8px; padding: 8px 14px; border-radius: 14px; width: fit-content; max-width: 100%;
+  border: 2px solid #b8860b; background: linear-gradient(135deg, #fff6c8, #ffd75e 55%, #f2b632); box-shadow: 0 3px 0 rgba(90,60,10,.25); animation: ktTrophy .7s cubic-bezier(.2,1.6,.4,1) both; }
+.k-trophy span { font-size: 38px; line-height: 1; animation: ktTrophySpin 1.6s ease-in-out .7s infinite alternate; }
+.k-trophy b { display: block; font-size: 17px; color: #5a3a00; } .k-trophy small { color: #6b4a10; font-size: 12px; }
+.k-trophy.r2 { border-color: #8a96a8; background: linear-gradient(135deg, #ffffff, #dde4ee 55%, #b8c2d0); } .k-trophy.r2 b, .k-trophy.r2 small { color: #3a4452; }
+.k-trophy.r3 { border-color: #9a5a2a; background: linear-gradient(135deg, #ffe8d2, #e8a66a 55%, #c47a3a); } .k-trophy.r3 b, .k-trophy.r3 small { color: #4a2408; }
+@keyframes ktTrophy { from { transform: scale(.3) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ktTrophySpin { from { transform: rotate(-8deg) scale(1); } to { transform: rotate(8deg) scale(1.08); } }
