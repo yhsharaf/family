@@ -506,7 +506,7 @@ export function create(A) {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   const cliffCache = {};
   function cliffMats(kind) {
-    let mode = "ms"; try { mode = localStorage.getItem("kart_cliff") || "ms"; } catch (e) {}
+    let mode = "paint"; try { mode = localStorage.getItem("kart_cliff") || "paint"; } catch (e) {}   // (the guild picked the painted walls; "ms" = the maplestory.io ground)
     if (cliffCache[mode]) return cliffCache[mode];
     const prep = tx => { tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = aniso; return tx; };
     if (mode === "ms") {   // 🍄 Henesys's Singing Mushroom Forest ground (maplestory.io): the grassy lip and the dirt with mossy rocks
