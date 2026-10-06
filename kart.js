@@ -1362,7 +1362,12 @@ function makeArchArt() {
   // 🏪 the Henesys Market gate (Mushroom Park's start): wooden posts and a market sign under a striped awning
   IMG.mk_post = mk(18, 150, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, "#5a3416"); gr.addColorStop(.5, "#a8703a"); gr.addColorStop(1, "#5e3818");
     g.fillStyle = gr; g.fillRect(2, 0, w - 4, h); g.fillStyle = "rgba(40,20,8,.35)"; for (let y = 14; y < h; y += 30) g.fillRect(2, y, w - 4, 3); g.fillStyle = "#3e220c"; g.fillRect(0, h - 10, w, 10); });
-  IMG.mk_banner = mk(420, 96, (g, w, h) => {
+  IMG.mk_banner = IMG.mp_sign ? mk(420, 200, (g, w, h) => {   // 🪧 MapleStory's own "Market Place" sign, hung from a beam under the striped awning
+    for (let x = 0, n = 0; x < w; x += 30, n++) { g.fillStyle = n & 1 ? "#ffffff" : "#d8352d"; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 30, 0); g.lineTo(x + 30, 22); g.quadraticCurveTo(x + 15, 32, x, 22); g.fill(); }   // the awning
+    const gr = g.createLinearGradient(0, 30, 0, 52); gr.addColorStop(0, "#a8703a"); gr.addColorStop(1, "#5e3818"); g.fillStyle = gr; g.fillRect(0, 30, w, 20); g.fillStyle = "rgba(40,20,8,.4)"; g.fillRect(0, 48, w, 3);   // the beam
+    g.strokeStyle = "#5a3a1a"; g.lineWidth = 3; for (const x of [140, 280]) { g.beginPath(); g.moveTo(x, 48); g.lineTo(x, 66); g.stroke(); }   // ropes
+    const im = IMG.mp_sign, sw = 240, sh = sw * 150 / im.width; g.drawImage(im, 0, 0, im.width, 150, (w - sw) / 2, 54, sw, sh); })
+  : mk(420, 96, (g, w, h) => {
     for (let x = 0, n = 0; x < w; x += 30, n++) { g.fillStyle = n & 1 ? "#ffffff" : "#d8352d"; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 30, 0); g.lineTo(x + 30, 22); g.quadraticCurveTo(x + 15, 32, x, 22); g.fill(); }   // the awning
     g.fillStyle = "#6b4423"; g.beginPath(); g.roundRect(6, 30, w - 12, h - 34, 10); g.fill();
     g.fillStyle = "#c08a50"; g.beginPath(); g.roundRect(11, 35, w - 22, h - 44, 8); g.fill();
@@ -1476,9 +1481,9 @@ function makeTopiary(pet) {   // 🌿 a giant pet clipped from hedge, on a hedge
   g.globalCompositeOperation = "source-over"; g.fillStyle = "#3a8a30"; g.fillRect(0, h, c.width, 60); g.fillStyle = "#4ea83e"; g.fillRect(0, h, c.width, 12); return c;
 }
 function placeStart(push) {
-  if (!IMG.arch_post) makeArchArt();
+  if (!IMG.arch_post || (T.gate === "market" && IMG.mp_sign && IMG.mk_banner && IMG.mk_banner.height !== 200)) makeArchArt();   // (again once the Market Place sign has loaded)
   const li = OPEN ? START_I : 0, half = ROAD / 2 + CURB + 10, [cx, cy] = at(li, 0), mk = T.gate === "market", ice = T.gate === "ice" && IMG.ice_post;
-  for (const sd of [-1, 1]) { const [x, y] = at(li, sd * half); push(x, y, mk ? "mk_post" : ice ? "ice_post" : "arch_post", .62, 0); }
+  for (const sd of [-1, 1]) { const [x, y] = at(li, sd * half); push(x, y, mk ? "mk_post" : ice ? "ice_post" : "arch_post", mk && IMG.mp_sign ? 1.05 : .62, 0); }
   OBJS.push({ x: cx, y: cy, k: mk ? "mk_banner" : ice ? "ice_banner" : "arch_banner", s: (half * 2 + 14) / 420, r: 0, z: mk ? 36 : ice ? 40 : 70 });   // the market sign hangs low, right in view
   for (let n = 0; n < 10; n++) { const sd = n % 2 ? 1 : -1, [x, y] = at(li + (n >> 1) - 2, sd * (half + 6 + (n % 3) * 7));
     OBJS.push({ x, y, k: "balloon" + (n % 6), s: .7, r: 0, z: 78 + (n % 4) * 9, bob: 4 }); }
@@ -3340,6 +3345,7 @@ async function loadTiles() {
 async function prepare() {
   await loadTiles();
   const mstrip = await loadImg("media/kart/meso.png?v=1"); IMG.meso = mstrip ? mesoFrames(mstrip) : null;
+  IMG.mp_sign = await loadImg("media/kart/sign.webp?v=1");   // (the Market Place sign over Mushroom Canyon's start)
   [IMG.arrowIcon, IMG.arm, IMG.arrowShot] = await Promise.all([loadImg("media/kart/items/arrow_icon.png"), loadImg(B.M + "zarm_stand.gif"), loadImg("media/kart/items/arrow.png")]);   // the quiver (held as a shield) and the real arrow
   await Promise.all(["gshell", "rshell", "bshell", "rocket", "piranha", "fire", "boom", "horn"].map(async k => { IMG["it_" + k] = await loadImg(ITEM_ICON[k]); }));   // 🎁 the new items
   IMG.bombF = await Promise.all([0, 1, 2, 3, 4, 5, 6, 7].map(i => loadImg(`media/kart/items/bomb${i}.png`)));   // 💣 Gunslinger's Grenade (MapleStory)
