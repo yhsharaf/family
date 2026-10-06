@@ -556,8 +556,8 @@ export function create(A) {
     m.body.position.y = Math.max(0, r.z || 0) + hop + lift;
     m.body.rotation.set(flip, -((r.drift || 0) * .34 + (r.steer || 0) * .07) - spin, 0, "YXZ");
     if (r.glide && !m.wing) { const g = new THREE.Group(), cloth = new THREE.MeshLambertMaterial({ color: 0xffcf3a, side: THREE.DoubleSide }), geo = new THREE.BufferGeometry();   // 🪁 a hang-glider over the kart
-      geo.setAttribute("position", new THREE.Float32BufferAttribute([14, 52, 0, -12, 47, -30, -12, 47, 30, 14, 52, 0, -12, 47, 30, -6, 49, 0, 14, 52, 0, -6, 49, 0, -12, 47, -30], 3)); geo.computeVertexNormals();
-      g.add(new THREE.Mesh(geo, cloth)); for (const z of [-5, 5]) { const st = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x555b66 })); st.scale.set(1.5, 34, 1.5); st.position.set(-4, 30, z); g.add(st); }
+      geo.setAttribute("position", new THREE.Float32BufferAttribute([14, 33, 0, -12, 30, -30, -12, 30, 30, 14, 33, 0, -12, 30, 30, -6, 31.5, 0, 14, 33, 0, -6, 31.5, 0, -12, 30, -30], 3));   // (just over the driver's head) geo.computeVertexNormals();
+      g.add(new THREE.Mesh(geo, cloth)); for (const z of [-5, 5]) { const st = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x555b66 })); st.scale.set(1.5, 19, 1.5); st.position.set(-4, 21, z); g.add(st); }
       m.body.add(g); m.wing = g; }
     if (m.wing) m.wing.visible = !!r.glide;
     const sc = (r.small > 0 ? .6 : 1) * (r.hyper > 0 ? 1.3 : 1); m.body.scale.set(sc * (r.squash > 0 ? 1.35 : 1), sc * (r.squash > 0 ? .45 : 1), sc * (r.squash > 0 ? 1.35 : 1));
