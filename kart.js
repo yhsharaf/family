@@ -61,7 +61,9 @@ function openPts(c) {
   return out;
 }
 // the current track (loadTrack fills these in)
-let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null;   // (Pets Park: solid hedge blocks, pets on chains, pets wandering the gardens)
+let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [];
+// 🗿 a Thwomp: up high, then it slams down, sits a moment and rises again (the same clock for everyone)
+const thwompZ = (t, now) => { const p = ((now + t.ph) % t.T) / t.T; return p < .5 ? 150 : p < .58 ? 150 * (1 - (p - .5) / .08) : p < .8 ? 0 : 150 * (p - .8) / .2; };   // (Pets Park: solid hedge blocks, pets on chains, pets wandering the gardens)
 // 🐾 the pets from maplestory.io (media/kart/pets): how many frames each animation has
 const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stand0: 3, jump: 1 }, jrbalrog: { move: 4, stand0: 3, jump: 1 }, whitetiger: { move: 3, stand0: 4, jump: 1 },
   pinkbunny: { move: 4, stand0: 3, jump: 1 }, whitebunny: { move: 4, stand0: 3, jump: 1 }, blackbunny: { move: 4, stand0: 3, jump: 1 }, kitty: { move: 3, stand0: 3, jump: 1 },
@@ -611,12 +613,37 @@ const TRACKS = {
   },
   // ---- Zakum Cup 🔥 (still the old runs; being rebuilt as normal races laid out like Wario's Gold Mine, Grumble Volcano and Thwomp Ruins)
   zk1: {
-    id: "zakum1", cup: "zakum", music: "k_zakum1", name: "Dead Mine Climb", sub: "switchbacks up the mine · Fire Boars", icon: "⛏️", open: true,
-    ctrl: OPEN_ZK1,
-    theme: TH.mine, art: { sky: "media/kart/zakum/sky1.webp", strip: "media/kart/zakum/strip1.webp" },
-    near: ["zk_rocks", "zk_rocks2", "zk_crate", "zk_barrier", "zk_logs", "zk_lantern"],
-    far: ["zk_crane", "zk_board", "zk_rocks", "zk_rocks2", "zk_logs", "zk_lantern"], mobs: ["fire_boar", "drake", "firebomb"],
-    build(F) { return zakumBuild(F, { cross: ["fire_boar", "fire_boar", "drake"], king: null, edge: ["zk_barrier", "zk_lantern"] }); },
+    // 1. Thwomp Ruins (Mario Kart 8): stone ruins in the Zakum mine. The start straight and two lefts; the long tunnel along the top where Rollers
+    // roll out across the road; out of it the road splits round a pool (stay right past a Thwomp, go left past another, or splash straight across
+    // the shallow water); in through the Thwomp-mouth tunnel; the zig-zag past two more Thwomps; and a glide off the ledge back down to the line.
+    id: "thwomp", scale: 1.7, road: 180, cup: "zakum", music: "k_zakum1", name: "Thwomp Ruins", sub: "Thwomps · Rollers in the tunnel · the pool split · glide home", icon: "🗿",
+    ctrl: [[1567, 768, 40], [1536, 563, 44], [1510, 384, 48], [1382, 302, 50], [1203, 320, 50], [1050, 461, 48], [845, 384, 44], [589, 243, 38], [307, 179, 32], [141, 294, 26], [159, 525, 18],
+      [218, 691, 12], [525, 845, 10], [563, 1101, 10], [512, 1280, 14], [576, 1459, 22], [678, 1741, 30], [845, 1766, 32], [1024, 1640, 34], [1150, 1580, 36], [1300, 1640, 38], [1485, 1592, 46],
+      [1766, 1395, 58], [1792, 1203, 40], [1690, 1024, 38], [1613, 896, 39]],
+    theme: { ...TH.mine, tufts: 8000, flowers: 300 }, art: { sky: "media/kart/zakum/sky1.webp", strip: "media/kart/zakum/strip1.webp" },
+    near: ["zk_rocks", "zk_rocks2", "zk_lantern", "zk_logs"], far: ["zk_rocks", "zk_rocks2", "zk_crane", "zk_board", "zk_lantern"], mobs: ["fire_boar", "drake"],
+    build() {
+      makeSnowArt();
+      const u = d => Math.round(d / SPC), coins = [], pads = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      const tunnel = { a: I(1000, 440), b: I(250, 210), rock: true, mound: 0x5a5560 }, mouth = { a: I(530, 1330), b: I(610, 1560), rock: true, mound: 0x5a5560 };
+      const rollers = [I(800, 370), I(600, 250), I(420, 200)].map((i, n) => ({ i, ph: n * 2.1, k: "roller", sp: .9, s: .6 }));
+      const fa = I(218, 691), fb = I(512, 1280);
+      const gl = I(1766, 1395); pads.push({ t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD });   // 🪂 off the ledge, back down to the line
+      pads.push({ t: "boost", i: I(1300, 1640), len: 8, o: 0, w: 70 }, { t: "boost", i: I(141, 294) + 6, len: 8, o: 0, w: 70 });
+      row(I(1536, 563), I(1382, 302), 6, 0); row(tunnel.a + 10, tunnel.b - 10, 8, j => (j & 1 ? 35 : -35)); row(mouth.a + 6, mouth.b - 6, 5, 0); row(I(845, 1766), I(1300, 1640), 6, 30);
+      return {
+        gaps: [{ a: gl, b: gl + u(420), kind: "chasm", caps: [] }], caves: [tunnel, mouth], pads, coins, pigs: rollers,
+        lake: { cx: ws(385), cy: ws(1000), rx: ws(135), ry: ws(225), kind: "shallow" },   // the pool in the middle of the split
+        fork: { a: fa, b: fb, via: [[ws(185), ws(900)], [ws(235), ws(1120)], [ws(360), ws(1275)]], width: 150, style: "cobble" },
+        thwomps: [{ i: I(552, 980), o: 0, ph: 0 }, { x: ws(200), y: ws(1010), ph: 1.1 }, { i: I(845, 1766), o: -45, ph: 2.2 }, { i: I(1150, 1580), o: 45, ph: .6 }],
+        boxes: [...boxRow(I(1203, 320), [-60, -20, 20, 60]), ...boxRow(I(218, 691), [-60, -20, 20, 60]), ...boxRow(I(1485, 1592), [-60, -20, 20, 60])],
+        extra(push) {
+          for (const [i, sd] of [[I(1567, 700), 1], [I(1550, 600), -1], [I(1530, 480), 1], [I(678, 1741), -1], [I(1024, 1640), 1], [I(1485, 1592), -1]]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 40)); BUILDINGS.push({ x, y, w: 40, d: 40, h: 150, a: tangent(i), stone: true }); }   // ruined pillars
+          for (let i = tunnel.a; i < tunnel.b; i += 14) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 4)); OBJS.push({ x, y, k: "zk_lantern", s: .3, r: 0, z: 0 }); }   // the tunnel's orange lamps
+        },
+      };
+    },
   },
   zk2: {
     id: "zakum2", cup: "zakum", music: "k_zakum2", name: "Molten Spiral", sub: "spiral into the volcano · lava pools · Firebombs", icon: "🌋", open: true,
@@ -735,6 +762,7 @@ function loadTrack(key) {
   BARE = []; if (LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow")) for (let i = 0; i < N; i++) { const e = (o) => { const [x, y] = at(i, o); return inLake(x, y); }; if (e(ROAD / 2 + CURB) && e(-ROAD / 2 - CURB)) { const l = BARE[BARE.length - 1]; if (l && l.b === i) l.b = i + 1; else BARE.push({ a: i, b: i + 1 }); } }   // no curbs across the rink
   MOLES = f.moles || []; CHOMPS = f.chomps || []; WANDER = f.wander || []; BUILDINGS = [];
   HOLES = (f.holes || []).map(h => { const [x, y] = at(h.i, h.o || 0); return { ...h, x, y }; });
+  THWOMPS = (f.thwomps || []).map(t => { if (t.x != null) return { T: 3.4, ...t }; const [x, y] = at(t.i, t.o || 0); return { T: 3.4, ...t, x, y }; });
   RINGS = (f.rings || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y, a: tangent(g.i) }; });   // ⭕ boost rings in the air
   PLANE = f.plane ? (() => { const [x, y] = at(f.plane.i, f.plane.o || 0), [sx, sy] = at(f.plane.i, 0); return { x, y, a: tangent(f.plane.i) + (f.plane.turn || 0), at: [sx, sy] }; })() : null;
   HEDGES = (f.hedges || []).map(b => { if (b.x != null) return { ...b, a: 0 }; const [x, y] = at(b.i, b.o); return { ...b, x, y, a: tangent(b.i) }; });
@@ -1204,6 +1232,10 @@ function makeSnowArt() {
     g.fillStyle = "#e8eef8"; g.beginPath(); g.moveTo(104, 36); g.lineTo(118, 22); g.lineTo(114, 36); g.lineTo(118, 50); g.closePath(); g.fill();
     g.beginPath(); g.ellipse(26, 36, 22, 20, 0, 0, 7); g.fill(); g.fillStyle = "#1a2a3a"; g.beginPath(); g.ellipse(22, 30, 9, 9, 0, 0, 7); g.fill(); g.fillStyle = "#d8ff4a"; g.beginPath(); g.arc(22, 30, 5, 0, 7); g.fill();
     g.fillStyle = "#1a2a3a"; g.beginPath(); g.moveTo(6, 44); for (let k = 0; k < 5; k++) g.lineTo(8 + k * 6, k & 1 ? 52 : 44); g.lineTo(36, 46); g.closePath(); g.fill(); });
+  IMG.roller = mk(90, 90, g => {   // 🪨 a Roller: a spiked stone ball
+    g.fillStyle = "#5a5560"; for (let k = 0; k < 10; k++) { const a = k / 10 * 6.28; g.beginPath(); g.moveTo(45 + Math.cos(a - .18) * 34, 45 + Math.sin(a - .18) * 34); g.lineTo(45 + Math.cos(a) * 45, 45 + Math.sin(a) * 45); g.lineTo(45 + Math.cos(a + .18) * 34, 45 + Math.sin(a + .18) * 34); g.fill(); }
+    const gr = g.createRadialGradient(36, 34, 4, 45, 45, 36); gr.addColorStop(0, "#b8b0a8"); gr.addColorStop(1, "#6a6260"); g.fillStyle = gr; g.beginPath(); g.arc(45, 45, 35, 0, 7); g.fill();
+    g.strokeStyle = "rgba(60,50,45,.6)"; g.lineWidth = 2.5; for (const [x0, y0, x1, y1] of [[22, 40, 40, 30], [50, 58, 66, 50], [34, 62, 44, 70]]) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); } });
   IMG.ice_post = mk(18, 150, g => { const gr = g.createLinearGradient(0, 0, 18, 0); gr.addColorStop(0, "#8fc8f0"); gr.addColorStop(.5, "#f4fbff"); gr.addColorStop(1, "#7ab8e8"); g.fillStyle = gr; g.fillRect(1, 0, 16, 150);
     g.strokeStyle = "rgba(90,150,210,.5)"; for (let y = 18; y < 150; y += 22) { g.beginPath(); g.moveTo(1, y); g.lineTo(17, y); g.stroke(); } });
   IMG.ice_banner = mk(420, 80, g => { g.fillStyle = "#bfe4ff"; g.beginPath(); g.roundRect(0, 4, 420, 72, 10); g.fill(); g.strokeStyle = "#ffffff"; g.lineWidth = 3;
@@ -1338,11 +1370,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, thwomps: THWOMPS, thz: thwompZ, water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=49"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=50"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -1686,6 +1718,7 @@ function rivalStep(r, dt, tt) {
   for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
   for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
   for (const b of HEDGES) if (b.i != null) { const di = (b.i - r.idx + N) % N; if (di > 0 && di < 32 && Math.abs(r.lane - b.o) < b.w / 2 + 24) r.lane = b.o > 0 ? b.o - b.w / 2 - 40 : b.o < 0 ? b.o + b.w / 2 + 40 : (r.lane >= 0 ? b.w / 2 + 40 : -b.w / 2 - 40); }   // 🌿 round the hedges
+  for (const t of THWOMPS) if (t.i != null) { const di = (t.i - r.idx + N) % N; if (di > 0 && di < 30 && Math.abs(r.lane - (t.o || 0)) < 60) r.lane = (t.o || 0) + (r.lane >= (t.o || 0) ? 1 : -1) * 75; }   // 🗿 the computer racers drive round the Thwomps
   for (const h of HOLES) { const di = (h.i - r.idx + N) % N; if (di > 0 && di < 36 && Math.abs(r.lane - (h.o || 0)) < h.r + 22) r.lane = (h.o || 0) + (r.lane >= (h.o || 0) ? 1 : -1) * (h.r + 30); }   // 🕳️ and round holes in the ice
   r.lane = Math.max(-ROAD / 2 + 14, Math.min(ROAD / 2 - 14, r.lane));
   const onFork = r.useAlt && r.idx >= FORK_A - 4 && r.idx < FORK_B - 6;
@@ -1923,6 +1956,10 @@ function petStep(r, air, tt) {
       const m = r.ma != null ? r.ma : r.a, hx = Math.cos(m), hy = Math.sin(m), into = hx * nx + hy * ny;
       if (into < 0) { const tx = hx - nx * into, ty = hy - ny * into; if (Math.hypot(tx, ty) > .05) r.a = r.ma = Math.atan2(ty, tx); }
       if (!(r.hedgeT > performance.now())) { r.hedgeT = performance.now() + 500; r.v = Math.min(r.v, 160); if (r === K) { bumpSound(); K.shake = Math.max(K.shake, .15); } } } }
+  { const now = performance.now() / 1000;
+    for (const t of THWOMPS) { const d = Math.hypot(r.x - t.x, r.y - t.y), z = thwompZ(t, now), R0 = 38;
+      if (d < R0 && z < 12 && r.z < 30 && thwompZ(t, now - .06) > 12) { r.squash = 1.1; r.v = 0; if (r === K) { spinOut("🗿 Squashed by a Thwomp!"); K.shake = .4; } else hit(r); }   // 💥 slammed
+      else if (d < R0 + 10 && z < 40 && d > 0) { const nx = (r.x - t.x) / d, ny = (r.y - t.y) / d; r.x = t.x + nx * (R0 + 10); r.y = t.y + ny * (R0 + 10); r.v = Math.min(r.v, 150); } } }   // a Thwomp on the ground is a solid block
   if (air) for (const g of RINGS) if (Math.hypot(r.x - g.x, r.y - g.y) < 30 && Math.abs(r.z - g.z) < (g.r || 40) && r.ringT !== g) {   // ⭕ through a boost ring
     r.ringT = g; giveBoost(r, 1.2, 130); if (r === K) { padSound(); flash("⭕ Boost ring!", 700); } }
   if (air) return;
@@ -2136,7 +2173,7 @@ function step(dt) {
   if (k.bonk > 0) k.bonk -= dt;
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
-    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "fishbone" ? "🐟 Fish Bone!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "fishbone" ? "🐟 Fish Bone!" : p.k === "roller" ? "🪨 Roller!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }   // 🌊 off the boardwalk: into the lake
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
   for (const p of PENPIGS) {

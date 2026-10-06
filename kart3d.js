@@ -233,7 +233,7 @@ export function create(A) {
         const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
       const R0 = t.ROAD / 2 + t.CURB + 14;
       shell(R0, cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);   // the crystal (or rock) inside
-      shell(R0 + 16, new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound || 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), .8);                // a mound of snow over it
+      shell(R0 + 16, new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), .8);                // a mound of snow over it
       if (cv.rock || cv.temple) continue;
       const RP = [], RI = [];   // the red rail (one side, like Double Dash!!)
       for (let i = cv.a, r = 0; i <= cv.b; i += 2, r++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = t.ROAD / 2 + t.CURB + 6, x = p[0] - Math.sin(a) * o, y = p[1] + Math.cos(a) * o, gz = h(x, y);
@@ -241,6 +241,12 @@ export function create(A) {
       const rg = new THREE.BufferGeometry(); rg.setAttribute("position", new THREE.Float32BufferAttribute(RP, 3)); rg.setIndex(RI);
       const rail = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xc8302a, side: THREE.DoubleSide })); scene.add(rail); roadObjs.push(rail);
     }
+    // 🗿 Thwomps: a stone block with a face on every side, and its shadow on the road (darker as it comes down)
+    thw = []; thFn = t.thz || null;
+    for (const th of t.thwomps || []) { const fm = new THREE.MeshLambertMaterial({ map: faceTex() }), top = new THREE.MeshLambertMaterial({ color: 0x7a7f8a });
+      const m = new THREE.Mesh(BOX, [fm, fm, top, top, fm, fm]); m.scale.set(74, 62, 74); m.rotation.y = -(th.a || 0); scene.add(m); roadObjs.push(m);
+      const sh = new THREE.Mesh(new THREE.CircleGeometry(40, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; scene.add(sh); roadObjs.push(sh);
+      thw.push({ th, m, sh, g: h(th.x, th.y) }); }
     // ⭕ boost rings hanging in the air over a glider jump: fly through one for a boost
     for (const rg of t.rings || []) { const m = new THREE.Mesh(new THREE.TorusGeometry(rg.r || 40, 5, 10, 36), new THREE.MeshBasicMaterial({ color: 0xffc83a }));
       const glow = new THREE.Mesh(new THREE.TorusGeometry((rg.r || 40) - 6, 2, 8, 36), new THREE.MeshBasicMaterial({ color: 0xfff4b8 }));
@@ -314,7 +320,15 @@ export function create(A) {
       g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(ox + 6, y + 5, B * .35, 3); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
   // ❄ the ice cave's walls: blue crystal facets, darker deep inside
-  let rockT = null, damT = null, goldT = null;
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null;
+  // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
+  const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
+    g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
+    g.strokeStyle = "#5a5f6a"; g.lineWidth = 4; g.strokeRect(4, 4, 120, 120);
+    g.fillStyle = "#3a3e48"; g.beginPath(); g.moveTo(16, 30); g.lineTo(58, 44); g.lineTo(58, 52); g.lineTo(16, 40); g.fill(); g.beginPath(); g.moveTo(112, 30); g.lineTo(70, 44); g.lineTo(70, 52); g.lineTo(112, 40); g.fill();
+    g.fillStyle = "#ffffff"; g.fillRect(24, 50, 28, 20); g.fillRect(76, 50, 28, 20); g.fillStyle = "#1a1d24"; g.fillRect(36, 54, 10, 14); g.fillRect(82, 54, 10, 14);
+    g.fillStyle = "#1a1d24"; g.fillRect(26, 84, 76, 24); g.fillStyle = "#f4f4f0"; for (let x = 28; x < 100; x += 12) { g.beginPath(); g.moveTo(x, 84); g.lineTo(x + 10, 84); g.lineTo(x + 5, 96); g.fill(); g.beginPath(); g.moveTo(x, 108); g.lineTo(x + 10, 108); g.lineTo(x + 5, 97); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })());
   // 🛕 the golden temple: sandstone blocks with gold trim and carved bands
   const goldTex = () => goldT || (goldT = (() => { const c = canvas(256, 256), g = c.getContext("2d"), B = 64;
     for (let y = 0; y < 256; y += B / 2) for (let x = -B; x < 256; x += B) { const ox = x + ((y / (B / 2)) & 1) * B / 2; g.fillStyle = ["#c8a25a", "#b8914a", "#d4b06a"][((x + y) / 32 & 3) % 3]; g.fillRect(ox, y, B, B / 2); g.strokeStyle = "#7a5a2a"; g.lineWidth = 2; g.strokeRect(ox + 1, y + 1, B - 2, B / 2 - 2); }
@@ -508,6 +522,7 @@ export function create(A) {
   let VW = 320, VH = 180, shake = 0;
   const fwd = new THREE.Vector3(), tmp = new THREE.Vector3(), look = new THREE.Vector3();
   function begin(k, o) {
+    if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const m of karts.values()) m.used = false;
     const a = k.a || 0;
     if (cam.yaw == null || o.snap) cam.yaw = a;
