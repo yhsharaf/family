@@ -429,6 +429,7 @@ export function create(A) {
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
     balloonM = []; for (const o of t.props3d || []) buildProp(o);
+    buildSnowWorld(t);
     for (const b of t.buildings || []) {
       if (b.ice || b.dam || b.stone) {   // a wall or tower of ice blocks, the concrete dam, or a stone pillar (no roof)
         const T0 = b.dam ? damTex() : b.stone ? rockTex() : iceTex(), U = b.dam ? 220 : b.stone ? 120 : 90, V = b.dam ? 220 : b.stone ? 120 : 45, em = b.dam ? 0x3a3a38 : b.stone ? 0x2a2630 : 0x3a5f80;
@@ -563,6 +564,52 @@ export function create(A) {
     return { plaza, falls, wtx, pts, pos, drops, x, z, g0, R };
   }
   // 🎈 Pets Park's big things in 3D: the pink-and-white gazebos and the hot-air balloons
+  function iglooTex() {   // rows of snow blocks
+    return ctex(256, 128, (g, W, H) => { g.fillStyle = "#f4f9ff"; g.fillRect(0, 0, W, H); g.strokeStyle = "#b8cce4"; g.lineWidth = 3;
+      for (let r = 0; r < 6; r++) { const y = r * H / 6; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); for (let c = 0; c < 8; c++) { const x = c * W / 8 + (r % 2) * W / 16; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + H / 6); g.stroke(); } } });
+  }
+  function houseTex(wall) {   // a timber-framed wall: plaster, dark beams, two windows glowing warm (the glow map lights only the windows)
+    const draw = (g, W, H, glow) => { g.fillStyle = glow ? "#000" : wall; g.fillRect(0, 0, W, H);
+      if (!glow) { g.fillStyle = "#6b4426"; g.fillRect(0, 0, W, 10); g.fillRect(0, H - 12, W, 12); for (const x of [0, W / 2 - 5, W - 10]) g.fillRect(x, 0, 10, H); g.fillRect(0, H * .48, W, 7); }
+      for (const x of [W * .25, W * .75]) { if (!glow) { g.fillStyle = "#5a3820"; g.fillRect(x - 22, H * .22 - 4, 44, 48); }
+        g.fillStyle = glow ? "#fff" : "#ffd27a"; g.fillRect(x - 18, H * .22, 36, 40); if (!glow) { g.fillStyle = "#5a3820"; g.fillRect(x - 2, H * .22, 4, 40); g.fillRect(x - 18, H * .22 + 18, 36, 4);
+          g.fillStyle = "#ffffff"; g.fillRect(x - 24, H * .22 + 42, 48, 7); } } };
+    const mk = glow => ctex(256, 128, (g, W, H) => draw(g, W, H, glow));
+    return { map: mk(false), glow: mk(true) };
+  }
+  // ❄️ the snowy world round an El Nath track: soft snow drifts heaped beside the road, a penguin slide's ice walls, chunky snow-capped mountains all round
+  function buildSnowWorld(t) {
+    const P = t.PTS, N = t.N, half = t.ROAD / 2 + t.CURB, tan = i => { const a = P[(i + N - 1) % N], b = P[(i + 1) % N], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / l, (b[1] - a[1]) / l]; };
+    const rd = (x, y) => { let m = 1e9; for (let i = 0; i < N; i += 2) { const dx = P[i][0] - x, dy = P[i][1] - y, d = dx * dx + dy * dy; if (d < m) m = d; } return Math.sqrt(m); };
+    let sd0 = 11; const rnd = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+    for (const c of t.chutes || []) for (const sd of [-1, 1]) {   // 🐧 the penguin slide: see-through ice walls along both sides, with a soft lip of snow on top
+      const pos = [], top = [], WH = 38;
+      for (let i = c.a; i <= c.b; i++) { const [tx, ty] = tan(i), p = P[i % N], o = sd * (half + 3), x = p[0] - ty * o, z = p[1] + tx * o, y = RE[i % N]; pos.push(x, y - 4, z, x, y + WH, z); top.push(new THREE.Vector3(x, y + WH + 2, z)); }
+      const g = new THREE.BufferGeometry(), idx = []; for (let k = 0; k < pos.length / 6 - 1; k++) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+      const wall = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0xbfe6ff, emissive: 0x3a6a9a, transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false })); scene.add(wall); roadObjs.push(wall);
+      const lip = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(top), top.length * 2, 6, 8), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e })); scene.add(lip); roadObjs.push(lip);
+    }
+    if (t.drifts) {   // soft snow drifts heaped along the roadside (never on the road)
+      const spots = [];
+      for (let i = 0; i < N; i += 16) for (const sd of [-1, 1]) { const [tx, ty] = tan(i), w = 22 + rnd() * 26, o = sd * (half + 14 + w), p = P[i], x = p[0] - ty * o, z = p[1] + tx * o;
+        if (rnd() < .35 || rd(x, z) < half + 10 + w) continue; spots.push([x, z, Math.atan2(ty, tx), 40 + rnd() * 60, 10 + rnd() * 14, w]); }
+      const m = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 8, 0, 6.283, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x505868 }), spots.length), M = new THREE.Matrix4(), Q = new THREE.Quaternion(), U = new THREE.Vector3(0, 1, 0);
+      spots.forEach(([x, z, a, l, hh, w], k) => { Q.setFromAxisAngle(U, -a); M.compose(new THREE.Vector3(x, h(x, z) - 2, z), Q, new THREE.Vector3(l, hh, w)); m.setMatrixAt(k, M); });
+      scene.add(m); roadObjs.push(m);
+    }
+    if (t.peaks) {   // 🏔️ chunky, snow-capped mountains all round the valley (gaps between them, so the town and the forest show through)
+      const C = WORLD / 2, R0 = WORLD * .72 + 700;
+      for (let k = 0; k < 20; k++) { if (k % 5 === 2) continue; const a = k / 20 * 6.283 + rnd() * .15, rr = R0 + rnd() * 450, H = 480 + rnd() * 560, Rb = H * (.8 + rnd() * .3);
+        const prof = [[1, 0], [.9, .16], [.74, .36], [.56, .56], [.38, .74], [.22, .88], [.09, .97], [0, 1]].map(([r, y]) => new THREE.Vector2(r * Rb, y * H)), g = new THREE.LatheGeometry(prof, 24);
+        const pa = g.attributes.position, col = [], ph = rnd() * 6;
+        for (let v = 0; v < pa.count; v++) { const x = pa.getX(v), y = pa.getY(v), z = pa.getZ(v), an = Math.atan2(z, x), j = 1 + Math.sin(an * 3 + ph) * .1 + Math.sin(an * 5 + ph * 2) * .06; pa.setX(v, x * j); pa.setZ(v, z * j);
+          const sl = H * (.66 + Math.sin(an * 4 + ph) * .07 + Math.sin(an * 9 + ph) * .03), snowy = y > sl; col.push(...(snowy ? [1, 1, 1] : y > sl - H * .06 ? [.78, .84, .94] : [.4, .47, .62])); }
+        g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+        const x = C + Math.cos(a) * rr, z = C + Math.sin(a) * rr, m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x404a5e, fog: false }));
+        m.position.set(x, h(Math.max(0, Math.min(WORLD, x)), Math.max(0, Math.min(WORLD, z))) - 40, z); m.rotation.y = rnd() * 6; scene.add(m); roadObjs.push(m); }
+    }
+  }
   function stripeTex(cols) {   // the balloon's gores: tall stripes, a band of trim round the middle
     return ctex(512, 256, (g, W, H) => { const n = 16; for (let k = 0; k < n; k++) { g.fillStyle = cols[k % cols.length]; g.fillRect(k * W / n, 0, W / n + 1, H); }
       g.fillStyle = "rgba(255,255,255,.9)"; g.fillRect(0, H * .62, W, 6); g.fillStyle = "#f07ab0"; g.fillRect(0, H * .62 + 6, W, 4); });
@@ -587,6 +634,56 @@ export function create(A) {
       for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const a = new THREE.Vector3(sx * 11, 16, sz * 11), b = new THREE.Vector3(sx * 13, 40, sz * 13), m = put(new THREE.CylinderGeometry(.8, .8, a.distanceTo(b), 4), L(0x6b4426), 0, 0, 0);
         m.position.copy(a).add(b).multiplyScalar(.5); m.lookAt(b); m.rotateX(Math.PI / 2); }
       const y = g0 + (o.z || 0); grp.position.set(o.x, y, o.y); balloonM.push({ g: grp, y, o });
+    } else if (o.k === "icicle") {   // ❄️ a cluster of ice crystals: six-sided, pointed, see-through and faceted so they catch the light
+      const H = 240 * (o.s || 1), mat = new THREE.MeshLambertMaterial({ color: 0xcfe2ff, emissive: 0x4a5a9a, transparent: true, opacity: .86, flatShading: true }), tip = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x7a8ac0, flatShading: true, transparent: true, opacity: .9 });
+      const cr = (x, z, hh, r, tx, tz) => { const c = new THREE.Group(), body = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.12, hh * .78, 6), mat), pt = new THREE.Mesh(new THREE.ConeGeometry(r, hh * .22, 6), tip);
+        body.position.y = hh * .39; pt.position.y = hh * .78 + hh * .11; c.add(body, pt); c.position.set(x, -6, z); c.rotation.set(tx, Math.random() * 3, tz); grp.add(c); };
+      cr(0, 0, H, H * .085, 0, 0);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + .4, d = H * (.1 + (k % 2) * .05); cr(Math.cos(a) * d, Math.sin(a) * d, H * (.38 + ((k * 37) % 5) * .07), H * (.045 + (k % 3) * .01), Math.sin(a) * .35, -Math.cos(a) * .35); }
+      grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "snowman_big") {   // ⛄ a fat, cute snowman: a chubby body, a big round head, rosy cheeks, a little smile, shiny eyes, a red beanie with a bobble, a scarf and mittens
+      const H = o.h || 120 * (o.s || .8), sn = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x505868 }), red = L(0xe8443a, 0x3a0808), coal = L(0x2a2a30, 0x000000), S1 = new THREE.SphereGeometry(1, 24, 16);
+      const rb = H * .3, rh = H * .25, yb = rb * .92, yh = yb + rb * .78 + rh * .72;
+      put(S1, sn, 0, yb, 0).scale.set(rb * 1.12, rb, rb * 1.12);   // the round, fat body
+      put(S1, sn, 0, yh, 0).scale.set(rh * 1.05, rh, rh * 1.05);   // the big head
+      for (const z of [-1, 1]) { put(S1, coal, rh * .9, yh + rh * .12, z * rh * .34).scale.set(rh * .1, rh * .15, rh * .1); put(S1, sn, rh * .97, yh + rh * .18, z * rh * .3).scale.setScalar(rh * .04);   // shiny eyes
+        put(S1, L(0xff9ab8, 0x3a1020), rh * .8, yh - rh * .12, z * rh * .55).scale.set(rh * .08, rh * .1, rh * .16); }   // rosy cheeks
+      const nose = put(new THREE.ConeGeometry(rh * .1, rh * .38, 10), L(0xff8a2a, 0x401a00), rh * 1.12, yh - rh * .02, 0); nose.rotation.z = -Math.PI / 2;
+      for (let k = -2; k <= 2; k++) { const a = k * .22; put(S1, coal, rh * .93 * Math.cos(a * .6), yh - rh * .3 - Math.cos(a * 2) * rh * .06 + rh * .06, Math.sin(a) * rh * .55).scale.setScalar(rh * .045); }   // a little smile
+      const hat = put(new THREE.SphereGeometry(rh * .92, 20, 10, 0, 6.283, 0, Math.PI / 2), red, 0, yh + rh * .45, 0); hat.scale.y = .8;   // the red beanie
+      put(new THREE.TorusGeometry(rh * .88, rh * .14, 8, 24), sn, 0, yh + rh * .47, 0).rotation.x = Math.PI / 2; put(S1, sn, 0, yh + rh * 1.25, 0).scale.setScalar(rh * .22);   // its white band and bobble
+      put(new THREE.TorusGeometry(rh * .82, rh * .16, 8, 24), red, 0, yh - rh * .78, 0).rotation.x = Math.PI / 2;   // the scarf
+      const tail = put(new THREE.BoxGeometry(rh * .3, rh * .8, rh * .14), red, rh * .55, yh - rh * 1.15, rh * .5); tail.rotation.z = .25;
+      for (let k = 0; k < 2; k++) put(S1, coal, rb * 1.1, yb + rb * .25 - k * rb * .35, 0).scale.setScalar(rb * .07);   // buttons
+      for (const z of [-1, 1]) { const arm = put(new THREE.CylinderGeometry(rb * .05, rb * .06, rb * .8, 6), L(0x7a5030, 0x1a0a00), 0, yb + rb * .45, z * rb * 1.25); arm.rotation.x = z * 1.15;
+        put(S1, red, 0, yb + rb * .7, z * rb * 1.58).scale.setScalar(rb * .14); }   // stubby arms with red mittens
+      grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "igloo") {   // 🛖 a snow-block igloo with a little tunnel for a door
+      const R = 70 * (o.s || 1), blk = new THREE.MeshLambertMaterial({ map: iglooTex(), emissive: 0x3a4250 });
+      const dome = put(new THREE.SphereGeometry(R, 32, 12, 0, 6.283, 0, Math.PI / 2), blk, 0, -2, 0);
+      const tun = put(new THREE.CylinderGeometry(R * .38, R * .38, R * .6, 16, 1, false, 0, Math.PI), blk, R * .95, -2, 0); tun.rotation.z = Math.PI / 2; tun.rotation.y = Math.PI / 2;
+      const door = put(new THREE.CircleGeometry(R * .3, 16, 0, Math.PI), L(0x1a2a40, 0x050a14), R * 1.26, -1, 0); door.rotation.y = Math.PI / 2;
+      grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "enhouse") {   // 🏠 a fat little El Nath house: timber walls, warm glowing windows, a thick roof of snow with icing drips, a chimney, a lantern by the door
+      const S = o.s || 1, W = 150 * S, D = 110 * S, Hh = 70 * S, ov = 18 * S, sl = .62, rise = (D / 2 + ov) * Math.tan(sl), slope = (D / 2 + ov) / Math.cos(sl);
+      const tx = houseTex(o.wall || "#f3e3c3"), wallM = new THREE.MeshLambertMaterial({ map: tx.map, emissive: 0xffb050, emissiveMap: tx.glow }), plainM = L(new THREE.Color(o.wall || "#f3e3c3").getHex(), 0x3a3020);
+      const snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x58606e }), roofM = L(o.roof || 0xd2602a, 0x301008), S1 = new THREE.SphereGeometry(1, 14, 10);
+      put(new THREE.BoxGeometry(D, Hh, W), wallM, 0, Hh / 2, 0);
+      const tri = new THREE.Shape(); tri.moveTo(-D / 2, 0); tri.lineTo(D / 2, 0); tri.lineTo(0, rise * .92); tri.closePath();
+      for (const z of [-1, 1]) put(new THREE.ExtrudeGeometry(tri, { depth: 3, bevelEnabled: false }), plainM, 0, Hh, z * W / 2 - 1.5);
+      for (const sd of [-1, 1]) {   // the two roof slopes, the snow lying thick on each, and icing drips along the eaves
+        const r = put(new THREE.BoxGeometry(slope, 8 * S, W + 30 * S), roofM, sd * (D / 2 + ov) / 2, Hh + rise / 2, 0); r.rotation.z = -sd * sl;
+        const sn = put(new THREE.BoxGeometry(slope + 6 * S, 13 * S, W + 36 * S), snow, sd * (D / 2 + ov) / 2 + sd * Math.sin(sl) * 9 * S, Hh + rise / 2 + Math.cos(sl) * 9 * S, 0); sn.rotation.z = -sd * sl;
+        for (let z = -W / 2 - 12 * S; z <= W / 2 + 12 * S; z += 16 * S) put(S1, snow, sd * (D / 2 + ov + 2 * S), Hh - 1 * S, z).scale.set(6 * S, (6 + ((z * 7) % 5 + 5) % 5) * S, 7 * S);
+      }
+      const ridge = put(new THREE.CylinderGeometry(12 * S, 12 * S, W + 36 * S, 14), snow, 0, Hh + rise + 9 * S, 0); ridge.rotation.x = Math.PI / 2;
+      put(new THREE.BoxGeometry(18 * S, 46 * S, 18 * S), L(0xb04a3a, 0x2a0a08), -D * .18, Hh + rise * .7 + 12 * S, W * .26);   // the chimney, with its own cap of snow
+      put(S1, snow, -D * .18, Hh + rise * .7 + 36 * S, W * .26).scale.set(13 * S, 7 * S, 13 * S);
+      put(new THREE.BoxGeometry(4 * S, 42 * S, 28 * S), L(0x7a4a26, 0x1a0a04), D / 2 + 1.5, 21 * S, 0);   // the door
+      put(new THREE.CylinderGeometry(14 * S, 14 * S, 4 * S, 16, 1, false, 0, Math.PI), L(0x7a4a26, 0x1a0a04), D / 2 + 1.5, 42 * S, 0).rotation.set(0, 0, Math.PI / 2);
+      put(S1, new THREE.MeshBasicMaterial({ color: 0xffb040 }), D / 2 + 7 * S, 48 * S, 24 * S).scale.setScalar(5 * S);   // a warm lantern by the door
+      for (const z of [-1, 1]) put(S1, snow, D / 2 + 4 * S, 2, z * W * .38).scale.set(16 * S, 9 * S, 22 * S);   // snow heaped by the walls
+      grp.rotation.y = -(o.fa || 0); grp.position.set(o.x, g0, o.y);
     } else return;
     scene.add(grp); roadObjs.push(grp);
   }

@@ -78,7 +78,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let FINALMSG = null, AREAS = [], SPORES = [], areaAt = -1, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
-  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], HIDE = [];
+  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
   let best = -1, bd = 1e12;
@@ -398,11 +398,11 @@ const TRACKS = {
   // a ramp down into the thin-ice basin with a hole in the ice in the middle, boost pads back out, and the snowy S-bends home.
   en1: {
     id: "snowland", scale: 1.22, road: 180, gate: "ice", cup: "elnath", music: "k_elnath1", name: "Penguin Snowfield", sub: "penguins · snowmen · the thin-ice basin", icon: "⛄",
-    ctrl: [[242, 1420, 0], [242, 990, 6], [262, 840, 10], [330, 748, 14], [472, 722, 18], [702, 689, 22], [817, 517, 26], [886, 302, 30], [1070, 225, 32], [1438, 238, 30], [1691, 388, 26],
-      [1829, 646, 22], [1815, 900, 18], [1765, 1030, 16], [1620, 1060, 15], [1470, 1010, 14], [1254, 900, 12], [1070, 904, 12], [923, 1012, 10], [932, 1205, 8], [1116, 1313, 6], [1438, 1356, 6], [1737, 1377, 8],
+    ctrl: [[242, 1420, 0], [242, 990, 6], [262, 840, 10], [330, 748, 14], [472, 722, 18], [702, 689, 22], [817, 517, 26], [886, 302, 30], [1070, 225, 32], [1438, 238, 34], [1691, 388, 42],
+      [1829, 646, 56], [1815, 900, 74], [1765, 1030, 90], [1620, 1060, 96], [1470, 1010, 80], [1254, 900, 48], [1070, 904, 18], [923, 1012, 4], [932, 1205, 2], [1116, 1313, 4], [1438, 1356, 6], [1737, 1377, 8],
       [1852, 1528, 10], [1815, 1721, 8], [1622, 1807, 6], [1300, 1798, 4], [1070, 1721, 4], [909, 1571, 6], [748, 1592, 4], [610, 1700, 2], [472, 1786, 0], [288, 1764, 0], [233, 1592, 0]],
-    theme: { ...TH.elnath, flowers: 300, tufts: 0, road: "icy", curb: ["#5a6fd8", "#f4f8ff"] }, art: { sky: "media/duel/bg_elnath.webp", strip: "media/kart/elnath/strip1.webp" },
-    near: ["en_pine", "en_pine3", "en_bush"], far: ["en_pine", "en_pine2", "en_pine3", "en_house1", "en_house3"], mobs: ["pepe", "jr_yeti"],
+    theme: { ...TH.elnath, flowers: 300, tufts: 0, road: "icy", curb: ["#5a6fd8", "#f4f8ff"], peaks: true, drifts: true }, art: { sky: "media/duel/bg_elnath.webp", strip: "media/kart/elnath/strip1.webp" },
+    near: ["en_pine", "en_pine3", "en_bush", "en_bush2"], far: ["en_pine", "en_pine2", "en_pine3"], mobs: ["pepe", "jr_yeti"],
     build() {
       makeSnowArt();
       const u = d => Math.round(d / SPC), coins = [];
@@ -412,12 +412,14 @@ const TRACKS = {
       row(I(1500, 1360), I(1780, 1400), 5, 30);                           // the lower straight
       // ⛄ snowmen standing in the road (solid: steer round them)
       const snowmen = [[I(886, 330), -42], [I(1600, 330), 45], [I(1825, 760), -40], [I(1830, 1560), 42], [I(800, 1590), -40]].map(([i, o]) => ({ i, o, w: 34, h: 50, sprite: "snowman_big" }));
-      const basin = I(1000, 940);
+      const basin = I(1000, 940), slide = { a: I(1620, 1060), b: basin - 4 };   // 🐧 the penguin slide: an ice chute down the hill to the jump into the basin
       return {
+        chutes: [slide],
         hedges: snowmen,
         holes: [{ i: I(927, 1110), o: 0, r: 46 }],   // the hole in the thin ice: fall in and you're fished out behind it
         pads: [{ t: "ramp", i: basin, len: 8, o: 0, w: ROAD },                                    // the ramp down into the thin-ice basin
           ...[[u(60), -30, 70], [u(150), 35, 70], [u(250), -20, 80]].map(([d, o, w]) => ({ t: "ice", i: basin + d, len: u(70), o, w })),
+          { t: "boost", i: slide.a + 4, len: 10, o: -35, w: 55 }, { t: "boost", i: slide.a + 4, len: 10, o: 35, w: 55 },   // whoosh down the slide
           { t: "boost", i: I(1060, 1280), len: 10, o: -30, w: 50 }, { t: "boost", i: I(1060, 1280), len: 10, o: 30, w: 50 },   // the two boost pads back out
           { t: "ice", i: I(1438, 238), len: u(120), o: 0, w: 120 }, { t: "ice", i: I(1500, 1800), len: u(110), o: 30, w: 100 }, { t: "ice", i: I(1829, 600), len: u(90), o: -20, w: 90 }],
         coins,
@@ -428,6 +430,25 @@ const TRACKS = {
         extra(push) {
           for (const [x, y, sc] of [[600, 1000, 1.1], [1350, 650, 1.3], [1450, 1550, 1], [560, 420, .9], [1950, 300, 1.4], [120, 300, 1.2], [1200, 1980, 1.2]]) OBJS.push({ x: ws(x), y: ws(y), k: "icicle", s: sc, r: 30, z: 0 });   // crystal ice spires
           for (const [x, y] of [[420, 1500], [700, 900], [1500, 600], [1600, 1200], [1100, 1600]]) OBJS.push({ x: ws(x), y: ws(y), k: "snowman_big", s: .8, r: 20, z: 0 });
+          const clear = (x, y, d) => roadDist(x, y) > ROAD / 2 + CURB + d;
+          // 🐧 penguins sliding down the slide's rims beside you, and a few cheering at the top
+          for (let n = 0; n < 6; n++) { const sd = n % 2 ? 1 : -1; OBJS.push({ x: 0, y: 0, k: "pepe", s: .45, r: 0, z: 40, slide: { a: slide.a, b: slide.b, o: sd * (ROAD / 2 + CURB + 6), sp: .22 + (n % 3) * .04, ph: n / 6 } }); }
+          for (const sd of [-1, 1]) for (let n = 0; n < 2; n++) { const [x, y] = at(slide.a - 6 - n * 10, sd * (ROAD / 2 + CURB + 40)); OBJS.push({ x, y, k: "pepe", s: .5, r: 0, z: 0, bob: 8, mob: true }); }
+          // 🏠 El Nath town along the start straight: fat little houses with thick snow on their roofs and warm lights in the windows
+          { const roofs = [0xd2602a, 0xb8402e, 0x3f7fae, 0xd2602a, 0x8a5a9a, 0xc8702a]; let n = 0;
+            for (let i = I(242, 1380); i < I(262, 840); i += 34) { const sd = at(i, 1)[0] > at(i, -1)[0] ? 1 : -1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 115)), sc = .85 + (n % 3) * .12;
+              if (clear(x, y, 95 * sc)) { OBJS.push({ x, y, k: "enhouse", s: sc, r: 70 * sc, z: 0, roof: roofs[n % roofs.length], wall: n % 2 ? "#f3e3c3" : "#e8d2a8" }); n++; } }
+            for (const i of [I(472, 1786) + 10, I(288, 1764) + 4]) { const [x, y] = at(i, -(ROAD / 2 + CURB + 120)); if (clear(x, y, 90)) { OBJS.push({ x, y, k: "enhouse", s: .9, r: 64, z: 0, roof: roofs[n % roofs.length], wall: "#f3e3c3" }); n++; } } }
+          // 🛖 the penguins' igloo village inside the bend by the thin-ice basin, penguins standing about, a bench and a swing
+          for (const [x, y, sc] of [[1150, 1110, 1], [1250, 1170, .8], [1060, 1185, .75], [1300, 1060, .7]]) if (clear(ws(x), ws(y), 80 * sc)) OBJS.push({ x: ws(x), y: ws(y), k: "igloo", s: sc, r: 60 * sc, z: 0 });
+          for (const [x, y] of [[1110, 1050], [1205, 1100], [1180, 1215], [1240, 1240], [1020, 1130]]) if (clear(ws(x), ws(y), 30)) OBJS.push({ x: ws(x), y: ws(y), k: "pepe", s: .5, r: 0, z: 0, bob: 6, mob: true });
+          if (clear(ws(1330), ws(1150), 40)) push(ws(1330), ws(1150), "en_swing"); if (clear(ws(1100), ws(990), 30)) push(ws(1100), ws(990), "en_bench");
+          // 🏮 lamps down both sides of the start straight, snowy fences round the outside of the big bends, barrels and hay by the line
+          for (let i = I(242, 1330); i < I(250, 900); i += 18) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 18)); push(x, y, "en_lamp"); }
+          for (const [a, b] of [[I(1070, 225), I(1691, 388)], [I(1852, 1528), I(1622, 1807)], [I(472, 1786), I(233, 1592)]]) for (let i = a; i < b; i += 9) {
+            const [x1, y1] = at(i, ROAD / 2 + CURB + 75), [x2, y2] = at(i, -(ROAD / 2 + CURB + 75)), out = Math.hypot(x1 - ws(1050), y1 - ws(1000)) > Math.hypot(x2 - ws(1050), y2 - ws(1000));
+            const [x, y] = out ? [x1, y1] : [x2, y2]; if (clear(x, y, 14)) push(x, y, "en_fence"); }
+          { const [x, y] = at(I(242, 1420) + 8, ROAD / 2 + CURB + 60); push(x, y, "en_barrel"); push(x + 26, y + 14, "en_barrel", .36); push(x - 10, y + 40, "en_hay"); }
         },
       };
     },
@@ -921,6 +942,7 @@ function loadTrack(key) {
     FORK_A = f.fork.a; FORK_B = f.fork.b; ALT_ROAD = f.fork.width; ALT_STYLE = f.fork.style;
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
+  CHUTES = f.chutes || [];
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
   HIDE = [];
@@ -1346,6 +1368,7 @@ function lavaMap() {
 }
 // roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
 // s = world units per picture pixel, r = how solid it is
+const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
 const PROPS = { treehouse: [.62, 0], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
   hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10],
   // Pets Park's little things: Henesys's own flowers and pet-park objects (maplestory.io, Map/Obj/acc1.img/grassySoil nature + pet)
@@ -1594,11 +1617,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, props3d: OBJS.filter(o => o.f3d && o.k !== "fountain"), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0 }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=97"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=102"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2123,6 +2146,9 @@ function areaStep() {   // 🗺️ a new area: its name pops up
   if (areaAt < 0) { areaAt = cur; return; }   // (the grid sits in the last area: no shout at the start)
   if (cur !== areaAt) { pop(AREAS[cur].name, "#ffe9a8", true); areaAt = cur; }
 }
+function slideStep(tt) {   // 🐧 penguins sliding down the rims of the penguin slide, over and over
+  for (const o of OBJS) if (o.slide) { const q = o.slide, f = (tt * q.sp + q.ph) % 1, [x, y] = at(Math.round(q.a + (q.b - q.a) * f), q.o); o.x = x; o.y = y; }
+}
 function stompStep(tt) {   // 🍄 the last lap: Mushmom leaps and lands every 3.4 s; the canyon shakes and every mushroom wobbles
   const m = OBJS.find(o => o.stomp); if (!m || !K) return;
   if (lapNow() < LAPS || state !== "race") { m.sz = null; return; }
@@ -2132,7 +2158,7 @@ function stompStep(tt) {   // 🍄 the last lap: Mushmom leaps and lands every 3
     for (const g of GAPS) for (const c of g.caps) c.squash = Math.max(c.squash || 0, .7); }
 }
 function worldStep(dt, tt) {
-  areaStep(); stompStep(tt);
+  areaStep(); stompStep(tt); slideStep(tt);
   if (thunderFx > 0) thunderFx -= dt;
   if (LAVA && state === "race") lavaStep(dt);
   if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt; if (thunderCD > 0) thunderCD -= dt;
@@ -2547,6 +2573,8 @@ function step(dt) {
   for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
     spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Ice block!" : p.k === "fishbone" ? "🐟 Bone Fish!" : p.k === "roller" ? "🪨 Boulder!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+  for (const c of CHUTES) if (!air && k.idx >= c.a && k.idx <= c.b && near.d > near.half + CURB - 6) {   // 🐧 the penguin slide's ice walls keep you in
+    const [cx, cy] = at(near.i, 0), dx = k.x - cx, dy = k.y - cy, d = Math.hypot(dx, dy) || 1, lim = near.half + CURB - 6; k.x = cx + dx / d * lim; k.y = cy + dy / d * lim; k.v *= .97; k.drift = 0; }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }
   if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b) && !(k.rescue > 0)) { rescue(k, T.fall || (T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!")); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
@@ -2787,7 +2815,7 @@ function render() {
     ctx.restore(); }, G3 ? G3.liftOf(r) : 0);
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
-  for (const ob of OBJS) if (!(G3 && ob.f3d)) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.sz != null ? ob.sz : ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
+  for (const ob of OBJS) if (!(G3 && (ob.f3d || K3D.has(ob.k)))) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.sz != null ? ob.sz : ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
   if (G3) for (const c of CROWD) { if (!c.img) continue; const jz = Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump; G3.spr(c.img, c.x, c.y, jz, c.s, c.flip);
     if (c.tag) addDraw(c.x, c.y, (sx, gy, sc) => { if (sc < .35) return; const top = gy - (c.img.height * c.s + jz) * sc, fs = Math.max(5, Math.min(10, 6 * sc)); ctx.font = `900 ${fs}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(1.5, fs / 4);
       ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }); }
@@ -2805,7 +2833,7 @@ function render() {
   for (const m of MOLES) { const q = molePos(m, tt), im = IMG[m.img || "stump"]; add(q.x, q.y, IMG.farm_mound, .42, 0); if (q.up > 0 && im) add(q.x, q.y, im, m.img ? .75 : .5, -34 * (1 - q.up)); }   // 🌳 mounds, and stumps (or bunnies) popping out
   // 🐾 pets wandering the gardens, and the giant pets on their chains (with the chain drawn from its post)
   for (const w of WANDER) { const q = wanderPos(w, tt), im = petFrame(w.k, "move", tt + w.ph); if (im) add(q.x, q.y, im, w.s, 0, q.dx > 0); }
-  for (const b of HEDGES) if (b.sprite && IMG[b.sprite]) add(b.x, b.y, IMG[b.sprite], b.h / IMG[b.sprite].height, 0);
+  for (const b of HEDGES) if (b.sprite && IMG[b.sprite] && !(G3 && K3D.has(b.sprite))) add(b.x, b.y, IMG[b.sprite], b.h / IMG[b.sprite].height, 0);
   for (const c of CHOMPS) { const q = chompPos(c, tt), im = q.z > 4 ? (IMG[`pet_${c.k}_jump0`] || petFrame(c.k, "move", tt)) : petFrame(c.k, "move", tt); if (im) add(q.x, q.y, im, c.s, q.z, q.dx > 0);
     if (IMG.chain_post) add(c.ax, c.ay, IMG.chain_post, .5, 0);
     addDraw(c.ax, c.ay, (sx, gy, sc) => { const pp = G3 ? G3.proj(q.x, q.y, q.z + 14) : proj(q.x, q.y); if (!pp) return; const px = G3 ? pp.sx : pp[0], py = G3 ? pp.sy : pp[1] - (q.z + 14) * pp[2];
