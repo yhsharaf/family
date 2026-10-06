@@ -463,7 +463,7 @@ const TRACKS = {
       [1860, 1482, 6], [1935, 1420, 9], [1948, 1340, 11], [1885, 1268, 13], [1741, 1215, 16], [1536, 1140, 20], [1331, 1165, 24], [1180, 1165, 27], [1075, 1105, 29], [1055, 1000, 30],
       [1115, 905, 28], [1120, 790, 24], [1010, 700, 20], [880, 640, 18], [840, 530, 18], [910, 445, 18], [1050, 420, 18], [1200, 420, 19], [1320, 380, 20], [1360, 290, 22],
       [1290, 200, 24], [1120, 165, 24], [940, 185, 24], [790, 235, 24], [614, 300, 22], [410, 280, 22], [200, 310, 22], [140, 460, 22], [200, 610, 22], [170, 770, 22], [205, 925, 21]],
-    theme: { ...TH.elnathNight, flowers: 400, tufts: 0, road: "snow", curb: ["#3a5fc0", "#eef4ff"] }, art: { sky: "media/kart/elnath/sky3.webp", strip: "media/kart/elnath/strip3.webp" },
+    theme: { ...TH.elnathNight, flowers: 400, tufts: 0, road: "snow", curb: ["#3a5fc0", "#eef4ff"], aurora: true, fairy: true, drifts: true }, art: { sky: "media/kart/elnath/sky3.webp", strip: "media/kart/elnath/strip3.webp" },
     near: ["en_pine", "en_pine3", "en_pine2"], far: ["en_pine", "en_pine2", "en_pine3", "en_snowpines"], mobs: ["jr_yeti", "pepe"],
     build() {
       makeSnowArt();
@@ -480,7 +480,7 @@ const TRACKS = {
       const freezies = [[I(700, 270), 0], [I(560, 290), 1.6], [I(420, 282), 3.2], [I(290, 290), .8], [I(190, 340), 2.4]].map(([i, ph]) => ({ i, ph, k: "freezie", sp: .55, s: .55 }));
       return {
         lake: { cx: ws(1170), cy: ws(1625), rx: ws(330), ry: ws(130), kind: "ice" },   // the frozen rink
-        caves: [{ a: I(1440, 1150), b: I(1115, 820) }],                                // the ice cave through the S-bends
+        caves: [{ a: I(1440, 1150), b: I(1115, 820), crystal: true }],                 // the crystal cave through the S-bends (glowing crystals inside, big crystals crowning it)
         hedges: [{ i: I(1060, 1630), o: 150, w: 40, h: 30, sprite: "ice_rock" }, { i: I(1290, 1665), o: -165, w: 40, h: 30, sprite: "ice_rock" }],   // little rock islands on the rink
         pads: [],
         coins,
@@ -488,9 +488,16 @@ const TRACKS = {
         boxes: [...boxRow(I(700, 1500), [-60, -20, 20, 60]), ...boxRow(I(1890, 1290), [-60, -20, 20, 60]), ...boxRow(I(1050, 420), [-60, -20, 20, 60])],
         extra(push) {
           // towers and walls of ice blocks round the rink and along the Freezies' stretch
-          for (let k = 0; k < 14; k++) { const a = Math.PI * (k < 7 ? .18 + k * .64 / 6 : 1.18 + (k - 7) * .64 / 6), x = ws(1170) + Math.cos(a) * (ws(330) + 70), y = ws(1625) + Math.sin(a) * (ws(130) + 60);
-            if (roadDist(x, y) > ROAD / 2 + CURB + 50) BUILDINGS.push({ x, y, w: 110, d: 40, h: k % 3 ? 70 : 130, a: a + Math.PI / 2, ice: true }); }
-          for (const [i, o, h] of [[I(650, 290), -150, 150], [I(480, 285), 160, 110], [I(330, 285), -160, 170], [I(220, 300), 170, 120]]) { const [x, y] = at(i, o); BUILDINGS.push({ x, y, w: 70, d: 70, h, a: tangent(i), ice: true }); }
+          // 🏰 the ice castle: the rink is its courtyard, chubby round towers along both long sides with battlemented walls between them
+          { const cx = ws(1170), cy = ws(1625), ex = ws(330) + 85, ey = ws(130) + 75, pt = a => [cx + Math.cos(a) * ex, cy + Math.sin(a) * ey];
+            for (const side of [0, 1]) { const ts = [.2, .35, .5, .65, .8].map(f => Math.PI * (side + f)), ok = ts.map(a => roadDist(...pt(a)) > ROAD / 2 + CURB + 55);
+              ts.forEach((a, k) => { if (ok[k]) { const [x, y] = pt(a); BUILDINGS.push({ x, y, w: k === 2 ? 92 : 74, d: k === 2 ? 92 : 74, h: k === 2 ? 190 : k % 2 ? 120 : 150, castle: "tower" }); } });
+              for (let k = 0; k < 4; k++) { if (!ok[k] || !ok[k + 1]) continue; const [x1, y1] = pt(ts[k]), [x2, y2] = pt(ts[k + 1]); let clearW = true; for (let f = 0; f <= 1; f += .125) if (roadDist(x1 + (x2 - x1) * f, y1 + (y2 - y1) * f) < ROAD / 2 + CURB + 35) clearW = false;
+                if (clearW) BUILDINGS.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2, w: Math.hypot(x2 - x1, y2 - y1), d: 26, h: 78, a: Math.atan2(y2 - y1, x2 - x1), castle: "wall" }); } } }
+          for (const [i, o, h] of [[I(650, 290), -150, 150], [I(480, 285), 160, 110], [I(330, 285), -160, 170], [I(220, 300), 170, 120]]) { const [x, y] = at(i, o); BUILDINGS.push({ x, y, w: 70, d: 70, h, a: tangent(i), castle: "tower" }); }   // towers along the Freezies' stretch
+          // 🏮 lamps down the hill to the rink and along the top, benches by the rink for the spectators (maplestory.io)
+          for (const [a, b] of [[I(346, 1216), I(614, 1485)], [I(1120, 165), I(410, 280)]]) for (let i = a, n = 0; i < b; i += 20, n++) { const [x, y] = at(i, (n % 2 ? 1 : -1) * (ROAD / 2 + CURB + 22)); if (roadDist(x, y) > ROAD / 2 + CURB + 10) push(x, y, "en_lamp"); }
+          for (const [i, o] of [[I(960, 1580), 230], [I(1331, 1664), -230], [I(1120, 1660), 240]]) { const [x, y] = at(i, o); if (roadDist(x, y) > ROAD / 2 + CURB + 40) push(x, y, "en_bench"); }
           for (const [i, o] of [[I(1290, 200), 150], [I(1050, 170), -150], [I(900, 190), 150], [I(1360, 290), -150]]) { const [x, y] = at(i, o); OBJS.push({ x, y, k: "snowman_big", s: .8, r: 20, z: 0 }); }   // snowmen along the top (added in Mario Kart 8)
           for (const [x, y, sc] of [[700, 900, 1.2], [1500, 800, 1.3], [520, 560, 1], [1650, 420, 1.1]]) OBJS.push({ x: ws(x), y: ws(y), k: "icicle", s: sc, r: 30, z: 0 });   // crystal spires
         },
@@ -1617,11 +1624,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0 }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, aurora: !!T.theme.aurora, fairy: T.theme.fairy && LAKE ? LAKE : null, peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0 }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=102"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=107"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2829,7 +2836,7 @@ function render() {
   });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got && (G3 ? (c.x - k.x) * ca + (c.y - k.y) * sa > -12 : (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
-  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
+  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (G3 && G3.mdl && p.k === "freezie") G3.mdl("freezie", q.x, q.y, q.z, tangent(p.i) + Math.PI, tt); else add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
   for (const m of MOLES) { const q = molePos(m, tt), im = IMG[m.img || "stump"]; add(q.x, q.y, IMG.farm_mound, .42, 0); if (q.up > 0 && im) add(q.x, q.y, im, m.img ? .75 : .5, -34 * (1 - q.up)); }   // 🌳 mounds, and stumps (or bunnies) popping out
   // 🐾 pets wandering the gardens, and the giant pets on their chains (with the chain drawn from its post)
   for (const w of WANDER) { const q = wanderPos(w, tt), im = petFrame(w.k, "move", tt + w.ph); if (im) add(q.x, q.y, im, w.s, 0, q.dx > 0); }

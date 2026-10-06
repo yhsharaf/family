@@ -372,7 +372,8 @@ export function create(A) {
         const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
       const R0 = t.ROAD / 2 + t.CURB + 14;
       shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, emissive: 0x2a2630 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), .72);   // the crystal (or rock) inside
-      shell(R0 + 16, new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), .8);                // a mound of snow over it
+      shell(R0 + 16, cv.crystal ? new THREE.MeshLambertMaterial({ color: 0xbfdcff, side: THREE.DoubleSide, emissive: 0x2a4a7a, flatShading: true }) : new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), .8);
+      if (cv.crystal) crystalCave(t, cv, R0);                // a mound of snow over it
       if (cv.rock || cv.temple || cv.star) continue;
       const RP = [], RI = [];   // the red rail (one side, like Double Dash!!)
       for (let i = cv.a, r = 0; i <= cv.b; i += 2, r++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = t.ROAD / 2 + t.CURB + 6, x = p[0] - Math.sin(a) * o, y = p[1] + Math.cos(a) * o, gz = h(x, y);
@@ -429,8 +430,9 @@ export function create(A) {
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
     balloonM = []; for (const o of t.props3d || []) buildProp(o);
-    buildSnowWorld(t);
+    buildSnowWorld(t); auroraM = []; if (t.aurora) buildAurora(t); if (t.fairy) buildFairy(t.fairy, t);
     for (const b of t.buildings || []) {
+      if (b.castle) { buildCastle(b); continue; }
       if (b.ice || b.dam || b.stone) {   // a wall or tower of ice blocks, the concrete dam, or a stone pillar (no roof)
         const T0 = b.dam ? damTex() : b.stone ? rockTex() : iceTex(), U = b.dam ? 220 : b.stone ? 120 : 90, V = b.dam ? 220 : b.stone ? 120 : 45, em = b.dam ? 0x3a3a38 : b.stone ? 0x2a2630 : 0x3a5f80;
         const tx = T0.clone(); tx.needsUpdate = true; tx.repeat.set(Math.max(1, b.w / U), Math.max(1, b.h / V));
@@ -568,6 +570,87 @@ export function create(A) {
     return ctex(256, 128, (g, W, H) => { g.fillStyle = "#f4f9ff"; g.fillRect(0, 0, W, H); g.strokeStyle = "#b8cce4"; g.lineWidth = 3;
       for (let r = 0; r < 6; r++) { const y = r * H / 6; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); for (let c = 0; c < 8; c++) { const x = c * W / 8 + (r % 2) * W / 16; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + H / 6); g.stroke(); } } });
   }
+  function iceBrickTex(windows) {   // frosty ice bricks; towers get arched windows that glow soft blue at night (the glow map lights only them)
+    const draw = (g, W, H, glow) => { g.fillStyle = glow ? "#3a4a68" : "#e8f4ff"; g.fillRect(0, 0, W, H);
+      if (!glow) { g.strokeStyle = "#a9c6ea"; g.lineWidth = 2; for (let r = 0; r < 8; r++) { const y = r * H / 8; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); for (let c = 0; c < 6; c++) { const x = c * W / 6 + (r % 2) * W / 12; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + H / 8); g.stroke(); } }
+        g.fillStyle = "rgba(255,255,255,.5)"; for (let k = 0; k < 30; k++) g.fillRect((k * 53) % W, (k * 97) % H, 6, 2); }
+      if (windows) for (const x of [W * .25, W * .75]) { g.fillStyle = glow ? "#fff" : "#7fd8ff"; g.beginPath(); g.moveTo(x - 12, H * .62); g.lineTo(x - 12, H * .4); g.arc(x, H * .4, 12, Math.PI, 0); g.lineTo(x + 12, H * .62); g.closePath(); g.fill(); } };
+    const mk = glow => ctex(256, 256, (g, W, H) => draw(g, W, H, glow), true);
+    return { map: mk(false), glow: mk(true) };
+  }
+  let castleT = null;
+  function buildCastle(b) {   // 🏰 the ice castle round the rink: chubby round towers with snowy blue cone roofs and glowing windows, walls with battlements
+    const tx = castleT || (castleT = { tower: iceBrickTex(true), wall: iceBrickTex(false) }), g0 = h(b.x, b.y), grp = new THREE.Group();
+    const ice = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x4a6a98 }), snow = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x7a8498 }), roof = new THREE.MeshLambertMaterial({ color: 0x6aa0f0, emissive: 0x1a3a78 });
+    if (b.castle === "tower") {
+      const R = b.w / 2, Hh = b.h, m = tx.tower.map.clone(), gl = tx.tower.glow.clone(); for (const q of [m, gl]) { q.needsUpdate = true; q.repeat.set(2, Math.max(1, Hh / 90)); }
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R * 1.1, Hh, 24), new THREE.MeshLambertMaterial({ map: m, emissive: 0xbfeeff, emissiveMap: gl })); body.position.y = Hh / 2; grp.add(body);
+      for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283, c = new THREE.Mesh(new THREE.BoxGeometry(R * .38, 16, R * .3), ice); c.position.set(Math.cos(a) * R * .95, Hh + 8, Math.sin(a) * R * .95); c.rotation.y = -a; grp.add(c); }   // battlements
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(R * 1.12, R * 1.9, 24), roof); cone.position.y = Hh + 16 + R * .95; grp.add(cone);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(R * .62, R * 1.05, 24), snow); cap.position.y = Hh + 16 + R * 1.9 - R * .52; grp.add(cap);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(R * 1.08, 5, 8, 24), snow); rim.rotation.x = Math.PI / 2; rim.position.y = Hh + 17; grp.add(rim);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 26, 6), new THREE.MeshLambertMaterial({ color: 0xd8d8e8 })); pole.position.y = Hh + 16 + R * 1.9 + 12; grp.add(pole);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(20, 12), new THREE.MeshBasicMaterial({ color: 0xff7ab8, side: THREE.DoubleSide })); flag.position.set(10, Hh + 16 + R * 1.9 + 20, 0); grp.add(flag);
+    } else {
+      const m = tx.wall.map.clone(); m.needsUpdate = true; m.repeat.set(Math.max(1, b.w / 90), Math.max(1, b.h / 90));
+      const body = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), new THREE.MeshLambertMaterial({ map: m, emissive: 0x4a6a98 })); body.position.y = b.h / 2; grp.add(body);
+      for (let x = -b.w / 2 + 10; x <= b.w / 2 - 6; x += 26) { const c = new THREE.Mesh(new THREE.BoxGeometry(14, 14, b.d + 2), ice); c.position.set(x, b.h + 7, 0); grp.add(c); }
+      const sn = new THREE.Mesh(new THREE.BoxGeometry(b.w + 4, 5, b.d + 6), snow); sn.position.y = b.h + 1; grp.add(sn);
+    }
+    grp.rotation.y = -(b.a || 0); grp.position.set(b.x, g0 - 2, b.y); scene.add(grp); roadObjs.push(grp);
+  }
+  function crystalCave(t, cv, R0) {   // 💎 the crystal cave: big crystals crowning the hill outside, glowing crystals along the walls inside, icicles hanging from the roof
+    const glowC = [0x7fe8ff, 0xb89cff, 0x9fd8ff, 0xffb8f0], ice = new THREE.MeshLambertMaterial({ color: 0xcfe2ff, emissive: 0x4a5a9a, transparent: true, opacity: .88, flatShading: true });
+    const icy = new THREE.MeshLambertMaterial({ color: 0xeaf6ff, emissive: 0x6a8ab0, transparent: true, opacity: .85 });
+    const xt = (c, x, y, z, hh, r, tilt, yaw) => { const grp = new THREE.Group(), b = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.1, hh * .78, 6), c), p = new THREE.Mesh(new THREE.ConeGeometry(r, hh * .22, 6), c);
+      b.position.y = hh * .39; p.position.y = hh * .89; grp.add(b, p); grp.position.set(x, y, z); grp.rotation.set(tilt[0], yaw, tilt[1]); scene.add(grp); roadObjs.push(grp); };
+    for (let i = cv.a, n = 0; i <= cv.b; i += 7, n++) {
+      const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), base = h(p[0], p[1]), nx = -Math.sin(a), nz = Math.cos(a);
+      for (const sd of [-1, 1]) {   // glowing crystals at the foot of each wall
+        const o = sd * (R0 - 10), gm = new THREE.MeshBasicMaterial({ color: glowC[(n + (sd > 0 ? 1 : 0)) % 4], transparent: true, opacity: .9 });
+        xt(gm, p[0] + nx * o, base - 4, p[1] + nz * o, 26 + (n * 13 % 3) * 9, 4 + (n % 2) * 2, [sd * nz * .5, -sd * nx * .5], n);
+      }
+      if (n % 2 === 0) for (const off of [-.45, .45]) { const o = off * R0, ic = new THREE.Mesh(new THREE.ConeGeometry(4 + (n % 3), 22 + (n * 7 % 4) * 5, 6), icy);   // icicles from the roof, over the sides (clear of the camera)
+        ic.rotation.x = Math.PI; ic.position.set(p[0] + nx * o, base + Math.sin(Math.acos(Math.max(-1, Math.min(1, off)))) * R0 * .72 - 16, p[1] + nz * o); scene.add(ic); roadObjs.push(ic); }
+      { const sd = n % 2 ? 1 : -1, o = sd * (R0 * (.3 + (n % 3) * .2)); xt(ice, p[0] + nx * o, base + R0 * .6, p[1] + nz * o, 90 + (n * 37 % 5) * 22, 11 + (n % 3) * 3, [sd * nz * .4, -sd * nx * .4], n);   // big crystals crowning the hill outside
+        if (n % 2 === 0) xt(ice, p[0] - nx * o * .4, base + R0 * .75, p[1] - nz * o * .4, 55 + (n % 3) * 15, 7, [-sd * nz * .3, sd * nx * .3], n + 1); }
+    }
+    for (const i of [cv.a, cv.b]) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), nx = -Math.sin(a), nz = Math.cos(a), base = h(p[0], p[1]);   // a gateway of big crystals at each end
+      for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) { const o = sd * (R0 + 6 + k * 12); xt(ice, p[0] + nx * o, base - 6, p[1] + nz * o, 110 - k * 26, 10 - k * 2, [sd * nz * .25, -sd * nx * .25], k); } }
+  }
+  function buildAurora(t) {   // 🌌 the northern lights: green and pink curtains rippling slowly across the night sky
+    const tex = ctex(256, 256, (g, W, H) => {   // curtains of light: bright rays (green below, fading to pink at the top) with dark gaps between them
+      for (let x = 0; x < W; x++) { const b = Math.pow(Math.abs(Math.sin(x * .13) * Math.sin(x * .047 + 1.3)), .7) * (.55 + .45 * Math.sin(x * .021)), gr = g.createLinearGradient(0, H, 0, 0);
+        gr.addColorStop(0, "rgba(80,255,160,0)"); gr.addColorStop(.1, `rgba(90,255,170,${b})`); gr.addColorStop(.45, `rgba(110,240,200,${b * .6})`); gr.addColorStop(.8, `rgba(230,120,255,${b * .45})`); gr.addColorStop(1, "rgba(255,120,220,0)");
+        g.fillStyle = gr; g.fillRect(x, 0, 1, H); } }, true);
+    const C = WORLD / 2;
+    [0, 1, 2, 3, 4, 5].map(n => [n * 1.047 + (n % 2) * .2, 1650 + (n % 3) * 180, 1 + (n % 2) * .15, n * 1.7]).forEach(([a0, R, k, ph]) => {
+      const S = 60, g = new THREE.PlaneGeometry(1, 1, S, 1), pa = g.attributes.position, base = []; R *= .78;
+      for (let v = 0; v < pa.count; v++) { const u = pa.getX(v) + .5, top = pa.getY(v) > 0, a = a0 + (u - .5) * 1.25, rr = R + Math.sin(u * 7 + ph) * 160, x = C + Math.cos(a) * rr * 1.5, z = C + Math.sin(a) * rr * 1.5, y = (top ? 950 : 380) * k + Math.sin(u * 5 + ph) * 80;
+        pa.setXYZ(v, x, y, z); base.push([x, y, z, u, top ? 1 : .4]); }
+      tex.repeat.set(2, 1); const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      m.frustumCulled = false; m.renderOrder = 0; scene.add(m); roadObjs.push(m); auroraM.push({ m, base, ph });
+    });
+  }
+  function buildFairy(L, t) {   // ✨ strings of coloured fairy lights on posts round the rink
+    const n = 16, posts = [], cols = [0xff6a8a, 0xffd23f, 0x7fe8ff, 0x9dff8a, 0xc49cff], bulbs = [];
+    for (let k = 0; k < n; k++) { const a = k / n * 6.283, x = L.cx + Math.cos(a) * (L.rx + 26), z = L.cy + Math.sin(a) * (L.ry + 22), y = h(x, z); let md = 1e9; for (let i = 0; i < t.N; i += 2) md = Math.min(md, Math.hypot(t.PTS[i][0] - x, t.PTS[i][1] - z)); if (md < t.ROAD / 2 + t.CURB + 16) { posts.push(null); continue; } posts.push([x, y, z]);
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.5, 70, 6), new THREE.MeshLambertMaterial({ color: 0x5a4a6a })); p.position.set(x, y + 35, z); scene.add(p); roadObjs.push(p); }
+    for (let k = 0; k < n; k++) { const A = posts[k], B = posts[(k + 1) % n]; if (!A || !B) continue;
+      for (let j = 1; j < 10; j++) { const f = j / 10, x = A[0] + (B[0] - A[0]) * f, z = A[2] + (B[2] - A[2]) * f, y = A[1] + (B[1] - A[1]) * f + 68 - Math.sin(f * Math.PI) * 18; bulbs.push([x, y, z, cols[(k * 9 + j) % cols.length]]); } }
+    const m = new THREE.InstancedMesh(new THREE.SphereGeometry(3.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }), bulbs.length), M = new THREE.Matrix4(), C = new THREE.Color();
+    bulbs.forEach(([x, y, z, c], i) => { M.makeTranslation(x, y, z); m.setMatrixAt(i, M); m.setColorAt(i, C.setHex(c)); }); scene.add(m); roadObjs.push(m);
+  }
+  function freezieModel() {   // 🧊 a cute living ice block: a chubby frosty cube with a jagged top, big shiny eyes, rosy cheeks and a goofy toothy grin
+    const g = new THREE.Group(), S1 = new THREE.SphereGeometry(1, 14, 10), ice = new THREE.MeshLambertMaterial({ color: 0xbfe8ff, emissive: 0x3a7ab0, transparent: true, opacity: .92 }), wh = new THREE.MeshBasicMaterial({ color: 0xffffff }), bk = new THREE.MeshBasicMaterial({ color: 0x1a2a40 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(44, 40, 44), ice); body.position.y = 20; g.add(body);
+    for (const [x, z, hh] of [[-12, -10, 16], [8, 6, 22], [14, -14, 12], [-10, 12, 14]]) { const c = new THREE.Mesh(new THREE.ConeGeometry(8, hh, 4), ice); c.position.set(x, 40 + hh / 2, z); g.add(c); }
+    for (const z of [-1, 1]) { const e = new THREE.Mesh(S1, wh); e.scale.set(4, 8, 7); e.position.set(22.5, 26, z * 10); g.add(e); const p = new THREE.Mesh(S1, bk); p.scale.set(2, 5, 4); p.position.set(25.5, 25, z * 9); g.add(p);
+      const sh = new THREE.Mesh(S1, wh); sh.scale.setScalar(1.3); sh.position.set(27.5, 27.5, z * 8); g.add(sh); const ch = new THREE.Mesh(S1, new THREE.MeshBasicMaterial({ color: 0xff9ab8 })); ch.scale.set(1, 3, 5); ch.position.set(22.5, 16, z * 16); g.add(ch); }
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(2, 7, 18), bk); mouth.position.set(22.5, 11, 0); g.add(mouth);
+    for (let k = -2; k <= 2; k++) { const tth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.5, 3), wh); tth.position.set(23.4, 13, k * 3.5); g.add(tth); }
+    return g;
+  }
   function houseTex(wall) {   // a timber-framed wall: plaster, dark beams, two windows glowing warm (the glow map lights only the windows)
     const draw = (g, W, H, glow) => { g.fillStyle = glow ? "#000" : wall; g.fillRect(0, 0, W, H);
       if (!glow) { g.fillStyle = "#6b4426"; g.fillRect(0, 0, W, 10); g.fillRect(0, H - 12, W, 12); for (const x of [0, W / 2 - 5, W - 10]) g.fillRect(x, 0, 10, H); g.fillRect(0, H * .48, W, 7); }
@@ -696,7 +779,7 @@ export function create(A) {
       F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
     F.pts.geometry.attributes.position.needsUpdate = true;
   }
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [];
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [];
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -826,6 +909,12 @@ export function create(A) {
     g.strokeStyle = "rgba(255,255,255,.95)"; g.lineWidth = 10; g.strokeRect(5, 5, 118, 118);
     g.font = "900 92px Ubuntu, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.lineWidth = 8; g.strokeStyle = "rgba(60,40,80,.55)"; g.strokeText("?", 64, 70); g.fillStyle = "#fff"; g.fillText("?", 64, 70);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const mdls = {};   // per-frame pools of moving 3D models (the living ice blocks)
+  function mdl(kind, x, y, z, a, tt) {
+    const P = mdls[kind] || (mdls[kind] = { list: [], i: 0 }); let g = P.list[P.i++];
+    if (!g) { g = kind === "freezie" ? freezieModel() : new THREE.Group(); scene.add(g); P.list.push(g); }
+    g.visible = true; const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
+  }
   const boxes = []; let bi = 0;
   function box(x, y, tt, i, z = 0) {
     let b = boxes[bi++]; if (!b) { b = new THREE.Mesh(BOX, new THREE.MeshPhongMaterial({ map: qTex, transparent: true, opacity: .82, shininess: 90, emissive: 0x222222 })); scene.add(b); boxes.push(b); }
@@ -933,11 +1022,12 @@ export function create(A) {
       for (const q of clockM.pends) { const s = Math.sin(now * q.p.sp + q.p.ph); q.grp.rotation.x = -Math.asin(Math.max(-1, Math.min(1, s * q.p.amp / 300))); } }   // (the bob is where the game thinks it is)
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
     if (fountM) fountStep(performance.now() / 1000);
+    if (auroraM.length) { const now = performance.now() / 1000; for (const q of auroraM) { const pa = q.m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { const b = q.base[v]; pa.setY(v, b[1] + Math.sin(now * .5 + b[3] * 3 + q.ph) * 40 * b[4]); pa.setZ(v, b[2] + Math.sin(now * .35 + b[3] * 5 + q.ph) * 90); } pa.needsUpdate = true; q.m.material.opacity = .62 + Math.sin(now * .7 + q.ph) * .15; } }
     for (const q of balloonM) q.g.position.y = q.y + Math.sin(performance.now() / 1000 * 2 + q.o.x) * (q.o.bob || 0);   // the balloons sway up and down
     if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }
     if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
     if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
-    VW = o.W; VH = o.H; pi = 0; bi = 0; for (const m of karts.values()) m.used = false;
+    VW = o.W; VH = o.H; pi = 0; bi = 0; for (const k in mdls) mdls[k].i = 0; for (const m of karts.values()) m.used = false;
     const a = k.a || 0;
     if (cam.yaw == null || o.snap) cam.yaw = a;
     let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * 7);   // the camera swings round a moment after the kart
@@ -986,6 +1076,7 @@ export function create(A) {
       c.m.scale.y = (c.h || 13) * (1 - .55 * q * Math.cos((1 - q) * 10)); }   // squash, then wobble back
     for (let i = pi; i < pool.length; i++) pool[i].visible = false;
     for (let i = bi; i < boxes.length; i++) boxes[i].visible = false;
+    for (const k in mdls) { const P = mdls[k]; for (let i = P.i; i < P.list.length; i++) P.list[i].visible = false; }
     for (const [r, m] of karts) if (!m.used) { m.root.visible = false; if (r.gone || r.dead) { scene.remove(m.root); karts.delete(r); } }
     blobs.count = blobI; blobs.instanceMatrix.needsUpdate = true;
     draw(); perfCheck();
@@ -1006,5 +1097,5 @@ export function create(A) {
   function clearKarts() { for (const m of karts.values()) scene.remove(m.root); karts.clear(); cam.yaw = null; }
   const snap = () => { draw(); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
   const liftOf = r => { const m = karts.get(r); return m && m.lift != null ? m.lift : airLift(r); };   // how high above the ground a kart is drawn (for the 2D bits on top: name tags, held items)
-  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, liftOf, camera, setQuality, get quality() { return Q; }, get ng() { return NG; }, tune: o => { if (!mood) return; Object.assign(mood, o); sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI; return { ...mood }; }, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
+  return { snap, sync, begin, end, spr, box, mdl, kart, proj, hidden, h, liftOf, camera, setQuality, get quality() { return Q; }, get ng() { return NG; }, tune: o => { if (!mood) return; Object.assign(mood, o); sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI; return { ...mood }; }, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
 }
