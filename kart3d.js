@@ -25,6 +25,87 @@ export function create(A) {
   const sun = new THREE.DirectionalLight(0xfff4e0, 1.5); sun.position.set(-.45, 1, .3); scene.add(sun);
   const BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 18);
 
+  // ---------------------------------------------------------------- ✨ the next-gen look (a prototype, on Oink Oink Meadows for now): the sun
+  // casts real shadows, every picture standing in the world gets a soft shadow on the ground, the picture goes through filmic colour, bright
+  // things glow, and each cup has its own light and colour grade. Quality: 2 = computers, 1 = phones, 0 = off (the old look).
+  let Q = (() => { try { const v = localStorage.getItem("kart_q"); return v != null ? +v : A.touch ? 1 : 2; } catch (e) { return A.touch ? 1 : 2; } })(), NG = false, mood = null;
+  const MOODS = {
+    henesys: { sun: 0xffe6c4, sunI: 2.4, dir: [-.6, .55, .5], sky: 0xd8eaff, gnd: 0x5e6a48, hemiI: 1.05, exp: 1, sat: 1.04, con: 1.06, warm: .02, vig: .26, bloom: .45, thr: .95 },
+  };
+  const OLD_LIGHT = { hemiSky: hemi.color.getHex(), hemiGnd: hemi.groundColor.getHex(), hemiI: hemi.intensity, sun: sun.color.getHex(), sunI: sun.intensity, pos: sun.position.clone() };
+  scene.add(sun.target);
+  sun.shadow.bias = -.0005; sun.shadow.normalBias = 1.2;
+  { const sc = sun.shadow.camera; sc.left = -520; sc.right = 520; sc.top = 520; sc.bottom = -520; sc.near = 10; sc.far = 3600; }
+  // soft round shadows under the pictures (trees, pigs, fans, mesos): one instanced mesh, filled each frame by spr()
+  const blobTex = (() => { const c = canvas(64, 64), g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 1, 32, 32, 31); gr.addColorStop(0, "rgba(0,0,0,.5)"); gr.addColorStop(.55, "rgba(0,0,0,.24)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const BLOBN = 1200, blobs = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }), BLOBN);
+  blobs.frustumCulled = false; blobs.count = 0; blobs.visible = false; blobs.renderOrder = 1; scene.add(blobs); let blobI = 0; const M4b = new THREE.Matrix4();
+  // the picture pipeline: the scene into a float buffer, its bright parts blurred into a glow at quarter size, then glow + filmic colour + grade
+  let PP = null;
+  const fsGeo = new THREE.BufferGeometry(); fsGeo.setAttribute("position", new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3)); fsGeo.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 2, 0, 0, 2], 2));
+  const fsCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), fsScene = new THREE.Scene(), fsQuad = new THREE.Mesh(fsGeo); fsQuad.frustumCulled = false; fsScene.add(fsQuad);
+  const VS = "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }";
+  const brightM = new THREE.ShaderMaterial({ uniforms: { tex: { value: null }, thr: { value: .9 } }, vertexShader: VS, depthTest: false, depthWrite: false,
+    fragmentShader: "uniform sampler2D tex; uniform float thr; varying vec2 vUv; void main() { vec3 c = texture2D(tex, vUv).rgb; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(c * smoothstep(thr, thr + .7, l), 1.); }" });
+  const blurM = new THREE.ShaderMaterial({ uniforms: { tex: { value: null }, d: { value: new THREE.Vector2() } }, vertexShader: VS, depthTest: false, depthWrite: false,
+    fragmentShader: "uniform sampler2D tex; uniform vec2 d; varying vec2 vUv; void main() { vec3 c = texture2D(tex, vUv).rgb * .227; c += (texture2D(tex, vUv + d * 1.385).rgb + texture2D(tex, vUv - d * 1.385).rgb) * .316; c += (texture2D(tex, vUv + d * 3.231).rgb + texture2D(tex, vUv - d * 3.231).rgb) * .07; gl_FragColor = vec4(c, 1.); }" });
+  const compM = new THREE.ShaderMaterial({ uniforms: { scene: { value: null }, bloom: { value: null }, strength: { value: .5 }, exposure: { value: 1 }, sat: { value: 1.1 }, con: { value: 1.05 }, warm: { value: 0 }, vig: { value: .25 } },
+    vertexShader: VS, depthTest: false, depthWrite: false, fragmentShader: `
+      uniform sampler2D scene, bloom; uniform float strength, exposure, sat, con, warm, vig; varying vec2 vUv;
+      vec3 aces(vec3 x) { return clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0., 1.); }
+      vec3 toSRGB(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(1. / 2.4)) - .055, step(.0031308, c)); }
+      void main() {
+        vec3 c = (texture2D(scene, vUv).rgb + texture2D(bloom, vUv).rgb * strength) * exposure;
+        c = toSRGB(aces(c));
+        float l = dot(c, vec3(.299, .587, .114)); c = mix(vec3(l), c, sat); c = (c - .5) * con + .5;
+        c += vec3(warm, warm * .35, -warm);
+        vec2 q = vUv - .5; c *= 1. - vig * smoothstep(.25, .85, dot(q, q) * 2.2);
+        gl_FragColor = vec4(clamp(c, 0., 1.), 1.);
+      }` });
+  const hasHalf = renderer.extensions.has("EXT_color_buffer_half_float") || renderer.extensions.has("EXT_color_buffer_float");
+  function ppSize() {
+    if (!PP) return; const v = renderer.getDrawingBufferSize(new THREE.Vector2()), w = Math.max(2, v.x), hh = Math.max(2, v.y);
+    PP.main.setSize(w, hh); PP.b1.setSize(Math.max(1, w >> 2), Math.max(1, hh >> 2)); PP.b2.setSize(Math.max(1, w >> 2), Math.max(1, hh >> 2));
+  }
+  function makePP() {
+    const type = hasHalf ? THREE.HalfFloatType : THREE.UnsignedByteType;
+    PP = { main: new THREE.WebGLRenderTarget(2, 2, { type, samples: Q >= 2 ? 4 : 0 }), b1: new THREE.WebGLRenderTarget(2, 2, { type, depthBuffer: false }), b2: new THREE.WebGLRenderTarget(2, 2, { type, depthBuffer: false }) };
+    ppSize();
+  }
+  const fs = (m, target) => { fsQuad.material = m; renderer.setRenderTarget(target); renderer.render(fsScene, fsCam); };
+  function draw() {   // one frame: straight to the screen (old look), or through the picture pipeline
+    if (!(NG && Q >= 1)) { renderer.setRenderTarget(null); renderer.render(scene, camera); return; }
+    if (!PP) makePP();
+    renderer.setRenderTarget(PP.main); renderer.render(scene, camera);
+    brightM.uniforms.tex.value = PP.main.texture; brightM.uniforms.thr.value = mood.thr; fs(brightM, PP.b1);
+    const bw = PP.b1.width, bh = PP.b1.height;
+    for (let k = 0; k < 2; k++) { blurM.uniforms.tex.value = PP.b1.texture; blurM.uniforms.d.value.set((1 + k) / bw, 0); fs(blurM, PP.b2); blurM.uniforms.tex.value = PP.b2.texture; blurM.uniforms.d.value.set(0, (1 + k) / bh); fs(blurM, PP.b1); }
+    const u = compM.uniforms; u.scene.value = PP.main.texture; u.bloom.value = PP.b1.texture; u.strength.value = mood.bloom; u.exposure.value = mood.exp; u.sat.value = mood.sat; u.con.value = mood.con; u.warm.value = mood.warm; u.vig.value = mood.vig;
+    fs(compM, null);
+  }
+  // switch the look for a track: its cup's mood (prototype: Oink Oink Meadows, or every track with localStorage kart_ng = "all")
+  function applyLook(t) {
+    let all = false; try { all = localStorage.getItem("kart_ng") === "all"; } catch (e) {}
+    const want = Q >= 1 && (t.key === "henesys" || all) && !!MOODS[t.cup] ? MOODS[t.cup] : null, was = NG;
+    NG = !!want; mood = want; blobs.visible = NG;
+    if (NG) { sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI;
+      sun.castShadow = true; const ms = Q >= 2 ? 2048 : 1024; if (sun.shadow.mapSize.x !== ms) { sun.shadow.mapSize.set(ms, ms); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } } }
+    else { hemi.color.setHex(OLD_LIGHT.hemiSky); hemi.groundColor.setHex(OLD_LIGHT.hemiGnd); hemi.intensity = OLD_LIGHT.hemiI; sun.color.setHex(OLD_LIGHT.sun); sun.intensity = OLD_LIGHT.sunI; sun.position.copy(OLD_LIGHT.pos); sun.target.position.set(0, 0, 0); sun.castShadow = false; }
+    if (NG !== renderer.shadowMap.enabled) { renderer.shadowMap.enabled = NG; renderer.shadowMap.type = THREE.PCFSoftShadowMap; scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); }); }
+    if (NG) scene.traverse(o => { if (!o.isMesh || o === blobs) return; const big = !o.geometry.boundingSphere && o.geometry.computeBoundingSphere() || (o.geometry.boundingSphere.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) > 900);
+      o.receiveShadow = true; o.castShadow = !big && o !== terrain && !(o.material && o.material.transparent) && !(o.geometry.type === "PlaneGeometry" || o.geometry.type === "CircleGeometry"); });
+    if (was !== NG && !NG && PP) { renderer.setRenderTarget(null); }
+  }
+  // 🐢 too slow on this device? step down a level for this visit (2 → 1 → 0): measured over 3 s of racing
+  let lastT = null, lastEnd = 0, perfN = 0, perfSum = 0;
+  function perfCheck() {
+    const now = performance.now(), d = now - lastEnd; lastEnd = now;
+    if (!NG || !lastT || d > 250) return; perfSum += d; perfN++;
+    if (perfN < 180) return; const avg = perfSum / perfN; perfSum = perfN = 0;
+    if (avg > 27 && Q > 0) { Q--; if (PP) { PP.main.dispose(); PP.b1.dispose(); PP.b2.dispose(); PP = null; } applyLook(lastT); console.info("Family Kart: graphics down to level " + Q + " (" + avg.toFixed(1) + " ms a frame)"); }
+  }
+  const setQuality = q => { Q = q; try { localStorage.setItem("kart_q", String(q)); } catch (e) {} if (PP) { PP.main.dispose(); PP.b1.dispose(); PP.b2.dispose(); PP = null; } key = null; };   // (rebuilds the track's look on the next frame)
+
   // ---------------------------------------------------------------- ground: heights, terrain mesh, sky
   let G = 8, GN = WORLD / G + 1;
   let HG = new Float32Array(GN * GN), terrain = null, plain = null, skyMesh = null, key = null, skyRefs = [], RE = null;   // RE: the road's height at each track point
@@ -451,8 +532,10 @@ export function create(A) {
     skyMesh.renderOrder = -1; scene.add(skyMesh);
   }
   function sync(t) {
-    if (key !== t.key) { key = t.key; buildGround(t); skyRefs = []; }
-    if (skyRefs[0] !== t.sky || skyRefs[1] !== t.strip || !skyMesh) { skyRefs = [t.sky, t.strip]; buildSky(t); }
+    let built = false;
+    if (key !== t.key) { key = t.key; buildGround(t); skyRefs = []; built = true; }
+    if (skyRefs[0] !== t.sky || skyRefs[1] !== t.strip || !skyMesh) { skyRefs = [t.sky, t.strip]; buildSky(t); built = true; }
+    lastT = t; if (built) applyLook(t);
   }
 
   // ---------------------------------------------------------------- pictures standing in the world (props, mesos, monsters, fans)
@@ -473,6 +556,7 @@ export function create(A) {
     if (!im || !(im.naturalWidth || im.width)) return;
     let s = pool[pi++]; if (!s) { s = new THREE.Sprite(); s.center.set(.5, 0); scene.add(s); pool.push(s); }
     s.material = picTex(im, !!flip); s.visible = true; s.scale.set(im.width * sc, im.height * sc, 1); s.position.set(x, h(x, y) + (z || 0), y);
+    if (NG && blobI < BLOBN && (z || 0) < 30) { const w = Math.min(160, im.width * sc * .75); M4b.makeScale(w, 1, w * .5).setPosition(x, h(x, y) + .5, y); blobs.setMatrixAt(blobI++, M4b); }
   }
 
   // ---------------------------------------------------------------- item boxes: real spinning rainbow "?" cubes
@@ -535,6 +619,7 @@ export function create(A) {
     const driver = new THREE.Sprite(new THREE.SpriteMaterial({ map: driverTex, alphaTest: ghost ? 0 : .4, transparent: !!ghost, opacity: ghost ? .5 : 1 })); driver.center.set(.5, .06); driver.position.set(-2, 7, 0); driver.visible = false; body.add(driver);
     scene.add(root);
     const mats = [paint, dark, tire, gold, white, metal, badge.material, driver.material];
+    root.traverse(q => { if (q.isMesh) { q.castShadow = !ghost; q.receiveShadow = true; } });
     return { root, tilt, body, wheels, ice, flames, driver, driverTex, paint, mats, ghost: !!ghost, faded: false, im: null, roll: 0, used: true };
   }
   const karts = new Map();
@@ -609,6 +694,9 @@ export function create(A) {
     }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
     camera.lookAt(look);
+    if (NG) { const fx = Math.round((k.x + Math.cos(cam.yaw) * 260) / 8) * 8, fz = Math.round((k.y + Math.sin(cam.yaw) * 260) / 8) * 8, fy = Math.round(kh / 8) * 8, D = mood.dir;   // the shadow box sits just ahead of you
+      sun.target.position.set(fx, fy, fz); sun.position.set(fx + D[0] * 1500, fy + D[1] * 1500, fz + D[2] * 1500); }
+    blobI = 0;
     cam.roll = (cam.roll || 0) + ((o.roll || 0) - (cam.roll || 0)) * Math.min(1, o.dt * 6); if (cam.roll) camera.rotateZ(cam.roll);   // leans into a drift
     camera.fov = 60 + 13 * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     camera.getWorldDirection(fwd);
@@ -632,7 +720,8 @@ export function create(A) {
     for (let i = pi; i < pool.length; i++) pool[i].visible = false;
     for (let i = bi; i < boxes.length; i++) boxes[i].visible = false;
     for (const [r, m] of karts) if (!m.used) { m.root.visible = false; if (r.gone || r.dead) { scene.remove(m.root); karts.delete(r); } }
-    renderer.render(scene, camera);
+    blobs.count = blobI; blobs.instanceMatrix.needsUpdate = true;
+    draw(); perfCheck();
   }
   // where a world spot shows up on the screen (in the game's 320-wide units), and how many screen units one world unit is there
   function proj(x, y, z = 0, lift = 0) {
@@ -646,9 +735,9 @@ export function create(A) {
     for (let i = 1; i < 10; i++) { const t = i / 10, px = cx + (x - cx) * t, pz = cz + (y - cz) * t; if (h(px, pz) > cy + (ty - cy) * t + 2) return true; }
     return false;
   }
-  function resize(w, hh) { renderer.setSize(w, hh, false); }
+  function resize(w, hh) { renderer.setSize(w, hh, false); ppSize(); }
   function clearKarts() { for (const m of karts.values()) scene.remove(m.root); karts.clear(); cam.yaw = null; }
-  const snap = () => { renderer.render(scene, camera); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
+  const snap = () => { draw(); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
   const liftOf = r => { const m = karts.get(r); return m && m.lift != null ? m.lift : airLift(r); };   // how high above the ground a kart is drawn (for the 2D bits on top: name tags, held items)
-  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, liftOf, camera, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
+  return { snap, sync, begin, end, spr, box, kart, proj, hidden, h, liftOf, camera, setQuality, get quality() { return Q; }, get ng() { return NG; }, tune: o => { if (!mood) return; Object.assign(mood, o); sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI; return { ...mood }; }, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
 }
