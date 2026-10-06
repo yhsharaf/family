@@ -159,6 +159,11 @@ export function create(A) {
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const q = Math.sqrt(((i * G - L.cx) / L.rx) ** 2 + ((j * G - L.cy) / L.ry) ** 2), w = smooth(1.35, 1.02, q); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
     }
+    if (t.lake && t.lake.kind === "fountain") {   // ⛲ the fountain stands on a flat plaza, level with the road round it (not up on a hill)
+      const L = t.lake; let sum = 0, n = 0; for (let i = 0; i < t.N; i++) if (Math.hypot(t.PTS[i][0] - L.cx, t.PTS[i][1] - L.cy) < L.rx + 380) { sum += E[i]; n++; }
+      const lh = n ? sum / n : mean;
+      for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const w = smooth(L.rx + 150, L.rx + 20, Math.hypot(i * G - L.cx, j * G - L.cy)); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
+    }
     for (const l of t.ledges || []) for (let o = 0; o < GN * GN; o++) { const n = near[o]; if (n >= l.a && n <= l.b && Math.sqrt(dmin[o]) > edge + 14) HG[o] -= (t.theme.ledgeDrop ?? 260) * smooth(edge + 14, edge + 60, Math.sqrt(dmin[o])); }   // ⛏️ no railings: a sheer drop into the dark beside the road
     if (t.sea != null) {   // 🌋 a flat sea (of lava) everywhere off the road, which stands above it on its own rock
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const o = j * GN + i; if (Math.sqrt(dmin[o]) > edge + 14) HG[o] = t.sea; }
@@ -422,6 +427,7 @@ export function create(A) {
       g.position.set(P.x, y0, P.y); g.rotation.y = -P.a + Math.PI; scene.add(g); roadObjs.push(g); }
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3, [], altBare); }
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
+    fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
     for (const b of t.buildings || []) {
       if (b.ice || b.dam || b.stone) {   // a wall or tower of ice blocks, the concrete dam, or a stone pillar (no roof)
         const T0 = b.dam ? damTex() : b.stone ? rockTex() : iceTex(), U = b.dam ? 220 : b.stone ? 120 : 90, V = b.dam ? 220 : b.stone ? 120 : 45, em = b.dam ? 0x3a3a38 : b.stone ? 0x2a2630 : 0x3a5f80;
@@ -504,7 +510,67 @@ export function create(A) {
     let sd = 3; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
     for (let k = 0; k < 160; k++) { g.fillStyle = ["#ffffff", "#fff3a0", "#a8d8ff", "#ffc8f0"][k % 4]; const x = rnd() * 256, y = rnd() * 256, r = rnd() < .1 ? 3 : 1.2; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })());
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null;
+  // ⛲ Pets Park's fountain, built in 3D: a paved pink-and-white plaza, a round white basin with a pink lip, three tiers of bowls with water
+  // spilling over each one, a jet on top, little arcs of water from the rim, lily pads and sparkling spray
+  const ctex = (w, hh, draw, rep) => { const c = document.createElement("canvas"); c.width = w; c.height = hh; draw(c.getContext("2d"), w, hh); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; if (rep) { tx.wrapS = tx.wrapT = THREE.RepeatWrapping; } return tx; };
+  function plazaTex() {   // round paving: rings of cream and pink stones, a white border
+    return ctex(512, 512, (g, W) => { const c = W / 2; g.fillStyle = "#f6efe6"; g.fillRect(0, 0, W, W);
+      for (let r = 250, k = 0; r > 20; r -= 26, k++) { const n = Math.max(6, Math.round(r / 9)); for (let q = 0; q < n; q++) { const a0 = q / n * 6.283, a1 = (q + 1) / n * 6.283 - .03;
+        g.fillStyle = r > 236 ? "#ffffff" : (k + q) % 7 === 0 ? "#ffb3d6" : (k % 2 ? "#efe4d6" : "#f9f3ea"); g.beginPath(); g.arc(c, c, r, a0, a1); g.arc(c, c, r - 23, a1, a0, true); g.closePath(); g.fill(); } }
+      g.strokeStyle = "#f07ab0"; g.lineWidth = 6; g.beginPath(); g.arc(c, c, 236, 0, 7); g.stroke(); });
+  }
+  function waterTex() {   // a clear blue pool: lighter in the middle, soft white ripples
+    return ctex(256, 256, (g, W) => { const gr = g.createRadialGradient(W / 2, W / 2, 10, W / 2, W / 2, W / 2); gr.addColorStop(0, "#9fe0ff"); gr.addColorStop(1, "#4fb3ef"); g.fillStyle = gr; g.fillRect(0, 0, W, W);
+      g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 2; for (let k = 0; k < 26; k++) { const x = Math.random() * W, y = Math.random() * W, r = 6 + Math.random() * 16; g.beginPath(); g.ellipse(x, y, r, r * .45, 0, 3.6, 5.8); g.stroke(); } }, true);
+  }
+  function fallTex() {   // falling water: streaks of white on clear blue (scrolled down every frame)
+    return ctex(128, 128, (g, W) => { g.fillStyle = "rgba(170,225,255,.38)"; g.fillRect(0, 0, W, W);
+      for (let k = 0; k < 70; k++) { const x = Math.random() * W, y = Math.random() * W, l = 10 + Math.random() * 30; g.strokeStyle = `rgba(255,255,255,${.35 + Math.random() * .5})`; g.lineWidth = 1 + Math.random() * 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + l); g.stroke(); } }, true);
+  }
+  function buildFountain(L) {
+    const R = L.r || 118, x = L.cx, z = L.cy, g0 = h(x, z), add = (m, y) => { m.position.set(x, g0 + y, z); scene.add(m); roadObjs.push(m); return m; };
+    const stone = new THREE.MeshLambertMaterial({ color: 0xfbf7f2, emissive: 0x5a5652 }), pink = new THREE.MeshLambertMaterial({ color: 0xf07ab0, emissive: 0x3a1020 }), gold = new THREE.MeshLambertMaterial({ color: 0xffd75e, emissive: 0x403010 });
+    const wtx = waterTex(), water = new THREE.MeshBasicMaterial({ map: wtx }), falls = [], flat = m => { m.rotation.x = -Math.PI / 2; return m; };
+    const fall = (r0, r1, hh, y) => { const tx = fallTex(); tx.repeat.set(Math.round(r0 / 6), 1); const m = new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, side: THREE.DoubleSide }); falls.push({ tx, sp: .9 + Math.random() * .3 }); return add(new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, hh, 40, 1, true), m), y); };
+    const plaza = add(flat(new THREE.Mesh(new THREE.CircleGeometry(L.rx, 64), new THREE.MeshLambertMaterial({ map: plazaTex(), polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }))), 1.2);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(R, R + 6, 24, 64), stone), 10);   // the basin: a round white wall
+    add(new THREE.Mesh(new THREE.TorusGeometry(R - 2, 7, 10, 64), pink), 23).rotation.x = Math.PI / 2;   // its pink lip
+    add(flat(new THREE.Mesh(new THREE.CircleGeometry(R - 7, 64), water)), 20);   // the pool
+    for (let k = 0; k < 5; k++) { const a = k * 1.3 + .4, rr = R * (.55 + (k % 2) * .2), pad = new THREE.Mesh(new THREE.CircleGeometry(9 + (k % 2) * 3, 12, .5, 5.6), new THREE.MeshLambertMaterial({ color: 0x5fbf4a, emissive: 0x10300c }));
+      flat(pad); pad.position.set(x + Math.cos(a) * rr, g0 + 20.6, z + Math.sin(a) * rr); scene.add(pad); roadObjs.push(pad);
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(3.4, 10, 8), k % 2 ? pink : stone); fl.position.set(pad.position.x + 2, g0 + 22.5, pad.position.z); scene.add(fl); roadObjs.push(fl); }   // lily pads with a flower
+    add(new THREE.Mesh(new THREE.CylinderGeometry(15, 24, 52, 24), stone), 46);   // the pedestal
+    add(new THREE.Mesh(new THREE.TorusGeometry(19, 3.5, 8, 24), pink), 30).rotation.x = Math.PI / 2;
+    add(new THREE.Mesh(new THREE.CylinderGeometry(60, 20, 18, 40), stone), 80);   // the big bowl
+    add(new THREE.Mesh(new THREE.TorusGeometry(59, 4, 8, 48), pink), 89).rotation.x = Math.PI / 2;
+    add(flat(new THREE.Mesh(new THREE.CircleGeometry(56, 40), water)), 88);
+    fall(61, 74, 68, 55);   // water spilling over it all round, into the pool
+    add(new THREE.Mesh(new THREE.CylinderGeometry(8, 13, 38, 18), stone), 106);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(28, 9, 12, 28), stone), 128);   // the little top bowl
+    add(new THREE.Mesh(new THREE.TorusGeometry(27, 3, 8, 32), pink), 134).rotation.x = Math.PI / 2;
+    add(flat(new THREE.Mesh(new THREE.CircleGeometry(25, 28), water)), 133.5);
+    fall(28, 36, 44, 112);
+    add(new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12), gold), 140);   // a gold ball on top, with the jet rising out of it
+    const jt = fallTex(); jt.repeat.set(2, 1); const jet = add(new THREE.Mesh(new THREE.CylinderGeometry(2, 6, 46, 14, 1, true), new THREE.MeshBasicMaterial({ map: jt, transparent: true, depthWrite: false, side: THREE.DoubleSide })), 166); falls.push({ tx: jt, sp: -1.6 });
+    for (let k = 0; k < 8; k++) {   // little arcs of water from the rim, into the pool
+      const a = k / 8 * 6.283 + .2, c = Math.cos(a), s2 = Math.sin(a), at = (r, y) => new THREE.Vector3(x + c * r, g0 + y, z + s2 * r);
+      const tx = fallTex(); tx.repeat.set(4, 1); tx.rotation = Math.PI / 2; const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(at(R - 6, 26), at(R - 22, 64), at(R - 38, 21)), 16, 2.6, 6), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false }));
+      scene.add(m); roadObjs.push(m); falls.push({ tx, sp: 1.2, u: true }); }
+    const ND = 90, pos = new Float32Array(ND * 3), pts = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xeaf8ff, size: 4, transparent: true, opacity: .85, depthWrite: false }));
+    pts.geometry.setAttribute("position", new THREE.BufferAttribute(pos, 3)); pts.frustumCulled = false; scene.add(pts); roadObjs.push(pts);
+    const drops = Array.from({ length: ND }, (_, k) => ({ a: Math.random() * 6.283, ph: Math.random(), sp: .7 + Math.random() * .5, top: k < 40, r: Math.random() }));
+    return { plaza, falls, wtx, pts, pos, drops, x, z, g0, R };
+  }
+  function fountStep(now) {
+    const F = fountM; for (const f of F.falls) { if (f.u) f.tx.offset.x = -now * f.sp; else f.tx.offset.y = now * f.sp; }
+    F.wtx.offset.set(Math.sin(now * .3) * .03, now * .02);
+    for (let k = 0; k < F.drops.length; k++) { const d = F.drops[k], t = (now * d.sp + d.ph) % 1; let r, y;
+      if (d.top) { r = 4 + t * 26; y = 186 + t * 26 - t * t * 70; }   // spray off the top of the jet, raining back into the top bowl
+      else { r = 72 + d.r * 10 + t * 8; y = 22 + Math.sin(t * Math.PI) * 14; }   // splashes where the curtain lands
+      F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
+    F.pts.geometry.attributes.position.needsUpdate = true;
+  }
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null;
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -740,6 +806,7 @@ export function create(A) {
       for (const q of clockM.hands) { const a = T.handAng(q.hd, now); q.m.position.set(T.lake.cx + Math.cos(a) * q.hd.len / 2, q.y, T.lake.cy + Math.sin(a) * q.hd.len / 2); q.m.rotation.y = -a; }
       for (const q of clockM.pends) { const s = Math.sin(now * q.p.sp + q.p.ph); q.grp.rotation.x = -Math.asin(Math.max(-1, Math.min(1, s * q.p.amp / 300))); } }   // (the bob is where the game thinks it is)
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
+    if (fountM) fountStep(performance.now() / 1000);
     if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }
     if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
     if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }

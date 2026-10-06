@@ -115,7 +115,7 @@ function under(nv, x, y) {
 }
 const inPen = (idx, L) => !!PEN && idx >= PEN.a && idx <= PEN.b && Math.abs(L) < ROAD / 2 + 4;
 const inLake = (x, y) => !!LAKE && ((x - LAKE.cx) / LAKE.rx) ** 2 + ((y - LAKE.cy) / LAKE.ry) ** 2 < 1;
-const lakeFall = () => !!LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow" && LAKE.kind !== "clock";   // the frozen lake is safe to drive on (just slippery)
+const lakeFall = () => !!LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow" && LAKE.kind !== "clock" && LAKE.kind !== "fountain";   // the frozen lake is safe to drive on (just slippery)
 const onRink = (x, y) => (!!LAKE && (LAKE.kind === "ice" || LAKE.kind === "shallow" || LAKE.kind === "clock") && inLake(x, y)) || GEARS.some(g => Math.hypot(x - g.x, y - g.y) < g.r);   // (a clock face or a turning gear too)   // ⛸ a frozen rink (or a shallow pond): all of it is road
 function padAt(idx, l) {
   for (const p of PADS) { const di = OPEN ? idx - p.i : (idx - p.i + N) % N; if (di >= 0 && di <= p.len && Math.abs(l - p.o) < p.w / 2) return p; }
@@ -358,7 +358,7 @@ const TRACKS = {
       // 🐾 the last lap: the pets got loose! they dash back and forth across the home stretch
       const loose = ["puppy", "kitty", "husky", "panda", "pinkbunny", "dino"].map((k, n) => ({ i: I(1060, 1790) + (n % 3) * 5 + Math.floor(n / 3) * 16, ph: n * 1.1, k: `pet_${k}_move0`, sp: .9, soft: true, herd: true, s: .95, lap: 3 }));
       return {
-        lake: { cx: ws(1050), cy: ws(1030), rx: ws(105), ry: ws(95) },   // the fountain's moat, in the middle of the roundabout
+        lake: { cx: ws(1050), cy: ws(1030), rx: 170, ry: 170, kind: "fountain", r: 118 },   // ⛲ the fountain's plaza in the middle of the roundabout (built in 3D: kept clear, and the shortcut finder stays out)
         hedges, chomps: [chomp(250, 96, "husky", 0), chomp(520, -96, "blackpig", 2), chomp(780, 96, "jrbalrog", 4)], areas, pigs: loose, finalMsg: "🐾 The pets got loose!",
         // 🐰 bunnies popping out of their burrows along the winding path (the Monty Moles); a bunny that's up bumps you
         moles: [[I(1735, 1310), 30], [I(1785, 1430), -35], [I(1745, 1560), 30], [I(1755, 1700), -30], [I(1700, 1250), -40]].map(([i, o], n) => ({ i, o, ph: n * .8, sp: 1.1, img: ["pet_pinkbunny_jump0", "pet_whitebunny_jump0", "pet_blackbunny_jump0"][n % 3], msg: "🐰 Bunny!" })),
@@ -374,7 +374,7 @@ const TRACKS = {
         boxes: [...boxRow(I(420, 1115), [-60, -20, 20, 60]), ...boxRow(pa + u(380), [-70, 70]), ...boxRow(porch + u(150), [-50, 0, 50]).map(b => ({ ...b, z: 62 }))],
         extra(push) {
           { const [tx, ty] = at(pa - 12, -(ROAD / 2 + CURB + 75)); OBJS.push({ x: tx, y: ty, k: "topiary", s: .85, r: 40, z: 0 }); }   // 🐱 the hedge cat, guarding the entrance to the hedge maze
-          OBJS.push({ x: ws(1050), y: ws(1030), k: "fountain", s: .8, r: 0, z: 0 });                                       // the fountain in its moat
+          OBJS.push({ x: ws(1050), y: ws(1030), k: "fountain", s: .8, r: 116, z: 0, f3d: true });                         // the fountain (a 2D picture only in the flat view; solid)
           BUILDINGS.push({ x: ws(1420), y: ws(2008), w: ws(600), d: 70, h: 120, wall: "#fbf7f2", roof: "#f07ab0", tower: true, hospital: true });   // 🏥 the Pet Hospital by the porch (3D): white, a red band, a big red cross on the tower
           for (let i = OBJS.length - 1; i >= 0; i--) { const o = OBJS[i], dx = Math.abs(o.x - ws(1420)), dy = ws(2008) - o.y; if (dx < ws(330) && dy > 0 && dy < 330 && !String(o.k).startsWith("pet_")) OBJS.splice(i, 1); }   // (a clear lawn in front of it)
           for (const [x, y] of [[640, 640], [1420, 640], [520, 1500]]) OBJS.push({ x: ws(x), y: ws(y), k: "gazebo", s: .8, r: 30, z: 0 });
@@ -1122,7 +1122,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
         g.beginPath(); g.arc(x, y, rr, a0, a0 + 1.5 + rnd() * 2.5); g.stroke(); }
     }
   };
-  if (LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow" && LAKE.kind !== "clock" && !only) lake();
+  if (LAKE && LAKE.kind !== "ice" && LAKE.kind !== "shallow" && LAKE.kind !== "clock" && LAKE.kind !== "fountain" && !only) lake();
   const cobbles = (n, pt, tan, wd, st) => { for (let i = 0; i < n; i++) {   // rows of flat cobbles across the road (or dirt specks, or planks)
     if (st === "planks") { if (i % 2) continue; const a = tan(i), ca = Math.cos(a), sa = Math.sin(a), x = pt(i)[0], y = pt(i)[1];
       g.strokeStyle = i % 4 ? "#a36c38" : "#6b4423"; g.lineWidth = 3; g.beginPath(); g.moveTo(x + sa * wd / 2, y - ca * wd / 2); g.lineTo(x - sa * wd / 2, y + ca * wd / 2); g.stroke(); continue; }
@@ -1608,7 +1608,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=91"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=93"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2797,7 +2797,7 @@ function render() {
     ctx.restore(); }, G3 ? G3.liftOf(r) : 0);
   for (const a of ARMS) addDraw(a.tgt.x, a.tgt.y, (sx, gy, sc) => { const im = IMG.arm; if (!im) return; const h = 70 * sc, w = h * im.width / im.height, drop = Math.max(0, a.t - .3) / 2.3;
     ctx.drawImage(im, sx - w / 2, gy - h - drop * 160 * sc, w, h); });
-  for (const ob of OBJS) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.sz != null ? ob.sz : ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
+  for (const ob of OBJS) if (!(G3 && ob.f3d)) add(ob.x, ob.y, IMG[ob.k], ob.s, ob.sz != null ? ob.sz : ob.bob ? (ob.z || 0) + (ob.mob ? Math.abs(Math.sin(tt * 2.6 + ob.x)) : Math.sin(tt * 2 + ob.x)) * ob.bob : ob.z || 0);   // monsters bounce, balloons sway
   if (G3) for (const c of CROWD) { if (!c.img) continue; const jz = Math.max(0, Math.sin(tt * c.sp + c.ph)) * c.jump; G3.spr(c.img, c.x, c.y, jz, c.s, c.flip);
     if (c.tag) addDraw(c.x, c.y, (sx, gy, sc) => { if (sc < .35) return; const top = gy - (c.img.height * c.s + jz) * sc, fs = Math.max(5, Math.min(10, 6 * sc)); ctx.font = `900 ${fs}px Ubuntu, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(1.5, fs / 4);
       ctx.strokeStyle = "#5a0d10"; ctx.strokeText(c.tag, sx, top - 2); ctx.fillStyle = "#ffd75e"; ctx.fillText(c.tag, sx, top - 2); }); }
