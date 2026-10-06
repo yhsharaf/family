@@ -428,6 +428,7 @@ export function create(A) {
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3, [], altBare); }
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
+    balloonM = []; for (const o of t.props3d || []) buildProp(o);
     for (const b of t.buildings || []) {
       if (b.ice || b.dam || b.stone) {   // a wall or tower of ice blocks, the concrete dam, or a stone pillar (no roof)
         const T0 = b.dam ? damTex() : b.stone ? rockTex() : iceTex(), U = b.dam ? 220 : b.stone ? 120 : 90, V = b.dam ? 220 : b.stone ? 120 : 45, em = b.dam ? 0x3a3a38 : b.stone ? 0x2a2630 : 0x3a5f80;
@@ -561,6 +562,48 @@ export function create(A) {
     const drops = Array.from({ length: ND }, (_, k) => ({ a: Math.random() * 6.283, ph: Math.random(), sp: .7 + Math.random() * .5, top: k < 40, r: Math.random() }));
     return { plaza, falls, wtx, pts, pos, drops, x, z, g0, R };
   }
+  // 🎈 Pets Park's big things in 3D: the pink-and-white gazebos, the hot-air balloons and the hedge cat at the maze
+  function stripeTex(cols) {   // the balloon's gores: tall stripes, a band of trim round the middle
+    return ctex(512, 256, (g, W, H) => { const n = 16; for (let k = 0; k < n; k++) { g.fillStyle = cols[k % cols.length]; g.fillRect(k * W / n, 0, W / n + 1, H); }
+      g.fillStyle = "rgba(255,255,255,.9)"; g.fillRect(0, H * .62, W, 6); g.fillStyle = "#f07ab0"; g.fillRect(0, H * .62 + 6, W, 4); });
+  }
+  function buildProp(o) {
+    const g0 = h(o.x, o.y), grp = new THREE.Group(), L = (c, e) => new THREE.MeshLambertMaterial({ color: c, emissive: e || 0x2a2a2a });
+    const put = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); grp.add(m); return m; };
+    if (o.k === "gazebo") {   // a round white floor, six slim pillars, a pink dome with a white scalloped rim and a gold knob on top
+      const wh = L(0xfbf7f2, 0x5a5652), pk = L(0xf07ab0, 0x3a1020), gd = L(0xffd75e, 0x403010);
+      put(new THREE.CylinderGeometry(70, 74, 8, 32), wh, 0, 4, 0); put(new THREE.CylinderGeometry(62, 62, 3, 32), pk, 0, 9, 0);
+      for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; put(new THREE.CylinderGeometry(4.5, 5.5, 96, 12), wh, Math.cos(a) * 58, 56, Math.sin(a) * 58); }
+      put(new THREE.TorusGeometry(60, 4, 8, 40), pk, 0, 104, 0).rotation.x = Math.PI / 2;
+      const dome = put(new THREE.SphereGeometry(76, 32, 14, 0, 6.283, 0, Math.PI / 2), pk, 0, 104, 0); dome.scale.y = .62;
+      for (let k = 0; k < 18; k++) { const a = k / 18 * 6.283; put(new THREE.SphereGeometry(7, 10, 8), wh, Math.cos(a) * 74, 103, Math.sin(a) * 74); }
+      put(new THREE.SphereGeometry(7, 14, 10), gd, 0, 104 + 76 * .62 + 5, 0);
+      grp.position.set(o.x, g0, o.y);
+    } else if (o.k === "hotair") {   // a teardrop envelope in pink, white and yellow stripes, ropes down to a wicker basket
+      const prof = []; for (let k = 0; k <= 20; k++) { const t = k / 20, a = t * Math.PI; prof.push(new THREE.Vector2(Math.max(.01, Math.sin(a) * 58 * (t < .5 ? .25 + 1.5 * t : 1)), 40 + 130 * (1 - Math.cos(a)) / 2)); }
+      const env = new THREE.Mesh(new THREE.LatheGeometry(prof, 32), new THREE.MeshLambertMaterial({ map: stripeTex(["#ff7ab8", "#ffffff", "#ffd23f", "#ffffff"]), emissive: 0x404040 })); grp.add(env);
+      put(new THREE.CylinderGeometry(15, 15, 5, 20), L(0xf07ab0, 0x3a1020), 0, 41, 0);
+      put(new THREE.BoxGeometry(24, 16, 24), L(0xa0703c, 0x2a1a08), 0, 8, 0); put(new THREE.BoxGeometry(26, 3, 26), L(0x7a5028, 0x201005), 0, 16, 0);
+      for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const a = new THREE.Vector3(sx * 11, 16, sz * 11), b = new THREE.Vector3(sx * 13, 40, sz * 13), m = put(new THREE.CylinderGeometry(.8, .8, a.distanceTo(b), 4), L(0x6b4426), 0, 0, 0);
+        m.position.copy(a).add(b).multiplyScalar(.5); m.lookAt(b); m.rotateX(Math.PI / 2); }
+      const y = g0 + (o.z || 0); grp.position.set(o.x, y, o.y); balloonM.push({ g: grp, y, o });
+    } else if (o.k === "topiary") {   // a cat clipped from hedge, sitting up on a pink-and-white planter, a pink bow at its neck, facing the road
+      const tx = hedgeTex().clone(); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(3, 2); tx.needsUpdate = true;
+      const lf = new THREE.MeshLambertMaterial({ map: tx, emissive: 0x0a1a08 }), wh = L(0xfbf7f2, 0x5a5652), pk = L(0xf07ab0, 0x3a1020), S1 = new THREE.SphereGeometry(1, 24, 18);
+      put(new THREE.BoxGeometry(150, 34, 112), wh, 0, 17, 0); put(new THREE.BoxGeometry(154, 9, 116), pk, 0, 26, 0); put(new THREE.BoxGeometry(140, 3, 102), L(0x3f7a2a, 0x0a1a05), 0, 34.5, 0);
+      put(S1, lf, -10, 92, 0).scale.set(46, 60, 44);   // the body, sitting up
+      put(S1, lf, -36, 52, 0).scale.set(40, 22, 40);   // the haunches
+      for (const z of [-17, 17]) put(S1, lf, 30, 44, z).scale.set(16, 12, 13);   // front paws
+      put(S1, lf, 12, 160, 0).scale.set(40, 36, 40);   // the head
+      for (const z of [-21, 21]) { const e = put(new THREE.ConeGeometry(13, 30, 10), lf, 10, 196, z); e.rotation.x = z < 0 ? -.32 : .32; }   // ears
+      put(S1, lf, 44, 152, 0).scale.set(10, 9, 14);   // the muzzle
+      put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([[-44, 46, 14], [-80, 70, 24], [-88, 118, 22], [-70, 150, 12], [-50, 146, 4]].map(q => new THREE.Vector3(...q))), 24, 9, 10), lf, 0, 0, 0);   // a tail curling up its back
+      put(S1, lf, -50, 146, 4).scale.set(10, 10, 10);
+      put(S1, pk, 36, 122, 0).scale.set(6, 6, 6); for (const z of [-11, 11]) put(S1, pk, 35, 122, z).scale.set(4, 8, 9);   // the pink bow
+      grp.rotation.y = -(o.fa || 0); grp.scale.setScalar(.85); grp.position.set(o.x, g0, o.y);
+    } else return;
+    scene.add(grp); roadObjs.push(grp);
+  }
   function fountStep(now) {
     const F = fountM; for (const f of F.falls) { if (f.u) f.tx.offset.x = -now * f.sp; else f.tx.offset.y = now * f.sp; }
     F.wtx.offset.set(Math.sin(now * .3) * .03, now * .02);
@@ -570,7 +613,7 @@ export function create(A) {
       F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
     F.pts.geometry.attributes.position.needsUpdate = true;
   }
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null;
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [];
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -807,6 +850,7 @@ export function create(A) {
       for (const q of clockM.pends) { const s = Math.sin(now * q.p.sp + q.p.ph); q.grp.rotation.x = -Math.asin(Math.max(-1, Math.min(1, s * q.p.amp / 300))); } }   // (the bob is where the game thinks it is)
     if (fireFn) { const now = performance.now() / 1000; for (const q of fireM) { const z = fireFn(q.b, now), p = ((now + q.b.ph) % q.b.T) / q.b.T; q.m.visible = z > 0; q.m.position.set(q.b.x, q.g + 18 + Math.max(0, z), q.b.y); q.sh.visible = p > .55 && p < .92; q.sh.position.set(q.b.x, q.g + 1.3, q.b.y); q.sh.material.opacity = .15 + .5 * Math.min(1, (p - .55) / .3); } }
     if (fountM) fountStep(performance.now() / 1000);
+    for (const q of balloonM) q.g.position.y = q.y + Math.sin(performance.now() / 1000 * 2 + q.o.x) * (q.o.bob || 0);   // the balloons sway up and down
     if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }
     if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
     if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
@@ -830,6 +874,8 @@ export function create(A) {
       cam.yaw = a; cam.y = want; cam.base = base; cam.zu = zu;
     }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
+    if (window.__camOv) { const c = window.__camOv; camera.position.set(c[0], c[1], c[2]); look.set(c[3], c[4], c[5]); if (scene.fog) { scene.__fog = scene.fog; scene.fog = null; } }   // (a dev hook: a fixed camera with no haze, for overview pictures)
+    else if (scene.__fog) { scene.fog = scene.__fog; scene.__fog = null; }
     camera.lookAt(look);
     if (NG) { const fx = Math.round((k.x + Math.cos(cam.yaw) * 260) / 8) * 8, fz = Math.round((k.y + Math.sin(cam.yaw) * 260) / 8) * 8, fy = Math.round(kh / 8) * 8, D = mood.dir;   // the shadow box sits just ahead of you
       sun.target.position.set(fx, fy, fz); sun.position.set(fx + D[0] * 1500, fy + D[1] * 1500, fz + D[2] * 1500); }
@@ -838,6 +884,7 @@ export function create(A) {
     camera.fov = 60 + 13 * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     camera.getWorldDirection(fwd);
     if (skyMesh) skyMesh.position.set(camera.position.x, camera.position.y + SKY_H / 2 - SKY_BELOW, camera.position.z);
+    if (skyMesh) skyMesh.visible = !window.__camOv;
   }
   // a rival between the camera and your kart turns see-through, so it never blocks your view
   function fadeBlockers() {

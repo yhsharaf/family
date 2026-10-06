@@ -373,12 +373,12 @@ const TRACKS = {
         coins,
         boxes: [...boxRow(I(420, 1115), [-60, -20, 20, 60]), ...boxRow(pa + u(380), [-70, 70]), ...boxRow(porch + u(150), [-50, 0, 50]).map(b => ({ ...b, z: 62 }))],
         extra(push) {
-          { const [tx, ty] = at(pa - 12, -(ROAD / 2 + CURB + 75)); OBJS.push({ x: tx, y: ty, k: "topiary", s: .85, r: 40, z: 0 }); }   // 🐱 the hedge cat, guarding the entrance to the hedge maze
+          { const [tx, ty] = at(pa - 12, -(ROAD / 2 + CURB + 75)), [rx, ry] = at(pa - 12, 0); OBJS.push({ x: tx, y: ty, k: "topiary", s: .85, r: 40, z: 0, f3d: true, fa: Math.atan2(ry - ty, rx - tx) }); }   // 🐱 the hedge cat, guarding the entrance to the hedge maze
           OBJS.push({ x: ws(1050), y: ws(1030), k: "fountain", s: .8, r: 116, z: 0, f3d: true });                         // the fountain (a 2D picture only in the flat view; solid)
           BUILDINGS.push({ x: ws(1420), y: ws(2008), w: ws(600), d: 70, h: 120, wall: "#fbf7f2", roof: "#f07ab0", tower: true, hospital: true });   // 🏥 the Pet Hospital by the porch (3D): white, a red band, a big red cross on the tower
           for (let i = OBJS.length - 1; i >= 0; i--) { const o = OBJS[i], dx = Math.abs(o.x - ws(1420)), dy = ws(2008) - o.y; if (dx < ws(330) && dy > 0 && dy < 330 && !String(o.k).startsWith("pet_")) OBJS.splice(i, 1); }   // (a clear lawn in front of it)
-          for (const [x, y] of [[640, 640], [1420, 640], [520, 1500]]) OBJS.push({ x: ws(x), y: ws(y), k: "gazebo", s: .8, r: 30, z: 0 });
-          for (const [x, y, z] of [[700, 1300, 330], [1500, 500, 380], [300, 1600, 300]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1, r: 0, z, bob: 18 });
+          for (const [x, y] of [[640, 640], [1420, 640], [520, 1500]]) OBJS.push({ x: ws(x), y: ws(y), k: "gazebo", s: .8, r: 30, z: 0, f3d: true });
+          for (const [x, y, z] of [[700, 1300, 330], [1500, 500, 380], [300, 1600, 300]]) OBJS.push({ x: ws(x), y: ws(y), k: "hotair", s: 1, r: 0, z, bob: 18, f3d: true });
           for (const [x, y, k] of [[870, 1300, "bush"], [1350, 1450, "bush"], [430, 900, "tree"], [1600, 1100, "tree"]]) push(ws(x), ws(y), k);
           // 🐾 pets here and there round the park, watching the race and bouncing
           ["husky", "kitty", "puppy", "panda", "pinkbunny", "dino", "elephant", "babydragon", "monkey", "penguin", "whitebunny", "blackpig"].forEach((k, n) => { const sd = n % 2 ? 1 : -1, [x, y] = at(Math.round(N * (n + .55) / 12) % N, sd * (ROAD / 2 + CURB + 40 + (n % 3) * 28)); OBJS.push({ x, y, k: `pet_${k}_stand00`, s: .9, r: 0, z: 0, bob: 10, mob: true });
@@ -1611,11 +1611,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, props3d: OBJS.filter(o => o.f3d && o.k !== "fountain"), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=93"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=96"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
