@@ -697,7 +697,7 @@ const TRACKS = {
       [1130, 50, 90], [880, 60, 90], [620, 100, 88], [400, 160, 84], [210, 260, 78], [200, 400, 70], [330, 520, 62], [420, 770, 54], [500, 1000, 46]],
     theme: { ...TH.mine, lava: true, ledgeDrop: 0, sea: -10, skyPic: 2700, grass: ["#c63e12", "#cc4416"], flowers: 0, tufts: 0, road: "basalt", haze: [120, 40, 20] },   // a plain lava sea just below the road edge
     art: { sky: "media/kart/zakum/sky2t.webp" },   // just the lava pillars far away, mirrored upward so they rise tall from the horizon: clean
-    near: [], far: [], mobs: ["fire_boar", "firebomb"],
+    near: ["zk_rocks", "zk_rocks2", "zk_skull", "zk_bones"], far: [], mobs: ["fire_boar", "firebomb"],   // (small things only: no big pictures by the narrow road)
     build() {
       const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
@@ -711,12 +711,18 @@ const TRACKS = {
       const holes = [[I(666, 1382), 55, 2], [I(1870, 1520), 50, 2], [I(1600, 1310), 55, 2], [I(880, 60), -50, 2], [I(330, 520), 55, 2],
         [I(210, 260), -50, 3], [I(1430, 1200), -55, 3], [I(1130, 50), 50, 3], [I(400, 160), -55, 3], [I(500, 1000), 50, 3]].map(([i, o, lap]) => ({ i, o, r: 38, lap }));
       const fireballs = [[I(1040, 1820), -30, 0], [I(1870, 1520), 30, 1.3], [I(1150, 720), 0, 2.6], [I(620, 100), 25, .7], [I(200, 400), -25, 2]].map(([i, o, ph]) => ({ i, o, ph }));
+      // 🔥 bubbling lava patches on the road's edges (they spin you out)
+      for (const [x, y, o] of [[1040, 1820, 50], [1600, 1310, -50], [620, 100, -50], [200, 400, 50]]) pads.push({ t: "lava", i: I(x, y), len: 10, o, w: 50 });
+      // 🐗 Zakum's creatures: Fire Boars charging across the road, Firebombs hopping across
+      const pigs = [[I(1300, 1830), "fire_boar", 0, false], [I(1792, 1400), "firebomb", 1.3, true], [I(880, 60), "fire_boar", 2.6, false], [I(330, 520), "firebomb", .7, true]]
+        .map(([i, k, ph, hop]) => ({ i, k, ph, hop, sp: 1, s: .5 }));
       return {
-        gaps, caves: [cave], pads, coins, holes, fireballs,
+        gaps, caves: [cave], pads, coins, holes, fireballs, pigs,
         ledges: [{ a: 0, b: N - 1 }],
         fork: { a: I(794, 1510), b: I(1530, 1780), via: [[ws(950), ws(1590)], [ws(1200), ws(1650)], [ws(1420), ws(1690)]], width: 140, style: "cobble" },
         boxes: [...boxRow(I(860, 1700), [-60, -20, 20, 60]), ...boxRow(I(1600, 1310), [-60, -20, 20, 60]), ...boxRow(I(620, 100), [-60, -20, 20, 60])],
         extra(push) {
+          for (let i = 0; i < N; i += 40) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 6)); if (!gaps.some(g => i >= g.a - 3 && i <= g.b + 3)) OBJS.push({ x, y, k: "zk_lantern", s: .28, r: 0, z: 0 }); }   // lamp posts along the edges
         },
       };
     },
@@ -1001,6 +1007,9 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   if (T.theme.sea != null && !only) {   // 🌋 a clean lava sea: smooth glowing lava, and dark rock under the road's edges (no blobs, no veins)
     g.fillStyle = th.grass[0]; g.fillRect(0, 0, WORLD, WORLD);
     for (let k = 0; k < 90 * WS * WS; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 120 + rnd() * 220, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(255,150,60,.16)"); gr.addColorStop(1, "rgba(255,150,60,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    for (let k = 0, n = 1100 * WS * WS; k < n; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 6 + rnd() * 22; g.fillStyle = ["#a8280a", "#e0561e", "#ff8a2a", "#8a1e08"][k & 3]; g.globalAlpha = .45; g.beginPath(); g.ellipse(x, y, r, r * .6, rnd() * 3, 0, 7); g.fill(); }   // glowing patches…
+    g.globalAlpha = .9; g.lineWidth = 2.5; for (let k = 0, n = 220 * WS * WS; k < n; k++) { let x = rnd() * WORLD, y = rnd() * WORLD; g.strokeStyle = rnd() < .5 ? "#ffd23f" : "#ff9a2e"; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (rnd() - .5) * 50; y += (rnd() - .5) * 50; g.lineTo(x, y); } g.stroke(); }   // …and bright veins
+    g.globalAlpha = 1;
     g.lineJoin = g.lineCap = "round"; g.strokeStyle = "#2a1c1a"; g.lineWidth = ROAD + 2 * CURB + 60; g.beginPath(); PTS.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.stroke();
   }
   else if (T.cup === "zakum" && !only) {   // 🔥 no ground beside the road: it's all lava (glowing blobs and bright veins)
@@ -2307,7 +2316,7 @@ function step(dt) {
   if (k.bonk > 0) k.bonk -= dt;
   for (const p of PIGS) { const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
-    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "fishbone" ? "🐟 Fish Bone!" : p.k === "roller" ? "🪨 Roller!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
+    spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Freezie!" : p.k === "fishbone" ? "🐟 Fish Bone!" : p.k === "roller" ? "🪨 Roller!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
   if (T.water && racing && !air && near.d > near.half + CURB + 8 && !(k.rescue > 0)) { rescue(k, "💦 Splash! Into the lake"); return; }
   if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b) && !(k.rescue > 0)) { rescue(k, T.fall || (T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!")); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
   if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
