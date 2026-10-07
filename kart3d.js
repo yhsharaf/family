@@ -290,7 +290,7 @@ export function create(A) {
   }
   // ---------------------------------------------------------------- the road: its own sharp surface (in the track's style) with raised curbs;
   // the pads, ramps, black ice and start line come from a see-through overlay painted by kart.js
-  let roadObjs = [];
+  let roadObjs = [], starRoadMat = null;
   function surfaceTex(style, th, U) {
     const R = 2048, c = canvas(R, R), g = c.getContext("2d"); g.scale(R / U, R / 192);
     let sd = 11; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647, pick = a => a[Math.floor(r() * a.length)];
@@ -459,12 +459,23 @@ export function create(A) {
     const w = WORLD;
     const m = glow === 2 ? new THREE.MeshStandardMaterial({ map: tex, roughness: .92, metalness: 0, envMapIntensity: .08, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }) : new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // (the star road's glass tiles are glossy: they catch reflections)
     if (glow) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = tex; m.emissiveIntensity = glow === 2 ? .5 : .55; }   // (Rainbow Road's tiles glow)
-    m.onBeforeCompile = sh => { sh.uniforms.decal = { value: decal };
-      sh.vertexShader = "varying vec2 vWXZ;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWXZ = position.xz;");
-      sh.fragmentShader = "uniform sampler2D decal; varying vec2 vWXZ;\n" + sh.fragmentShader.replace("#include <map_fragment>",
+    // ✨ the star road's tiles are alive (glow 2): each little light in the glass twinkles on its own, a slow wave of light runs along the road, and the glass
+    // has a faint sheen where you look along it. It's all in the road's own fragment shader (the dots are found from the tile grid: 7 tiles per texture repeat,
+    // the lit face inset .1045, 11 x 11 lights), so it costs no extra render pass. uAmp turns it off (0) for comparing
+    const SPARK = `
+ { vec2 tf = fract(vTileUv * 7.0), tg = (tf - 0.1045) / 0.791; float spark = 0.0;
+   if (tg.x > 0.0 && tg.x < 1.0 && tg.y > 0.0 && tg.y < 1.0) { vec2 cell = floor(tg * 11.0), lc = fract(tg * 11.0) - 0.5, tile = floor(vTileUv * 7.0);
+     float d = max(abs(lc.x), abs(lc.y)), dotm = 1.0 - smoothstep(0.17, 0.27, d), h = fract(sin(dot(cell + tile * 13.0, vec2(12.9898, 78.233))) * 43758.5453);
+     float tw = pow(0.5 + 0.5 * sin(uTime * 2.2 + h * 6.2832), 5.0), wave = pow(0.5 + 0.5 * sin(uTime * 1.6 - vTileUv.x * 11.0), 2.0);
+     spark = dotm * (0.55 * tw + 0.25 * wave); }
+   float fres = pow(1.0 - max(dot(normalize(normal), normalize(vViewPosition)), 0.0), 3.0);
+   totalEmissiveRadiance += uAmp * (spark * vec3(1.0, 0.98, 0.9) * 0.85 + fres * 0.09 * vec3(0.9, 0.95, 1.0)) * (1.0 - dc.a); }`;
+    m.onBeforeCompile = sh => { sh.uniforms.decal = { value: decal }; sh.uniforms.uTime = { value: 0 }; sh.uniforms.uAmp = { value: 1 }; m.userData.shader = sh;
+      sh.vertexShader = "varying vec2 vWXZ; varying vec2 vTileUv;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWXZ = position.xz; vTileUv = uv;");
+      sh.fragmentShader = "uniform sampler2D decal; uniform float uTime; uniform float uAmp; varying vec2 vWXZ; varying vec2 vTileUv;\n" + sh.fragmentShader.replace("#include <map_fragment>",
         `#include <map_fragment>\n vec4 dc = texture2D(decal, vec2(vWXZ.x / ${w.toFixed(1)}, 1.0 - vWXZ.y / ${w.toFixed(1)})); diffuseColor.rgb = mix(diffuseColor.rgb, dc.rgb, dc.a);`)
-        .replace("#include <emissivemap_fragment>", glow ? "#include <emissivemap_fragment>\n totalEmissiveRadiance *= (1.0 - dc.a);" : "#include <emissivemap_fragment>"); };   // (on a glowing road, what's painted on it, like a hole, doesn't glow)
-    m.customProgramCacheKey = () => "road" + w + (glow ? "g" + glow : "");   // (the world size is baked into the shader, so tracks of different sizes need their own)
+        .replace("#include <emissivemap_fragment>", glow ? "#include <emissivemap_fragment>\n totalEmissiveRadiance *= (1.0 - dc.a);" + (glow === 2 ? SPARK : "") : "#include <emissivemap_fragment>"); };   // (on a glowing road, what's painted on it, like a hole, doesn't glow)
+    m.customProgramCacheKey = () => "road" + w + (glow ? "g" + glow : "") + (glow === 2 ? "s" : "");   // (the world size is baked into the shader, so tracks of different sizes need their own)
     return m;
   }
   // 🧱 clean cliff walls round each gorge (Mushroom Canyon): smooth vertical strips along the pit's edge - the grassy lip at the top, the
@@ -508,7 +519,7 @@ export function create(A) {
       altBare.push(...runs(t.AN, j => near(t.ALT[j][0], t.ALT[j][1], t.PTS, t.FORK_A - 80, t.FORK_B + 80, t.ROAD / 2 + t.CURB + t.ALT_ROAD / 2)));
       mainBare.push(...runs(t.N, i => (Math.abs(i - t.FORK_A) < 70 || Math.abs(i - t.FORK_B) < 70) && near(t.PTS[i][0], t.PTS[i][1], t.ALT, 0, t.AN, reach)));
     }
-    const mainMat = roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow64" ? 2 : RS === "rainbow" || RS === "pastel");
+    const mainMat = roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow64" ? 2 : RS === "rainbow" || RS === "pastel"); starRoadMat = RS === "rainbow64" ? mainMat : null;
     if (th.clean && !th.skyroad) { const n = t.N, P = t.PTS, ang = i => { const a = P[(i + n - 3) % n], b = P[(i + 3) % n]; return Math.atan2(b[1] - a[1], b[0] - a[0]); }, bend = new Uint8Array(n);   // ✨ kerbs only round the corners (none down the straights), like a real circuit
       for (let i = 0; i < n; i++) { let d = ang((i + 4) % n) - ang((i + n - 4) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); if (Math.abs(d) / (8 * t.SPC) > 1 / 700) for (let k = -26; k <= 26; k++) bend[(i + k + n) % n] = 1; }
       for (let i = 0; i < n; ) { if (bend[i]) { i++; continue; } let j = i; while (j < n && !bend[j]) j++; mainBare.push({ a: i, b: j }); i = j; } }
@@ -1854,6 +1865,7 @@ export function create(A) {
     const hl = new THREE.Mesh(S1, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .55 })); hl.scale.set(8, 14, 6); hl.position.set(28, 62, -22); g.add(hl);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(46, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; g.userData.sh = sh; g.add(sh); g.userData.body = [b, tip]; return g; }
   function starStep(now, dt, cx, cy, cz) {
+    if (starRoadMat && starRoadMat.userData.shader) starRoadMat.userData.shader.uniforms.uTime.value = now;   // ✨ the tiles' lights twinkle
     if (!starFx) return; const F = starFx;
     F.rollers.forEach((b, k) => { const q = F.rollerAt(b, now), m = F.slimes[k], y = surfY(q.x, q.y, q.i), sq = q.z < 10 ? 1 - (10 - q.z) / 10 * .25 : 1 + Math.min(.12, q.z / 400); m.position.set(q.x, y + q.z, q.y); m.rotation.y = -q.a; m.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq)); m.userData.sh.position.y = -q.z + 1.5; m.userData.sh.scale.setScalar(1 - Math.min(.6, q.z / 160)); });
     for (const tx of F.dashM) tx.offset.y = -now * 2.2;   // the chevrons race forward
