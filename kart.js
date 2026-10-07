@@ -162,8 +162,10 @@ function nav(x, y, guess) {
 const offAlt = (x, y, m) => !AN || nearAlt(x, y).d > ALT_ROAD / 2 + CURB + m;   // (off the second road too, if there is one)
 const roadDist = (x, y) => Math.min(nearest(x, y).d, AN ? nearAlt(x, y).d : 1e9);
 // sideways offset and the pad under you, on whichever road you're on
-function under(nv, x, y) {
-  if (!nv.alt) { const L = nv.u != null ? nv.u : lat(x, y, nv.i); return { L, pad: padAt(nv.i, L) }; }
+function under(nv, x, y, r) {
+  if (!nv.alt) { const L = nv.u != null ? nv.u : lat(x, y, nv.i); let pad = padAt(nv.i, L);   // (the points passed since the last step are swept too: at speed a kart can jump right over a short pad)
+    if (r) { if (!pad && r.pidx != null && !OPEN) { const d = ((nv.i - r.pidx) % N + N) % N; if (d > 1 && d < 40) for (let k = 1; k < d && !pad; k++) { const p = padAt((r.pidx + k) % N, L); if (p && (p.t === "boost" || p.t === "glide" || p.t === "ramp" || p.t === "bigramp")) pad = p; } } r.pidx = nv.i; }
+    return { L, pad }; }
   const a = altTan(nv.j), L = (x - ALT[nv.j][0]) * -Math.sin(a) + (y - ALT[nv.j][1]) * Math.cos(a);
   for (const p of ALTPADS) { const dj = nv.j - p.j * (AN - 1); if (dj >= 0 && dj <= p.len && Math.abs(L - p.o) < p.w / 2) return { L, pad: p }; }
   return { L, pad: null };
@@ -1038,7 +1040,10 @@ const TRACKS = {
     // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
     id: "starroad", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_ludi2", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
     path3d: "star64",
-    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, steer: .75, drift: .5, boostT: 1.5, glide: { up: 130, g: 55, sink: 55, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+    // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
+    // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
+    marks: { boosts: [66, 80, 95, 1003, 1020], dashes: [182, 372, 625], airRings: [126, 143] },
+    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
     near: [], far: [], mobs: [],
@@ -1048,11 +1053,13 @@ const TRACKS = {
       // 🪂 the two jumps between the pieces of road (off the end of a ride, or off a glide panel just before): glided over
       for (const [a, b] of M.gaps) { gaps.push({ a, b, kind: "chasm", open: true, caps: [] }); if (!RIDES.some(R => a >= R.a && a <= R.b + 2)) pads.push({ t: "glide", i: a - 7, len: 6, o: 0, w: ROAD }); }
       for (const i of M.glide) pads.push({ t: "glide", i: i - 3, len: 6, o: 0, w: ROAD });   // the glide panels where the road drops away beneath you
-      for (const i of M.dash) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: 80 });   // the dash panel
+      for (const i of [...M.dash, ...(M.own.dashes || [])]) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: ROAD });   // the blue dash panels, right across the road
+      for (const i of M.own.boosts || []) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: ROAD, col: "orange" });   // the orange boost panels under the star rings
+      const rings = (M.own.airRings || []).map(i => ({ i, o: 0, z: 45, r: 140, w: 110 }));   // ⭕ the boost rings you glide through
       const free = i => !RIDES.some(R => i >= R.a - 15 && i <= R.b + 15) && !M.gaps.some(([a, b]) => i >= a - 20 && i <= b + 15);
       const boxAt = [u(500), M.sections[0] + u(240), M.sections[1] + u(300), N - u(900)].map(i => { let k = i; while (!free(k) && k < N - 1) k++; return k; });
       row(u(160), u(320), 5, 0); row(M.sections[0] + u(80), M.sections[0] + u(200), 4, 0);
-      return { pads, coins, gaps, ledges: [{ a: 0, b: N - 1 }], boxes: boxAt.flatMap(i => boxRow(i, [-60, -20, 20, 60])), extra() {} };
+      return { pads, coins, gaps, rings, ledges: [{ a: 0, b: N - 1 }], boxes: boxAt.flatMap(i => boxRow(i, [-60, -20, 20, 60])), extra() {} };
     },
   },
   // 🔭 Discovery: laid out exactly like Mario Kart 8 Deluxe's Wii Mushroom Gorge (traced from above, every model drawn by us). Down the
@@ -1124,7 +1131,7 @@ function loadTrack(key) {
     for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
       PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
     const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove. The fences' measured sides are negated: the model was mirrored into the game, so its left is our right)
-    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC };
+    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(i => [mi(i), null, null, null]), ...(T.marks.airRings || []).map(i => [mi(i), null, 62, 110])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, v.map(mi)])) };
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1918,7 +1925,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=229"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=230"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2339,7 +2346,7 @@ function rivalStep(r, dt, tt) {
   if (r.remote) { remoteStep(r, dt); return; }
   if (rescueStep(r, dt)) return;
   if (rideStep(r, dt, Math.max(-1, Math.min(1, ((r.lane || 0) * .5 - (r.rlat || 0)) / 40)))) return;   // 🎢
-  if (FRAMES) pathSync(r); const near = FRAMES ? pathNav(r) : nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
+  if (FRAMES) pathSync(r); const near = FRAMES ? pathNav(r) : nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y, r), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
   const GL = T.theme.glide || {};
   if (r.z > 0 || r.vz > 0) { r.vz -= (r.glide ? (r.vz > 0 ? 150 : GL.g || 150) : 720) * dt; if (r.glide) { r.vz = Math.max(r.vz, -(GL.sink || 95)); r.v = Math.max(r.v, 245); } r.z += r.vz * dt; if (r.glide && r.z < 14 && gapAt(r.idx)) r.z = 14; if (r.z <= 0) { r.z = 0; r.vz = 0; r.glide = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
@@ -2812,7 +2819,7 @@ function petStep(r, air, tt) {
     if (!air && LAKE) for (const h of HANDS) { const a = handAng(h, now), ux = Math.cos(a), uy = Math.sin(a), dx = r.x - LAKE.cx, dy = r.y - LAKE.cy, t = Math.max(0, Math.min(h.len, dx * ux + dy * uy)), d = Math.hypot(dx - ux * t, dy - uy * t);
       if (d < h.w / 2 + 9 && !(r.handT > now) && d > 0) { r.handT = now + 1; const px = dx - ux * t, py = dy - uy * t; r.x += px / d * 14; r.y += py / d * 14; r.v *= .8; if (r === K) { bumpSound(); pop("🕰️ Clock hand!", "#ffb347", true); } } }   // (a nudge, not a spin: in Mario Kart 8 you can even drive on them)
     for (const p of PENDS) { const q = pendAt(p, now); if (r.z < 30 && Math.hypot(r.x - q.x, r.y - q.y) < 28 && !(r.pendT > now)) { r.pendT = now + 1.2; if (r === K) spinOut("🕰️ Bonked by the pendulum!"); else hit(r); } } }
-  if (air) for (const g of RINGS) if (Math.hypot(r.x - g.x, r.y - g.y) < 30 && Math.abs(r.z - g.z) < (g.r || 40) && r.ringT !== g) {   // ⭕ through a boost ring
+  if (air) for (const g of RINGS) if (Math.hypot(r.x - g.x, r.y - g.y) < (g.w || 30) && Math.abs(r.z - g.z) < (g.r || 40) && r.ringT !== g) {   // ⭕ through a boost ring
     r.ringT = g; giveBoost(r, 1.2, 130); if (r === K) { padSound(); flash("⭕ Boost ring!", 700); } }
   if (air) return;
   for (const c of CHOMPS) { const q = chompPos(c, tt); if (q.z < 14 && Math.hypot(r.x - q.x, r.y - q.y) < 24 * c.s) hit(r, `🐾 Chomped by the ${c.k === "jrbalrog" ? "Jr. Balrog" : c.k === "blackpig" ? "Black Pig" : "Husky"}!`); }
@@ -2918,7 +2925,7 @@ function step(dt) {
     k.lostT = lost ? (k.lostT || 0) + dt : Math.max(0, (k.lostT || 0) - dt);
     if (k.lostT > 2.6 || k.wrong > 3) { rescue(k); return; }
   }
-  const ground = under(near, k.x, k.y), L = ground.L;
+  const ground = under(near, k.x, k.y, k), L = ground.L;
   if (racing && near.alt && k.z <= 0 && near.d > near.half + CURB + 4 && SHORTCUTS[TRACK_KEY] && T.cup !== "zakum") {   // 🔀 off a short cut: you just bog down (Zakum's is lava)
     if (!(k.deepSnow > 0)) flash({ elnath: "❄️ Deep snow!", sleepy: "💦 Shallow water!", ludi: "🧸 Squishy floor!" }[T.cup] || "Slow!", 700); k.deepSnow = .25;
   }
