@@ -1038,7 +1038,7 @@ const TRACKS = {
     // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
     id: "starroad", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_ludi2", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
     path3d: "star64",
-    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, steer: .75, drift: .5, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, steer: .75, drift: .5, boostT: 1.5, glide: { up: 130, g: 55, sink: 55, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
     near: [], far: [], mobs: [],
@@ -1123,8 +1123,8 @@ function loadTrack(key) {
     const CR = (p0, p1, p2, p3, f, j) => .5 * (2 * p1[j] + (p2[j] - p0[j]) * f + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * f * f + (3 * p1[j] - p0[j] - 3 * p2[j] + p3[j]) * f * f * f);   // (a smooth curve through the measured points: no facets or kinks between them, for the road, the karts and the camera)
     for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
       PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
-    const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove)
-    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), sd || 0]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC };
+    const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove. The fences' measured sides are negated: the model was mirrored into the game, so its left is our right)
+    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC };
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1918,7 +1918,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=228"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=229"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2341,7 +2341,8 @@ function rivalStep(r, dt, tt) {
   if (rideStep(r, dt, Math.max(-1, Math.min(1, ((r.lane || 0) * .5 - (r.rlat || 0)) / 40)))) return;   // 🎢
   if (FRAMES) pathSync(r); const near = FRAMES ? pathNav(r) : nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
-  if (r.z > 0 || r.vz > 0) { r.vz -= (r.glide ? 150 : 720) * dt; if (r.glide) { r.vz = Math.max(r.vz, -95); r.v = Math.max(r.v, 245); } r.z += r.vz * dt; if (r.glide && r.z < 14 && gapAt(r.idx)) r.z = 14; if (r.z <= 0) { r.z = 0; r.vz = 0; r.glide = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
+  const GL = T.theme.glide || {};
+  if (r.z > 0 || r.vz > 0) { r.vz -= (r.glide ? (r.vz > 0 ? 150 : GL.g || 150) : 720) * dt; if (r.glide) { r.vz = Math.max(r.vz, -(GL.sink || 95)); r.v = Math.max(r.v, 245); } r.z += r.vz * dt; if (r.glide && r.z < 14 && gapAt(r.idx)) r.z = 14; if (r.z <= 0) { r.z = 0; r.vz = 0; r.glide = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
   const air = r.z > 0;
   for (const key of ["spin", "inv", "squash", "boost", "itemT", "small", "ink", "bloopSafe", "noItem", "hyper"]) if (r[key] > 0) r[key] -= dt;
   timedTick(r, dt);
@@ -2379,10 +2380,10 @@ function rivalStep(r, dt, tt) {
   if (FRAMES) pathMove(r, Math.cos(r.phi) * r.v, Math.sin(r.phi) * r.v, dt, true); else { r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD; }
   const pad = air ? null : ground.pad;
   if (pad && pad !== r.lastPad) {
-    if (pad.t === "boost") giveBoost(r, 1, 110);
+    if (pad.t === "boost") giveBoost(r, T.theme.boostT || 1, 110);
     if (pad.t === "ramp" && r.v > 60) { r.vz = (160 + r.v * .22) / SPD; r.z = .1; }
     if (pad.t === "bigramp" && r.v > 60) { r.vz = (300 + r.v * .3) / SPD; r.z = .1; }
-    if (pad.t === "glide") { r.vz = 240; r.z = .1; r.glide = 1; r.v = Math.max(r.v, 230); }   // 🪁 a glider ramp
+    if (pad.t === "glide") { r.vz = GL.up || 240; r.z = .1; r.glide = 1; r.v = Math.max(r.v, 230); }   // 🪁 a glider ramp
     if (pad.t === "hay") { r.vz = 230; r.z = .1; }
     if (pad.t === "shroom" && r.v > 30) { r.vz = (330 + r.v * .25) / SPD; r.z = .1; giveBoost(r, .5, 60); shroomHit(pad); }
     if (pad.t === "slime" || pad.t === "lava") hit(r);
@@ -2925,9 +2926,10 @@ function step(dt) {
     k.fallT = (k.fallT || 0) + dt; if (k.fallT > .12) { k.fallT = 0; rescue(k, "🔥 Fell into the lava!"); return; }
   } else k.fallT = 0;
   // in the air (ramps): gravity, and a trick on the way up/down gives a boost when you land
+  const GL = T.theme.glide || {}, diving = !!(k.glide && GL.dive && inp.brake);   // 🪁 a track's own glider: how high the ramp throws you, how fast you sink, and (the Star Road) a dive on the brake, like Mario Kart's
   if (k.z > 0 || k.vz > 0) {
-    k.vz -= (k.glide ? 150 : 720) * dt; if (k.glide) { k.vz = Math.max(k.vz, -95); k.v = Math.max(k.v, 245); } k.z += k.vz * dt;   // 🪁 a glider floats down slowly
-    if (k.glide && k.z < 14 && gapAt(k.idx)) k.z = 14;   // …and holds you up over a ravine, so a long glide never drops you into the next gap
+    k.vz -= (k.glide ? (k.vz > 0 ? 150 : diving ? GL.diveG || 150 : GL.g || 150) : 720) * dt; if (k.glide) { k.vz = Math.max(k.vz, -(diving ? GL.dive : GL.sink || 95)); k.v = Math.max(k.v, 245); if (diving && GL.dash) k.v = Math.min(k.v + GL.dash * 1.5 * dt, VMAX + GL.dash + 20); } k.z += k.vz * dt;   // 🪁 a glider floats down slowly (a dive drops faster and picks up speed)
+    if (k.glide && k.z < 14 && gapAt(k.idx)) k.z = 14;   // …and holds you up over a ravine, so a long glide never drops you into the next gap (a dive there just brings you down to the flight line, for the speed)
     if (k.z <= 0) { k.z = 0; k.vz = 0; k.hop = .14; k.glide = 0; if (k.trick) { giveBoost(k, .9, 95); flash("✨ Trick boost!", 700); } else bumpSound(); k.trick = false; }
   }
   const air = k.z > 0;
@@ -2944,10 +2946,10 @@ function step(dt) {
   // what's under the wheels
   const pad = air ? null : ground.pad;
   if (pad && pad !== k.lastPad) {
-    if (pad.t === "boost") { giveBoost(k, 1, 110); padSound(); }
+    if (pad.t === "boost") { giveBoost(k, T.theme.boostT || 1, 110); padSound(); }
     if (pad.t === "ramp" && k.v > 60) { k.vz = (160 + k.v * .22) / SPD; k.z = .1; k.drift = 0; jumpSound(); if (!k.tricked) { k.tricked = true; flash("Tap Drift in the air! ✨", 900); } }
     if (pad.t === "bigramp" && k.v > 60) { k.vz = (300 + k.v * .3) / SPD; k.z = .1; k.drift = 0; jumpSound(); setTimeout(jumpSound, 120); flash(PEN ? (k.v > 200 ? "🐷 Fly over the pig farm!" : "Uh oh… 🐷") : "🚀 Big jump!", 900); }
-    if (pad.t === "glide") { k.vz = 240; k.z = .1; k.glide = 1; k.drift = 0; k.v = Math.max(k.v, 230); jumpSound(); flash("🪁 Glide!", 900); }
+    if (pad.t === "glide") { k.vz = GL.up || 240; k.z = .1; k.glide = 1; k.drift = 0; k.v = Math.max(k.v, 230); jumpSound(); flash(GL.dive ? "🪁 Glide!  (brake = dive)" : "🪁 Glide!", 900); }
     if (pad.t === "hay") { k.vz = 230; k.z = .1; k.mesos = Math.min(10, k.mesos + 2); flash("🌾 Boing! +2 mesos", 900); hopSound(); coinSound(); }
     if (pad.t === "shroom" && k.v > 30) { k.vz = (330 + k.v * .25) / SPD; k.z = .1; k.drift = 0; giveBoost(k, .5, 60); boingSound(); buzz(25); pop("🍄 Boing!", { o: "#ff9a3a", g: "#7ad06a", b: "#5ac8ff" }[pad.col] || "#ffd23f", true); shroomHit(pad); }
     if (pad.t === "slime") spinOut("🫧 Slimed!");
@@ -2968,9 +2970,9 @@ function step(dt) {
   const hb = k.hyper > 0;
   boostTick(k, dt);
   if (k.deepSnow > 0) k.deepSnow -= dt;
-  const top = k.frozen > 0 ? 90 : k.deepSnow > 0 ? 120 : hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1);
+  const top = (k.frozen > 0 ? 90 : k.deepSnow > 0 ? 120 : hb ? VMAX + 60 + k.mesos * 3 : ((mud ? 80 : muddy ? 150 : k.off && !air ? 113 : rocky && k.boost <= 0 ? 200 : VMAX + k.mesos * 3) + (k.extra || 0)) * (k.small > 0 ? .72 : 1)) + (diving ? GL.dash || 0 : 0);   // (a diving glider is allowed to go faster)
   if (!racing || k.spin > 0 || k.stall > 0) k.v *= Math.pow(k.spin > 0 ? .3 : .2, dt);
-  else if (inp.brake) k.v = Math.max(-60, k.v - 380 * dt);
+  else if (inp.brake && !diving) k.v = Math.max(-60, k.v - 380 * dt);   // (on the Star Road the brake dives the glider instead)
   else k.v += (k.v < top ? (k.extra > 5 ? 900 : k.v < 120 ? 210 : 120) : -260) * dt;   // boosts reach their speed almost at once
   if (k.kick > 0) k.kick = Math.max(0, k.kick - dt * 1.4);
   for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "small", "ink", "bloopSafe", "hyper", "roll2"]) if (k[key] > 0) k[key] -= dt;
@@ -2997,7 +2999,7 @@ function step(dt) {
     k.drift = 0; k.charge = 0;
   }
   const SK = T.theme.steer || 1, DK = T.theme.drift || SK;   // (a track's steering and drift weight: the Star Road's long sweeping bends take a heavier, calmer kart, like the original's; its drift held with no steering runs round a typical bend, counter-steered it runs nearly straight)
-  let turn = k.steer * 2.1 * SK * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? .8 : .5) : 1);
+  let turn = k.steer * 2.1 * SK * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? (GL.turn || .8) : .5) : 1);
   if (k.drift) { turn = (k.drift * 1.55 * DK + k.steer * .9 * SK) * Math.min(1, k.v / 110); if (!k.off) { const before = k.charge; k.charge += dt * Math.max(.4, 1 + .7 * k.steer * k.drift);   // steering into the turn charges faster
     if ([.7, 1.5, 2.4].some(th => before < th && k.charge >= th)) tone(k.charge > 2.4 ? 1320 : k.charge > 1.5 ? 990 : 740, .1, "triangle", .06); } }
   if (FRAMES) { k.phi = wrapA(k.phi + turn * dt); pathMove(k, Math.cos(k.phi) * k.v, Math.sin(k.phi) * k.v - (k.drift ? k.drift * k.v * .16 * SK : 0), dt); }   // 🧲 glued to the measured road: the turn and the speed are taken on its surface

@@ -1530,6 +1530,7 @@ export function create(A) {
     const ice = new THREE.Mesh(BOX, new THREE.MeshPhongMaterial({ color: 0xbfe8ff, transparent: true, opacity: .45, shininess: 120, specular: 0xffffff }));
     ice.scale.set(30, 24, 24); ice.position.y = 11; ice.visible = false; body.add(ice);
     const flames = [-1, 1].map(s => { const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); f.position.set(-15, 7.2, s * 2.6); body.add(f); return f; });
+    const sparks = [-1, 1].map(s => { const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: .85 })); f.position.set(-9.5, 2.2, s * 9.6); f.visible = false; body.add(f); return f; });   // ✨ drift sparks at the rear wheels
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
     shadow.rotation.x = -Math.PI / 2; shadow.scale.set(34, 24, 1); shadow.position.y = .8; root.add(shadow);
     const driverTex = new THREE.Texture(); driverTex.colorSpace = THREE.SRGBColorSpace; driverTex.magFilter = THREE.NearestFilter; driverTex.minFilter = THREE.NearestMipmapLinearFilter; driverTex.wrapS = THREE.RepeatWrapping;
@@ -1537,7 +1538,7 @@ export function create(A) {
     scene.add(root);
     const mats = [paint, dark, tire, gold, white, metal, badge.material, driver.material];
     root.traverse(q => { if (q.isMesh) { q.castShadow = !ghost; q.receiveShadow = true; } });
-    return { root, tilt, body, wheels, ice, flames, driver, driverTex, paint, mats, ghost: !!ghost, faded: false, im: null, roll: 0, used: true };
+    return { root, tilt, body, wheels, ice, flames, sparks, driver, driverTex, paint, mats, ghost: !!ghost, faded: false, im: null, roll: 0, used: true };
   }
   const karts = new Map(), M4R = new THREE.Matrix4();
   function kart(r, o) {
@@ -1575,6 +1576,7 @@ export function create(A) {
     for (const w of m.wheels) { w.piv.rotation.set(0, w.front ? -(r.steer || 0) * .45 : 0, -m.roll * 4 / w.r); }
     m.ice.visible = r.frozen > 0;
     const ex = r.extra || 0; for (const fl of m.flames) { fl.visible = ex > 5; if (fl.visible) { const s = (5 + Math.min(1, ex / 100) * 6) * (.8 + Math.random() * .45); fl.scale.set(s, s, 1); } }
+    if (m.sparks) { const ch = r.drift ? (r.charge || 0) : 0, on = ch > .2 && !(r.z > 0); for (const sp of m.sparks) { sp.visible = on; if (on) { sp.material.color.setHex(ch > 2.4 ? 0xe060ff : ch > 1.5 ? 0xffa030 : ch > .7 ? 0x56b8ff : 0xffffff); const s = (3.5 + Math.random() * 3) * (ch > 1.5 ? 1.5 : ch > .7 ? 1.2 : 1); sp.scale.set(s, s, 1); } } }   // ✨ the drift charge, shown at the wheels: white, then blue, orange, purple for the mini-turbo tiers
     const im = o.img && (o.img.naturalHeight || o.img.height) ? o.img : null;
     if (im !== m.im) { m.im = im; if (im) { m.driverTex.image = im; m.driverTex.needsUpdate = true; } }
     m.driver.visible = !!im;
