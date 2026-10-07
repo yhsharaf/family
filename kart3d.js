@@ -84,10 +84,8 @@ export function create(A) {
   }
   const fs = (m, target) => { fsQuad.material = m; renderer.setRenderTarget(target); renderer.render(fsScene, fsCam); };
   function draw() {   // one frame: straight to the screen (old look), or through the picture pipeline
-    if (FX.ready && lastT && lastT.theme.skyroad) { const v = renderer.getDrawingBufferSize(new THREE.Vector2()); if (FX.w !== v.x || FX.h !== v.y) { FX.w = v.x; FX.h = v.y; FX.composer.setPixelRatio(1); FX.composer.setSize(v.x, v.y); }
-      renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .78; FX.composer.render(); return; }
     if (renderer.toneMapping !== THREE.NoToneMapping) renderer.toneMapping = THREE.NoToneMapping;
-    if (!(NG && Q >= 1)) { renderer.setRenderTarget(null); renderer.render(scene, camera); return; }
+    if (!(NG && Q >= 1) || (lastT && lastT.theme.skyroad)) { renderer.setRenderTarget(null); renderer.render(scene, camera); return; }   // (the Star Road: no screen effects, the plain picture)
     if (!PP) makePP();
     renderer.setRenderTarget(PP.main); renderer.render(scene, camera);
     brightM.uniforms.tex.value = PP.main.texture; brightM.uniforms.thr.value = mood.thr; fs(brightM, PP.b1);
