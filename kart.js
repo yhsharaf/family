@@ -1076,7 +1076,7 @@ function loadTrack(key) {
     for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), a = P[k], c = P[(k + 1) % n], ba = B[k], bc = B[(k + 1) % n];
       PTS.push([a[0] + (c[0] - a[0]) * f, a[1] + (c[1] - a[1]) * f, a[2] + (c[2] - a[2]) * f]); let bx = ba[0] + (bc[0] - ba[0]) * f, by = ba[1] + (bc[1] - ba[1]) * f, bz = ba[2] + (bc[2] - ba[2]) * f; const bl = Math.hypot(bx, by, bz) || 1; FRAMES.set([bx / bl, by / bl, bz / bl], q * 3); }
     const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;
-    RIDES = PD.rides.map(([a, b]) => ({ a: mi(a), b: mi(b) })); PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b]) => [mi(a), mi(b)]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z]) };
+    RIDES = PD.rides.map(([a, b]) => ({ a: mi(a), b: mi(b) })); PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), sd || 0]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z]) };
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1870,7 +1870,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=218"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=219"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
