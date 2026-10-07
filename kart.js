@@ -1042,7 +1042,7 @@ const TRACKS = {
     path3d: "star64",
     // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
     // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
-    marks: { boosts: [66, 80, 95, 1003, 1020], dashes: [182, 372, 625], airRings: [126, 143] },
+    marks: { boosts: [66, 80, 95, 1003, 1020], dashes: [182, 372, 625], airRings: [126, 143], airZ: [116, 98] },
     theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
@@ -1054,8 +1054,8 @@ const TRACKS = {
       for (const [a, b] of M.gaps) { gaps.push({ a, b, kind: "chasm", open: true, caps: [] }); if (!RIDES.some(R => a >= R.a && a <= R.b + 2)) pads.push({ t: "glide", i: a - 7, len: 6, o: 0, w: ROAD }); }
       for (const i of M.glide) pads.push({ t: "glide", i: i - 3, len: 6, o: 0, w: ROAD });   // the glide panels where the road drops away beneath you
       for (const i of [...M.dash, ...(M.own.dashes || [])]) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: ROAD });   // the blue dash panels, right across the road
-      for (const i of M.own.boosts || []) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: ROAD, col: "orange" });   // the orange boost panels under the star rings
-      const rings = (M.own.airRings || []).map(i => ({ i, o: 0, z: 45, r: 140, w: 110 }));   // ⭕ the boost rings you glide through
+      for (const i of M.own.boosts || []) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: ROAD, col: "green" });   // the green boost panels under the star rings
+      const rings = [...(M.own.airRings || []).map((i, k) => ({ i, o: 0, z: ((M.own.airZ || [])[k] ?? 62) - 12, r: 55, w: 70 })), ...(M.own.boosts || []).map(i => ({ i, o: 0, z: 14, r: 40, w: 60 }))];   // ⭕ the rings: a boost when you fly through one (the two in the air, or a road ring while gliding low)
       const free = i => !RIDES.some(R => i >= R.a - 15 && i <= R.b + 15) && !M.gaps.some(([a, b]) => i >= a - 20 && i <= b + 15);
       const boxAt = [u(500), M.sections[0] + u(240), M.sections[1] + u(300), N - u(900)].map(i => { let k = i; while (!free(k) && k < N - 1) k++; return k; });
       row(u(160), u(320), 5, 0); row(M.sections[0] + u(80), M.sections[0] + u(200), 4, 0);
@@ -1131,7 +1131,7 @@ function loadTrack(key) {
     for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
       PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
     const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove. The fences' measured sides are negated: the model was mirrored into the game, so its left is our right)
-    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(i => [mi(i), null, null, null]), ...(T.marks.airRings || []).map(i => [mi(i), null, 62, 110])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, v.map(mi)])) };
+    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(i => [mi(i), null, 26, 30]), ...(T.marks.airRings || []).map((i, k) => [mi(i), null, (T.marks.airZ || [])[k] ?? 62, 30])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, k === "airZ" ? v : v.map(mi)])) };   // (rings: [point, height, height above the road, radius]: kart-sized, over the road or at the glider's height)
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1925,7 +1925,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=230"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=231"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
