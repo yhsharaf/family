@@ -3338,6 +3338,20 @@ function dizzy(x, y, r, t) {
 // a rival's kart: same shape as yours in their colour, their character picture sharp when close, their name above
 // 🏆 the #1 guild member's Time Trial ghost on this track: everyone races it (it comes from the guild board)
 let topGhost = null;
+// 💰 all-time mesos: every finished race adds your mesos to your running total (and the Family's); the menu shows the Family's total
+let mesoStats = null;
+async function addMesos(n) {
+  if (DEV || !(n > 0)) return;   // (not from testing on localhost)
+  try { const sb = await B.client(); if (!sb) return; const { data } = await sb.rpc("kart_add_mesos", { p_name: me, p_n: Math.min(300, Math.round(n)) }); if (data && data.r === "ok") { mesoStats = { ...(mesoStats || {}), all: data.all, mine: data.mine }; showMesoStats(); } } catch (e) {}
+}
+async function fetchMesoStats() {
+  try { const sb = await B.client(); if (!sb) return; const nm = ($k("#kName") && $k("#kName").value.trim()) || me || ""; const { data } = await sb.rpc("kart_meso_stats", { p_name: nm }); if (data) { mesoStats = data; showMesoStats(); } } catch (e) {}
+}
+function showMesoStats() {
+  const el = $k("#kMesoAll"); if (!el || !mesoStats) return; const f = n => Number(n || 0).toLocaleString("en-US");
+  el.innerHTML = `<img src="media/kart/meso1.png" alt=""> The Family has collected <b>${f(mesoStats.all)}</b> mesos in all races${mesoStats.mine != null ? ` · you: <b>${f(mesoStats.mine)}</b>` : ""}`; el.hidden = false;
+  for (const p of document.querySelectorAll("#kResult .k-mesos")) if (!p.dataset.all) { p.dataset.all = 1; p.insertAdjacentHTML("beforeend", ` <span class="k-mesoall">· all-time: ${f(mesoStats.mine != null ? mesoStats.mine : mesoStats.all)}${mesoStats.mine != null ? "" : " (Family)"}</span>`); }
+}
 async function fetchTop() {
   topGhost = null; const my = raceId;
   if (DEV && DEV.topGhost) { topGhost = DEV.topGhost; return; }
@@ -3573,6 +3587,10 @@ function posMsg(r, now) {
     sm: r.small > 0 ? 1 : 0, hy: r.hyper > 0 ? 1 : 0, ex: Math.round(r.extra || 0), sq: r.squash > 0 ? 1 : 0, rk: r.rocket > 0 ? 1 : 0, bo: r.boo > 0 ? 1 : 0, pi: r.piranha > 0 ? 1 : 0, lap: r.lap, cps: r.cps, idx: r.idx, ho: r.holding ? 1 : 0, it: r.holding ? r.item : null,
     ik: r.ink > 0 ? 1 : 0, dn: done ? 1 : 0, ft: done ? Math.round(me ? r.laps.reduce((a, b) => a + b, 0) : r.finishT) : 0 };
 }
+// ⏳ after a new track loads, the screen stays on "Waiting For Other Players" while the 3D world builds and its pictures reach the graphics card
+// (a few dozen frames drawn behind the cover, at least 1.5 s, at most 8 s), so nobody sees half-loaded textures pop in
+async function settle(alive) { const t0 = performance.now(); let n = 0;
+  await new Promise(r => { const f = () => { n++; const dt = performance.now() - t0; if (!alive() || (n > 45 && dt > 1500) || dt > 8000) r(); else requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
 let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
 async function start() {
   const my = ++raceId, alive = () => my === raceId && state !== "menu";
@@ -3591,8 +3609,8 @@ async function start() {
   const [mk, mcc] = String(MP.track || "henesys").split("@");
   const key = mode === "gp" ? CUPS[gp.cup].tracks[gp.race - 1] : mode === "mp" ? (TRACKS[mk] ? mk : "henesys") : track;
   raceCC = mode === "mp" ? (CCS[mcc] ? +mcc : 150) : cc; SPD = CCS[raceCC].spd;
-  if (!assetsReady || TRACK_KEY !== key) { $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); $k("#kLoad").hidden = true; }
-  if (!alive()) return;
+  let fresh = false; if (!assetsReady || TRACK_KEY !== key) { fresh = true; $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); }
+  if (!alive()) { $k("#kLoad").hidden = true; return; }
   IMG.me = await loadImg(spriteOf(me)); if (!alive()) return; fit();
   
   try { ghost = mode === "tt" ? JSON.parse(store.get(ghostKey())) : null; } catch (e) { ghost = null; }
@@ -3604,6 +3622,7 @@ async function start() {
   state = "wait"; B.music(T.music); syncMusicBtn();
   if (mode === "tt") fetchTop();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
+  if (fresh) { await settle(alive); $k("#kLoad").hidden = true; if (!alive()) return; }
   await waitLandscape(); if (!alive() || state !== "wait") return; fit(); state = "count";
   // the intro: "Family, are you Ready!", then 3, 2, 1 and "Go Family!!!" (a room race starts at the server's time)
   const goIn = mode === "mp" ? Math.max(0, MP.goAt - performance.now()) : 4600;
@@ -3669,6 +3688,7 @@ const ordinal = n => n + (["", "st", "nd", "rd"][n] || "th");
 let TRACK_LEN = 0;
 function finish() {
   if (mode === "mp") return mpFinish();
+  addMesos(K.mesoTotal || 0);
   const k = K; state = "done"; K.doneAt = performance.now(); B.musicRate(1); fireworks(6); buzz([40, 60, 120]);
   if (!TRACK_LEN) for (let i = 0; i < N; i++) TRACK_LEN += Math.hypot(PTS[(i + 1) % N][0] - PTS[i][0], PTS[(i + 1) % N][1] - PTS[i][1]);
   const total = k.laps.reduce((a, b) => a + b, 0), bl = Math.min(...k.laps);
@@ -3711,12 +3731,13 @@ function finish() {
         <div class="row">${mode === "gp" ? (last ? `<button class="sk-btn bd-play" data-a="podium">🏆 See the podium</button>` : `<button class="sk-btn bd-play" data-a="next">Next: ${nx.icon} ${nx.name} ▶</button>`)
           : `<button class="sk-btn bd-play" data-a="again">Race again</button>`}<button class="sk-btn sk-private" data-a="back">Back</button></div>`;
     }
-    $k("#kResult").innerHTML = html; $k("#kResult").hidden = false; $k("#kResult").classList.toggle("wide", mode !== "tt");
+    $k("#kResult").innerHTML = html; $k("#kResult").hidden = false; showMesoStats(); $k("#kResult").classList.toggle("wide", mode !== "tt");
     sent.then(r => { const el = $k("#kRank"); if (!el || !r) return;
       el.innerHTML = r.r === "ok" ? `🏆 You're <b>#${r.rank}</b> on the guild board` : r.r === "laps" ? "That time looks impossible, so it wasn't saved 🤔" : r.r === "dev" ? "(test race, not saved)" : "Couldn't save your time this time."; });
   }, 1400);
 }
 function mpFinish() {
+  addMesos(K.mesoTotal || 0);
   const k = K; state = "done"; K.doneAt = performance.now(); K.fin = true; B.musicRate(1); MP.finished = true; fireworks(6); buzz([40, 60, 120]); if (!MP.endAt) { MP.endAt = performance.now() + 10000; MP.firstName = MP.me; }
   const total = Math.round(k.laps.reduce((a, b) => a + b, 0)), place = rankOf(k);
   const sure = RIV.every(r => !r.remote || r.done || liveOK(r));   // not sure where someone is? don't claim a place: the results will say
@@ -3735,7 +3756,7 @@ function mpShowWaiting(total) {
   $k("#kResult").innerHTML = `<h3>${total == null ? "⏱️ Time's up!" : "🏁 " + fmt(total)}</h3><p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">${total == null ? "Your place is where you were on the track. Getting the results…" : "Everyone else has 10 seconds to finish…"}</p>
     <table class="k-table">${rows.map((r, i) => `<tr class="${r === K ? "you" : ""}"><td>${ordinal(i + 1)}</td><td><img src="${r !== K && r.bot ? botImg(r.name) : spriteOf(r === K ? me : r.name)}" alt=""></td><td>${esc(r === K ? me : r.name)}</td>
     <td>${r === K ? (total == null ? "—" : fmt(total)) : r.done ? fmt(r.finishT) : "racing…"}</td></tr>`).join("")}</table>`;
-  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide");
+  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide"); showMesoStats();
 }
 const TROPHY = [null, ["🏆", "Gold"], ["🥈", "Silver"], ["🥉", "Bronze"]];
 const trophyHtml = t => `<div class="k-trophy r${t.rank}"><span>${TROPHY[t.rank][0]}</span><div><b>${TROPHY[t.rank][1]} Trophy!</b><small>${esc(CUPS[t.cup].name)}</small></div></div>`;
@@ -3759,7 +3780,7 @@ function mpShowResults(res) {
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
     <p class="k-rank">${res[0] && res[0].counted === false ? (res[0].humans != null && res[0].humans < 2 ? "⚠️ Races need at least 2 real players to count: no points or times this time." : `⚠️ Only races with 4 or more racers count: no points or times saved this time (${res[0].n} racers).`) : "🏆 Points and times saved (guild members only)."}</p>
     <div id="kNext">${mpNextHtml()}</div>`;
-  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide"); chatMount($k("#kResult"));
+  $k("#kResult").hidden = false; $k("#kResult").classList.add("wide"); chatMount($k("#kResult")); showMesoStats();
   if (mine && mine.place <= 3) confetti();
 }
 // after a room race: the host picks the next cup and track right here; everyone else watches the room standings (and a dancing Balrog)
@@ -4027,7 +4048,7 @@ async function mpWatch(data) {
   raceCC = CCS[mcc] ? +mcc : 150; SPD = CCS[raceCC].spd; me = MP.me;
   $k("#kMenu").hidden = true; $k("#kResult").hidden = true; $k("#kGame").hidden = false; $k("#kart").classList.add("racing", "watching"); document.body.classList.add("bd-playing");
   state = "loading";
-  if (!assetsReady || TRACK_KEY !== key) { $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); $k("#kLoad").hidden = true; }
+  if (!assetsReady || TRACK_KEY !== key) { $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); setTimeout(() => { $k("#kLoad").hidden = true; }, 1500); }
   if (my !== raceId || !MP.watching) return;
   fit(); K = freshKart(); K.watch = true; setupHazards(); PETALS = []; FWK = []; LAVA = null; makeRivals(); MP.watchI = 0;
   MP.watchT0 = performance.now() + (data.starts_in || 0) * 1000;
@@ -4083,7 +4104,7 @@ function confetti() {
 function quit() {
   raceId++; state = "menu"; $k("#kart").classList.remove("watching"); B.musicRate(1); leaveLandscape(); lockZoom(false); $k("#kRotate").hidden = true; $k("#kart").classList.remove("rot"); rotWas = null; cancelAnimationFrame(raf); raf = 0; stopEngine(); B.music(null);
   $k("#kGame").hidden = true; $k("#kMenu").hidden = false; $k("#kResult").hidden = true;
-  $k("#kart").classList.remove("racing"); document.body.classList.remove("bd-playing"); showBest();
+  $k("#kart").classList.remove("racing"); document.body.classList.remove("bd-playing"); showBest(); fetchMesoStats();
 }
 async function submit(laps) {
   if (DEV) return { r: "dev" };   // local test races never touch the real board
@@ -4191,7 +4212,7 @@ function kSuggest() {
   box.innerHTML = hits.map(p => `<button type="button" data-n="${esc(p.name)}">${p.sprite ? `<img src="${p.sprite}" alt="">` : "<span style='width:34px'>👤</span>"} ${esc(p.name)}</button>`).join("");
   box.hidden = false;
 }
-const kPick = n => { $k("#kName").value = n; $k("#kSugg").hidden = true; kShowFace(); showBest(); };
+const kPick = n => { $k("#kName").value = n; $k("#kSugg").hidden = true; kShowFace(); showBest(); fetchMesoStats(); };
 $k("#kSugg").addEventListener("pointerdown", e => { const b = e.target.closest("button"); if (!b) return; e.preventDefault(); kPick(b.dataset.n); });
 $k("#kName").addEventListener("blur", () => setTimeout(() => $k("#kSugg").hidden = true, 150));
 $k("#kName").addEventListener("keydown", e => {
@@ -4204,7 +4225,7 @@ $k("#kName").addEventListener("keydown", e => {
 });
 $k("#kName").addEventListener("input", () => { showBest(); kShowFace(); kSuggest(); });
 $k("#kName").value = store.get("family_me") || "";
-showBest(); kShowFace();
+showBest(); kShowFace(); fetchMesoStats();
 // ✕ during a race needs a second tap, so a stray thumb doesn't throw the race away
 let leaveArm = 0;
 $k("#kLeave").onclick = () => {

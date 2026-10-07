@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="draw.css?v=13">
 <link rel="stylesheet" href="ww.css?v=1">
 <link rel="stylesheet" href="duel.css?v=33">
-<link rel="stylesheet" href="kart.css?v=35">
+<link rel="stylesheet" href="kart.css?v=36">
 <link rel="stylesheet" href="sf.css?v=7">
 <link rel="stylesheet" href="br.css?v=1">
 <link rel="stylesheet" href="extras.css?v=46">
@@ -501,6 +501,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="sk-panel">
       <div class="sk-name"><input id="kName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" enterkeyhint="go">
         <div class="sk-sugg" id="kSugg" hidden></div></div>
+      <div class="sk-mesoall" id="kMesoAll" hidden></div>
       <div class="sk-warn" id="kGuest" hidden>⚠️ This isn't a guild name: you can race as a guest, but your times and points won't go on the guild board.</div>
       <div class="sk-avatar"><div class="sk-face" id="kFace"></div></div>
       <div class="kt-track"><img src="media/duel/bg_henesys.webp?v=9" alt=""><div id="kTrackCard"></div></div>
@@ -601,7 +602,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <div class="k-flash" id="kFlash"></div>
       <div class="kt-wrong" id="kWrong" hidden>↩️ WRONG WAY!</div>
       <div class="kt-warn" id="kWarn" hidden></div>
-      <div class="kt-load" id="kLoad" hidden>Building the track…</div>
+      <div class="kt-load" id="kLoad" hidden>Waiting For Other Players<span class="kt-dots"></span></div>
       <div class="kt-full" id="kFull" hidden>👆 Tap the screen for fullscreen</div>
       <div class="kt-rotate" id="kRotate" hidden><span>📱↪️</span>Turn your phone sideways to race</div>
       <div class="bd-result kt-result" id="kResult" hidden></div>
@@ -1012,7 +1013,7 @@ show();
 <script src="kart-songs.js?v=1"></script>
 <script src="duel.js?v=31"></script>
 <script src="duel2.js?v=3"></script>
-<script src="kart.js?v=315"></script>
+<script src="kart.js?v=316"></script>
 <script src="sf.js?v=16"></script>
 <script src="br.js?v=2"></script>
 <script src="extras.js?v=51"></script>

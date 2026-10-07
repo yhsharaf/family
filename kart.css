@@ -22,7 +22,9 @@
 .kt-wrong { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 14%; background: #d65c54; color: #fff; font-weight: 900; font-size: 18px;
   padding: 4px 12px; border-radius: 10px; border: 2px solid #fff; animation: pop .5s infinite alternate; }
 .kt-wrong[hidden] { display: none; }
-.kt-load { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; background: rgba(0,0,0,.4); }
+.kt-load { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.15em; letter-spacing: .02em; color: #fff; background: radial-gradient(ellipse at center, #2a2236 0%, #120e18 100%); }
+.kt-dots::after { content: ""; display: inline-block; width: 1.4em; text-align: left; animation: ktDots 1.2s steps(4) infinite; }
+@keyframes ktDots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
 .kt-load[hidden] { display: none; }
 .kt-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 360px); }
 .k-laps { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 8px; font: 700 14px ui-monospace, Menlo, Consolas, monospace; }
@@ -378,3 +380,8 @@ kbd.w { min-width: 54px; }
 .k-trophy.r3 { border-color: #9a5a2a; background: linear-gradient(135deg, #ffe8d2, #e8a66a 55%, #c47a3a); } .k-trophy.r3 b, .k-trophy.r3 small { color: #4a2408; }
 @keyframes ktTrophy { from { transform: scale(.3) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes ktTrophySpin { from { transform: rotate(-8deg) scale(1); } to { transform: rotate(8deg) scale(1.08); } }
+
+.sk-mesoall { margin: 6px 0 2px; font-size: .9em; font-weight: 700; color: #7a5a1a; display: flex; align-items: center; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.sk-mesoall[hidden] { display: none; }
+.sk-mesoall img { width: 18px; height: 18px; image-rendering: pixelated; }
+.k-mesoall { opacity: .8; font-weight: 600; }
