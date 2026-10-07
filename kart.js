@@ -1053,7 +1053,7 @@ const TRACKS = {
     intro: [{ from: [698, 200, 60], to: [696, -260, 110], look: [724, 0, 60], look2: [790, 0, 70], dur: 4 }, { from: [52, 240, 95], to: [98, 175, 60], look: [68, 0, 22], look2: [112, 0, 30], dur: 3.6 },
       { from: [1088, 0, 34], to: [1102, 0, 70], look: [0, 0, 130], look2: [0, 0, 105], dur: 3.4 }],   // (from the grid side, so the gate's banner reads the right way round)
     marks: { boosts: [[66, -42], [80, 42], [95, -42], [1003, -42], [1020, 42]], dashes: [182, 372, 625], airRings: [[126, 116, 0], [143, 98, 0], [270, 115, -45], [286, 101, 45], [303, 40, -45], [319, 26, 45], [335, 26, -45], [352, 26, 45], [537, 111, 0], [562, 33, 0]] },   // (air rings: [point, height of the ring's centre over the flight line, sideways offset]: measured from the glider's own flight)
-    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, steerEase: 6, driftBase: .04, driftMin: .2, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, cosmos: true, steerEase: 6, driftBase: .04, driftMin: .2, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
     near: [], far: [], mobs: [],
@@ -1936,7 +1936,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=248"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=256"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 

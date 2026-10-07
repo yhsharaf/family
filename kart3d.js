@@ -290,7 +290,7 @@ export function create(A) {
   }
   // ---------------------------------------------------------------- the road: its own sharp surface (in the track's style) with raised curbs;
   // the pads, ramps, black ice and start line come from a see-through overlay painted by kart.js
-  let roadObjs = [], starRoadMat = null;
+  let roadObjs = [], starRoadMat = null, cosmosDome = null;
   function surfaceTex(style, th, U) {
     const R = 2048, c = canvas(R, R), g = c.getContext("2d"); g.scale(R / U, R / 192);
     let sd = 11; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647, pick = a => a[Math.floor(r() * a.length)];
@@ -1414,7 +1414,7 @@ export function create(A) {
     let topCol = t.theme.sky || "#8fd0ff";
     if (t.sky) { try { const sc = canvas(16, 4), sg = sc.getContext("2d"); sg.drawImage(t.sky, 0, 0, t.sky.width, Math.max(1, t.sky.height * .04), 0, 0, 16, 4); const d = sg.getImageData(0, 0, 16, 4).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; topCol = `rgb(${r / n | 0},${gg / n | 0},${b / n | 0})`; } catch (e) {} }
     g.fillStyle = topCol; g.fillRect(0, 0, 4096, hor);
-    if (t.theme.blackbg) { g.fillStyle = "#000"; g.fillRect(0, 0, 4096, 1024); }   // (just black, for now)
+    if (t.theme.blackbg) { g.fillStyle = "#000"; g.fillRect(0, 0, 4096, 1024); }   // (just black)
     else if (t.theme.nightsky) { topCol = t.theme.sky; const gr = g.createLinearGradient(0, 0, 0, hor); gr.addColorStop(0, "#03141a"); gr.addColorStop(.55, topCol); gr.addColorStop(1, "#1d5560"); g.fillStyle = gr; g.fillRect(0, 0, 4096, hor + 2);   // 🌌 a deep teal night sky full of stars
       let sd = 5; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let k = 0; k < 1400; k++) { const y = rnd() * hor * .95, a = .25 + rnd() * .75 * (1 - y / hor * .6); g.fillStyle = `rgba(255,${235 + rnd() * 20 | 0},${200 + rnd() * 55 | 0},${a})`; const sz = rnd() < .06 ? 2.2 : 1.1; g.fillRect(rnd() * 4096, y, sz, sz); }
       for (const [mx, my] of [[900, hor * .32]]) { const gl = g.createRadialGradient(mx, my, 10, mx, my, 120); gl.addColorStop(0, "rgba(240,250,255,.9)"); gl.addColorStop(.2, "rgba(220,240,255,.35)"); gl.addColorStop(1, "rgba(200,230,255,0)"); g.fillStyle = gl; g.fillRect(mx - 120, my - 120, 240, 240); g.fillStyle = "#f4fbff"; g.beginPath(); g.arc(mx, my, 22, 0, 7); g.fill(); } }   // 🌕 the moon
@@ -1431,15 +1431,36 @@ export function create(A) {
       if (!t.theme.skyFull) { const fade = g.createLinearGradient(0, top, 0, top + sh * .35); fade.addColorStop(0, topCol); fade.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = fade; g.fillRect(0, top, 4096, sh * .35); } }   // the picture's top melts into the sky above it (unless it covers it all: the Golden Cave)
     if (t.strip && !t.theme.nightsky && !t.theme.bluesky) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
     g.fillStyle = t.theme.blackbg ? "#000" : t.theme.bluesky ? "#e6f1fa" : t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, t.strip && !t.theme.bluesky ? hor + 6 : hor, 4096, 1024);   // (above a sea of clouds, the far distance is cloud)
+    if (t.theme.cosmos) g.clearRect(0, 0, 4096, 1024);   // 🌌 the cosmos: the strip is all clear, the dome's deep space is the sky all round, above and below (no horizon line, no moon: the user asked for none)
     if (t.theme.nightsky && !t.theme.blackbg) { const gr = g.createLinearGradient(0, hor, 0, 1024); gr.addColorStop(0, "#2a5a60"); gr.addColorStop(.08, "#183a40"); gr.addColorStop(1, "#08161c"); g.fillStyle = gr; g.fillRect(0, hor, 4096, 1024 - hor);   // 🏙 the city's lights reaching to the horizon, misty far away
       let sd = 21; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let k = 0; k < 9000; k++) { const v = rnd(), y = hor + 1 + v * v * (1024 - hor); g.fillStyle = ["#ffcf8a", "#fff0d0", "#ffa860", "#bfe0ff"][k & 3]; g.globalAlpha = .25 + rnd() * .55 * (1 - v * .5); g.fillRect(rnd() * 4096, y, 1.3, 1); } g.globalAlpha = 1;
       const gl = g.createLinearGradient(0, hor - 30, 0, hor + 40); gl.addColorStop(0, "rgba(255,190,120,0)"); gl.addColorStop(.5, "rgba(255,190,120,.22)"); gl.addColorStop(1, "rgba(255,190,120,0)"); g.fillStyle = gl; g.fillRect(0, hor - 30, 4096, 70); }   // (no strip: the ground meets the picture, no dark gap)
     const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.repeat.x = -2; map.anisotropy = aniso;
     if (skyMesh) { scene.remove(skyMesh); skyMesh.material.map.dispose(); skyMesh.material.dispose(); }
-    skyMesh = new THREE.Mesh(new THREE.CylinderGeometry(SKY_R, SKY_R, SKY_H, 64, 1, true), new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, fog: false, depthWrite: false }));
+    skyMesh = new THREE.Mesh(new THREE.CylinderGeometry(SKY_R, SKY_R, SKY_H, 64, 1, true), new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, fog: false, depthWrite: false, transparent: !!t.theme.cosmos }));   // (the cosmos shows through the strip's clear sky)
     skyMesh.renderOrder = -1; scene.add(skyMesh);
     if (skyDome) { scene.remove(skyDome); skyDome.geometry.dispose(); skyDome.material.dispose(); skyDome = null; }
-    if (t.theme.clean) { const zen = new THREE.Color(t.theme.blackbg ? 0x000000 : t.theme.zenith || 0x3f86e0), hc = new THREE.Color(t.theme.blackbg ? "#000000" : topCol);   // ✨ above the painted sky: a smooth gradient dome (no hard rim when the low camera looks up)
+    cosmosDome = null;
+    if (t.theme.cosmos) {   // 🌌 the whole sky, painted by a shader: indigo at the horizon to near-black overhead, teal and magenta nebula wisps, a band of star dust, and thousands of stars that twinkle
+      skyDome = new THREE.Mesh(new THREE.SphereGeometry(SKY_R * 1.3, 48, 24), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uT: { value: 0 } },
+        vertexShader: "varying vec3 vd; void main() { vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
+        fragmentShader: `uniform float uT; varying vec3 vd;
+ float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+ float vnoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+   return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y), mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+ void main() { vec3 d = normalize(vd);
+   vec3 col = vec3(0.03, 0.024, 0.08);
+   float n = vnoise(d * 3.0) * 0.55 + vnoise(d * 6.5) * 0.3 + vnoise(d * 13.0) * 0.15, n2 = vnoise(d * 2.2 + 7.0);
+   col += mix(vec3(0.05, 0.35, 0.40), vec3(0.42, 0.08, 0.38), n2) * pow(n, 2.6) * 0.8;
+   float mw = exp(-pow(dot(d, normalize(vec3(0.55, 0.45, -0.7))) * 5.0, 2.0)) * (0.5 + 0.5 * n); col += vec3(0.55, 0.55, 0.75) * mw * 0.22;
+   vec3 p = d * 170.0, c = floor(p); float h = hash(c); vec3 off = (vec3(hash(c + 1.0), hash(c + 2.0), hash(c + 3.0)) - 0.5) * 0.8; float dd = length(fract(p) - 0.5 - off);
+   float star = step(0.962, h) * smoothstep(0.30, 0.04, dd) * (0.45 + 0.55 * fract(h * 91.7)) * (0.72 + 0.28 * sin(uT * 2.5 + h * 60.0));
+   vec3 p2 = d * 60.0, c2 = floor(p2); float h2 = hash(c2 + 3.0); vec3 off2 = (vec3(hash(c2 + 4.0), hash(c2 + 5.0), hash(c2 + 6.0)) - 0.5) * 0.8; float dd2 = length(fract(p2) - 0.5 - off2);
+   float big = step(0.986, h2) * smoothstep(0.26, 0.0, dd2) * (0.8 + 0.2 * sin(uT * 1.7 + h2 * 40.0));
+   col += star * mix(vec3(1.0, 0.95, 0.85), vec3(0.8, 0.9, 1.0), fract(h * 13.0)) * 1.1 + big * vec3(1.0, 0.97, 0.9) * 1.3;
+   gl_FragColor = vec4(col, 1.0); }` }));
+      skyDome.renderOrder = -2; scene.add(skyDome); cosmosDome = skyDome; }
+    else if (t.theme.clean) { const zen = new THREE.Color(t.theme.blackbg ? 0x000000 : t.theme.zenith || 0x3f86e0), hc = new THREE.Color(t.theme.blackbg ? "#000000" : topCol);   // ✨ above the painted sky: a smooth gradient dome (no hard rim when the low camera looks up)
       skyDome = new THREE.Mesh(new THREE.SphereGeometry(SKY_R * 1.3, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { hc: { value: hc }, zc: { value: zen } },
         vertexShader: "varying float vy; void main() { vy = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
         fragmentShader: "uniform vec3 hc, zc; varying float vy; void main() { gl_FragColor = vec4(mix(hc, zc, smoothstep(.62, .98, vy)), 1.); }" }));
@@ -1854,7 +1875,10 @@ export function create(A) {
       const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 26, map: glowDisc(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), pts = new THREE.Points(geo, mat); pts.frustumCulled = false; grp.add(pts);
       bursts.push({ pts, pos, mat, vel: new Float32Array(PN * 3), t: 9, life: 2.2, c: new THREE.Vector3() }); }
     const slimes = (t.rollers || []).map(() => { const m = slimeModel(); scene.add(m); roadObjs.push(m); return m; });
-    starFx = { coils, meds, cons, bursts, next: 0, rnd, slimes, rollerAt: t.rollerAt, rollers: t.rollers || [], dashM, boom: t.boom || null };
+    let shoot = null;
+    if (t.theme.cosmos) { const stx = ctex(256, 16, (c, W, H) => { const gr = c.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(.8, "rgba(230,240,255,.55)"); gr.addColorStop(1, "rgba(255,255,255,1)"); c.fillStyle = gr; c.fillRect(0, H * .3, W, H * .4); const hd = c.createRadialGradient(W - 8, H / 2, 0, W - 8, H / 2, 8); hd.addColorStop(0, "#ffffff"); hd.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = hd; c.fillRect(W - 16, 0, 16, H); });   // 🌠 a shooting star: a bright head with a fading tail
+      shoot = new THREE.Sprite(new THREE.SpriteMaterial({ map: stx, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); shoot.scale.set(2400, 56, 1); shoot.visible = false; scene.add(shoot); roadObjs.push(shoot); }
+    starFx = { coils, meds, cons, bursts, next: 0, rnd, slimes, rollerAt: t.rollerAt, rollers: t.rollers || [], dashM, boom: t.boom || null, shoot, shootNext: 3, shootT: 9 };
   }
   function slimeModel() {   // 💧 a giant cute slime: a glossy blue drop with a pointy top, big shiny eyes, rosy cheeks and a smile
     const g = new THREE.Group(), body = new THREE.MeshPhysicalMaterial({ color: 0x4aa8ff, emissive: 0x0a2a5a, roughness: .15, metalness: 0, clearcoat: 1, transparent: true, opacity: .93 }), S1 = new THREE.SphereGeometry(1, 20, 14);
@@ -1866,7 +1890,13 @@ export function create(A) {
     const sh = new THREE.Mesh(new THREE.CircleGeometry(46, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; g.userData.sh = sh; g.add(sh); g.userData.body = [b, tip]; return g; }
   function starStep(now, dt, cx, cy, cz) {
     if (starRoadMat && starRoadMat.userData.shader) starRoadMat.userData.shader.uniforms.uTime.value = now;   // ✨ the tiles' lights twinkle
+    if (cosmosDome) cosmosDome.material.uniforms.uT.value = now;   // 🌌 and the stars
     if (!starFx) return; const F = starFx;
+    if (F.shoot) { F.shootNext -= dt;   // 🌠 now and then a shooting star streaks across the sky (a sprite far out, turned to the way it's going on screen)
+      if (F.shootNext <= 0 && F.shootT > 1) { F.shootT = 0; const caz = Math.atan2(fwd.z, fwd.x), az = caz + (F.rnd() - .5) * 1.2, el = .08 + F.rnd() * .22, dir = new THREE.Vector3(Math.cos(az) * Math.cos(el), Math.sin(el), Math.sin(az) * Math.cos(el)), side = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize(), down = new THREE.Vector3().crossVectors(side, dir).normalize();
+        F.shootDir = dir; F.shootVel = side.multiplyScalar((F.rnd() < .5 ? -1 : 1) * (.9 + F.rnd() * .3)).add(down.multiplyScalar(-.18 - F.rnd() * .22)).normalize(); F.shootNext = 7 + F.rnd() * 9; }   // (a shooting star goes off somewhere in front of you, where you'll see it)
+      if (F.shootT <= 1) { F.shootT += dt * 1.15; const S = F.shoot, cam = camera, pos = cam.position.clone().addScaledVector(F.shootDir, 5200).addScaledVector(F.shootVel, (F.shootT - .5) * 2600), ahead = pos.clone().addScaledVector(F.shootVel, 100);
+        S.position.copy(pos); S.visible = true; S.material.opacity = Math.sin(Math.min(1, F.shootT) * Math.PI) * .9; const a = pos.clone().project(cam), b = ahead.clone().project(cam); S.material.rotation = Math.atan2((b.y - a.y) * VH, (b.x - a.x) * VW); if (F.shootT > 1) { S.visible = false; S.material.opacity = 0; } } }
     F.rollers.forEach((b, k) => { const q = F.rollerAt(b, now), m = F.slimes[k], y = surfY(q.x, q.y, q.i), sq = q.z < 10 ? 1 - (10 - q.z) / 10 * .25 : 1 + Math.min(.12, q.z / 400); m.position.set(q.x, y + q.z, q.y); m.rotation.y = -q.a; m.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq)); m.userData.sh.position.y = -q.z + 1.5; m.userData.sh.scale.setScalar(1 - Math.min(.6, q.z / 160)); });
     for (const tx of F.dashM) tx.offset.y = -now * 2.2;   // the chevrons race forward
     for (const c of F.coils) c.m.rotation.y += c.sp * dt; for (const m of F.meds) m.g.rotation.y += m.sp * dt;
