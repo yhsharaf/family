@@ -1560,7 +1560,7 @@ export function create(A) {
     // lean with the ground: nose up on a climb, tipped on a side slope
     if (lastT && lastT.frames) m.tilt.rotation.set(0, 0, 0); else { const f = H(gx + ca * 11, gy + sa * 11) - H(gx - ca * 11, gy - sa * 11), sd = H(gx - sa * 8, gy + ca * 8) - H(gx + sa * 8, gy - ca * 8);
       m.tilt.rotation.set(Math.atan2(sd, 16) * (RY ? 1 : .9), 0, Math.atan2(f, 22)); }
-    const t = performance.now() / 1000, spin = r.spin > 0 ? (.9 - r.spin) / .9 * Math.PI * 4 : 0, flip = r.flip > 0 ? (1 - r.flip / .4) * Math.PI * 2 : 0;
+    const t = performance.now() / 1000, spin = (r.spin > 0 ? (.9 - r.spin) / .9 * Math.PI * 4 : 0) + (r.spinB > 0 ? (1 - r.spinB / .5) * Math.PI * 2 : 0), flip = r.flip > 0 ? (1 - r.flip / .4) * Math.PI * 2 : 0;   // (spinB: the anti-gravity spin boost, one quick turn round)
     const hop = r.hop > 0 ? Math.sin((r.hop / .18) * Math.PI) * 4 : 0, lift = r.rescue > 0 ? (r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7) * 40 : 0;
     m.body.position.y = Math.max(0, r.z || 0) + hop + lift;
     m.body.rotation.set(flip, -((r.drift || 0) * .34 + (r.steer || 0) * .07) - spin, 0, "YXZ");
@@ -2012,7 +2012,7 @@ export function create(A) {
       else q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const k in mdls) mdls[k].i = 0; for (const m of karts.values()) m.used = false;
     const GF = lastT && lastT.frames && k.ps != null ? rideFrame(lastT, { rs: k.ps, rlat: k.pu }) : null;   // 🧲 a glued kart: the road's own frame right under it
-    const a = GF && k.ma != null ? k.ma : (k.a || 0);   // (a glued kart: the camera follows the way it's moving, so in a drift the kart swings sideways on screen)
+    const a = GF && k.ma != null ? k.ma : (k.a || 0);   // (a glued kart: the camera follows the way it's moving, so in a drift the kart swings sideways on screen and glides)
     if (cam.yaw == null || o.snap) cam.yaw = a;
     let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * (GF ? 4.5 : 7));   // the camera swings round a moment after the kart (a longer moment on the Star Road, like Mario Kart's)
     const CU = 34, dist = 58 + (GF ? 13 : 9) * (o.fov || 0), up = CU + Math.min(k.z || 0, 260) * .95;   // (the same camera on every track: the user's favourite - keep it)   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour

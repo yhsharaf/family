@@ -108,10 +108,13 @@ const pathTan = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i
 const pathSide = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, b = i * 3, c = ((i + 1) % N) * 3, v = [FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f, FRAMES[b + 2] + (FRAMES[c + 2] - FRAMES[b + 2]) * f], l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
 const roadPt = (i, u, up) => { i = ((i % N) + N) % N; const i0 = Math.floor(i), f = i - i0, p0 = PTS[i0], p1 = PTS[(i0 + 1) % N], p = [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f, p0[2] + (p1[2] - p0[2]) * f], b = pathSide(i), t = pathTan(i), n = [t[1] * b[2] - t[2] * b[1], t[2] * b[0] - t[0] * b[2], t[0] * b[1] - t[1] * b[0]]; return [p[0] + b[0] * u + n[0] * up, p[2] + b[2] * u + n[2] * up, p[1] + b[1] * u + n[1] * up]; };   // a spot by the road (u across, up above it) in the 3D picture's coordinates: x, height, y
 const pathTurn = (s0, s1) => { const t0 = pathTan(s0), b0 = pathSide(s0), t1 = pathTan(s1); return Math.atan2(t1[0] * b0[0] + t1[1] * b0[1] + t1[2] * b0[2], t1[0] * t0[0] + t1[1] * t0[1] + t1[2] * t0[2]); };   // how far the road turns within its own surface between two spots (+ right); a loop bends out of the surface, which doesn't count
-function pathMove(r, along, across, dt, free) {   // the speed, taken along and across the road's surface. The heading is carried along the surface like a real kart's: the road's
-  // own bends don't turn you (you steer round them, and drift), only its tilts carry you (a loop needs no steering). The computer racers keep the road's turn for free (free)
+function pathMove(r, v, slide, dt, free) {   // the speed, taken along and across the road's surface. The heading is carried along the surface like a real kart's: the road's
+  // own bends don't turn you (you steer round them, and drift), only its tilts carry you (a loop needs no steering). The computer racers keep the road's turn for free (free).
+  // 🧊 grip: the kart keeps moving the way it was going and only follows its nose at the road's grip (ice is 1.7, snow 4-5, a normal road at once): the Star Road has a touch of it
+  const grip = free ? 99 : T.theme.grip || 99; if (r.mphi == null || grip > 50) r.mphi = r.phi; else r.mphi = wrapA(r.mphi + wrapA(r.phi - r.mphi) * Math.min(1, grip * dt));
+  const along = Math.cos(r.mphi) * v, across = Math.sin(r.mphi) * v + slide;
   const s0 = r.ps; r.ps += along * dt * SPD / RSPC; r.pu += across * dt * SPD; r.ps = ((r.ps % N) + N) % N;
-  const turn = free ? 0 : pathTurn(s0, r.ps); r.phi = wrapA(r.phi - turn); r.mphi = along > 40 ? wrapA(Math.atan2(across, along) - turn) : r.phi;   // (mphi: the way it's actually moving, for the camera)
+  const turn = free ? 0 : pathTurn(s0, r.ps); r.phi = wrapA(r.phi - turn); r.mphi = wrapA(r.mphi - turn);
   const i = Math.floor(r.ps), p = PTS[(i + N - 1) % N], q = PTS[(i + 1) % N], b = i * 3, tx = q[0] - p[0], ty = q[1] - p[1], tl = Math.hypot(tx, ty, q[2] - p[2]) || 1;
   if ((tx * FRAMES[b + 1] - ty * FRAMES[b]) / tl < .35 && !(r.z > 0)) r.v = Math.max(r.v, 150);   // (on a wall or upside down the road's "up" points sideways or down: you can't stall there)
   pathPlace(r);
@@ -1039,7 +1042,7 @@ const TRACKS = {
     // glowing rainbow road floating in the night sky high above a city of lights. Down the long diagonal from the golden gate, round the low loop
     // (under the road you just came down), up through the little spiral, out to the hook on the right, back and up through the big figure-eight
     // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
-    id: "starroad", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_star", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
+    id: "starroad", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_star", introMusic: "k_star_intro", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
     path3d: "star64",
     // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
     // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
@@ -1047,7 +1050,7 @@ const TRACKS = {
     intro: [{ from: [1088, -320, 180], to: [1108, -150, 110], look: [22, 0, 20], look2: [40, 0, 20], dur: 3.2 }, { from: [52, 240, 95], to: [98, 175, 60], look: [68, 0, 22], look2: [112, 0, 30], dur: 3.2 },
       { from: [148, -330, 240], to: [214, -260, 150], look: [165, 0, 30], look2: [232, 0, 20], dur: 3 }, { from: [926, 340, 110], to: [992, 300, 240], look: [955, 0, 60], look2: [986, 0, 40], dur: 3.2 }, { from: [1034, 0, 115], to: [1098, 0, 70], look: [1072, 0, 20], look2: [1115, 0, 25], dur: 2.8 }],
     marks: { boosts: [[66, -42], [80, 42], [95, -42], [1003, -42], [1020, 42]], dashes: [182, 372, 625], airRings: [[126, 116, 0], [143, 98, 0], [270, 115, -45], [286, 101, 45], [303, 40, -45], [319, 26, 45], [335, 26, -45], [352, 26, 45], [537, 111, 0], [562, 33, 0]] },   // (air rings: [point, height of the ring's centre over the flight line, sideways offset]: measured from the glider's own flight)
-    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, grip: 5, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
     near: [], far: [], mobs: [],
@@ -1930,7 +1933,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=234"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=237"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2356,7 +2359,7 @@ function rivalStep(r, dt, tt) {
   const GL = T.theme.glide || {};
   if (r.z > 0 || r.vz > 0) { r.vz -= (r.glide ? (r.vz > 0 ? 150 : GL.g || 150) : 720) * dt; if (r.glide) { r.vz = Math.max(r.vz, -(GL.sink || 95)); r.v = Math.max(r.v, 245); } r.z += r.vz * dt; if (r.glide && r.z < 14 && gapAt(r.idx)) r.z = 14; if (r.z <= 0) { r.z = 0; r.vz = 0; r.glide = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
   const air = r.z > 0;
-  for (const key of ["spin", "inv", "squash", "boost", "itemT", "small", "ink", "bloopSafe", "noItem", "hyper"]) if (r[key] > 0) r[key] -= dt;
+  for (const key of ["spin", "inv", "squash", "boost", "itemT", "small", "ink", "bloopSafe", "noItem", "hyper", "spinB"]) if (r[key] > 0) r[key] -= dt;
   timedTick(r, dt);
   const lost = (near.d > near.half + 110 && !onRink(r.x, r.y)) || (r.v < 20 && r.spin <= 0 && r.squash <= 0);
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
@@ -2389,7 +2392,7 @@ function rivalStep(r, dt, tt) {
   const ricy = MECH === "ice" && !air && (ground.pad && ground.pad.t === "ice" || (LAKE && LAKE.kind === "ice" && inLake(r.x, r.y)));
   { const rg = MECH === "ice" ? (ricy ? 3 : 7.5) : 99; let dm = r.a - (r.ma == null ? r.a : r.ma); dm = Math.atan2(Math.sin(dm), Math.cos(dm)); r.ma = rg > 50 ? r.a : (r.ma == null ? r.a : r.ma) + dm * Math.min(1, rg * dt); }
   if (!air && ground.pad && (ground.pad.t === "mud" || ground.pad.t === "grass")) r.v = Math.min(r.v, 150);
-  if (FRAMES) pathMove(r, Math.cos(r.phi) * r.v, Math.sin(r.phi) * r.v, dt, true); else { r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD; }
+  if (FRAMES) pathMove(r, r.v, 0, dt, true); else { r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD; }
   const pad = air ? null : ground.pad;
   if (pad && pad !== r.lastPad) {
     if (pad.t === "boost") giveBoost(r, T.theme.boostT || 1, 110);
@@ -2710,7 +2713,8 @@ function worldStep(dt, tt) {
       if (GAPS.length && ((a.hopUntil && performance.now() < a.hopUntil + 150) || (b.hopUntil && performance.now() < b.hopUntil + 150))) continue;   // nobody gets knocked off a mushroom bounce: their own games sort it out
       if (a.remote || b.remote) { const me2 = a.remote ? b : a, s2 = me2 === a ? -1 : 1; me2.x += nx * push * 2 * s2; me2.y += ny * push * 2 * s2; }   // only the kart this game drives is moved
       else { a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
-      const fast = a.v > b.v ? a : b; fast.v *= .9;
+      if (T.theme.skyroad) { for (const r of [a, b]) if (!r.remote && !(r.spinB > 0) && !(r.spin > 0)) { r.spinB = .5; giveBoost(r, .7, 70); } if (a === K || b === K) { flash("💫 Spin boost!", 600); whooshSound(); } }   // 💫 anti-gravity: a bump is a spin boost
+      else { const fast = a.v > b.v ? a : b; fast.v *= .9; }
       if (STRONG(a) !== STRONG(b)) { const v = STRONG(a) ? b : a; hit(v, (STRONG(a) ? a : b).rocket > 0 ? "🚀 Run over by a Rocket Booster!" : "💪 Rammed by Hyper Body!"); if (v.spin > 0) { v.v *= .4; if (v === K || a === K || b === K) slamSound(0); } }
       else if ((a.small > 0) !== (b.small > 0)) { const tiny = a.small > 0 ? a : b; hit(tiny, "👟 Flattened!"); tiny.squash = .8; }
       if (a === K || b === K) { K.shake = Math.max(K.shake, .1); if (K.bump <= 0) { bumpSound(); K.bump = .3; } }
@@ -2988,7 +2992,7 @@ function step(dt) {
   else if (inp.brake && !diving) k.v = Math.max(-60, k.v - 380 * dt);   // (on the Star Road the brake dives the glider instead)
   else k.v += (k.v < top ? (k.extra > 5 ? 900 : k.v < 120 ? 210 : 120) : -260) * dt;   // boosts reach their speed almost at once
   if (k.kick > 0) k.kick = Math.max(0, k.kick - dt * 1.4);
-  for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "small", "ink", "bloopSafe", "hyper", "roll2"]) if (k[key] > 0) k[key] -= dt;
+  for (const key of ["boost", "spin", "inv", "squash", "shake", "stall", "flip", "small", "ink", "bloopSafe", "hyper", "roll2", "spinB"]) if (k[key] > 0) k[key] -= dt;
   timedTick(k, dt);
   // items from the boxes: the slot spins like a slot machine for a second, then it's yours to use
   if (k.roll > 0) { k.roll -= dt; if (k.roll <= 0) { setItem(k, k.pending); flash(`${ITEM_NAME[k.item]}!`, 700); } }
@@ -3015,7 +3019,7 @@ function step(dt) {
   let turn = k.steer * 2.1 * SK * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? (GL.turn || .8) : .5) : 1);
   if (k.drift) { turn = (k.drift * 1.55 * DK + k.steer * .9 * SK) * Math.min(1, k.v / 110); if (!k.off) { const before = k.charge; k.charge += dt * Math.max(.4, 1 + .7 * k.steer * k.drift);   // steering into the turn charges faster
     if ([.7, 1.5, 2.4].some(th => before < th && k.charge >= th)) tone(k.charge > 2.4 ? 1320 : k.charge > 1.5 ? 990 : 740, .1, "triangle", .06); } }
-  if (FRAMES) { k.phi = wrapA(k.phi + turn * dt); pathMove(k, Math.cos(k.phi) * k.v, Math.sin(k.phi) * k.v - (k.drift ? k.drift * k.v * .16 * SK : 0), dt); }   // 🧲 glued to the measured road: the turn and the speed are taken on its surface
+  if (FRAMES) { k.phi = wrapA(k.phi + turn * dt); pathMove(k, k.v, k.drift ? -k.drift * k.v * .16 * SK : 0, dt); }   // 🧲 glued to the measured road: the turn and the speed are taken on its surface
   else {
   k.a += turn * dt;
   // ❄️ El Nath: on ice the kart keeps going the way it was moving and only slowly follows where it's pointing
@@ -3735,10 +3739,12 @@ function playIntro(alive) { const shots = PMK && PMK.intro; if (!shots || !shots
   return new Promise(res => { INTRO = { shots, t0: performance.now(), res, alive }; setTimeout(() => { if (INTRO && INTRO.res === res) introEnd(); }, shots.reduce((q, sh) => q + sh.dur, 0) * 1000 + 1500);   // (ends on time even if no frames get drawn)
     const bn = $k("#kBanner"); if (bn) { $k("#kBannerMode").textContent = mode === "tt" ? "TIME TRIAL" : mode === "gp" ? "GRAND PRIX" : "RACE"; $k("#kBannerName").textContent = T.name; $k("#kBannerIcon").textContent = T.icon || "🏁"; bn.hidden = false; }
     const w = $k("#kWhite"); if (w) { w.hidden = false; w.style.transition = ""; w.style.transform = ""; w.style.opacity = "1"; }
+    if (T.introMusic) B.music(T.introMusic);   // 🎵 the intro's own music; the race theme comes back for the countdown
     window.__camSky = true; const skip = () => { if (INTRO) introEnd(); }; INTRO.skip = skip; addEventListener("pointerdown", skip, { once: true }); addEventListener("keydown", skip, { once: true }); }); }
 function introEnd() { if (!INTRO) return; const I = INTRO; INTRO = null; window.__camOv = null; removeEventListener("pointerdown", I.skip); removeEventListener("keydown", I.skip);
   const bn = $k("#kBanner"), w = $k("#kWhite"); if (bn) bn.hidden = true;
   if (w) { w.hidden = false; w.style.transform = ""; w.style.transition = ""; w.style.opacity = "1"; requestAnimationFrame(() => { w.style.transition = "opacity .55s ease-out"; w.style.opacity = "0"; }); setTimeout(() => { w.hidden = true; w.style.transition = ""; }, 650); }   // (one last flash of white, into the grid)
+  if (T.introMusic && state !== "menu") B.music(T.music);
   I.res(); }
 function introFrame() { const I = INTRO; if (!I) return; if (!I.alive() || state !== "intro") { introEnd(); return; }
   let t = (performance.now() - I.t0) / 1000, k = 0; while (k < I.shots.length && t >= I.shots[k].dur) { t -= I.shots[k].dur; k++; }
