@@ -106,6 +106,7 @@ function pathPlace(r) {   // where the kart is in the world, from its place on t
 const pathNav = r => ({ i: r.idx, d: Math.abs(r.pu), alt: false, half: ROAD / 2, u: r.pu });
 const pathTan = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, a = PTS[(i + N - 1) % N], b = PTS[(i + 1) % N], c = PTS[i], d = PTS[(i + 2) % N], t = [b[0] - a[0] + (d[0] - c[0] - b[0] + a[0]) * f, b[1] - a[1] + (d[1] - c[1] - b[1] + a[1]) * f, b[2] - a[2] + (d[2] - c[2] - b[2] + a[2]) * f], l = Math.hypot(t[0], t[1], t[2]) || 1; return [t[0] / l, t[1] / l, t[2] / l]; };   // the road's direction at a spot between two points
 const pathSide = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, b = i * 3, c = ((i + 1) % N) * 3, v = [FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f, FRAMES[b + 2] + (FRAMES[c + 2] - FRAMES[b + 2]) * f], l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+const roadPt = (i, u, up) => { i = ((i % N) + N) % N; const i0 = Math.floor(i), f = i - i0, p0 = PTS[i0], p1 = PTS[(i0 + 1) % N], p = [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f, p0[2] + (p1[2] - p0[2]) * f], b = pathSide(i), t = pathTan(i), n = [t[1] * b[2] - t[2] * b[1], t[2] * b[0] - t[0] * b[2], t[0] * b[1] - t[1] * b[0]]; return [p[0] + b[0] * u + n[0] * up, p[2] + b[2] * u + n[2] * up, p[1] + b[1] * u + n[1] * up]; };   // a spot by the road (u across, up above it) in the 3D picture's coordinates: x, height, y
 const pathTurn = (s0, s1) => { const t0 = pathTan(s0), b0 = pathSide(s0), t1 = pathTan(s1); return Math.atan2(t1[0] * b0[0] + t1[1] * b0[1] + t1[2] * b0[2], t1[0] * t0[0] + t1[1] * t0[1] + t1[2] * t0[2]); };   // how far the road turns within its own surface between two spots (+ right); a loop bends out of the surface, which doesn't count
 function pathMove(r, along, across, dt, free) {   // the speed, taken along and across the road's surface. The heading is carried along the surface like a real kart's: the road's
   // own bends don't turn you (you steer round them, and drift), only its tilts carry you (a loop needs no steering). The computer racers keep the road's turn for free (free)
@@ -1042,6 +1043,9 @@ const TRACKS = {
     path3d: "star64",
     // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
     // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
+    // 🎬 the course intro's shots: the gate and the start straight, the descent with its rings, the twisty drop and the first glide, the big loop, the run to the line
+    intro: [{ from: [1088, -320, 180], to: [1108, -150, 110], look: [22, 0, 20], look2: [40, 0, 20], dur: 3.2 }, { from: [52, 240, 95], to: [98, 175, 60], look: [68, 0, 22], look2: [112, 0, 30], dur: 3.2 },
+      { from: [148, -330, 240], to: [214, -260, 150], look: [165, 0, 30], look2: [232, 0, 20], dur: 3 }, { from: [926, 340, 110], to: [992, 300, 240], look: [955, 0, 60], look2: [986, 0, 40], dur: 3.2 }, { from: [1034, 0, 115], to: [1098, 0, 70], look: [1072, 0, 20], look2: [1115, 0, 25], dur: 2.8 }],
     marks: { boosts: [[66, -42], [80, 42], [95, -42], [1003, -42], [1020, 42]], dashes: [182, 372, 625], airRings: [[126, 116, 0], [143, 98, 0], [270, 115, -45], [286, 101, 45], [303, 40, -45], [319, 26, 45], [335, 26, -45], [352, 26, 45], [537, 111, 0], [562, 33, 0]] },   // (air rings: [point, height of the ring's centre over the flight line, sideways offset]: measured from the glider's own flight)
     theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
@@ -1131,7 +1135,7 @@ function loadTrack(key) {
     for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
       PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
     const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove. The fences' measured sides are negated: the model was mirrored into the game, so its left is our right)
-    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(([i, o]) => [mi(i), null, 16, 18, o || 0]), ...(T.marks.airRings || []).map(([i, z, o]) => [mi(i), null, z, 18, o || 0])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, k === "airRings" ? v.map(([i, z, o]) => ({ i: mi(i), z, o: o || 0 })) : k === "boosts" ? v.map(([i, o]) => ({ i: mi(i), o: o || 0 })) : v.map(mi)])) };   // (rings: [point, height, height above the road, radius, sideways]: just bigger than a kart, over the road or on the glider's flight line)
+    RIDES = []; PMK = { intro: (T.intro || []).map(sh => ({ dur: sh.dur || 3, from: [mi(sh.from[0]), sh.from[1], sh.from[2]], to: [mi(sh.to[0]), sh.to[1], sh.to[2]], look: [mi(sh.look[0]), sh.look[1], sh.look[2]], look2: sh.look2 ? [mi(sh.look2[0]), sh.look2[1], sh.look2[2]] : null })), gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(([i, o]) => [mi(i), null, 16, 18, o || 0]), ...(T.marks.airRings || []).map(([i, z, o]) => [mi(i), null, z, 18, o || 0])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, k === "airRings" ? v.map(([i, z, o]) => ({ i: mi(i), z, o: o || 0 })) : k === "boosts" ? v.map(([i, o]) => ({ i: mi(i), o: o || 0 })) : v.map(mi)])) };   // (rings: [point, height, height above the road, radius, sideways]: just bigger than a kart, over the road or on the glider's flight line)
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -2731,7 +2735,7 @@ const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, 
   },
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, get td() { return trackData(); }, step: d => step(d), get state() { return state; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, give: it => setItem(K, it), setMode: m => { mode = m; drawMode(); drawTrack(); }, use: (r, it) => { r = r || K; if (it) setItem(r, it); useItem(r); }, roll: (r, bot) => rollItem(r || K, bot), get SHOTS2() { return { SHOTS, BSHELLS, HORNS, DROPS, BOMBS }; }, nav: (...a) => nav(...a), nearest: (...a) => nearest(...a), get FORKS() { return { A: FORK_A, B: FORK_B, AN, ALT, PTS, LAPS, OPEN, START_I, FIN_OFF }; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, get td() { return trackData(); }, step: d => step(d), tick: now => frame(now != null ? now : performance.now()), get state() { return state; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, give: it => setItem(K, it), setMode: m => { mode = m; drawMode(); drawTrack(); }, use: (r, it) => { r = r || K; if (it) setItem(r, it); useItem(r); }, roll: (r, bot) => rollItem(r || K, bot), get SHOTS2() { return { SHOTS, BSHELLS, HORNS, DROPS, BOMBS }; }, nav: (...a) => nav(...a), nearest: (...a) => nearest(...a), get FORKS() { return { A: FORK_A, B: FORK_B, AN, ALT, PTS, LAPS, OPEN, START_I, FIN_OFF }; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
       const A = PTS[a], Bp = PTS[b], dl = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), dt = (b - a) * SPC; if (dl < 260 || dl > 1100 || dt - dl < 450 || dt - dl > 1100) continue;
       const pts = shapeCut(a, b, [], w, kind); if (!pts) continue; const score = shapeCut.k * 2000 - Math.abs(dt - dl - 750); if (!best || score > best.score) best = { a, b, pts: pts.map(p => p.map(Math.round)), score, k: shapeCut.k }; }
@@ -2821,7 +2825,7 @@ function petStep(r, air, tt) {
       if (d < h.w / 2 + 9 && !(r.handT > now) && d > 0) { r.handT = now + 1; const px = dx - ux * t, py = dy - uy * t; r.x += px / d * 14; r.y += py / d * 14; r.v *= .8; if (r === K) { bumpSound(); pop("🕰️ Clock hand!", "#ffb347", true); } } }   // (a nudge, not a spin: in Mario Kart 8 you can even drive on them)
     for (const p of PENDS) { const q = pendAt(p, now); if (r.z < 30 && Math.hypot(r.x - q.x, r.y - q.y) < 28 && !(r.pendT > now)) { r.pendT = now + 1.2; if (r === K) spinOut("🕰️ Bonked by the pendulum!"); else hit(r); } } }
   if (air) for (const g of RINGS) if ((FRAMES && g.i != null && r.ridx != null ? (() => { const step = ((r.idx - r.ridx) % N + N) % N, off = ((g.i - r.ridx) % N + N) % N; return step < 60 && off <= step && off > 0 && Math.abs((r.pu || 0) - (g.o || 0)) < (g.w || 30); })() : Math.hypot(r.x - g.x, r.y - g.y) < (g.w || 30)) && Math.abs(r.z - g.z) < (g.r || 40) && r.ringT !== g) {   // ⭕ through a boost ring (on a measured road: the points passed this step are swept, so a fast kart can't skip one)
-    r.ringT = g; giveBoost(r, 1.2, 130); if (r === K) { padSound(); flash("⭕ Boost ring!", 700); } }
+    r.ringT = g; giveBoost(r, 1.2, 130); if (r === K) { blingSound(); flash("⭐ Star ring!", 700); } }
   r.ridx = r.idx;
   if (air) return;
   for (const c of CHOMPS) { const q = chompPos(c, tt); if (q.z < 14 && Math.hypot(r.x - q.x, r.y - q.y) < 24 * c.s) hit(r, `🐾 Chomped by the ${c.k === "jrbalrog" ? "Jr. Balrog" : c.k === "blackpig" ? "Black Pig" : "Husky"}!`); }
@@ -3111,6 +3115,7 @@ function render() {
   if (G3) {   // 🎮 real 3D: three.js draws the ground, hills, sky, karts and scenery; this canvas only gets the effects and the HUD on top
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, fxc.width, fxc.height); ctx.setTransform(S, 0, 0, S, 0, 0); ctx.imageSmoothingEnabled = true;
     const gc = gridSpot(3), gi = (gc.i + N) % N, intro = state === "wait" ? 0 : state === "count" ? Math.max(0, Math.min(1, 1 - (countAt + 2100 - now3) / 3200)) : 1;
+    if (state === "intro") introFrame();
     G3.sync(trackData()); G3.begin(k, { W, H, dt: dt3, fov: k.fov, roll: state === "race" ? -((k.drift || 0) * .045 + (k.steer || 0) * .015) : 0, shake: k.shake, snap: state === "wait", intro, grid: [...at(gi, 0), tangent(gi)] });
   }
   const CH = CAMH + Math.min(k.z, 130) * .35;
@@ -3723,6 +3728,25 @@ function hud() {
   $k("#kPos").textContent = rk ? rk + (["", "st", "nd", "rd"][rk] || "th") : ""; $k("#kPos").className = "kt-pos p" + rk + (k.lap === LAPS - 1 && state === "race" ? " final" : "") + posCls;
 }
 let wasPap = false, flipWarnN = 0, flashT = null, warnAt = 0, lastRk = 0, posPop = null;
+// 🎬 the course intro: before the countdown the camera flies over the track's best bits, shot by shot, the course name on a banner; the white loading cover slides off
+// as it starts and a flash of white marks each cut (like the original's). Any tap or key skips it
+let INTRO = null;
+function playIntro(alive) { const shots = PMK && PMK.intro; if (!shots || !shots.length || document.hidden) return Promise.resolve();
+  return new Promise(res => { INTRO = { shots, t0: performance.now(), res, alive }; setTimeout(() => { if (INTRO && INTRO.res === res) introEnd(); }, shots.reduce((q, sh) => q + sh.dur, 0) * 1000 + 1500);   // (ends on time even if no frames get drawn)
+    const bn = $k("#kBanner"); if (bn) { $k("#kBannerMode").textContent = mode === "tt" ? "TIME TRIAL" : mode === "gp" ? "GRAND PRIX" : "RACE"; $k("#kBannerName").textContent = T.name; $k("#kBannerIcon").textContent = T.icon || "🏁"; bn.hidden = false; }
+    const w = $k("#kWhite"); if (w) { w.hidden = false; w.style.transition = ""; w.style.transform = ""; w.style.opacity = "1"; }
+    window.__camSky = true; const skip = () => { if (INTRO) introEnd(); }; INTRO.skip = skip; addEventListener("pointerdown", skip, { once: true }); addEventListener("keydown", skip, { once: true }); }); }
+function introEnd() { if (!INTRO) return; const I = INTRO; INTRO = null; window.__camOv = null; removeEventListener("pointerdown", I.skip); removeEventListener("keydown", I.skip);
+  const bn = $k("#kBanner"), w = $k("#kWhite"); if (bn) bn.hidden = true;
+  if (w) { w.hidden = false; w.style.transform = ""; w.style.transition = ""; w.style.opacity = "1"; requestAnimationFrame(() => { w.style.transition = "opacity .55s ease-out"; w.style.opacity = "0"; }); setTimeout(() => { w.hidden = true; w.style.transition = ""; }, 650); }   // (one last flash of white, into the grid)
+  I.res(); }
+function introFrame() { const I = INTRO; if (!I) return; if (!I.alive() || state !== "intro") { introEnd(); return; }
+  let t = (performance.now() - I.t0) / 1000, k = 0; while (k < I.shots.length && t >= I.shots[k].dur) { t -= I.shots[k].dur; k++; }
+  if (k >= I.shots.length) { introEnd(); return; }
+  const sh = I.shots[k], f = Math.max(0, Math.min(1, t / sh.dur)), e = f * f * (3 - 2 * f), L = (a, b) => a.map((v, j) => v + (b[j] - v) * e);
+  const p = roadPt(...L(sh.from, sh.to)), look = roadPt(...L(sh.look, sh.look2 || sh.look)); window.__camOv = [...p, ...look];
+  const w = $k("#kWhite"); if (w) { if (k === 0) { const q = Math.min(1, t / .7); w.style.opacity = "1"; w.style.transform = `translateX(${-q * 100}%)`; if (q >= 1) w.style.opacity = "0"; } else { w.style.transform = ""; w.style.opacity = String(Math.max(0, 1 - t / .35)); } }   // (the cover slides off; then a flash at each cut)
+}
 function flash(t, ms, kind) { const f = $k("#kFlash"); if (kind === "intro") f.innerHTML = `<img class="k-crown" src="media/crown.png" alt="">` + esc(t); else f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
 // phones race sideways: go fullscreen + lock to landscape where the browser allows it (Android), otherwise ask to rotate and pause
 const TOUCH = matchMedia("(pointer: coarse)").matches;
@@ -3877,7 +3901,9 @@ async function start() {
   if (mode === "tt") fetchTop();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   if (fresh) { await settle(alive); $k("#kLoad").hidden = true; if (!alive()) return; }
-  await waitLandscape(); if (!alive() || state !== "wait") return; fit(); state = "count";
+  await waitLandscape(); if (!alive() || state !== "wait") return; fit();
+  if (mode !== "mp" && PMK && PMK.intro && PMK.intro.length) { state = "intro"; await playIntro(alive); if (!alive() || state !== "intro") return; }   // 🎬 the course intro
+  state = "count";
   // the intro: "Family, are you Ready!", then 3, 2, 1 and "Go Family!!!" (a room race starts at the server's time)
   const goIn = mode === "mp" ? Math.max(0, MP.goAt - performance.now()) : 4600;
   countAt = performance.now() + goIn - 3000; COINS.forEach(c => c.got = false);
@@ -4615,6 +4641,7 @@ const boingSound = () => { tone(180, .28, "sine", .12, 720); setTimeout(() => to
 const boostSound = () => { tone(220, .35, "sawtooth", .07, 880); };
 const bumpSound = () => tone(140, .2, "square", .1, 60);
 const coinSound = () => { tone(1320, .07, "square", .05); setTimeout(() => tone(1760, .12, "square", .05), 60); };
+const blingSound = () => { [1568, 1976, 2637, 3136, 3951].forEach((f, i) => setTimeout(() => { tone(f, .22, "sine", .055); tone(f * 2, .12, "triangle", .012); }, i * 48)); };   // ⭐ bling-bling: a quick rising sparkle when you fly through a star ring
 const padSound = () => tone(330, .3, "sawtooth", .06, 990);
 const jumpSound = () => tone(200, .3, "triangle", .1, 700);
 const itemSound = () => { tone(520, .1, "square", .06); setTimeout(() => tone(780, .25, "sawtooth", .06, 1200), 80); };

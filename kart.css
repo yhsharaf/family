@@ -385,3 +385,14 @@ kbd.w { min-width: 54px; }
 .sk-mesoall[hidden] { display: none; }
 .sk-mesoall img { width: 18px; height: 18px; image-rendering: pixelated; }
 .k-mesoall { opacity: .8; font-weight: 600; }
+
+/* 🎬 the course intro: a white cover that slides off, and the course name on a banner (bottom left, like a race broadcast) */
+.kt-white { position: absolute; inset: 0; z-index: 29; background: #fff; pointer-events: none; opacity: 0; }
+.kt-white[hidden] { display: none; }
+.kt-banner { position: absolute; left: 14px; bottom: 14px; z-index: 28; display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 10px; border-radius: 12px; background: rgba(12, 10, 26, .74); border: 2px solid rgba(255, 215, 120, .6); color: #fff; box-shadow: 0 8px 26px rgba(0, 0, 0, .45); animation: ktBannerIn .6s ease-out both; }
+.kt-banner[hidden] { display: none; }
+.kt-banner-icon { font-size: 34px; line-height: 1; }
+.kt-banner-mode { font: 700 11px/1.1 Ubuntu, sans-serif; letter-spacing: .16em; color: #ffd86a; }
+.kt-banner-name { font: 900 26px/1.15 Ubuntu, sans-serif; letter-spacing: .02em; text-shadow: 0 2px 0 rgba(0, 0, 0, .45); }
+.kt-banner-skip { align-self: flex-end; margin-left: 14px; font: 600 11px Ubuntu, sans-serif; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+@keyframes ktBannerIn { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
