@@ -185,10 +185,10 @@ export function create(A) {
       const P = t.PTS, n = t.N, ang = i => { const a = P[(i + n - 4) % n], b = P[(i + 4) % n]; return Math.atan2(b[1] - a[1], b[0] - a[0]); }, KAP = new Float32Array(n);
       for (let i = 0; i < n; i++) { let d = ang((i + 5) % n) - ang((i + n - 5) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); KAP[i] = d / (10 * t.SPC); }
       const KS = new Float32Array(n); for (let i = 0; i < n; i++) { let sum = 0; for (let k = -12; k <= 12; k++) sum += KAP[(i + k + n) % n]; KS[i] = sum / 25; }
-      const B = t.theme.bank === true ? 40 : t.theme.bank; BANKS = new Float32Array(n); for (let i = 0; i < n; i++) BANKS[i] = Math.max(-.22, Math.min(.22, KS[i] * B));
+      const B = t.theme.bank === true ? 40 : t.theme.bank; const BM = t.theme.bankMax || .22; BANKS = new Float32Array(n); for (let i = 0; i < n; i++) BANKS[i] = Math.max(-BM, Math.min(BM, KS[i] * B));
       for (let o = 0; o < GN * GN; o++) { const ni = near[o]; if (ni < 0) continue; const d = Math.sqrt(dmin[o]); if (d > edge + 260) continue;
         const p = P[ni], p0 = P[(ni + n - 1) % n], p1 = P[(ni + 1) % n], tx = p1[0] - p0[0], tz = p1[1] - p0[1], tl = Math.hypot(tx, tz) || 1, cx = (o % GN) * G - p[0], cz = Math.floor(o / GN) * G - p[1], dn = (-tz * cx + tx * cz) / tl;
-        const slope = Math.max(-.22, Math.min(.22, KS[ni] * B)); HG[o] -= slope * Math.max(-(edge + 60), Math.min(edge + 60, dn)) * smooth(edge + 260, edge + 40, d); } }
+        const slope = Math.max(-BM, Math.min(BM, KS[ni] * B)); HG[o] -= slope * Math.max(-(edge + 60), Math.min(edge + 60, dn)) * smooth(edge + 260, edge + 40, d); } }
     for (const l of t.ledges || []) for (let o = 0; o < GN * GN; o++) { const n = near[o]; if (!(n >= l.a && n <= l.b && Math.sqrt(dmin[o]) > edge + 14)) continue;
       if (l.side) { const P0 = t.PTS[(n + t.N - 1) % t.N], P1 = t.PTS[(n + 1) % t.N], p = t.PTS[n], cx = (o % GN) * G - p[0], cz = Math.floor(o / GN) * G - p[1], sd = Math.sign((P1[0] - P0[0]) * cz - (P1[1] - P0[1]) * cx), d = Math.sqrt(dmin[o]);
         if (sd === l.side) HG[o] -= (l.drop ?? 260) * smooth(edge + 14, edge + 50, d) * (l.fade ? smooth(edge + 800, edge + 250, d) * smooth(l.a, l.a + 25, n) * smooth(l.b, l.b - 25, n) : 1); else if (l.rise) HG[o] += l.rise * smooth(edge + 30, edge + 200, d); continue; }   // (fading: the cliff, then the mountainside sloping on down to the valley)   // 🏔️ Sharp Cliff: a sheer drop on the valley side, the mountain rising on the other
@@ -246,12 +246,12 @@ export function create(A) {
       let lo = 1e9; for (let i = 0; i < t.N; i++) lo = Math.min(lo, E[i]);
       const tx = ctex(1024, 1024, (g, W) => { g.fillStyle = "#06121a"; g.fillRect(0, 0, W, W); let sd = 3; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
         for (let k = 0; k < 160; k++) { const x = rnd() * W, y = rnd() * W, r = 30 + rnd() * 110, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, rnd() < .7 ? "rgba(255,170,80,.22)" : "rgba(120,200,255,.16)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
-        for (let y = 0; y < W; y += 16 + (rnd() * 3 | 0)) { g.fillStyle = "rgba(255,200,120,.75)"; for (let x = 0; x < W; x += 3) if (rnd() < .55) g.fillRect(x, y, 1.4, 1.4); }   // the streets
-        for (let x = 0; x < W; x += 22 + (rnd() * 6 | 0)) { g.fillStyle = "rgba(255,215,150,.65)"; for (let y = 0; y < W; y += 3) if (rnd() < .5) g.fillRect(x, y, 1.4, 1.4); }
+        for (let y = 0; y < W; y += 16 + (rnd() * 3 | 0)) { g.fillStyle = "rgba(255,200,120,.45)"; for (let x = 0; x < W; x += 3) if (rnd() < .55) g.fillRect(x, y, 1.4, 1.4); }   // the streets
+        for (let x = 0; x < W; x += 22 + (rnd() * 6 | 0)) { g.fillStyle = "rgba(255,215,150,.4)"; for (let y = 0; y < W; y += 3) if (rnd() < .5) g.fillRect(x, y, 1.4, 1.4); }
         for (let k = 0; k < 16000; k++) { g.fillStyle = ["#ffd9a0", "#fff4d8", "#ffb46a", "#bfe4ff"][k & 3]; g.globalAlpha = .5 + rnd() * .5; const sz = rnd() < .1 ? 2.2 : 1.3; g.fillRect(rnd() * W, rnd() * W, sz, sz); } g.globalAlpha = 1; }, true);
-      tx.repeat.set(14, 14); const city = new THREE.Mesh(new THREE.PlaneGeometry(WORLD * 9, WORLD * 9), new THREE.MeshBasicMaterial({ map: tx, fog: false, color: 0xffffff }));
+      tx.repeat.set(14, 14); const city = new THREE.Mesh(new THREE.PlaneGeometry(WORLD * 9, WORLD * 9), new THREE.MeshBasicMaterial({ map: tx, fog: false, color: 0xa8a8a8 }));
       city.rotation.x = -Math.PI / 2; city.position.set(WORLD / 2, lo - 1500, WORLD / 2); city.userData.keep = true; plain.add(city);
-      const haze = new THREE.Mesh(new THREE.PlaneGeometry(WORLD * 9, WORLD * 9), new THREE.MeshBasicMaterial({ map: glowDisc(), color: 0xffa860, transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));   // a warm glow hanging over the city
+      const haze = new THREE.Mesh(new THREE.PlaneGeometry(WORLD * 9, WORLD * 9), new THREE.MeshBasicMaterial({ map: glowDisc(), color: 0xffa860, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));   // a warm glow hanging over the city
       haze.rotation.x = -Math.PI / 2; haze.position.set(WORLD / 2, lo - 1380, WORLD / 2); haze.userData.keep = true; plain.add(haze); }   // 🌌 in space there's no ground: the road floats over the stars
     buildRoad(t); buildCliffs(t);
     scene.fog = new THREE.Fog(new THREE.Color(...(t.haze || [214, 236, 255]).map(c => c / 255)), ...(t.theme.fog || [900, 2600]));
@@ -1618,11 +1618,12 @@ export function create(A) {
       const sg = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.1, R * .21), new THREE.MeshBasicMaterial({ map: sign, side: THREE.DoubleSide })); sg.position.set(0, cy + R - 70, 0); g.add(sg); }
     // glowing star railings along both edges by the start / finish
     { const rail = new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: .95 }), sgeo = new THREE.ShapeGeometry(starShape(17, 8)), ringGeo = new THREE.ShapeGeometry((() => { const o = starShape(17, 8), h2 = new THREE.Path(starShape(12, 5.5).getPoints().reverse()); o.holes.push(h2); return o; })());
-      const runs = [[0, n]], inGap = k => (t.gaps || []).some(g => k >= g.a - 4 && k <= g.b + 4), cnt = runs.reduce((q, [a, b]) => q + Math.ceil((b - a) / 7) * 2, 0);
+      const runs = [[n - 75, n + 95, 0], [Math.round(n * .34), Math.round(n * .43), 1], [Math.round(n * .56), Math.round(n * .62), 1]], inGap = k => (t.gaps || []).some(g => k >= g.a - 4 && k <= g.b + 4), cnt = runs.reduce((q, [a, b]) => q + Math.ceil((b - a) / 7) * 2, 0);   // (as in the video: both sides along the start, and on the outside of two bends)
+      const outer = k => { let d = ang((k + 6) % n) - ang((k + n - 6) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); return d > 0 ? -1 : 1; }, sides = (only, k) => only ? [outer(k)] : [-1, 1];
       const inst = new THREE.InstancedMesh(ringGeo, rail, cnt), M4 = new THREE.Matrix4(), Qn = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), V = new THREE.Vector3(), Sc = new THREE.Vector3(1.15, 1.15, 1.15); let c0 = 0;
-      for (const [ra, rb] of runs) { for (let i = ra; i < rb; i += 7) { const k = ((i % n) + n) % n; if (inGap(k)) continue; const a = ang(k); for (const sd of [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB + 4), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o, y = surfY(x, z, k);
+      for (const [ra, rb, only] of runs) { for (let i = ra; i < rb; i += 7) { const k = ((i % n) + n) % n; if (inGap(k)) continue; const a = ang(k); for (const sd of sides(only, k)) { const o = sd * (t.ROAD / 2 + t.CURB + 4), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o, y = surfY(x, z, k);
           Qn.setFromAxisAngle(up, -a); M4.compose(V.set(x, y + 20, z), Qn, Sc); inst.setMatrixAt(c0++, M4); } }
-        for (const sd of [-1, 1]) { const pts = []; for (let i = ra; i <= rb; i += 2) { const k = ((i % n) + n) % n; if (inGap(k)) { if (pts.length > 3) grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 1.8, 6), rail)); pts.length = 0; continue; } const a = ang(k), o = sd * (t.ROAD / 2 + t.CURB + 4), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o; pts.push(new THREE.Vector3(x, surfY(x, z, k) + 38, z)); }
+        for (const sd of (only ? [outer(((Math.round((ra + rb) / 2) % n) + n) % n)] : [-1, 1])) { const pts = []; for (let i = ra; i <= rb; i += 2) { const k = ((i % n) + n) % n; if (inGap(k)) { if (pts.length > 3) grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 1.8, 6), rail)); pts.length = 0; continue; } const a = ang(k), o = sd * (t.ROAD / 2 + t.CURB + 4), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o; pts.push(new THREE.Vector3(x, surfY(x, z, k) + 38, z)); }
           if (pts.length > 3) grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 1.8, 6), rail)); } }
       inst.count = c0; inst.instanceMatrix.needsUpdate = true; grp.add(inst); }
     { const chk = ctex(128, 128, (c, W) => { for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = (x + y) % 2 ? "#7a5a22" : "#e6bc62"; c.fillRect(x * 32, y * 32, 32, 32); c.fillStyle = "rgba(255,255,255,.18)"; c.fillRect(x * 32 + 2, y * 32 + 2, 28, 3); } }, true);   // 🏁 the golden chequered start, as its own crisp strip on the road
@@ -1647,13 +1648,17 @@ export function create(A) {
     const far = (x, z, d) => { for (let i = 0; i < n; i += 6) if (Math.hypot(P[i][0] - x, P[i][1] - z) < d) return false; return true; };
     const rbTex = ctex(16, 256, (c, W, H) => { const cs = ["#ff3b4e", "#ff8a2a", "#ffd23a", "#4fe06a", "#2fd6c8", "#4a6aff", "#a65aff"]; cs.forEach((cl, k) => { c.fillStyle = cl; c.fillRect(0, k * H / 7, W, H / 7 + 1); }); }, true);
     let sd = 9; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647, coils = [];
-    for (let k = 0, tries = 0; k < 9 && tries < 400; tries++) { const x = rnd() * WORLD, z = rnd() * WORLD; if (!far(x, z, 520)) continue; k++;
+    for (let k = 0, tries = 0; k < 0 && tries < 400; tries++) { const x = rnd() * WORLD, z = rnd() * WORLD; if (!far(x, z, 520)) continue; k++;
       const R = 90 + rnd() * 70, turns = 3 + rnd() * 3, Hh = 240 + rnd() * 260, pts = []; for (let q = 0; q <= 120; q++) { const u = q / 120, a2 = u * turns * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a2) * R, u * Hh, Math.sin(a2) * R)); }
       const tx = rbTex.clone(); tx.needsUpdate = true; tx.repeat.set(1, 1); const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 360, 16, 10), new THREE.MeshBasicMaterial({ map: tx }));
       let base = 0; { let bi = 0, bd = 1e12; for (let i = 0; i < n; i += 4) { const d = (P[i][0] - x) ** 2 + (P[i][1] - z) ** 2; if (d < bd) { bd = d; bi = i; } } base = RE[bi]; }
       m.position.set(x, base - 150 + rnd() * 300, z); m.rotation.set(rnd() * .6 - .3, rnd() * 6, rnd() * .6 - .3); grp.add(m); coils.push({ m, sp: (rnd() - .5) * .3 }); }
     const meds = [];
-    for (let k = 0, tries = 0; k < 7 && tries < 400; tries++) { const i = Math.floor(rnd() * n), a = ang(i), sd2 = rnd() < .5 ? -1 : 1, o = sd2 * (t.ROAD / 2 + 260 + rnd() * 300), x = P[i][0] - Math.sin(a) * o, z = P[i][1] + Math.cos(a) * o; if (!far(x, z, 200)) continue; k++;
+    for (const fr of [.07, .93]) { const i = Math.round(n * fr), a = ang(i), [x, z] = P[i], R = t.ROAD / 2 + 110, g = new THREE.Group(), wm = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });   // 🌟 the giant glowing star rings you drive through
+      g.add(new THREE.Mesh(new THREE.TorusGeometry(R, 9, 10, 72), wm)); const pts = starShape(R * .78, R * .36).getPoints().map(p => new THREE.Vector3(p.x, p.y, 0)); g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, "catmullrom", 0), 200, 6, 6, true), wm));
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xfff0c8, transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(R * 3, R * 3, 1); g.add(halo);
+      g.position.set(x, RE[i] + R * .82, z); g.rotation.y = -a + Math.PI / 2; grp.add(g); }
+    for (let k = 0, tries = 0; k < 0 && tries < 400; tries++) { const i = Math.floor(rnd() * n), a = ang(i), sd2 = rnd() < .5 ? -1 : 1, o = sd2 * (t.ROAD / 2 + 260 + rnd() * 300), x = P[i][0] - Math.sin(a) * o, z = P[i][1] + Math.cos(a) * o; if (!far(x, z, 200)) continue; k++;
       const g = new THREE.Group(), ring = new THREE.Mesh(new THREE.TorusGeometry(110, 7, 10, 48), new THREE.MeshBasicMaterial({ color: 0xfff2c8 })), st = new THREE.Mesh(new THREE.ShapeGeometry(starShape(80, 34)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, side: THREE.DoubleSide }));
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xfff0c0, transparent: true, opacity: .28, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(300, 300, 1);
       g.add(ring, st, halo); g.position.set(x, RE[i] + 140 + rnd() * 200, z); g.rotation.y = rnd() * 6; grp.add(g); meds.push({ g, sp: .4 + rnd() * .4 }); }
