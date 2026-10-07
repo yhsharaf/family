@@ -666,42 +666,39 @@ const TRACKS = {
       };
     },
   },
-  // 3. Boo Lake (Super Circuit, as remade for Tour and Mario Kart 8 Deluxe): a wooden boardwalk on piles over a dark lake at night, lanterns
-  // all along it and flooded dead trees round about. Up from the line and a sharp right onto the jumps (ramps with dash panels over the gaps
-  // between boardwalks); down the right side and round the split; orange trick ramps on the long right-hand turn; then the boardwalk dives under
-  // the lake: the long diagonal and the twisting J are underwater, with Fish Bones swimming across; three ramps carry you up out of the water
-  // to the line. Fall off the edge and you're fished out of the lake. Ghosts drift over the water.
+  // 3. Phantom Lake: Sleepywood's haunted lake at night (after Boo Lake). A boardwalk on stilts over black water, no railings anywhere. The lake
+  // breathes: the tide rises and floods the low boardwalks (slow going, and the Ligators come out), then drains away. The boardwalk rots as the race
+  // goes on: holes on lap 2, whole sections collapsed on lap 3 (jump them). And from lap 2 your own ghost races you, replaying your last lap.
   sw3: {
-    id: "boolake", scale: 1.28, road: 180, cup: "sleepy", music: "k_sleepy3", name: "Phantom Lake", sub: "boardwalk over the lake · the underwater stretch · Bone Fish", icon: "👻",
-    ctrl: [[294, 768, 20], [294, 512, 20], [320, 294, 20], [448, 205, 20], [678, 205, 20], [973, 205, 20], [1267, 225, 20], [1403, 346, 20], [1413, 576, 20], [1408, 819, 20], [1423, 1050, 20],
-      [1567, 1229, 18], [1715, 1385, 14], [1790, 1510, 10], [1745, 1625, 4], [1605, 1630, -10], [1470, 1465, -30], [1216, 1183, -42], [993, 973, -46], [781, 781, -46], [614, 799, -46], [525, 960, -46],
-      [527, 1203, -44], [594, 1382, -40], [748, 1449, -34], [824, 1592, -30], [748, 1751, -26], [525, 1792, -20], [320, 1702, -12], [276, 1472, -2], [282, 1203, 8], [287, 986, 16]],
+    id: "phantomlake", scale: 2.6, road: 180, cup: "sleepy", music: "k_sleepy3", name: "Phantom Lake", sub: "the tide · the rotting boardwalk · your own ghost", icon: "👻",
+    ctrl: [[560, 1722, 36], [740, 1724, 36], [900, 1716, 36], [1040, 1690, 32], [1150, 1625, 22], [1260, 1530, 13], [1380, 1425, 12], [1500, 1325, 12], [1620, 1235, 13], [1720, 1125, 22], [1790, 985, 34], [1805, 830, 36], [1765, 670, 36], [1670, 545, 36], [1525, 458, 36], [1365, 450, 36], [1205, 450, 36], [1045, 456, 36], [905, 505, 24], [785, 585, 14], [665, 685, 12], [565, 805, 12], [485, 945, 13], [435, 1085, 22], [412, 1235, 32], [405, 1385, 36], [412, 1525, 36], [438, 1630, 36], [488, 1700, 36]],
     water: { level: 0, bed: -90 },
-    theme: { ...TH.sleepy, road: "planks", grass: ["#1d3550", "#1a3048"], flowers: 0, tufts: 0, hills: 1, curb: ["#4a3420", "#8a6a42"] }, art: { sky: "media/kart/sleepy/sky2.webp", strip: "media/kart/sleepy/strip2.webp" },
-    near: [], far: ["sw_deadtree", "sw_deadtree2", "sw_deadtree", "sw_hotel"], mobs: ["wraith", "evil_eye"],
+    theme: { ...TH.sleepy, road: "planks", grass: ["#141c2a", "#121a26"], flowers: 0, tufts: 0, hills: 1, curb: ["#3a2a1c", "#6a5038"], haze: [24, 26, 40], fog: [360, 1700], tide: true, ghostSelf: true, skyMirror: true, dark: { sky: 0x5a6a9a, gnd: 0x141020, hemiI: .8, sun: 0x9aa8d8, sunI: .5 } },
+    art: { sky: "media/kart/sleepy/sky2hm2.webp?v=1", strip: "media/kart/sleepy/strip2hm.webp?v=1" },
+    near: [], far: ["sw_deadtree", "sw_deadtree2", "sw_deadtree"], mobs: ["wraith", "ligator", "jr_necki"],
     build() {
-      makeSnowArt();
-      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
+      makeSnowArt(); makeHorrorArt();
+      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [], holes = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      // the jumps along the top: a ramp with a dash panel, over the gap to the next boardwalk
-      for (const x of [560, 1010]) { const g = I(x, 205);   // (far enough apart that you land before the next ramp)
-        pads.push({ t: "boost", i: g - 15, len: 6, o: 0, w: 70 }, { t: "bigramp", i: g - 5, len: 5, o: 0, w: ROAD }); gaps.push({ a: g, b: g + u(75), kind: "water", caps: [] }); }
-      const split = I(1408, 819);                                                        // the split: a stump in the middle of the boardwalk
-      for (const [x, y, o] of [[1700, 1360, -50], [1780, 1490, 50], [1760, 1590, -50]]) pads.push({ t: "ramp", i: I(x, y), len: 6, o, w: 60 });   // the orange trick ramps round the long turn
-      for (const o of [-60, 0, 60]) pads.push({ t: "ramp", i: I(278, 1300), len: 6, o, w: 52 });   // three ramps up out of the water
-      row(I(640, 205), I(900, 205), 6, 0); row(split - 14, split + 14, 5, -55); row(split - 14, split + 14, 5, 55); row(I(1216, 1183), I(781, 781), 7, j => (j & 1 ? 40 : -40)); row(I(282, 1203), I(287, 986), 5, 0);
-      // 🐟 Fish Bones swimming across the underwater stretch
-      const fish = [[I(1216, 1183), 0], [I(993, 973), 1.7], [I(614, 799), 3.1], [I(527, 1203), .8], [I(748, 1449), 2.4], [I(525, 1792), 4]].map(([i, ph]) => ({ i, ph, k: "fishbone", sp: .8, s: .55 }));
+      // 🪵 the rotting boardwalk: holes open on lap 2 (on the high pier and along the top), whole sections give way on lap 3 (a boost and a big ramp before each, every lap)
+      for (const [x, y, o] of [[1790, 985, 40], [1805, 830, -45], [1765, 670, 35], [1670, 545, -40], [1500, 1325, -40], [1045, 456, -40], [412, 1235, 40], [412, 1525, -45]]) holes.push({ i: I(x, y), o, r: 34, lap: 2, water: true });
+      for (const [x, y] of [[1365, 450], [820, 1721], [405, 1385]]) { const g = I(x, y); pads.push({ t: "boost", i: g - 15, len: 6, o: 0, w: 80 }, { t: "bigramp", i: g - 6, len: 5, o: 0, w: ROAD }); gaps.push({ a: g, b: g + u(80), kind: "water", lap: 3, caps: [] }); }
+      // 🌊 the low boardwalks the tide floods (Ligators come out when it's high); Jr. Neckis slither across the high ones
+      const low1 = { a: I(1260, 1530), b: I(1620, 1235) }, low2 = { a: I(785, 585), b: I(485, 945) };
+      const gators = [[low1, .25], [low1, .6], [low1, .85], [low2, .2], [low2, .5], [low2, .8]].map(([L, f], n) => ({ i: Math.round(L.a + (L.b - L.a) * f), ph: n * 1.3, k: "ligator", sp: .7, soft: true, s: .6, tide: true }));
+      const neckis = [[900, 1716], [1805, 830], [1300, 450], [412, 1235]].map(([x, y], n) => ({ i: I(x, y) + 8, ph: n * 1.6, k: "jr_necki", sp: .8, soft: true, s: .55 }));
+      pads.push({ t: "boost", i: I(1040, 1690), len: 9, o: 0, w: 70 }, { t: "boost", i: I(905, 505), len: 9, o: 0, w: 70 });
+      row(I(740, 1724), I(1040, 1690), 5, 0); row(low1.a + 6, low1.b - 6, 6, j => (j & 1 ? 35 : -35)); row(low2.a + 6, low2.b - 6, 6, j => (j & 1 ? 35 : -35)); row(I(1805, 830), I(1670, 545), 4, 0);
       return {
-        gaps, pads, coins, pigs: fish,
-        hedges: [{ i: split, o: 0, w: 40, h: 34, sprite: "ice_rock" }],
-        boxes: [...boxRow(I(1403, 346), [-60, -20, 20, 60]), ...boxRow(I(1715, 1385), [-60, -20, 20, 60]), ...boxRow(I(320, 1702), [-60, -20, 20, 60])],
+        gaps, pads, coins, holes, pigs: [...gators, ...neckis], tideZones: [low1, low2], finalMsg: "🪵 The boardwalk is falling apart!",
+        boxes: [...boxRow(I(900, 1716), [-60, -20, 20, 60]), ...boxRow(I(1720, 1125), [-50, 0, 50]), ...boxRow(I(905, 505), [-50, 0, 50]), ...boxRow(I(435, 1085), [-60, -20, 20, 60])],
         extra(push) {
-          // 🏮 lanterns all along the boardwalk's edges
-          for (let i = 6, n = 0; i < N; i += 16, n++) { if (gaps.some(g => i >= g.a - 2 && i <= g.b + 2)) continue; const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB - 6)); OBJS.push({ x, y, k: "sw_lamp", s: .34, r: 0, z: 0 }); }
-          // 👻 ghosts drifting over the water
-          for (const [x, y, z] of [[700, 420, 60], [1150, 420, 80], [1200, 760, 50], [1620, 900, 70], [900, 1500, 60], [450, 1450, 80], [1000, 1800, 60]]) OBJS.push({ x: ws(x), y: ws(y), k: "wraith", s: .5, r: 0, z, bob: 16, mob: true });
-          OBJS.push({ x: ws(1000), y: ws(620), k: "sw_hotel", s: 2.6, r: 0, z: 0 });   // the haunted hotel out in the lake
+          let sd0 = 17; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+          for (let i = 6, n = 0; i < N; i += 18, n++) { if (gaps.some(g => i >= g.a - 2 && i <= g.b + 2)) continue; const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB - 6)); OBJS.push({ x, y, k: "sw_lamp", s: .34, r: 0, z: 0, flick: rr() < .35 }); }
+          for (const [x, y, z] of [[700, 1300, 60], [1150, 900, 80], [1300, 700, 50], [1500, 1000, 70], [900, 1200, 60], [600, 1500, 80], [1200, 1300, 60]]) OBJS.push({ x: ws(x), y: ws(y), k: "wraith", s: .55, r: 0, z, bob: 16, mob: true });
+          OBJS.push({ x: ws(1100), y: ws(1050), k: "swhotel", s: 1.4, r: 0, z: 0, f3d: true, fa: 2.3 });   // 🏚 the old hotel, sunk to its first floor in the middle of the lake
+          for (let k2 = 0; k2 < 24; k2++) { const x = ws(250 + rr() * 1550), y = ws(250 + rr() * 1550); if (roadDist(x, y) > ROAD / 2 + CURB + 120) push(x, y, rr() < .5 ? "sw_deadtree" : "sw_deadtree2"); }   // dead trees standing in the water
+          for (let k2 = 0; k2 < 30; k2++) { const i = Math.floor(rr() * N), sd = rr() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 140 + rr() * 260)); if (roadDist(x, y) > ROAD / 2 + CURB + 100) OBJS.push({ x, y, k: "eyes", s: .35 + rr() * .2, r: 0, z: 20 + rr() * 50, flick: true, blink: true }); }
         },
       };
     },
@@ -1673,11 +1670,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=154"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=155"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2144,7 +2141,7 @@ function rivalStep(r, dt, tt) {
     if (pad.t === "slime" || pad.t === "lava") hit(r);
   }
   r.lastPad = pad; gapStep(r, air); moleStep(r, air, tt); petStep(r, air, tt);
-  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(r.x - q.x, r.y - q.y) < 17) { if (p.soft) { if (!(r.bonk > 0)) { r.bonk = .8; r.v *= .6; r.vz = 120; r.z = .1; } } else hit(r); } }
+  for (const p of PIGS) { if ((p.lap && lapNow() < p.lap) || (p.tide && !tideHigh())) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(r.x - q.x, r.y - q.y) < 17) { if (p.soft) { if (!(r.bonk > 0)) { r.bonk = .8; r.v *= .6; r.vz = 120; r.z = .1; } } else hit(r); } }
   if (r.bonk > 0) r.bonk -= dt;
   if (KING) {
     const kp = kingPhase(tt), [kx, ky] = at(KING.i, 0);
@@ -2209,6 +2206,20 @@ function caveWall(c, i, x, y) {   // how far the cave wall is from the road's ce
 }
 const ledgeSide = (l, r) => { if (!l.side) return true; const i = nearest(r.x, r.y, r.idx).i, p = PTS[i], a = tangent(i); return Math.sign(-(r.x - p[0]) * Math.sin(a) + (r.y - p[1]) * Math.cos(a)) === l.side; };   // (a one-sided ledge: only its drop side)
 // 👻 Golden Cave: how solid a vanishing road looks right now (the same clock for everyone: 3.4 s there, it fades out, 2 s gone, back)
+// 🌊 Phantom Lake's tide (the same clock for everyone): 9 s low, 3 s rising, 7 s high, 3 s falling; how far the water rises (world units)
+const tideAt = now => { const p = ((now % 22) + 22) % 22, A = 20 * WS; return p < 9 ? 0 : p < 12 ? A * (p - 9) / 3 : p < 19 ? A : A * (1 - (p - 19) / 3); };
+const tideHigh = () => !!T && !!T.theme.tide && tideAt(performance.now() / 1000) > 14 * WS;
+const flooded = r => T.theme.tide && T.water && PTS[r.idx] && PTS[r.idx][2] < T.water.level * WS + tideAt(performance.now() / 1000) - 4;
+// 👻 your own ghost: your last lap, replayed beside you (touch it and you're chilled)
+const SELF = { rec: [], prev: null, lap: -1, t0: 0, p: 0, g: { name: "ghost", x: 0, y: 0, a: 0, z: 0, v: 200 }, on: false };
+function selfGhostStep() {
+  if (!T.theme.ghostSelf || !K || state !== "race") { SELF.on = false; return; } const now = performance.now() / 1000;
+  if (K.lap !== SELF.lap) { if (SELF.lap >= 0 && SELF.rec.length > 30) SELF.prev = SELF.rec; SELF.rec = []; SELF.lap = K.lap; SELF.t0 = now; SELF.p = 0; }
+  const t = now - SELF.t0; SELF.rec.push([t, K.x, K.y, K.a, K.z || 0]);
+  const P = SELF.prev; SELF.on = false; if (!P) return; while (SELF.p < P.length - 2 && P[SELF.p + 1][0] < t) SELF.p++; const q = P[SELF.p]; if (!q || t > P[P.length - 1][0]) return;
+  Object.assign(SELF.g, { x: q[1], y: q[2], a: q[3], z: q[4] }); SELF.on = true;
+  if (t > 3 && !(K.chill > 0) && !(now < (SELF.cd || 0)) && Math.hypot(K.x - q[1], K.y - q[2]) < 24 && Math.abs((K.z || 0) - q[4]) < 30) { K.chill = 1.3; K.v *= .55; SELF.cd = now + 10; pop("🥶 Your ghost passed through you!", "#bfe6ff", true); tone(300, .4, "sine", .05, 120); }
+}
 function phantomAlpha(g, now) { const T = 7, p = ((now + g.a * .37) % T + T) % T; return p < 3.4 ? 1 : p < 4 ? 1 - (p - 3.4) / .6 * .94 : p < 6 ? .06 : .06 + (p - 6) / 1 * .94; }
 // 🧨 dynamite (lights when someone comes close, blows half a second later, the chain sets off the next) and the last lap's cave-in
 function mineStep(dt, tt) {
@@ -2243,7 +2254,8 @@ function stompStep(tt) {   // 🍄 the last lap: Mushmom (or Ice Valley's Yetis)
       for (const g of GAPS) for (const c of g.caps) c.squash = Math.max(c.squash || 0, .7); } }
 }
 function worldStep(dt, tt) {
-  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt); mineStep(dt, tt);
+  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt); mineStep(dt, tt); selfGhostStep(); if (K && K.chill > 0) K.chill -= dt;
+  if (K && state === "race" && !(K.z > 0) && flooded(K)) { K.v = Math.min(K.v, 210); if (!K.wet) { K.wet = 1; pop("🌊 Flooded!", "#7ab8ff"); } } else if (K) K.wet = 0;
   if (thunderFx > 0) thunderFx -= dt;
   if (LAVA && state === "race") lavaStep(dt);
   if (bloopCD > 0) bloopCD -= dt; if (armCD > 0) armCD -= dt; if (thunderCD > 0) thunderCD -= dt;
@@ -2335,7 +2347,7 @@ function worldStep(dt, tt) {
 // ------------------------------------------------------------------ the race
 let me = null, state = "menu", raf = 0, last = 0, keys = {}, touch = { x: 0, d: 0, b: 0, i: 0 };
 let K = null, best = null, countAt = 0, rkCand = 0, rkSince = 0;
-const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get HORROR() { return HORROR; }, get PLANE() { return PLANE; }, get RINGS() { return RINGS; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get GAPS() { return GAPS; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
+const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, get K() { return K; }, get HORROR() { return HORROR; }, get SELF() { return SELF; }, get PLANE() { return PLANE; }, get RINGS() { return RINGS; }, get RIV() { return RIV; }, get PEN() { return PEN; }, get N() { return N; }, get PADS() { return PADS; }, get POPS() { return POPS; }, get COINS() { return COINS; }, get G3() { return G3; }, get GAPS() { return GAPS; }, get ROAD() { return ROAD; }, mpTest: { hitBy: (...a) => hitBy(...a), mpOnHit: p => mpOnHit(p), HITS, get SHOTS() { return SHOTS; } }, get SPC() { return SPC; }, closeCall: () => closeCall(), shot: async name => { const c = document.createElement("canvas"), src = G3 ? G3.snap() : cv; c.width = fxc.width; c.height = fxc.height; const g = c.getContext("2d");
     g.drawImage(src, 0, 0, c.width, c.height); g.drawImage(fxc, 0, 0); const b = await new Promise(r => c.toBlob(r, "image/jpeg", .9)); return fetch("http://127.0.0.1:8799/" + name, { method: "POST", body: b }).then(r => r.status); },
   decal: () => trackData().decal(), get P2P() { return P2P; },
   echo: (delay = 150, jitter = 40) => {
@@ -2412,7 +2424,7 @@ function chompPos(c, tt) {
   return { x, y, z: Math.abs(Math.sin(t * 5)) * (lunge > .2 ? 26 : 8), dx: Math.cos(ang) };
 }
 function petStep(r, air, tt) {
-  if (!air) for (const h of HOLES) if ((!h.lap || r.lap + 1 >= h.lap) && Math.hypot(r.x - h.x, r.y - h.y) < h.r) { rescue(r, h.lap ? "🔥 The road gave way!" : "💦 Through the ice!"); r.rescueAt = (h.i + Math.round((h.r + 70) / SPC)) % N; return; }   // fished out just past the hole, so you never drive straight back into it
+  if (!air) for (const h of HOLES) if ((!h.lap || r.lap + 1 >= h.lap) && Math.hypot(r.x - h.x, r.y - h.y) < h.r) { rescue(r, h.water ? "🪵 The planks gave way!" : h.lap ? "🔥 The road gave way!" : "💦 Through the ice!"); r.rescueAt = (h.i + Math.round((h.r + 70) / SPC)) % N; return; }   // fished out just past the hole, so you never drive straight back into it
   for (const b of HEDGES) { const dx = r.x - b.x, dy = r.y - b.y, d = Math.hypot(dx, dy), R = b.w / 2 + 11;   // 🌿 hedges are solid: you slide off them
     if (d < R && d > 0 && r.z < b.h) { const nx = dx / d, ny = dy / d; r.x = b.x + nx * R; r.y = b.y + ny * R;
       const m = r.ma != null ? r.ma : r.a, hx = Math.cos(m), hy = Math.sin(m), into = hx * nx + hy * ny;
@@ -2466,8 +2478,8 @@ function gapStep(r, air) {
   }
   if (c) { if (c !== r.lastCap) bounce(r, c); return; }
   r.lastCap = null;
-  const m = nearest(r.x, r.y, r.idx), g = gapAt(m.i); if (g && g.kind === "bridge") { if (m.i < g.b - 1 && m.i > g.a + 1 && m.d > g.deck) { if (g.rail) { const [cx, cy] = at(m.i, 0), dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy) || 1; r.x = cx + dx / d * g.deck; r.y = cy + dy / d * g.deck; r.v *= .97; r.drift = 0; } else rescue(r, g.phantom ? "😵 It was a hallucination!" : "🌉 Off the rope bridge!"); } return; }   // (a railed walkway: you bump along its rail)
-  if (g && m.i < g.b - 2 && m.i > g.a + 1) rescue(r, g.kind === "water" ? "💦 Splash! Into the pond" : g.kind === "chasm" ? "🏔️ Down the mountain!" : "🍄 Missed! Into the gorge");
+  const m = nearest(r.x, r.y, r.idx), g0 = gapAt(m.i), g = g0 && g0.lap && r.lap + 1 < g0.lap ? null : g0; if (g && g.kind === "bridge") { if (m.i < g.b - 1 && m.i > g.a + 1 && m.d > g.deck) { if (g.rail) { const [cx, cy] = at(m.i, 0), dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy) || 1; r.x = cx + dx / d * g.deck; r.y = cy + dy / d * g.deck; r.v *= .97; r.drift = 0; } else rescue(r, g.phantom ? "😵 It was a hallucination!" : "🌉 Off the rope bridge!"); } return; }   // (a railed walkway: you bump along its rail)
+  if (g && m.i < g.b - 2 && m.i > g.a + 1) rescue(r, g.lap ? "🪵 The boardwalk collapsed!" : g.kind === "water" ? "💦 Splash! Into the pond" : g.kind === "chasm" ? "🏔️ Down the mountain!" : "🍄 Missed! Into the gorge");
 }
 function bounce(r, c) {
   r.lastCap = c; c.squash = 1;
@@ -2658,7 +2670,7 @@ function step(dt) {
     if (was < 10 && k.mesos === 10) { flash("💰 MAX MESOS!", 900); [988, 1319, 1568].forEach((f, i) => setTimeout(() => tone(f, .12, "square", .05), i * 80)); }
   }
   if (k.bonk > 0) k.bonk -= dt;
-  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
+  for (const p of PIGS) { if ((p.lap && lapNow() < p.lap) || (p.tide && !tideHigh())) continue; const q = pigPos(p, tt); if (!air && q.z < 10 && Math.hypot(k.x - q.x, k.y - q.y) < (p.soft ? 20 : 17)) {
     if (p.soft) { if (!(k.bonk > 0)) { k.bonk = .8; k.v *= p.herd ? .5 : .6; k.vz = 120; k.z = .1; bumpSound(); if (p.k.includes("pig")) oinkSound(); pop(p.k.includes("pig") ? "🐷 Oink!" : p.k === "pepe" ? "🐧 Waddle!" : "🍄 Bonk!", "#ffb347", true); buzz(20); } continue; }
     spinOut(p.k.includes("pig") ? "🐷 Oink!" : p.k.includes("snail") ? "🐌 Snail!" : p.k === "freezie" ? "🧊 Ice block!" : p.k === "snowball" ? "❄️ Snowball!" : p.k === "stoneball" ? "🪨 Stone ball!" : p.k === "fishbone" ? "🐟 Bone Fish!" : p.k === "roller" ? "🪨 Boulder!" : p.k === "fire_boar" ? "🔥 Fire Boar!" : p.k === "firebomb" ? "💥 Firebomb!" : p.k === "jr_yeti" ? "⛸ Skater!" : "🍄 Bonk!"); } }
   for (const c of CAVES) if (c.half && k.idx >= c.a + 1 && k.idx <= c.b - 1 && near.d > Math.min(c.half - 22, caveWall(c, near.i, k.x, k.y) - 22)) {   // 💎 the cave's walls are solid: no driving out through them
@@ -2799,6 +2811,7 @@ function render() {
     if (mode !== "tt") BOXES.forEach((b, i) => { if (b.t <= 0) G3.box(b.x, b.y, tt, i, b.z || 0); });
     if (mode === "tt" && state !== "menu") for (const [g, gd, col, img, skip] of [[GH3.top, topGhost && topGhost.data, "#e8b43a", topGhost && topGhost.img], [GH3.me, ghost, "#c8232c", IMG.me, topGhost && topGhost.name === me]]) {
       const gs = gd && !skip ? ghostAt(K.t, gd) : null; if (gs) { Object.assign(g, { x: gs.x, y: gs.y, a: gs.a, z: gs.z, v: 200 }); G3.kart(g, { color: col, img, ghost: true, dt: dt3 }); } }
+    if (SELF.on) G3.kart(SELF.g, { color: "#9adfff", img: IMG.me, ghost: true, dt: dt3 });   // 👻 your own ghost
     if (!k.watch) G3.kart(k, { color: "#c8232c", family: true, img: IMG.me, dt: dt3, me: true, boo: k.boo > 0 });
   }
   else {
@@ -2876,6 +2889,8 @@ function render() {
   if (!G3) for (const d of DYNA) if (d.st === 1) addDraw(d.x, d.y, (sx, gy, sc) => { const r = (6 + Math.random() * 6) * sc; ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = Math.random() < .5 ? "#fff6a0" : "#ff9a2a"; ctx.beginPath(); ctx.arc(sx + 6 * sc, gy - 44 * sc, r, 0, 7); ctx.fill(); ctx.restore(); }, 0);
   if (CAVEIN) for (const q of CAVEIN.rocks) addDraw(q.x, q.y, (sx, gy, sc) => { ctx.save(); ctx.fillStyle = `rgba(0,0,0,${.55 * (1 - q.t)})`; ctx.beginPath(); ctx.ellipse(sx, gy, 26 * sc * (1.4 - q.t * .6), 10 * sc * (1.4 - q.t * .6), 0, 0, 7); ctx.fill();
     if (IMG.stoneball) { const z = q.t * 420 * sc, w = 40 * sc; ctx.drawImage(IMG.stoneball, sx - w / 2, gy - z - w, w, w); } ctx.restore(); }, 0);
+  if (SELF.on) addDraw(SELF.g.x, SELF.g.y, (sx, gy, sc) => { const r = 46 * sc, t = performance.now() / 1000, g2 = ctx.createRadialGradient(sx, gy - 18 * sc, 2, sx, gy - 18 * sc, r); g2.addColorStop(0, `rgba(170,230,255,${.55 + .15 * Math.sin(t * 6)})`); g2.addColorStop(1, "rgba(120,200,255,0)");
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(sx, gy - 18 * sc, r, 0, 7); ctx.fill(); ctx.restore(); }, G3 ? G3.liftOf(SELF.g) : 0);   // 👻 your ghost glows a cold blue
   for (const e of BOOMS) addDraw(e.x, e.y, (sx, gy, sc) => {
     const t = e.t, R = BOMB_R * sc, F = IMG.boomF;
     if (t < .5) { ctx.save(); ctx.globalAlpha = (1 - t / .5) * .9; ctx.strokeStyle = "#fff4c8"; ctx.lineWidth = Math.max(1, 5 * sc * (1 - t / .5)); const rr2 = R * (.25 + 1.15 * t / .5);
@@ -2925,7 +2940,7 @@ function render() {
   });
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got && (G3 ? (c.x - k.x) * ca + (c.y - k.y) * sa > -12 : (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
-  for (const p of PIGS) { if (p.lap && lapNow() < p.lap) continue; const q = pigPos(p, tt); if (G3 && G3.mdl && (p.k === "freezie" || p.k === "snowball" || p.k === "stoneball")) G3.mdl(p.k, q.x, q.y, q.z, tangent(p.i) + Math.PI, tt); else add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
+  for (const p of PIGS) { if ((p.lap && lapNow() < p.lap) || (p.tide && !tideHigh())) continue; const q = pigPos(p, tt); if (G3 && G3.mdl && (p.k === "freezie" || p.k === "snowball" || p.k === "stoneball")) G3.mdl(p.k, q.x, q.y, q.z, tangent(p.i) + Math.PI, tt); else add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
   for (const m of MOLES) { const q = molePos(m, tt), im = IMG[m.img || "stump"]; add(q.x, q.y, IMG.farm_mound, .42, 0); if (q.up > 0 && im) add(q.x, q.y, im, m.img ? .75 : .5, -34 * (1 - q.up)); }   // 🌳 mounds, and stumps (or bunnies) popping out
   // 🐾 pets wandering the gardens, and the giant pets on their chains (with the chain drawn from its post)
   for (const w of WANDER) { const q = wanderPos(w, tt), im = petFrame(w.k, "move", tt + w.ph); if (im) add(q.x, q.y, im, w.s, 0, q.dx > 0); }
@@ -2966,6 +2981,7 @@ function render() {
     const g2 = ctx.createLinearGradient(0, 0, 0, H); g2.addColorStop(0, "rgba(60,140,200,.28)"); g2.addColorStop(1, "rgba(5,25,60,.45)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "rgba(220,240,255,.55)"; const tb = performance.now() / 1000; for (let n = 0; n < 14; n++) { const x = (n * 53 + Math.sin(tb + n) * 6) % W, y = H - ((tb * 40 + n * 37) % H); ctx.beginPath(); ctx.arc(x, y, 1 + (n % 3) * .6, 0, 7); ctx.fill(); } }
   drawHorror(k, W, H); drawHallu(W, H);
+  if (k.chill > 0) { const f = Math.min(1, k.chill / .5), g2 = ctx.createRadialGradient(W / 2, H / 2, H * .25, W / 2, H / 2, W * .65); g2.addColorStop(0, "rgba(200,235,255,0)"); g2.addColorStop(1, `rgba(200,235,255,${.7 * f})`); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }   // 🥶 frost creeping in
   for (const cv of CAVES) if (k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .75);
     g2.addColorStop(0, "rgba(160,220,255,0)"); g2.addColorStop(1, cv.crystal ? "rgba(8,20,60,.7)" : "rgba(10,40,90,.5)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }

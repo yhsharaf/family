@@ -109,6 +109,7 @@ export function create(A) {
 
   // ---------------------------------------------------------------- ground: heights, terrain mesh, sky
   let G = 8, GN = WORLD / G + 1;
+  let waterP = null, waterL = 0, tideFn = null, lapGapM = [];
   let HG = new Float32Array(GN * GN), terrain = null, plain = null, skyMesh = null, key = null, skyRefs = [], RE = null;   // RE: the road's height at each track point
   // 🪁 in the air (a jump, a glide, a mushroom bounce) a kart's height counts from the road it left, not from whatever is below it (a ravine,
   // the slope far under a glide): off the road the ground can be far lower. How far above the ground that puts it:
@@ -213,7 +214,7 @@ export function create(A) {
       const earth = new THREE.Mesh(new THREE.SphereGeometry(5200, 48, 24), new THREE.MeshBasicMaterial({ map: tx, fog: false }));
       earth.position.set(WORLD / 2, mean - 5800, WORLD / 2); earth.rotation.z = .4; earth.userData.keep = true; plain.add(earth); }
     if (t.water) { const wm = new THREE.MeshPhongMaterial({ color: 0x1d3f63, transparent: true, opacity: .74, shininess: 90, specular: 0x6f8fb0, side: THREE.DoubleSide, depthWrite: false });
-      const wp = new THREE.Mesh(new THREE.PlaneGeometry(WORLD + 2 * F, WORLD + 2 * F), wm); wp.rotation.x = -Math.PI / 2; wp.position.set(WORLD / 2, t.water.level, WORLD / 2); wp.renderOrder = 2; plain.add(wp); }
+      const wp = new THREE.Mesh(new THREE.PlaneGeometry(WORLD + 2 * F, WORLD + 2 * F), wm); wp.rotation.x = -Math.PI / 2; wp.position.set(WORLD / 2, t.water.level, WORLD / 2); waterP = wp; waterL = t.water.level; wp.renderOrder = 2; plain.add(wp); }
     scene.add(plain);
     gapsBuilt = t.gaps || [];
     if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); terrain.material.map.dispose(); terrain.material.dispose(); }
@@ -363,6 +364,8 @@ export function create(A) {
     }
     const mainMat = roadMat(surfaceTex(RS, th, t.ROAD), decal, RS === "rainbow" || RS === "pastel");
     ribbon(t.PTS, !t.OPEN, t.ROAD, mainMat, cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare);
+    lapGapM = []; tideFn = t.tideAt || null; if (!t.water) waterP = null;
+    for (const g of (t.gaps || []).filter(g => g.lap)) { const rm = mainMat.clone(), cmm = cm.clone(), ms = ribbon(t.PTS, !t.OPEN, t.ROAD, rm, cmm, .5, [{ a: -1, b: g.a }, { a: g.b, b: t.N + 2 }], []); lapGapM.push({ g, ms }); }   // 🪵 boardwalk that collapses on a later lap
     phantomM = []; for (const g of (t.gaps || []).filter(g => g.phantom)) {   // 👻 the vanishing roads: the same road, on its own, fading in and out
       const rm = mainMat.clone(), cmm = cm.clone(); for (const m of [rm, cmm]) { m.transparent = true; m.depthWrite = false; }
       const meshes = ribbon(t.PTS, !t.OPEN, t.ROAD, rm, cmm, .5, [{ a: -1, b: g.a }, { a: g.b, b: t.N + 2 }], []); phantomM.push({ g, mats: [rm, cmm], fn: t.phantomAt }); }
@@ -410,7 +413,7 @@ export function create(A) {
       scene.add(m, sh); roadObjs.push(m, sh); fireM.push({ b, m, sh, g: h(b.x, b.y) }); }
     holeM = []; lapFn = t.lapNow || null;
     for (const hl of t.holes || []) {   // (the lava inside is real MapleStory molten rock)
-      const g = new THREE.Group(), lava = new THREE.Mesh(new THREE.CircleGeometry(hl.r, 28), new THREE.MeshBasicMaterial(t.tiles && t.tiles.moltenRock ? { map: (() => { const tx = new THREE.CanvasTexture(t.tiles.moltenRock); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(hl.r / 60, hl.r / 40); return tx; })() } : { color: 0xff5a1a })), rim = new THREE.Mesh(new THREE.RingGeometry(hl.r, hl.r + 10, 28), new THREE.MeshBasicMaterial({ color: 0x2a1a14 }));
+      const g = new THREE.Group(), lava = new THREE.Mesh(new THREE.CircleGeometry(hl.r, 28), new THREE.MeshBasicMaterial(hl.water ? { color: 0x101a2a } : t.tiles && t.tiles.moltenRock ? { map: (() => { const tx = new THREE.CanvasTexture(t.tiles.moltenRock); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(hl.r / 60, hl.r / 40); return tx; })() } : { color: 0xff5a1a })), rim = new THREE.Mesh(new THREE.RingGeometry(hl.r, hl.r + (hl.water ? 6 : 10), hl.water ? 9 : 28), new THREE.MeshBasicMaterial({ color: hl.water ? 0x4a3420 : 0x2a1a14 }));   // (a rotten hole: dark water, splintered edges)
       for (const q of [lava, rim]) { q.rotation.x = -Math.PI / 2; g.add(q); } rim.position.y = .3; g.position.set(hl.x, h(hl.x, hl.y) + 1.4, hl.y); g.visible = false; scene.add(g); roadObjs.push(g); holeM.push({ hl, g }); }
     // 🕰️ the clockwork: gears that turn (a toothed wheel set into the floor), the clock's hands sweeping round, pendulums swinging across the road
     clockM = { gears: [], hands: [], pends: [], t };
@@ -1381,7 +1384,8 @@ export function create(A) {
     if (gondM.length) { const now = performance.now() / 1000; for (const q of gondM) { const f = ((now * q.sp + q.ph) % 2), u = f < 1 ? f : 2 - f, L = q.line, p = L.a.clone().lerp(L.b, u); p.addScaledVector(L.off, f < 1 ? 1 : -1); q.g.position.copy(p); q.g.rotation.z = Math.sin(now * 1.3 + q.ph) * .04; } }   // 🚡 gondolas gliding up one cable and down the other   // the dam's half-frozen waterfalls, trickling slowly
     if (auroraM.length) { const now = performance.now() / 1000; for (const q of auroraM) { const pa = q.m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { const b = q.base[v]; pa.setY(v, b[1] + Math.sin(now * .5 + b[3] * 3 + q.ph) * 40 * b[4]); pa.setZ(v, b[2] + Math.sin(now * .35 + b[3] * 5 + q.ph) * 90); } pa.needsUpdate = true; q.m.material.opacity = .62 + Math.sin(now * .7 + q.ph) * .15; } }
     for (const q of balloonM) q.g.position.y = q.y + Math.sin(performance.now() / 1000 * 2 + q.o.x) * (q.o.bob || 0);   // the balloons sway up and down
-    if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; }
+    if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; for (const q of lapGapM) for (const m of q.ms) m.visible = l < q.g.lap; }
+    if (waterP && tideFn) waterP.position.y = waterL + tideFn(performance.now() / 1000);   // 🌊 the tide
     if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
     if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const k in mdls) mdls[k].i = 0; for (const m of karts.values()) m.used = false;
