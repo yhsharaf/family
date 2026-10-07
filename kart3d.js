@@ -1734,7 +1734,9 @@ export function create(A) {
     // the start gate: a gigantic golden wheel over the line - a thick bronze-and-gold rim with star reliefs, five round star lamps standing on it,
     // spokes carrying chequered flags and white flame shapes, a glowing hub ring, and the FAMILY KART banner curving across the middle
     const bronze = new THREE.MeshStandardMaterial({ color: 0x4a3214, metalness: .85, roughness: .38, emissive: 0x120a02 });
-    const ringAt = (i, R, cy, build) => { const k = ((i % n) + n) % n, [x, z] = P[k], a = ang(k), g = new THREE.Group(); g.position.set(x, RE[k], z); g.rotation.y = -a + Math.PI / 2; grp.add(g); build(g, R, cy); return g; };
+    const ringAt = (i, R, cy, build) => { const k = ((i % n) + n) % n, [x, z] = P[k], a = ang(k), g = new THREE.Group(); g.position.set(x, RE[k], z); g.rotation.y = -a + Math.PI / 2;
+      if (t.frames) { const F = frameAt(t, k), tv = q => new THREE.Vector3(q[0], q[2], q[1]), v = frameV(F, 0, 0); g.position.set(v[0], v[1], v[2]); g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(tv(F.b).negate(), tv(F.nrm), tv(F.t))); }   // (a measured road: square to the road's own tilt, so an arch on a banked stretch sits centred over it)
+      grp.add(g); build(g, R, cy); return g; };
     ringAt(0, t.ROAD / 2 + 120, (t.ROAD / 2 + 120) * .6, (g, R, cy) => {
       const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 26, 18, 96), bronze); rim.position.y = cy; g.add(rim);
       for (const [rr, tt] of [[R + 26, 6], [R - 26, 6], [R * .46, 9]]) { const q = new THREE.Mesh(new THREE.TorusGeometry(rr, tt, 10, 96), gold); q.position.y = cy; g.add(q); }
@@ -1752,6 +1754,7 @@ export function create(A) {
         if (k % 2) { const f = new THREE.Mesh(new THREE.ShapeGeometry(flame), flameM); f.position.set(Math.cos(a2) * (mid - 10), cy + Math.sin(a2) * (mid - 10), 9); f.rotation.z = a2 - Math.PI / 2; f.scale.setScalar(1.3); g.add(f); }
         else { const fl = new THREE.Mesh(new THREE.PlaneGeometry(56, 40), new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide })); fl.position.set(Math.cos(a2) * (r1 - 40), cy + Math.sin(a2) * (r1 - 40), 9); fl.rotation.z = a2 - Math.PI / 2; g.add(fl); } }
       const banTex = ctex(1024, 160, (c, W, H) => { c.fillStyle = "#2a1406"; c.fillRect(0, 0, W, H); c.strokeStyle = "#ffd86a"; c.lineWidth = 10; c.strokeRect(5, 5, W - 10, H - 10); const gr = c.createLinearGradient(0, 30, 0, 130); gr.addColorStop(0, "#ffffff"); gr.addColorStop(1, "#ffe0a0"); c.fillStyle = gr; c.font = "900 112px Ubuntu, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("FAMILY KART", W / 2, H / 2 + 6); });
+      banTex.wrapS = THREE.RepeatWrapping; banTex.repeat.x = -1; banTex.offset.x = 1;   // (read from the grid, where the racers see it, the curved banner's inside shows: so the writing is mirrored to read right)
       const ban = new THREE.Mesh(new THREE.CylinderGeometry(R * .7, R * .7, 52, 48, 1, true, -.62, 1.24), new THREE.MeshBasicMaterial({ map: banTex, side: THREE.DoubleSide })); ban.rotation.x = Math.PI / 2; ban.rotation.y = Math.PI; ban.position.set(0, cy - R * .7 + R * .82, 18); g.add(ban);
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffc870, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(R * 2.4, R * 2.4, 1); glow.position.y = cy; g.add(glow); });
     // enormous rainbow rings floating beside the course, tilted every which way (a big one just left of the start, more further off)

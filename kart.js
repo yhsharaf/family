@@ -1046,9 +1046,10 @@ const TRACKS = {
     path3d: "star64",
     // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
     // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
-    // 🎬 the course intro's shots: the gate and the start straight, the descent with its rings, the twisty drop and the first glide, the big loop, the run to the line
-    intro: [{ from: [1088, -320, 180], to: [1108, -150, 110], look: [22, 0, 20], look2: [40, 0, 20], dur: 3.2 }, { from: [52, 240, 95], to: [98, 175, 60], look: [68, 0, 22], look2: [112, 0, 30], dur: 3.2 },
-      { from: [148, -330, 240], to: [214, -260, 150], look: [165, 0, 30], look2: [232, 0, 20], dur: 3 }, { from: [926, 340, 110], to: [992, 300, 240], look: [955, 0, 60], look2: [986, 0, 40], dur: 3.2 }, { from: [1034, 0, 115], to: [1098, 0, 70], look: [1072, 0, 20], look2: [1115, 0, 25], dur: 2.8 }],
+    // 🎬 the course intro, three shots like the original's: (1) the two star rings floating over the descent, the camera climbing to show the road's two floors;
+    // (2) at the second section arch, sliding left to reveal the loops behind it; (3) the start gate, face on
+    intro: [{ from: [118, 150, 70], to: [112, 40, 290], look: [150, 0, 110], look2: [250, 0, 40], dur: 4 }, { from: [698, 200, 60], to: [696, -260, 110], look: [724, 0, 60], look2: [790, 0, 70], dur: 4 },
+      { from: [1088, 0, 34], to: [1102, 0, 70], look: [0, 0, 130], look2: [0, 0, 105], dur: 3.4 }],   // (from the grid side, so the gate's banner reads the right way round)
     marks: { boosts: [[66, -42], [80, 42], [95, -42], [1003, -42], [1020, 42]], dashes: [182, 372, 625], airRings: [[126, 116, 0], [143, 98, 0], [270, 115, -45], [286, 101, 45], [303, 40, -45], [319, 26, 45], [335, 26, -45], [352, 26, 45], [537, 111, 0], [562, 33, 0]] },   // (air rings: [point, height of the ring's centre over the flight line, sideways offset]: measured from the glider's own flight)
     theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, grip: 5, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
@@ -1933,7 +1934,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=237"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=239"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
