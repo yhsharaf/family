@@ -273,7 +273,7 @@ export function create(A) {
     if (terrain) { scene.remove(terrain); terrain.geometry.dispose(); terrain.material.map.dispose(); terrain.material.dispose(); }
     terrain = new THREE.Mesh(geo, mat); scene.add(terrain);
     if (t.theme.space) { terrain.visible = false; for (const m of plain.children) if (!m.userData.keep) m.visible = false; }
-    if (t.theme.skyroad) {   // 🏙 far below the sky road: a huge city of lights at night (streets of warm lamps, glowing blocks, dark parks)
+    if (t.theme.skyroad && !t.theme.blackbg) {   // 🏙 far below the sky road: a huge city of lights at night (streets of warm lamps, glowing blocks, dark parks)
       let lo = 1e9; for (let i = 0; i < t.N; i++) lo = Math.min(lo, E[i]);
       const tx = ctex(1024, 1024, (g, W) => { g.fillStyle = "#06121a"; g.fillRect(0, 0, W, W); let sd = 3; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
         for (let k = 0; k < 160; k++) { const x = rnd() * W, y = rnd() * W, r = 30 + rnd() * 110, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, rnd() < .7 ? "rgba(255,170,80,.22)" : "rgba(120,200,255,.16)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
@@ -1394,7 +1394,8 @@ export function create(A) {
     let topCol = t.theme.sky || "#8fd0ff";
     if (t.sky) { try { const sc = canvas(16, 4), sg = sc.getContext("2d"); sg.drawImage(t.sky, 0, 0, t.sky.width, Math.max(1, t.sky.height * .04), 0, 0, 16, 4); const d = sg.getImageData(0, 0, 16, 4).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; topCol = `rgb(${r / n | 0},${gg / n | 0},${b / n | 0})`; } catch (e) {} }
     g.fillStyle = topCol; g.fillRect(0, 0, 4096, hor);
-    if (t.theme.nightsky) { topCol = t.theme.sky; const gr = g.createLinearGradient(0, 0, 0, hor); gr.addColorStop(0, "#03141a"); gr.addColorStop(.55, topCol); gr.addColorStop(1, "#1d5560"); g.fillStyle = gr; g.fillRect(0, 0, 4096, hor + 2);   // 🌌 a deep teal night sky full of stars
+    if (t.theme.blackbg) { g.fillStyle = "#000"; g.fillRect(0, 0, 4096, 1024); }   // (just black, for now)
+    else if (t.theme.nightsky) { topCol = t.theme.sky; const gr = g.createLinearGradient(0, 0, 0, hor); gr.addColorStop(0, "#03141a"); gr.addColorStop(.55, topCol); gr.addColorStop(1, "#1d5560"); g.fillStyle = gr; g.fillRect(0, 0, 4096, hor + 2);   // 🌌 a deep teal night sky full of stars
       let sd = 5; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let k = 0; k < 1400; k++) { const y = rnd() * hor * .95, a = .25 + rnd() * .75 * (1 - y / hor * .6); g.fillStyle = `rgba(255,${235 + rnd() * 20 | 0},${200 + rnd() * 55 | 0},${a})`; const sz = rnd() < .06 ? 2.2 : 1.1; g.fillRect(rnd() * 4096, y, sz, sz); }
       for (const [mx, my] of [[900, hor * .32]]) { const gl = g.createRadialGradient(mx, my, 10, mx, my, 120); gl.addColorStop(0, "rgba(240,250,255,.9)"); gl.addColorStop(.2, "rgba(220,240,255,.35)"); gl.addColorStop(1, "rgba(200,230,255,0)"); g.fillStyle = gl; g.fillRect(mx - 120, my - 120, 240, 240); g.fillStyle = "#f4fbff"; g.beginPath(); g.arc(mx, my, 22, 0, 7); g.fill(); } }   // 🌕 the moon
     if (t.theme.bluesky) { const gr = g.createLinearGradient(0, 0, 0, hor); gr.addColorStop(0, "#3f9bf0"); gr.addColorStop(.6, "#79c0fb"); gr.addColorStop(1, "#cfeaff"); g.fillStyle = gr; g.fillRect(0, 0, 4096, hor + 2);   // ☁ a bright blue sky with big soft cartoon clouds
@@ -1409,8 +1410,8 @@ export function create(A) {
         gl.addColorStop(0, "rgba(255,248,200,.35)"); gl.addColorStop(1, "rgba(255,248,200,0)"); g.fillStyle = gl; g.fillRect(mx - r * 3, my - r * 3, r * 6, r * 6); g.drawImage(t.moon, mx - r, my - r, r * 2, r * 2); }
       if (!t.theme.skyFull) { const fade = g.createLinearGradient(0, top, 0, top + sh * .35); fade.addColorStop(0, topCol); fade.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = fade; g.fillRect(0, top, 4096, sh * .35); } }   // the picture's top melts into the sky above it (unless it covers it all: the Golden Cave)
     if (t.strip && !t.theme.nightsky && !t.theme.bluesky) { const sh = 420 * pyU, sw = 4096 / Math.max(1, Math.round(4096 / (t.strip.width * sh / t.strip.height * ax))); for (let x = 0; x < 4096; x += sw) g.drawImage(t.strip, x, hor + 6 - sh, sw + 1, sh); }
-    g.fillStyle = t.theme.bluesky ? "#e6f1fa" : t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, t.strip && !t.theme.bluesky ? hor + 6 : hor, 4096, 1024);   // (above a sea of clouds, the far distance is cloud)
-    if (t.theme.nightsky) { const gr = g.createLinearGradient(0, hor, 0, 1024); gr.addColorStop(0, "#2a5a60"); gr.addColorStop(.08, "#183a40"); gr.addColorStop(1, "#08161c"); g.fillStyle = gr; g.fillRect(0, hor, 4096, 1024 - hor);   // 🏙 the city's lights reaching to the horizon, misty far away
+    g.fillStyle = t.theme.blackbg ? "#000" : t.theme.bluesky ? "#e6f1fa" : t.theme.grass ? t.theme.grass[0] : "#4a8a3a"; g.fillRect(0, t.strip && !t.theme.bluesky ? hor + 6 : hor, 4096, 1024);   // (above a sea of clouds, the far distance is cloud)
+    if (t.theme.nightsky && !t.theme.blackbg) { const gr = g.createLinearGradient(0, hor, 0, 1024); gr.addColorStop(0, "#2a5a60"); gr.addColorStop(.08, "#183a40"); gr.addColorStop(1, "#08161c"); g.fillStyle = gr; g.fillRect(0, hor, 4096, 1024 - hor);   // 🏙 the city's lights reaching to the horizon, misty far away
       let sd = 21; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let k = 0; k < 9000; k++) { const v = rnd(), y = hor + 1 + v * v * (1024 - hor); g.fillStyle = ["#ffcf8a", "#fff0d0", "#ffa860", "#bfe0ff"][k & 3]; g.globalAlpha = .25 + rnd() * .55 * (1 - v * .5); g.fillRect(rnd() * 4096, y, 1.3, 1); } g.globalAlpha = 1;
       const gl = g.createLinearGradient(0, hor - 30, 0, hor + 40); gl.addColorStop(0, "rgba(255,190,120,0)"); gl.addColorStop(.5, "rgba(255,190,120,.22)"); gl.addColorStop(1, "rgba(255,190,120,0)"); g.fillStyle = gl; g.fillRect(0, hor - 30, 4096, 70); }   // (no strip: the ground meets the picture, no dark gap)
     const map = new THREE.CanvasTexture(c); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.repeat.x = -2; map.anisotropy = aniso;
@@ -1418,7 +1419,7 @@ export function create(A) {
     skyMesh = new THREE.Mesh(new THREE.CylinderGeometry(SKY_R, SKY_R, SKY_H, 64, 1, true), new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, fog: false, depthWrite: false }));
     skyMesh.renderOrder = -1; scene.add(skyMesh);
     if (skyDome) { scene.remove(skyDome); skyDome.geometry.dispose(); skyDome.material.dispose(); skyDome = null; }
-    if (t.theme.clean) { const zen = new THREE.Color(t.theme.zenith || 0x3f86e0), hc = new THREE.Color(topCol);   // ✨ above the painted sky: a smooth gradient dome (no hard rim when the low camera looks up)
+    if (t.theme.clean) { const zen = new THREE.Color(t.theme.blackbg ? 0x000000 : t.theme.zenith || 0x3f86e0), hc = new THREE.Color(t.theme.blackbg ? "#000000" : topCol);   // ✨ above the painted sky: a smooth gradient dome (no hard rim when the low camera looks up)
       skyDome = new THREE.Mesh(new THREE.SphereGeometry(SKY_R * 1.3, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { hc: { value: hc }, zc: { value: zen } },
         vertexShader: "varying float vy; void main() { vy = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
         fragmentShader: "uniform vec3 hc, zc; varying float vy; void main() { gl_FragColor = vec4(mix(hc, zc, smoothstep(.62, .98, vy)), 1.); }" }));
@@ -1767,7 +1768,7 @@ export function create(A) {
         inst.count = c0; inst.instanceMatrix.needsUpdate = true; grp.add(inst); };
       const tot = runs.reduce((q, [a, b]) => q + (b - a), 0); place(big, 5, 0, 17, Math.ceil(tot / 5) * 2 + 8); place(small, 5, 2.5, 11, Math.ceil(tot / 5) * 2 + 8); }
     { const chk = ctex(128, 128, (c, W) => { for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = (x + y) % 2 ? "#2c2c26" : "#4e4c40"; c.fillRect(x * 32, y * 32, 32, 32); c.fillStyle = "rgba(255,240,200,.08)"; c.fillRect(x * 32 + 2, y * 32 + 2, 28, 3); } }, true);   // 🏁 the golden chequered start, as its own crisp strip on the road
-      const SP = [], UV = [], IX = [], A0 = -95, A1 = 1, Wd = t.ROAD; let L = 0, prev = null;
+      const SP = [], UV = [], IX = [], A0 = t.frames && t.pmk && t.pmk.startLen ? -Math.max(6, Math.round(t.pmk.startLen / (t.rspc || 6))) : -95, A1 = 1, Wd = t.ROAD; let L = 0, prev = null;   // (a measured road: exactly as long as its dark start area)
       for (let i = A0; i <= A1; i++) { const k = ((i % n) + n) % n, a = ang(k), p = P[k]; if (prev) L += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p; for (let q = 0; q <= 6; q++) { const o = -Wd / 2 + Wd * q / 6, x = p[0] - Math.sin(a) * o, z = p[1] + Math.cos(a) * o; if (t.frames) SP.push(...frameV(frameAt(t, k), o, 1.4)); else SP.push(x, surfY(x, z, k) + 1.2, z); UV.push(q / 6 * 3, L / (Wd / 3)); } }
       for (let r0 = 0; r0 < A1 - A0; r0++) for (let q = 0; q < 6; q++) { const a = r0 * 7 + q, b = a + 7; IX.push(a, a + 1, b, a + 1, b + 1, b); }
       const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(SP, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
@@ -1812,12 +1813,12 @@ export function create(A) {
     };
     const extra = { shroom: [[[-.5, .5], [-.3, .62]], [[.2, .7], [.5, .55]], [[-.15, -.15], [-.15, -.3]], [[.15, -.15], [.15, -.3]]], slime: [[[-.3, .1], [-.3, -.05]], [[.3, .1], [.3, -.05]], [[-.25, -.25], [0, -.32], [.25, -.25]]], pig: [[[-.15, -.15], [.15, -.15], [.15, -.4], [-.15, -.4], [-.15, -.15]], [[-.4, .15], [-.4, 0]], [[.4, .15], [.4, 0]]] };
     const cols = { leaf: 0xff7a3a, shroom: 0xffa040, slime: 0x6aff8a, star: 0xfff06a, pig: 0xff8ac8 }, cons = [];
-    Object.keys(shapes).forEach((k, q) => { const a = q / 5 * Math.PI * 2 + .4, D = WORLD * .62 + 1400, cx = WORLD / 2 + Math.cos(a) * D, cz = WORLD / 2 + Math.sin(a) * D, S = 700, g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: cols[k], transparent: true, opacity: .9, fog: false });
+    if (!t.theme.blackbg) Object.keys(shapes).forEach((k, q) => { const a = q / 5 * Math.PI * 2 + .4, D = WORLD * .62 + 1400, cx = WORLD / 2 + Math.cos(a) * D, cz = WORLD / 2 + Math.sin(a) * D, S = 700, g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color: cols[k], transparent: true, opacity: .9, fog: false });
       for (const line of [shapes[k], ...(extra[k] || [])]) { const pts = line.map(([u, v]) => new THREE.Vector3(u * S, v * S, 0)); g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, "catmullrom", .1), pts.length * 8, 9, 6), mat));
         for (const p of pts) { const dot = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: cols[k], transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); dot.scale.set(90, 90, 1); dot.position.copy(p); g.add(dot); } }
       g.position.set(cx, 1600 + q * 160, cz); g.lookAt(WORLD / 2, 1600, WORLD / 2); grp.add(g); cons.push({ g, mat, ph: q }); });
     // fireworks: a pool of bursts going off over the city
-    const FN = 6, PN = 160, bursts = [];
+    const FN = t.theme.blackbg ? 0 : 6, PN = 160, bursts = [];
     for (let b = 0; b < FN; b++) { const geo = new THREE.BufferGeometry(), pos = new Float32Array(PN * 3); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
       const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 26, map: glowDisc(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), pts = new THREE.Points(geo, mat); pts.frustumCulled = false; grp.add(pts);
       bursts.push({ pts, pos, mat, vel: new Float32Array(PN * 3), t: 9, life: 2.2, c: new THREE.Vector3() }); }
@@ -1838,7 +1839,7 @@ export function create(A) {
     for (const tx of F.dashM) tx.offset.y = -now * 2.2;   // the chevrons race forward
     for (const c of F.coils) c.m.rotation.y += c.sp * dt; for (const m of F.meds) m.g.rotation.y += m.sp * dt;
     for (const c of F.cons) c.mat.opacity = .65 + .3 * Math.sin(now * 1.3 + c.ph);
-    F.next -= dt; if (F.next <= 0) { F.next = .5 + F.rnd() * .9; const b = F.bursts.find(q => q.t > q.life) || F.bursts[0], a = F.rnd() * 6.28, d = 900 + F.rnd() * 1800;   // a new firework somewhere round you
+    F.next -= dt; if (F.next <= 0 && F.bursts.length) { F.next = .5 + F.rnd() * .9; const b = F.bursts.find(q => q.t > q.life) || F.bursts[0], a = F.rnd() * 6.28, d = 900 + F.rnd() * 1800;   // a new firework somewhere round you
       b.c.set(cx + Math.cos(a) * d, cy + 250 + F.rnd() * 650, cz + Math.sin(a) * d); b.t = 0; b.mat.color.setHSL(F.rnd(), .9, .62); const sp = 260 + F.rnd() * 180;
       for (let k = 0; k < b.pos.length / 3; k++) { const u = F.rnd() * 2 - 1, th = F.rnd() * 6.28, r = Math.sqrt(1 - u * u), s2 = sp * (.85 + F.rnd() * .3); b.vel[k * 3] = r * Math.cos(th) * s2; b.vel[k * 3 + 1] = u * s2; b.vel[k * 3 + 2] = r * Math.sin(th) * s2; b.pos[k * 3] = b.c.x; b.pos[k * 3 + 1] = b.c.y; b.pos[k * 3 + 2] = b.c.z; } }
     for (const b of F.bursts) { if (b.t > b.life) { b.mat.opacity = 0; continue; } b.t += dt; const drag = Math.exp(-1.6 * dt);
