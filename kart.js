@@ -78,7 +78,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let FINALMSG = null, AREAS = [], SPORES = [], areaAt = -1, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
-  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], FAIRY = null, BRIDGES3D = [], DYNA = [], FAKES = [], CAVEIN = null, HOTS = [], GEYSERS = [], STEAMS = [], ZARMS = [], ZAKUM = null, HIDE = [];
+  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], FAIRY = null, BRIDGES3D = [], DYNA = [], FAKES = [], CAVEIN = null, HOTS = [], GEYSERS = [], STEAMS = [], ZARMS = [], ZAKUM = null, ROLLERS = [], BELTS = [], TRAINS = [], TDROPS = [], HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
   let best = -1, bd = 1e12;
@@ -211,7 +211,8 @@ const TRACKS = {
     ctrl: [[1810, 1125, 0], [1805, 900, 4], [1797, 650, 10], [1780, 425, 16], [1715, 245, 20], [1560, 145, 22], [1380, 130, 24], [1215, 190, 20], [1115, 300, 14], [1072, 450, 10],
       [990, 557, 14], [822, 587, 20], [660, 650, 16], [522, 755, 22], [335, 770, 18], [215, 855, 12], [197, 1012, 8], [272, 1162, 16], [405, 1280, 4], [460, 1462, 16],
       [472, 1650, 3], [540, 1805, 10], [690, 1890, 2], [890, 1905, 0], [1072, 1855, 0], [1215, 1730, 0], [1360, 1620, 0], [1535, 1545, 0], [1685, 1462, 0], [1797, 1362, 0], [1822, 1250, 0]],
-    theme: { grass: ["#5fc63e", "#58bb38"], flowers: 300, tufts: 12000, road: "farm", curb: ["#4ea834", "#57b83a"] },
+    theme: { grass: ["#5aa23c", "#539a38"], flowers: 0, tufts: 0, road: "asphalt", curb: ["#e8322f", "#f7f7f2"], haze: [207, 232, 251], fog: [1100, 3600], hills: 6, bank: 60,
+      clean: { trees: 300, tufts: 1100 }, patches: ["rgba(118,190,70,.3)", "rgba(64,138,46,.32)", "rgba(140,196,84,.24)", "rgba(80,150,52,.3)"] },
     near: ["bush", "tree", "sunflower", "hay"], far: ["tree", "tree", "bush"], mobs: ["pig", "ribbon_pig", "stump"],
     build() {
       makeFarmArt();
@@ -246,10 +247,8 @@ const TRACKS = {
         extra(push) {
           // the farm on the hill: a white barn with a blue roof, two silos and a windmill (seen from all over the track)
           for (const [x, y, k, sc] of [[1380, 720, "farm_barn", .9], [1495, 690, "farm_silo", .8], [1545, 730, "farm_silo", .7], [1240, 640, "farm_mill", .9], [760, 1250, "farm_barn", .6]]) OBJS.push({ x: ws(x), y: ws(y), k, s: sc, r: 30, z: 0 });
-          for (let i = I(1215, 190); i <= I(660, 650); i += 10) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 14)); push(x, y, "posts", .32, 6); }   // fences along the pig field
-          for (let i = I(1808, 1060); i <= I(1782, 470); i += 9) for (const side of [-1, 1]) { const [x, y] = at(i, side * (ROAD / 2 + CURB + 10)); push(x, y, "posts", .32, 6); }   // fence posts flashing past down the start straight
           for (const h of hay) { const [x, y] = at(h.i + 2, h.o); OBJS.push({ x, y, k: "hay", s: .45, r: 0, z: 0 }); }   // the hay bales you hop off
-          for (const [x, y, k] of [[1000, 760, "hay"], [1120, 700, "haypile"], [700, 1500, "tree"], [1400, 1300, "tree"], [1550, 800, "tree"], [880, 1320, "bush"]]) push(ws(x), ws(y), k);
+          for (const [x, y, k] of [[1000, 760, "hay"], [1120, 700, "haypile"]]) push(ws(x), ws(y), k);
         },
       };
     },
@@ -865,6 +864,46 @@ const TRACKS = {
       };
     },
   },
+  toy: {
+    // 1. Ludibrium Toy Factory (fun): race through the factory where Ludibrium's toys are made. Down the toy-town street (pick a lane: the fast
+    // conveyor or the one that drags you back); into the factory hall under the coloured girders, where the big conveyor flings you at the
+    // train crossing (wait for the barriers!); round the top and through the sorting line, where side belts shove you about; past the cranes
+    // dropping giant toy bricks onto the road (watch the shadows, steer round the bricks); and over the second crossing home.
+    id: "toyfactory", scale: 1.35, road: 180, cup: "ludi", music: "k_ludi1", name: "Toy Factory", sub: "conveyor belts · the toy train · cranes drop giant bricks", icon: "🧸",
+    ctrl: [[455, 1722, 20], [650, 1725, 20], [900, 1720, 20], [1150, 1715, 20], [1350, 1700, 22], [1520, 1660, 24], [1630, 1560, 26], [1680, 1420, 28], [1690, 1250, 30], [1690, 1050, 32], [1690, 850, 34],
+      [1680, 680, 36], [1640, 540, 38], [1550, 450, 40], [1420, 410, 40], [1260, 425, 40], [1120, 462, 40], [980, 422, 40], [840, 462, 40], [700, 422, 40], [560, 425, 38], [440, 480, 36], [380, 600, 34],
+      [370, 760, 32], [380, 900, 30], [470, 1000, 28], [650, 1010, 26], [820, 1060, 24], [930, 1180, 22], [900, 1330, 22], [760, 1420, 22], [560, 1440, 22], [400, 1480, 21], [328, 1552, 20], [312, 1640, 20], [366, 1710, 20]],
+    theme: { ...TH.ludi, road: "toyplates", curb: ["#e8507a", "#f4eef6"], grass: ["#b8c8e6", "#dcc0d8"], flowers: 300, haze: [176, 190, 224], fog: [900, 3200],
+      dark: { sky: 0xfff0f6, gnd: 0x6a5a88, hemiI: 1.2, sun: 0xffe8d0, sunI: .95 } },
+    art: { sky: "media/kart/ludi/sky2.webp", strip: "media/kart/ludi/strip1.webp" },
+    near: ["ld_lamp", "ld_flower", "ld_flower2", "ld_lolly"], far: ["ld_tree", "ld_tree2", "ld_tree3", "ld_lego", "ld_lego2"], mobs: ["toy_trojan", "brown_teddy", "panda_teddy", "robo", "ratz"],
+    build() {
+      const u = d => Math.round(d / SPC), coins = [], pads = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      const hall = { a: I(1680, 1420), b: I(1640, 540) }, sort = [[1260, 425], [1120, 462], [980, 422], [840, 462], [700, 422]].map(([x, y]) => I(x, y)), yard = { a: I(380, 600), b: I(470, 1000) };
+      // ⏩ the belts: a lane choice on the street, the hall's big conveyor, and the sorting line's side belts (each zig shoves you the other way)
+      const belts = [{ a: I(650, 1725), b: I(1150, 1715), o: -46, w: 84, dir: 1 }, { a: I(650, 1725), b: I(1150, 1715), o: 46, w: 84, dir: -1 },
+        { a: I(1680, 1400), b: I(1690, 1130), o: 0, w: 160, dir: 1 }, ...sort.slice(0, 4).map((a, n) => ({ a: a + 2, b: sort[n + 1] - 2, o: 0, w: 150, side: n % 2 ? 1 : -1 }))];
+      // 🚂 the toy train's two crossings (each line runs between two toy tunnels)
+      const trains = [{ i: I(1690, 1000), T: 8.5, ph: 0, rail: 520 }, { i: I(650, 1010), T: 9.5, ph: 3.1, rail: 380 }];
+      // 🧱 the crane yard: four cranes take turns dropping giant bricks onto the road
+      const blockDrops = [[370, 700, -45, 0], [372, 790, 45, 1.8], [378, 870, -20, 3.6], [430, 960, 40, 5.2]].map(([x, y, o, ph]) => ({ i: I(x, y), o, ph, T: 7 }));
+      const pigs = [[1000, 1718, "toy_trojan", 0, true], [1260, 420, "robo", 1.2, false], [930, 1180, "brown_teddy", 2.4, true], [560, 1440, "panda_teddy", .6, true], [1690, 760, "ratz", 1.9, false]].map(([x, y, k, ph, hop]) => ({ i: I(x, y), k, ph, hop, sp: 1, s: .5, soft: k !== "robo" }));
+      pads.push({ t: "boost", i: I(1550, 450), len: 8, o: 0, w: 70 }, { t: "boost", i: I(820, 1060), len: 8, o: 0, w: 70 }, { t: "boost", i: I(400, 1480), len: 8, o: 0, w: 70 });
+      row(I(1690, 1250), I(1690, 850), 6, 0); row(sort[0], sort[4], 8, j => (j & 1 ? 30 : -30)); row(I(470, 1000), I(820, 1060), 5, 0); row(I(760, 1420), I(400, 1480), 5, 0);
+      return {
+        pads, coins, pigs, belts, trains, blockDrops, caves: [{ a: hall.a, b: hall.b, girders: true }], finalMsg: "🏭 The factory's working overtime!",
+        boxes: [...boxRow(I(1350, 1700), [-60, -20, 20, 60]), ...boxRow(I(1420, 410), [-50, 0, 50]), ...boxRow(I(380, 600), [-50, 0, 50]), ...boxRow(I(900, 1330), [-60, -20, 20, 60])],
+        extra(push) {
+          let sd0 = 71; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+          for (let i = I(470, 1720), n = 0; i < I(1350, 1700); i += 26, n++) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 120)); OBJS.push({ x, y, k: ["ld_h1", "ld_h2", "ld_h3", "ld_h4", "ld_h5", "ld_h6", "ld_h7", "ld_h8", "ld_shop", "ld_bear"][(n * 2 + (sd > 0)) % 10], s: 1.05, r: 40, z: 0 }); }   // 🏠 the toy-town street
+          for (let i = 6, n = 0; i < N; i += 24, n++) { const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB + 10)); OBJS.push({ x, y, k: n % 3 ? "ld_lamp" : "ld_banner", s: .5, r: 0, z: 0 }); }
+          for (const [x, y, k, sc] of [[1850, 900, "ld_fan", 1.4], [1850, 1300, "ld_cone", 1.3], [1500, 900, "ld_blocks", 2], [1400, 1200, "ld_blocks2", 2], [1150, 800, "ld_ufo", 1.4], [200, 900, "ld_parasol", 1.3], [650, 700, "ld_clock", 1.3], [1100, 1450, "ld_arch", 1.3]]) OBJS.push({ x: ws(x), y: ws(y), k, s: sc, r: 30, z: 0 });
+          for (let k2 = 0; k2 < 40; k2++) { const x = ws(120 + rr() * 1820), y = ws(120 + rr() * 1820); if (roadDist(x, y) > ROAD / 2 + CURB + 140) push(x, y, ["ld_tree", "ld_tree2", "ld_tree3", "ld_tree4", "ld_lego", "ld_lego2"][k2 % 6]); }
+        },
+      };
+    },
+  },
   ld2: {
     // 2. Rainbow Road (Super Mario Kart, as remade for Mario Kart 7 / 8): a road of glowing rainbow tiles over the night sky above Ludibrium.
     // No railings anywhere (fall off and you're fished back out of space), tight right-angle turns and hairpins, rainbow Thwomps slamming down
@@ -937,6 +976,31 @@ const TRACKS = {
       };
     },
   },
+  star: {
+    // 🌠 Star Road (a faithful remake of Mario Kart 8 Deluxe's N64 Rainbow Road, traced from its course map): one long lap in three sections on a
+    // glowing rainbow road floating in the night sky high above a city of lights. Down the long diagonal from the golden gate, round the low loop
+    // (under the road you just came down), up through the little spiral, out to the hook on the right, back and up through the big figure-eight
+    // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
+    id: "starroad", scale: 2.3, road: 300, cup: "ludi", music: "k_ludi2", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
+    ctrl: [[1020, 836, 171.0], [958, 981, 154.8], [892, 1135, 138.7], [826, 1289, 122.6], [760, 1443, 103.2], [694, 1575, 87.1], [615, 1685, 71.0], [536, 1782, 54.8], [448, 1852, 41.9], [342, 1870, 30.6], [246, 1835, 24.2], [197, 1756, 20.0], [237, 1681, 19.4], [351, 1650, 19.4], [501, 1650, 19.4], [659, 1654, 19.4], [822, 1659, 21.0], [932, 1650, 24.2], [1007, 1606, 27.4], [1051, 1527, 32.3], [1082, 1439, 36.1], [1126, 1360, 40.3], [1196, 1316, 48.4], [1258, 1351, 58.1], [1266, 1426, 67.7], [1214, 1478, 75.8], [1143, 1465, 81.3], [1117, 1395, 86.5], [1152, 1307, 91.9], [1240, 1219, 96.8], [1337, 1122, 102.6], [1425, 1021, 107.1], [1513, 946, 110.3], [1627, 920, 112.3], [1733, 964, 113.5], [1812, 1043, 111.3], [1891, 1087, 108.4], [1962, 1052, 107.1], [1953, 959, 109.0], [1874, 889, 112.9], [1759, 827, 116.1], [1645, 770, 119.4], [1530, 700, 122.6], [1451, 612, 125.8], [1425, 524, 129.0], [1438, 444, 130.6], [1394, 387, 132.3], [1310, 383, 132.3], [1249, 330, 132.9], [1258, 242, 139.4], [1214, 163, 151.6], [1117, 145, 164.5], [1046, 189, 174.2], [1064, 268, 180.6], [1161, 304, 184.5], [1214, 365, 185.5], [1196, 462, 185.5], [1117, 524, 191.9], [1011, 515, 206.5], [941, 444, 219.4], [967, 356, 229.0], [1064, 321, 238.7], [1161, 339, 254.8], [1196, 409, 258.1], [1161, 541, 232.3], [1099, 682, 200.0]],
+    theme: { space: true, skyroad: true, nightsky: true, bank: 55, hills: 1.5, road: "rainbow64", curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+      haze: [16, 52, 60], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
+      clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
+    near: [], far: [], mobs: [],
+    build() {
+      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      const at0 = (x, y) => I(140 + x * 4.4, 110 + y * 4.4);   // (a spot on the course map, in its own pixels)
+      // 🪂 the glider ramp: just after the road crosses over the low loop, you launch and glide down onto it
+      const gl = at0(104, 362); pads.push({ t: "boost", i: gl - 16, len: 7, o: 0, w: 90 }, { t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: gl, b: at0(52, 400), kind: "chasm", open: true, caps: [] });
+      // ⚡ boost panels: out of the low loop, up the spiral, along the hook, out of the figure-eight
+      for (const [x, y] of [[82, 350], [222, 292], [362, 194], [298, 114], [222, 94]]) pads.push({ t: "boost", i: at0(x, y), len: 8, o: 0, w: 80 });
+      // 💧 giant slimes bouncing along the low straight and the climb to the hook
+      const rollers = [[at0(48, 350), at0(190, 345), 0], [at0(48, 350), at0(190, 345), .5], [at0(250, 252), at0(338, 184), .2], [at0(250, 252), at0(338, 184), .7]].map(([a, b, ph]) => ({ a, b, ph, sp: 140, o: 0 }));
+      row(at0(186, 198), at0(141, 303), 6, 0); row(at0(118, 351), at0(180, 350), 5, j => (j & 1 ? 40 : -40)); row(at0(368, 163), at0(316, 134), 5, 0); row(at0(254, 30), at0(206, 18), 4, 0);
+      return { pads, coins, gaps, rollers, ledges: [{ a: 0, b: N - 1 }], boxes: [...boxRow(I(760, 1443), [-60, -20, 20, 60]), ...boxRow(I(1300, 900), [-60, -20, 20, 60]), ...boxRow(I(1340, 300), [-60, -20, 20, 60])], extra() {} };
+    },
+  },
 };
 // the cups: 3 tracks each, raced in this order in the Grand Prix. Each new cup has its own twist.
 const CUPS = {
@@ -944,7 +1008,7 @@ const CUPS = {
   elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: brake early and drift round the corners" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Deep in the forest: boardwalks, ponds and gliders" },
   zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Block Golems, mine carts and lava: no railings in places, so mind the edges" },
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "ld2", "ld3"], rule: "🧸 The clocktower and two rainbow roads: no railings on the rainbows, so mind the edges" },
+  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "star", "ld3"], rule: "🧸 The clocktower and two rainbow roads: no railings on the rainbows, so mind the edges" },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
 function loadTrack(key) {
@@ -953,7 +1017,7 @@ function loadTrack(key) {
   WS = T.scale || 1; WORLD = Math.round(TW * WS / 8) * 8;   // a bigger world for a longer lap: the layout (drawn on a 2048 map) is stretched, the road, karts and speed are not
   const ctrl = WS === 1 ? T.ctrl : T.ctrl.map(p => p.map((v, j) => v * WS));   // (hills scale too, so the slopes stay the same)
   PTS = OPEN ? openPts(ctrl) : loopPts(ctrl); N = PTS.length; TRACK_LEN = 0;
-  LAPS = OPEN ? 1 : 3; START_I = OPEN ? (PTS[0].length > 2 ? 90 : 44) : 0;   // (a 3D grid is deeper: it needs more road behind the line)
+  LAPS = OPEN ? 1 : (T.laps || 3); START_I = OPEN ? (PTS[0].length > 2 ? 90 : 44) : 0;   // (a 3D grid is deeper: it needs more road behind the line)
   { let L = 0; for (let i = 1; i < N; i++) L += Math.hypot(PTS[i][0] - PTS[i - 1][0], PTS[i][1] - PTS[i - 1][1]); SPC = L / (N - 1); }   // world units between track points
   MECH = { elnath: "ice" }[T.cup] || null;   // only El Nath keeps its own rule (slippery ice); the lights-out, swapped controls and lava chase made races annoying
   OUT = T.theme.out ? hexABGR(T.theme.out) : OUT0; HAZE = T.theme.haze || HAZE0;
@@ -973,7 +1037,9 @@ function loadTrack(key) {
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
   CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = []; T.cableDef = f.cable || null; T.icefallDefs = f.icefalls || []; T.trunkDef = f.trunk || null; T.templeDef = f.temple || null; T.supportDefs = f.supports || [];
-  HOTS = f.hot || []; ZAKUM = f.zakum || null; ZARMS = (f.arms || []).map(a => { const bo = ROAD / 2 + CURB + 60, [x, y] = at(a.i, a.side * bo), [ex, ey] = at(a.i, -a.side * (ROAD / 2 - 10)); return { T: 6, ...a, x, y, ex, ey, len: Math.hypot(ex - x, ey - y), ang: Math.atan2(ey - y, ex - x) }; }); STAMP.zones = f.stampede || []; STAMP.boars = []; STAMP.done = -1; QK.next = 9; QK.on = QK.warn = 0; QK.rocks = []; GEYSERS = (f.geysers || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y }; }); STEAMS = (f.steams || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y }; });
+  BELTS = f.belts || []; TRAINS = (f.trains || []).map(t => { const [x, y] = at(t.i, 0), a = tangent(t.i); return { T: 9, len: 300, ...t, x, y, a, nx: -Math.sin(a), ny: Math.cos(a) }; });
+  TDROPS = (f.blockDrops || []).map(d => { const [x, y] = at(d.i, d.o || 0); return { T: 7, ...d, x, y, a: tangent(d.i) }; });
+  ROLLERS = f.rollers || []; HOTS = f.hot || []; ZAKUM = f.zakum || null; ZARMS = (f.arms || []).map(a => { const bo = ROAD / 2 + CURB + 60, [x, y] = at(a.i, a.side * bo), [ex, ey] = at(a.i, -a.side * (ROAD / 2 - 10)); return { T: 6, ...a, x, y, ex, ey, len: Math.hypot(ex - x, ey - y), ang: Math.atan2(ey - y, ex - x) }; }); STAMP.zones = f.stampede || []; STAMP.boars = []; STAMP.done = -1; QK.next = 9; QK.on = QK.warn = 0; QK.rocks = []; GEYSERS = (f.geysers || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y }; }); STEAMS = (f.steams || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y }; });
   DYNA = (f.dynamite || []).map(d => { const [x, y] = at(d.i, d.o || 0); return { ...d, x, y, st: 0, t: 0 }; }); FAKES = f.fakes || []; CAVEIN = f.caveIn ? { t: 2, rocks: [] } : null; HORROR.lvl = (T.theme && T.theme.horror) || 0; HORROR.next = 6; HORROR.black = 0; HORROR.warn = 0; HORROR.gl = 0; HORROR.nextBlack = 18 + Math.random() * 10;
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
@@ -1101,6 +1167,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   g.fillStyle = th.grass[1];
   if (only) {}
   else if (th.checker) for (let y = 0; y < WORLD; y += 64) for (let x = (y / 64 & 1) * 64; x < WORLD; x += 128) g.fillRect(x, y, 64, 64);   // Ludibrium: a chequered toy floor
+  else if (th.clean && th.patches) { for (let k = 0, n = 160 * WS * WS; k < n; k++) { const x = Math.random() * WORLD, y = Math.random() * WORLD, r = 120 + Math.random() * 260, gr = g.createRadialGradient(x, y, 0, x, y, r), c0 = th.patches[k % th.patches.length]; gr.addColorStop(0, c0); gr.addColorStop(1, c0.replace(/[\d.]+\)$/, "0)")); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); } }   // ✨ the clean look: no stripes, just soft broad patches of lighter and darker green
   else for (let k = -WORLD; k < WORLD * 2; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k + 32, 0); g.lineTo(k + 32 - WORLD, WORLD); g.lineTo(k - WORLD, WORLD); g.fill(); }   // mowed stripes
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const flowers = th.flowerCols || ["#ffe066", "#ffffff", "#ff8fb8", "#ffb347"], stem = th.stem === undefined ? "#3f8a34" : th.stem;
@@ -1277,7 +1344,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   for (const sv of STEAMS) { g.fillStyle = "#3a3a40"; g.beginPath(); g.arc(sv.x, sv.y, (sv.r || 44) * .8, 0, 7); g.fill(); g.strokeStyle = "#8a8d96"; g.lineWidth = 3; for (let k2 = -2; k2 <= 2; k2++) { g.beginPath(); g.moveTo(sv.x - 26, sv.y + k2 * 9); g.lineTo(sv.x + 26, sv.y + k2 * 9); g.stroke(); } }   // 💨 steam vent grates
   for (const ge of GEYSERS) { g.fillStyle = "#2a1a14"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) + 8, 0, 7); g.fill(); g.fillStyle = "#ff6a1a"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) * .7, 0, 7); g.fill(); g.fillStyle = "#ffd060"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) * .35, 0, 7); g.fill(); }   // 🌋 geyser vents
   const blob = (x, y, a, rx, ry) => () => { g.beginPath(); g.ellipse(x, y, rx, ry, a, 0, 7); };
-  for (const p of PADS) {
+  for (const p of PADS) { if (T.theme.skyroad && (p.t === "boost" || p.t === "glide")) continue;   // (the Star Road builds its dash panels in 3D: crisp, glowing)
     if (p.t === "glide") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {   // 🪁 a glider ramp: blue with white chevrons
       const o1 = p.o - p.w / 2 + p.w * c / 10, o2 = o1 + p.w / 10 + .5, chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;
       quad(p.i + j, o1, o2, j < .6 || j > p.len - .6 ? "#1d3f8a" : chev ? "#ffffff" : "#2f8fe8");
@@ -1638,12 +1705,32 @@ async function makeCrowd() {
     jobs.push(cheer(p.name, i, Math.random() < .5 ? -1 : 1, `${p.founder ? "👑" : "⭐"} ${p.name}`)); });
   await Promise.all(jobs);
 }
+// ✨ the clean look's greenery: trees grow in groves (a smooth noise decides where the woods are), never close to the road; pines on the higher
+// ground; grass tufts and little flower clumps along the verges. One small palette of greens, like a real kart circuit.
+let TREES3D = [], TUFTS3D = [];
+function vnoise2(x, y, sd) { const h = (i, j) => { let n = (i * 374761393 + j * 668265263 + sd * 2147483647) | 0; n = (n ^ (n >>> 13)) * 1274126177 | 0; return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (h(i, j) * (1 - u) + h(i + 1, j) * u) * (1 - v) + (h(i, j + 1) * (1 - u) + h(i + 1, j + 1) * u) * v; }
+function greenery(rnd) {
+  const G = T.theme.clean, greens = G.greens || [0x5cb338, 0x76c442, 0x4a9e31, 0x8fd14f, 0x6bbf3d], pinesC = [0x2f7d3a, 0x3a8f44, 0x286e34, 0x44a04c], flowers = G.flowers || [0xffffff, 0xffd21f, 0xff8fb8, 0xe8322f, 0xb48aff];
+  const clear = ROAD / 2 + CURB + (G.clear || 110), want = Math.round((G.trees || 260) * WS * WS / 3);
+  for (let tries = 0; TREES3D.length < want && tries < want * 40; tries++) { const x = 60 + rnd() * (WORLD - 120), y = 60 + rnd() * (WORLD - 120), d = roadDist(x, y);
+    if (d < clear || inLake(x, y) || (GAPS.length && d < 560 && gapAt(nearest(x, y).i))) continue;
+    const f = vnoise2(x / 420, y / 420, 3) * .7 + vnoise2(x / 150, y / 150, 4) * .3; if (f < .45 && rnd() < .9) continue;   // (groves, with open meadow between them)
+    if (TREES3D.some(o => Math.hypot(o.x - x, o.y - y) < 70)) continue;
+    const pine = f > .66 && rnd() < .7, pal = pine ? pinesC : greens; TREES3D.push({ x, y, k: pine ? "pine" : "round", s: .8 + rnd() * .7, r: rnd() * 6.28, c: pal[Math.floor(rnd() * pal.length)], c2: pal[Math.floor(rnd() * pal.length)] }); }
+  for (let k = 0, n = Math.round((G.tufts || 1400) * WS * WS / 3); k < n; k++) { const i = Math.floor(rnd() * N), sd = rnd() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 18 + rnd() * rnd() * 260));
+    if (roadDist(x, y) < ROAD / 2 + CURB + 10 || inLake(x, y)) continue; const fl = vnoise2(x / 90, y / 90, 9) > .62;
+    TUFTS3D.push({ x, y, r: rnd() * 6.28, c: greens[Math.floor(rnd() * greens.length)], f: fl ? flowers[Math.floor(rnd() * flowers.length)] : 0 }); }
+  for (let k = 0, got = 0; got < (G.mobs ?? 10) && k < 400; k++) { const x = 80 + rnd() * (WORLD - 160), y = 80 + rnd() * (WORLD - 160), d = roadDist(x, y);   // a few of the map's creatures out in the open meadows (never by the road)
+    if (d < ROAD / 2 + CURB + 140 || inLake(x, y) || vnoise2(x / 420, y / 420, 3) > .45 || !T.mobs.length) continue; OBJS.push({ x, y, k: T.mobs[got % T.mobs.length], s: .45, r: 10, mob: true }); got++; }
+}
 function placeObjects() {
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   OBJS = [];
   const push = (x, y, k, sc, r) => OBJS.push({ x, y, k, s: sc != null ? sc : PROPS[k][0], r: r != null ? r : PROPS[k][1] });
-  const CLEAN = PTS[0].length > 2;
-  for (let s = 20; s < N; s += CLEAN ? 46 : 16) {
+  const CLEAN = PTS[0].length > 2; TREES3D = []; TUFTS3D = [];
+  if (T.theme.clean && !T.theme.skyroad) greenery(rnd);   // ✨ the clean look: 3D groves and roadside tufts instead of pictures scattered everywhere
+  for (let s = 20; s < (T.theme.clean ? 0 : N); s += CLEAN ? 46 : 16) {
     for (const side of [-1, 1]) {
       if (rnd() < (CLEAN ? .45 : .22)) continue;
       const a = tangent(s), off = ROAD / 2 + CURB + (CLEAN ? 70 + rnd() * 110 : 18 + rnd() * 60), x = PTS[s][0] - Math.sin(a) * off * side, y = PTS[s][1] + Math.cos(a) * off * side;
@@ -1653,7 +1740,7 @@ function placeObjects() {
     }
   }
   T.extraFn(push);
-  placeStart(push);   // the FAMILY arch and balloons on every map
+  if (!T.theme.noArch) placeStart(push);   // the FAMILY arch and balloons on every map (the Star Road has its own golden gate, in 3D)
   { const li = OPEN ? START_I : 0, s0 = PTS[li];   // a map's own gate at the start line moves to halfway round, so the two arches don't stand together
     for (const o of OBJS) if (!o.r && !/^(arch|balloon|mk_|pp_|ice_)/.test(o.k) && Math.hypot(o.x - s0[0], o.y - s0[1]) < 140 && nearest(o.x, o.y).d < 30) {
       const [x, y] = at(OPEN ? Math.round(START_I + (N - FIN_OFF - START_I) * .5) : Math.round(N * .5), 0); o.x = x; o.y = y; } }
@@ -1667,7 +1754,7 @@ function placeObjects() {
     return !touching(o);
   });
   if (GAPS.length) OBJS = OBJS.filter(o => { if (o.ri != null || o.stomp) return true; const m = nearest(o.x, o.y), g = gapAt(m.i); return !(g && m.d < (g.open ? ROAD : 520)); });   // (the cliffs' own crags and the Yetis on them stay)   // nothing stands over a gorge or pond
-  if (T.far.length) for (let k = 0; k < Math.round((CLEAN ? 60 : 170) * WS * WS); k++) {   // woods and houses further out (as many per acre on a bigger map; none out in space)
+  if (T.far.length && !T.theme.clean) for (let k = 0; k < Math.round((CLEAN ? 60 : 170) * WS * WS); k++) {   // woods and houses further out (as many per acre on a bigger map; none out in space)
     const x = 30 + rnd() * (WORLD - 60), y = 30 + rnd() * (WORLD - 60), d = roadDist(x, y);
     if (d < ROAD / 2 + (CLEAN ? 260 : 130) || inLake(x, y) || (GAPS.length && d < 560 && gapAt(nearest(x, y).i))) continue;
     const kk = T.far[Math.floor(rnd() * T.far.length)];
@@ -1709,11 +1796,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, dashPads: T.theme.skyroad ? PADS.filter(p => p.t === "boost" || p.t === "glide") : [], rollers: ROLLERS, rollerAt, trees3d: TREES3D, tufts3d: TUFTS3D, belts: BELTS, trains: TRAINS, trainAt, tdrops: TDROPS, tdropAt, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=165"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=190"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2147,6 +2234,7 @@ function rivalStep(r, dt, tt) {
   for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
   for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
   for (const b of HEDGES) if (b.i != null) { const di = (b.i - r.idx + N) % N; if (di > 0 && di < 32 && Math.abs(r.lane - b.o) < b.w / 2 + 24) r.lane = b.o > 0 ? b.o - b.w / 2 - 40 : b.o < 0 ? b.o + b.w / 2 + 40 : (r.lane >= 0 ? b.w / 2 + 40 : -b.w / 2 - 40); }   // 🌿 round the hedges
+  for (const d of TDROPS) { const di = (d.i - r.idx + N) % N, q = tdropAt(d, performance.now() / 1000); if (di > 0 && di < 40 && (q.solid || q.p > .2) && Math.abs(r.lane - (d.o || 0)) < 66) r.lane = (d.o || 0) + ((d.o || 0) > 0 ? -1 : (d.o || 0) < 0 ? 1 : (r.lane >= 0 ? 1 : -1)) * 80; }   // 🧱 round the toy bricks
   for (const t of THWOMPS) if (t.i != null) { const di = (t.i - r.idx + N) % N; if (di > 0 && di < 30 && Math.abs(r.lane - (t.o || 0)) < 60) r.lane = (t.o || 0) + (r.lane >= (t.o || 0) ? 1 : -1) * 75; }   // 🗿 the computer racers drive round the Thwomps
   for (const h of HOLES) if (!h.lap || r.lap + 1 >= h.lap) { const di = (h.i - r.idx + N) % N; if (di > 0 && di < 60 && Math.abs(r.lane - (h.o || 0)) < h.r + 22) { const ho = h.o || 0, sd = Math.abs(ho) > 20 ? -Math.sign(ho) : (r.lane >= ho ? 1 : -1); r.lane = ho + sd * (h.r + (Math.abs(ho) > 20 ? 30 : 20)); } }   // 🕳️ and round holes (always round the side that stays on the road)
   r.lane = Math.max(-ROAD / 2 + 14, Math.min(ROAD / 2 - 14, r.lane));
@@ -2260,6 +2348,33 @@ function selfGhostStep() {
   if (t > 3 && !(K.chill > 0) && !(now < (SELF.cd || 0)) && Math.hypot(K.x - q[1], K.y - q[2]) < 24 && Math.abs((K.z || 0) - q[4]) < 30) { K.chill = 1.3; K.v *= .55; SELF.cd = now + 10; pop("🥶 Your ghost passed through you!", "#bfe6ff", true); tone(300, .4, "sine", .05, 120); }
 }
 // 🌋 a lava geyser (the same clock for everyone): it rumbles, then erupts for about a second; on the last lap it goes twice as often
+// 🏭 the Toy Factory. Conveyor belts (dir 1 carries you on faster, -1 drags you back, side: shoves you sideways); 🚂 the toy train's level crossing
+// (the barriers come down and the lights flash, then the train trundles across); 🧱 giant toy bricks the cranes drop onto the road (a shadow first,
+// then it lands - squashing anyone under it - and sits there as a solid block for a few seconds before it's lifted away)
+function trainAt(t, now) { const p = (((now + (t.ph || 0)) % t.T) + t.T) % t.T / t.T, R = (t.rail || 1000) + 60; return { p, down: p > .5 && p < .95, flash: p > .48 && p < .95, s: p < .6 || p > .9 ? null : -R + (p - .6) / .3 * 2 * R }; }   // s: how far along the crossing the train's middle is
+function tdropAt(d, now) { const p = (((now + (d.ph || 0)) % d.T) + d.T) % d.T / d.T; return { p, z: p < .22 ? 210 : p < .3 ? 210 * (1 - ((p - .22) / .08) ** 2) : p < .85 ? 0 : (p - .85) / .15 * 210, warn: p < .3, solid: p >= .3 && p < .85 }; }
+function toyStep(dt) {
+  if (!BELTS.length && !TRAINS.length && !TDROPS.length) return; const now = performance.now() / 1000, rs = racers();
+  for (const r of rs) { if (r.gone || r.rescue > 0) continue; const air = r.z > 0;
+    for (const b of BELTS) { if (air || r.idx < b.a || r.idx > b.b) continue; const i = Math.round(r.idx), [cx, cy] = at(i, 0), a = tangent(i), lat = -(r.x - cx) * Math.sin(a) + (r.y - cy) * Math.cos(a); if (Math.abs(lat - (b.o || 0)) > (b.w || 80) / 2) continue;
+      if (b.side) { r.x += -Math.sin(a) * b.side * 95 * dt; r.y += Math.cos(a) * b.side * 95 * dt; }
+      else if (b.dir > 0) r.v = Math.min(Math.max(r.v, 0) + 300 * dt, VMAX * 1.3); else r.v = Math.max(r.v - 190 * dt, 130);
+      if (r === K && !(K.beltT > now)) { K.beltT = now + 1.2; if (b.dir > 0 && !b.side) pop("⏩ Conveyor!", "#7fe3ff"); } }
+    for (const t of TRAINS) { const q = trainAt(t, now); if (q.s == null || air) continue; const dx = r.x - t.x, dy = r.y - t.y, along = dx * Math.cos(t.a) + dy * Math.sin(t.a), lat = dx * t.nx + dy * t.ny;
+      if (Math.abs(along) < 32 && Math.abs(lat - q.s) < t.len / 2 && !(r.trainT > now)) { r.trainT = now + 1.5; r.v = -60; if (r === K) { spinOut("🚂 Hit by the toy train!"); K.shake = .4; } else hit(r); } }
+    for (const d of TDROPS) { const q = tdropAt(d, now), c = Math.cos(d.a), sn = Math.sin(d.a), dx = r.x - d.x, dy = r.y - d.y, u = dx * c + dy * sn, v = -dx * sn + dy * c, hw = 42, hd = 42;
+      if (Math.abs(u) > hw + 12 || Math.abs(v) > hd + 12) continue;
+      if (q.solid && q.p < .32 && r.dropHit !== Math.floor((now + d.ph) / d.T)) { r.dropHit = Math.floor((now + d.ph) / d.T); r.squash = 1.1; r.v = 0; if (r === K) { spinOut("🧱 Squashed by a toy brick!"); K.shake = .4; } else hit(r); continue; }
+      if (q.solid && r.z < 50) { const pu = hw + 12 - Math.abs(u), pv = hd + 12 - Math.abs(v), nu = pu < pv ? Math.sign(u) || 1 : 0, nv = pu < pv ? 0 : Math.sign(v) || 1, nx = nu * c - nv * sn, ny = nu * sn + nv * c; r.x += nx * Math.min(pu, pv); r.y += ny * Math.min(pu, pv);
+        if (!(r.hedgeT > performance.now())) { r.hedgeT = performance.now() + 500; r.v = Math.min(r.v, 150); if (r === K) { bumpSound(); K.shake = Math.max(K.shake, .15); } } } } }
+  for (const r of RIV) if (!r.gone && !r.remote) for (const t of TRAINS) { const q = trainAt(t, now), di = (t.i - r.idx + N) % N; if (q.down && q.p < .88 && di > 2 && di < 34) r.v = Math.min(r.v, 25 + di * 5); }   // the computer racers wait at the barrier
+  if (K) for (const t of TRAINS) { const q = trainAt(t, now); if (q.flash && Math.hypot(K.x - t.x, K.y - t.y) < 900 && !(t.bell > now)) { t.bell = now + .45; tone(1250, .12, "triangle", .025); } }   // ding ding ding
+}
+// 💧 giant slimes bouncing along the road (the Star Road's answer to the rolling Chain Chomps): each runs its stretch over and over, weaving a little;
+// it only squashes you when it lands on you (between bounces you can slip underneath)
+function rollerAt(b, now) { const span = b.b - b.a, f = (((now * (b.sp || 150) / SPC + (b.ph || 0) * span) % span) + span) % span, i = b.a + f, [x, y] = at(i, (b.o || 0) + Math.sin(now * .8 + (b.ph || 0) * 6) * 40), hop = Math.abs(Math.sin(now * 3.2 + (b.ph || 0) * 9)); return { x, y, i, z: hop * 70, a: tangent(Math.round(i)) }; }
+function rollerStep() { if (!ROLLERS.length || !K) return; const now = performance.now() / 1000;
+  for (const b of ROLLERS) { const q = rollerAt(b, now); if (q.z > 22) continue; for (const r of racers()) { if (r.gone || r.rescue > 0 || r.z > 20 || Math.abs(r.idx - q.i) > 20 || Math.hypot(r.x - q.x, r.y - q.y) > 44 || r.slimeT > now) continue; r.slimeT = now + 1.4; r.squash = 1.1; r.v *= .2; if (r === K) { spinOut("💧 Squashed by a giant slime!"); K.shake = .35; } else hit(r); } } }
 // 🖐 Zakum's arms: each rises out of the lava beside the road (a red stripe flashes across the road where it will land), slams down across it, lies there a
 // moment (drive over it and you bounce), then sinks back. On the last lap Zakum is awake and they come twice as fast.
 const zakAwake = () => !!K && lapNow() >= LAPS && state === "race";
@@ -2378,7 +2493,7 @@ function stompStep(tt) {   // 🍄 the last lap: Mushmom (or Ice Valley's Yetis)
       for (const g of GAPS) for (const c of g.caps) c.squash = Math.max(c.squash || 0, .7); } }
 }
 function worldStep(dt, tt) {
-  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt); mineStep(dt, tt); heatStep(dt); quakeStep(dt); stampStep(dt); armStep(dt); selfGhostStep(); if (K && K.chill > 0) K.chill -= dt;
+  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt); mineStep(dt, tt); heatStep(dt); quakeStep(dt); stampStep(dt); armStep(dt); toyStep(dt); rollerStep(); selfGhostStep(); if (K && K.chill > 0) K.chill -= dt;
   if (K && state === "race" && !(K.z > 0) && flooded(K)) { K.v = Math.min(K.v, 210); if (!K.wet) { K.wet = 1; pop("🌊 Flooded!", "#7ab8ff"); } } else if (K) K.wet = 0;
   if (thunderFx > 0) thunderFx -= dt;
   if (LAVA && state === "race") lavaStep(dt);
@@ -2454,7 +2569,7 @@ function worldStep(dt, tt) {
   for (let i = HORNS.length - 1; i >= 0; i--) if ((HORNS[i].t += dt) > .6) HORNS.splice(i, 1);
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {   // karts bump each other
     const a = all[i], b = all[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), BR = PTS[0].length > 2 ? 21 : 15;   // 3D karts are bigger: they touch sooner
-    if (d > 0 && d < BR && Math.abs(a.z - b.z) < 12) {
+    if (d > 0 && d < BR && Math.abs(a.z - b.z) < 12 && !(T.theme.skyroad && Math.abs(PTS[Math.floor(a.idx) % N][2] - PTS[Math.floor(b.idx) % N][2]) > 50)) {   // (not across a sky road's crossing: one is up on the bridge)
       const push = (BR - d) / 2, nx = dx / d, ny = dy / d;
       if ((a.remote && b.remote) || a.noBump || b.noBump) continue;   // two other players' karts (or the test copy)
       if (GAPS.length && ((a.hopUntil && performance.now() < a.hopUntil + 150) || (b.hopUntil && performance.now() < b.hopUntil + 150))) continue;   // nobody gets knocked off a mushroom bounce: their own games sort it out
@@ -2485,7 +2600,7 @@ const DEV = location.hostname === "localhost" ? (window.__kart = { auto: false, 
   },
   park: (x, y) => { const i = I(x, y), a = tangent(i), [px, py] = at(i, 0); Object.assign(K, { x: px, y: py, a, idx: i, v: 0, z: 0, vz: 0, ma: a }); },
   get PIGS() { return PIGS; }, get KING() { return KING; }, get ALT() { return ALT; }, get AN() { return AN; }, get TRACK() { return TRACK_KEY; }, I, at, altAt, loadTrack,
-  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, give: it => setItem(K, it), setMode: m => { mode = m; drawMode(); drawTrack(); }, use: (r, it) => { r = r || K; if (it) setItem(r, it); useItem(r); }, roll: (r, bot) => rollItem(r || K, bot), get SHOTS2() { return { SHOTS, BSHELLS, HORNS, DROPS, BOMBS }; }, nav: (...a) => nav(...a), nearest: (...a) => nearest(...a), get FORKS() { return { A: FORK_A, B: FORK_B, AN, ALT, PTS, LAPS, OPEN, START_I, FIN_OFF }; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
+  get tex() { return tex; }, get MP() { return MP; }, redrawNext: () => mpRedrawNext(), get IMG() { return IMG; }, get OBJS() { return OBJS; }, get LAVA() { return LAVA; }, get T() { return T; }, get td() { return trackData(); }, step: d => step(d), get state() { return state; }, setTrack: k => { track = k; cup = cupOf(k); drawTrack(); }, setQ: q => { QMAX = q; fit(); }, get CROWD() { return CROWD; }, boomAt: (d, t) => { const e = { x: K.x + Math.cos(K.a) * d, y: K.y + Math.sin(K.a) * d, t, frozen: true, debris: Array.from({ length: 14 }, () => ({ a: Math.random() * 6.28, v: 60 + Math.random() * 90, vz: 120 + Math.random() * 160, s: 2 + Math.random() * 3, c: "#6b4426" })) }; BOOMS.push(e); return e; }, get BOOMS() { return BOOMS; }, get SHOTS() { return SHOTS; }, get HAZ() { return HAZ; }, get THWOMPS() { return THWOMPS; }, give: it => setItem(K, it), setMode: m => { mode = m; drawMode(); drawTrack(); }, use: (r, it) => { r = r || K; if (it) setItem(r, it); useItem(r); }, roll: (r, bot) => rollItem(r || K, bot), get SHOTS2() { return { SHOTS, BSHELLS, HORNS, DROPS, BOMBS }; }, nav: (...a) => nav(...a), nearest: (...a) => nearest(...a), get FORKS() { return { A: FORK_A, B: FORK_B, AN, ALT, PTS, LAPS, OPEN, START_I, FIN_OFF }; }, get FORK() { return { a: FORK_A, b: FORK_B, AN, N, SPC }; }, autoFork: f => autoFork(f || {}), findShape: (kind, w) => { shapeCut.search = true; let best = null; const lo = OPEN ? START_I + 30 : 25, hi = OPEN ? N - FIN_OFF - 30 : N - 25;
     for (let a = lo; a < hi; a += 3) for (let b = a + 24; b < Math.min(hi, a + Math.round(N * .45)); b += 3) {
       const A = PTS[a], Bp = PTS[b], dl = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), dt = (b - a) * SPC; if (dl < 260 || dl > 1100 || dt - dl < 450 || dt - dl > 1100) continue;
       const pts = shapeCut(a, b, [], w, kind); if (!pts) continue; const score = shapeCut.k * 2000 - Math.abs(dt - dl - 750); if (!best || score > best.score) best = { a, b, pts: pts.map(p => p.map(Math.round)), score, k: shapeCut.k }; }
@@ -3421,7 +3536,7 @@ let wasDark = false;
 function hud() {
   const k = K;
   const dkNow = darkness() > 0; if (dkNow && !wasDark) { tone(140, .6, "sine", .08, 50); noiseHit(400, .5, .03, .7, 120); } wasDark = dkNow;   // 🌙 lights out: a low whoom
-  $k("#kLap").textContent = state === "menu" ? "" : OPEN ? (T.sections ? `SECTION ${Math.min(T.sections, 1 + Math.floor(Math.max(0, k.idx - START_I) / (N - FIN_OFF - START_I) * T.sections))}/${T.sections}` : `🏔️ ${Math.min(100, Math.round(Math.max(0, k.idx - START_I) / (N - FIN_OFF - START_I) * 100))}%`) : `LAP ${Math.min(k.lap + 1, LAPS)}/${LAPS}`;
+  $k("#kLap").textContent = state === "menu" ? "" : OPEN ? (T.sections ? `SECTION ${Math.min(T.sections, 1 + Math.floor(Math.max(0, k.idx - START_I) / (N - FIN_OFF - START_I) * T.sections))}/${T.sections}` : `🏔️ ${Math.min(100, Math.round(Math.max(0, k.idx - START_I) / (N - FIN_OFF - START_I) * 100))}%`) : T.sections ? `SECTION ${k.lap >= LAPS ? T.sections : Math.min(T.sections, 1 + Math.floor((((k.idx - START_I) % N + N) % N) / N * T.sections))}/${T.sections}` : `LAP ${Math.min(k.lap + 1, LAPS)}/${LAPS}`;   // (one long lap in sections, like Mario Kart's long courses)
   $k("#kTime").textContent = state === "menu" ? "" : fmt(k.t);
   const lavaGap = LAVA && state === "race" && !k.done ? Math.max(0, Math.round((k.idx - LAVA.i) * SPC / 10)) : null;
   $k("#kBest").textContent = lavaGap != null && LAVA.t > 1 ? `🔥 Lava ${lavaGap} m behind` : mode === "tt" ? (best && best.race ? `Best ${fmt(best.race)}` : "") : mode === "gp" && gp ? `Cup race ${gp.race}/${GP_RACES}` : T ? T.name : "";
@@ -3589,7 +3704,7 @@ function posMsg(r, now) {
 }
 // ⏳ after a new track loads, the screen stays on "Waiting For Other Players" while the 3D world builds and its pictures reach the graphics card
 // (a few dozen frames drawn behind the cover, at least 1.5 s, at most 8 s), so nobody sees half-loaded textures pop in
-async function settle(alive) { const t0 = performance.now(); let n = 0;
+async function settle(alive) { const t0 = performance.now(); let n = 0; if (document.hidden) return;   // (a hidden tab draws no frames: don't wait for them)
   await new Promise(r => { const f = () => { n++; const dt = performance.now() - t0; if (!alive() || (n > 45 && dt > 1500) || dt > 8000) r(); else requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
 let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
 async function start() {
