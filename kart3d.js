@@ -619,7 +619,7 @@ export function create(A) {
       const gl = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ map: glowDisc(), color: 0xff6a1a, transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false })); gl.rotation.x = -Math.PI / 2; gl.scale.set(L.rx * 1.6, L.ry * 1.6, 1); gl.position.set(L.cx, lv + 3, L.cy); scene.add(gl); roadObjs.push(gl);
       lavaLk = { tx, m, lv }; }
     // ⭕ boost rings hanging in the air over a glider jump: fly through one for a boost
-    for (const rg of t.rings || []) { const m = new THREE.Mesh(new THREE.TorusGeometry(rg.r || 40, 5, 10, 36), new THREE.MeshBasicMaterial({ color: 0xffc83a }));
+    for (const rg of t.theme.skyroad ? [] : t.rings || []) { const m = new THREE.Mesh(new THREE.TorusGeometry(rg.r || 40, 5, 10, 36), new THREE.MeshBasicMaterial({ color: 0xffc83a }));   // (the Star Road draws its own: the star inside a gold ring, standing on the road)
       const glow = new THREE.Mesh(new THREE.TorusGeometry((rg.r || 40) - 6, 2, 8, 36), new THREE.MeshBasicMaterial({ color: 0xfff4b8 }));
       for (const q of [m, glow]) { q.position.set(rg.x, h(rg.x, rg.y) + rg.z, rg.y); q.rotation.y = -rg.a + Math.PI / 2; scene.add(q); roadObjs.push(q); } }
     // ✈ the plane at the top of the mountain (you start just out of its back door)
@@ -1811,10 +1811,13 @@ export function create(A) {
       m.position.set(x, base - 150 + rnd() * 300, z); m.rotation.set(rnd() * .6 - .3, rnd() * 6, rnd() * .6 - .3); grp.add(m); coils.push({ m, sp: (rnd() - .5) * .3 }); }
     const meds = [];
     for (const [i0, zz, dz, rr, oo] of t.frames && t.pmk ? t.pmk.rings : [.1, .93].map(fr => [Math.round(n * fr), null])) { const i = i0, a = ang(i), [x, z] = P[i], R = rr || t.ROAD / 2 + 110, g = new THREE.Group(), wm = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });   // 🌟 the giant glowing star rings you drive through (and the smaller ones you glide through)
-      g.add(new THREE.Mesh(new THREE.TorusGeometry(R, Math.max(2.6, R * .045), 10, 72), wm)); const pts = starShape(R * .78, R * .36).getPoints().map(p => new THREE.Vector3(p.x, p.y, 0)); g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, "catmullrom", 0), 200, Math.max(1.8, R * .03), 6, true), wm));   // (sized with the ring: kart-sized rings get thin bands)
+      g.add(new THREE.Mesh(new THREE.TorusGeometry(R, Math.max(2.6, R * .045), 10, 72), new THREE.MeshBasicMaterial({ color: 0xffc83a }))); g.add(new THREE.Mesh(new THREE.TorusGeometry(R - Math.max(2.6, R * .045) * 1.6, Math.max(1, R * .018), 8, 72), new THREE.MeshBasicMaterial({ color: 0xfff4b8 })));   // the gold ring, with a thin pale ring just inside it
+      const pts = starShape(R * .72, R * .33).getPoints().map(p => new THREE.Vector3(p.x, p.y, 0)); g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, "catmullrom", 0), 200, Math.max(1.4, R * .028), 6, true), wm));   // the white star inside it (sized with the ring: kart-sized rings get thin bands)
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xfff0c8, transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(R * 3, R * 3, 1); g.add(halo);
-      if (zz == null && t.frames && (oo || dz != null)) { const v = frameV(frameAt(t, i), oo || 0, dz != null ? dz : R * .82); g.position.set(v[0], v[1], v[2]); } else g.position.set(x, zz != null ? zz : RE[i] + (dz != null ? dz : R * .82), z);   // (on a measured road: sideways and up along the road's own frame)
-      g.rotation.y = -a + Math.PI / 2; grp.add(g); }
+      if (zz == null && t.frames && (oo || dz != null)) { const F = frameAt(t, i), v = frameV(F, oo || 0, dz != null ? dz : R * .82), tv = q => new THREE.Vector3(q[0], q[2], q[1]); g.position.set(v[0], v[1], v[2]);   // (on a measured road: sideways and up along the road's own frame, and standing square on it: 90 degrees to the panel beneath)
+        g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(tv(F.b), tv(F.nrm), tv(F.t).negate())); }
+      else { g.position.set(x, zz != null ? zz : RE[i] + (dz != null ? dz : R * .82), z); g.rotation.y = -a + Math.PI / 2; }
+      grp.add(g); }
     for (let k = 0, tries = 0; k < 0 && tries < 400; tries++) { const i = Math.floor(rnd() * n), a = ang(i), sd2 = rnd() < .5 ? -1 : 1, o = sd2 * (t.ROAD / 2 + 260 + rnd() * 300), x = P[i][0] - Math.sin(a) * o, z = P[i][1] + Math.cos(a) * o; if (!far(x, z, 200)) continue; k++;
       const g = new THREE.Group(), ring = new THREE.Mesh(new THREE.TorusGeometry(110, 7, 10, 48), new THREE.MeshBasicMaterial({ color: 0xfff2c8 })), st = new THREE.Mesh(new THREE.ShapeGeometry(starShape(80, 34)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, side: THREE.DoubleSide }));
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xfff0c0, transparent: true, opacity: .28, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(300, 300, 1);
