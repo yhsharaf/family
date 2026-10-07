@@ -395,9 +395,15 @@ export function create(A) {
         const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
         const m = new THREE.Mesh(geo, mat); scene.add(m); roadObjs.push(m); };
       const R0 = cv.half || t.ROAD / 2 + t.CURB + 14, HTR = cv.half ? .85 : .72, EXT = cv.half ? .2 : 0;   // (the crystal cave is a big one)
-      shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, color: t.theme.cave ? 0xd8b070 : 0xffffff, emissive: t.theme.cave ? 0x3a2408 : 0x2a2630 }) : cv.crystal ? new THREE.MeshLambertMaterial({ map: caveTex(), color: 0x5a6fa8, side: THREE.DoubleSide, emissive: 0x0a1838 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), HTR, EXT);   // (the crystal cave is dark inside: its glowing crystals light it)   // the crystal (or rock) inside
-      shell(R0 + 16, cv.crystal ? new THREE.MeshLambertMaterial({ color: 0xbfdcff, side: THREE.DoubleSide, emissive: 0x2a4a7a, flatShading: true }) : new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : 0x2a3a50 }), HTR + .08, EXT);
+      shell(R0, cv.star ? new THREE.MeshBasicMaterial({ map: starTex(), side: THREE.DoubleSide }) : cv.temple ? new THREE.MeshLambertMaterial({ map: goldTex(), side: THREE.DoubleSide, emissive: 0x3a2a10 }) : cv.rock ? new THREE.MeshLambertMaterial({ map: rockTex(), side: THREE.DoubleSide, color: t.theme.cave ? 0xd8b070 : cv.warm ? 0xb08870 : 0xffffff, emissive: t.theme.cave ? 0x3a2408 : cv.warm ? 0x2a120a : 0x2a2630 }) : cv.crystal ? new THREE.MeshLambertMaterial({ map: caveTex(), color: 0x5a6fa8, side: THREE.DoubleSide, emissive: 0x0a1838 }) : new THREE.MeshLambertMaterial({ map: caveTex(), side: THREE.DoubleSide, emissive: 0x1d4f7a }), HTR, EXT);   // (the crystal cave is dark inside: its glowing crystals light it)   // the crystal (or rock) inside
+      shell(R0 + 16, cv.crystal ? new THREE.MeshLambertMaterial({ color: 0xbfdcff, side: THREE.DoubleSide, emissive: 0x2a4a7a, flatShading: true }) : new THREE.MeshLambertMaterial({ color: cv.temple ? 0xb89a5a : cv.mound != null ? cv.mound : 0xeef5fc, side: THREE.DoubleSide, emissive: cv.temple ? 0x2a2010 : cv.warm ? 0x1a0e08 : 0x2a3a50 }), HTR + .08, EXT);
       if (cv.crystal) crystalCave(t, cv, R0, R0 * HTR);                // a mound of snow over it
+      if (cv.timber) { const wood = new THREE.MeshLambertMaterial({ color: 0x8a5a30, emissive: 0x2a1406, flatShading: true }), lamp = new THREE.MeshBasicMaterial({ color: 0xffc860 }), ox = R0 * .74, ph = R0 * HTR * .66;   // ⛏ timber mine supports every few metres, with a lamp hanging from every other one
+        for (let i = cv.a + 6, n = 0; i < cv.b - 4; i += 12, n++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], p0 = t.PTS[(i - 2 + t.N) % t.N], a = Math.atan2(q[1] - p0[1], q[0] - p0[0]), base = RE[i % t.N], g = new THREE.Group(); g.position.set(p[0], base - 6, p[1]); g.rotation.y = -a;
+          for (const sd of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(12, ph + 10, 12), wood); post.position.set(0, (ph + 10) / 2, sd * ox); g.add(post); const br = new THREE.Mesh(new THREE.BoxGeometry(8, 44, 8), wood); br.position.set(0, ph - 14, sd * (ox - 18)); br.rotation.x = sd * .8; g.add(br); }
+          const beam = new THREE.Mesh(new THREE.BoxGeometry(14, 12, ox * 2 + 16), wood); beam.position.y = ph + 8; g.add(beam);
+          if (n % 2 === 0) { const l = new THREE.Mesh(new THREE.SphereGeometry(5, 8, 6), lamp); l.position.y = ph - 8; g.add(l); const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffa040, transparent: true, opacity: .7, blending: THREE.AdditiveBlending, depthWrite: false })); gl.scale.set(90, 90, 1); gl.position.y = ph - 8; g.add(gl); }
+          scene.add(g); roadObjs.push(g); } }
       if (cv.rock || cv.temple || cv.star || cv.crystal) continue;
       const RP = [], RI = [];   // the red rail (one side, like Double Dash!!)
       for (let i = cv.a, r = 0; i <= cv.b; i += 2, r++) { const p = t.PTS[i % t.N], q = t.PTS[(i + 2) % t.N], a = Math.atan2(q[1] - p[1], q[0] - p[0]), o = t.ROAD / 2 + t.CURB + 6, x = p[0] - Math.sin(a) * o, y = p[1] + Math.cos(a) * o, gz = h(x, y);
@@ -438,10 +444,21 @@ export function create(A) {
       for (const [x, z] of [[-13, -13], [13, -13], [-13, 13], [13, 13]]) { const w = new THREE.Mesh(CYL, iron); w.scale.set(5, 3, 5); w.rotation.x = Math.PI / 2; w.position.set(x, 5, z); g.add(w); }
       scene.add(g); roadObjs.push(g); cartM.push({ c, g }); }
     thw = []; thFn = t.thz || null;
-    for (const th of t.thwomps || []) { const fm = new THREE.MeshLambertMaterial({ map: faceTex(), color: th.col || 0xffffff, emissive: th.col ? 0x202020 : 0 }), top = new THREE.MeshLambertMaterial({ color: th.col || 0x7a7f8a });
+    for (const th of t.thwomps || []) { if (th.golem) { const m = fireGolemModel(); m.rotation.y = -(th.ra || 0) + Math.PI; scene.add(m); roadObjs.push(m);   // 🔥 a Fire Golem instead of a stone block (it faces the karts coming at it)
+        const sh = new THREE.Mesh(new THREE.CircleGeometry(40, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; scene.add(sh); roadObjs.push(sh);
+        const ring = new THREE.Mesh(new THREE.RingGeometry(.82, 1, 40), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; scene.add(ring); roadObjs.push(ring);
+        thw.push({ th, m, sh, ring, g: h(th.x, th.y), golem: true }); continue; }
+      const fm = new THREE.MeshLambertMaterial({ map: faceTex(), color: th.col || 0xffffff, emissive: th.col ? 0x202020 : 0 }), top = new THREE.MeshLambertMaterial({ color: th.col || 0x7a7f8a });
       const m = new THREE.Mesh(BOX, [fm, fm, top, top, fm, fm]); m.scale.set(74, 62, 74); m.rotation.y = -(th.a || 0); scene.add(m); roadObjs.push(m);
       const sh = new THREE.Mesh(new THREE.CircleGeometry(40, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; scene.add(sh); roadObjs.push(sh);
       thw.push({ th, m, sh, g: h(th.x, th.y) }); }
+    buildGeysers(t); buildZakum(t); awakeK = 0; lavaLk = null;
+    if (t.lake && t.lake.kind === "lava") { const L = t.lake, hs = []; for (let a = 0; a < 6.283; a += .2) for (const r of [.3, .6, .9]) hs.push(h(L.cx + Math.cos(a) * L.rx * r, L.cy + Math.sin(a) * L.ry * r)); hs.sort((p, q) => p - q);   // 🔥 a lake of glowing lava filling the hollow (the banks stand out of it as rock)
+      let rmin = 1e9; for (let i = 0; i < t.N; i++) if (((t.PTS[i][0] - L.cx) / L.rx) ** 2 + ((t.PTS[i][1] - L.cy) / L.ry) ** 2 < 1.2) rmin = Math.min(rmin, RE[i]);   // (well below the bridge)
+      const lv = L.level ?? Math.min(hs[Math.floor(hs.length * .3)] + 12, rmin - 55), tx = lavaSeaTex();
+      tx.repeat.set(L.rx / 160, L.ry / 160); const m = new THREE.Mesh(new THREE.CircleGeometry(1, 64), new THREE.MeshBasicMaterial({ map: tx })); m.rotation.x = -Math.PI / 2; m.scale.set(L.rx * 1.25, L.ry * 1.25, 1); m.position.set(L.cx, lv, L.cy); scene.add(m); roadObjs.push(m);
+      const gl = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ map: glowDisc(), color: 0xff6a1a, transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false })); gl.rotation.x = -Math.PI / 2; gl.scale.set(L.rx * 1.6, L.ry * 1.6, 1); gl.position.set(L.cx, lv + 3, L.cy); scene.add(gl); roadObjs.push(gl);
+      lavaLk = { tx, m, lv }; }
     // ⭕ boost rings hanging in the air over a glider jump: fly through one for a boost
     for (const rg of t.rings || []) { const m = new THREE.Mesh(new THREE.TorusGeometry(rg.r || 40, 5, 10, 36), new THREE.MeshBasicMaterial({ color: 0xffc83a }));
       const glow = new THREE.Mesh(new THREE.TorusGeometry((rg.r || 40) - 6, 2, 8, 36), new THREE.MeshBasicMaterial({ color: 0xfff4b8 }));
@@ -459,7 +476,7 @@ export function create(A) {
     if (t.AN > 1) { const st = t.ALT_STYLE === "planks" ? "planks" : RS; ribbon(t.ALT, false, t.ALT_ROAD, roadMat(surfaceTex(st, th, t.ALT_ROAD), decal), cm, .3, [], altBare); }
     // 🏰 buildings: walls with rows of windows and a pitched roof (Pets Park's mansion)
     fountM = t.lake && t.lake.kind === "fountain" ? buildFountain(t.lake) : null;
-    balloonM = []; flowM = []; golemM = []; for (const o of t.props3d || []) buildProp(o);
+    balloonM = []; flowM = []; golemM = []; flameM = []; for (const o of t.props3d || []) buildProp(o);
     bridgeG = (t.gaps || []).filter(g => g.kind === "bridge"); buildRopeBridges(t);
     gondM = []; if (t.cave) buildCave(t); if (t.trunk) buildTrunk(t.trunk); if (t.temple) buildTemple(t, t.temple); if (t.cable) buildCableCar(t.cable); for (const f of t.icefalls || []) buildIcefall(f); for (const l of t.ledges || []) if (l.side && l.wall) buildCliffWall(t, l);
     buildSnowWorld(t); auroraM = []; if (t.aurora) buildAurora(t); if (t.fairy) buildFairy(t.fairy, t);
@@ -503,6 +520,7 @@ export function create(A) {
       // what's down there: drifting mist in the gorge, water in the pond (not under an open drop or a bridge: those have their own ground)
       if (g.open || g.kind === "bridge") continue;
       const p0 = g.caps[0] || { x: t.PTS[g.a % t.N][0], y: t.PTS[g.a % t.N][1] }, p1 = g.caps[g.caps.length - 1] || { x: t.PTS[g.b % t.N][0], y: t.PTS[g.b % t.N][1] }, mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2, base = h(mx, my);   // (a glider's ravine has no mushrooms)
+      if (g.lava) { const sz = Math.max(900, Math.hypot(p1.x - p0.x, p1.y - p0.y) + 500), tx = lavaSeaTex(); tx.repeat.set(sz / 260, sz / 260); const m = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), new THREE.MeshBasicMaterial({ map: tx, color: 0xffb070 })); m.rotation.x = -Math.PI / 2; m.position.set(mx, base - (g.depth ?? 320) + 30, my); scene.add(m); roadObjs.push(m); continue; }   // 🔥 a fissure with lava glowing at the bottom
       const sz = Math.max(1100, Math.hypot(p1.x - p0.x, p1.y - p0.y) + 600), sheet = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), g.kind === "water"
         ? new THREE.MeshPhongMaterial({ color: 0x3d8de0, transparent: true, opacity: .85, shininess: 120, specular: 0xffffff })
         : new THREE.MeshBasicMaterial({ map: mistTex(), transparent: true, opacity: .8, depthWrite: false, fog: false }));
@@ -990,7 +1008,19 @@ export function create(A) {
   function buildProp(o) {
     const g0 = h(o.x, o.y), grp = new THREE.Group(), L = (c, e) => new THREE.MeshLambertMaterial({ color: c, emissive: e || 0x2a2a2a });
     const put = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); grp.add(m); return m; };
-    if (o.k === "gazebo") {   // a round white floor, six slim pillars, a pink dome with a white scalloped rim and a gold knob on top
+    if (o.k === "zkpillar") {   // 🔥 a ruined basalt column of the Golem Gauntlet: a chunky stepped base, an eight-sided shaft with a gold band, and a brazier of fire on top (some are broken off halfway, smouldering)
+      const rk = lavaMat(), gd = L(0xd8a040, 0x4a3010), H0 = o.broken ? 95 : 170;
+      put(new THREE.CylinderGeometry(34, 38, 18, 8), rk, 0, 9, 0); put(new THREE.CylinderGeometry(28, 32, 14, 8), rk, 0, 25, 0);
+      const sh = put(new THREE.CylinderGeometry(20, 24, H0, 8), rk, 0, 32 + H0 / 2, 0); if (o.broken) sh.rotation.z = .08;
+      put(new THREE.CylinderGeometry(25, 25, 8, 8), gd, 0, 32 + H0 * .62, 0);
+      const fl = [];
+      if (!o.broken) { put(new THREE.CylinderGeometry(30, 24, 10, 8), rk, 0, 32 + H0 + 5, 0); const bowl = put(new THREE.CylinderGeometry(30, 16, 18, 10, 1, true), gd, 0, 32 + H0 + 19, 0); bowl.material = bowl.material.clone(); bowl.material.side = THREE.DoubleSide;
+        put(new THREE.CircleGeometry(26, 12), new THREE.MeshBasicMaterial({ color: 0xff7a1a }), 0, 32 + H0 + 24, 0).rotation.x = -Math.PI / 2;
+        for (const [x, z, hh, r] of [[0, 0, 46, 15], [-9, 6, 30, 9], [8, -7, 32, 9], [6, 9, 24, 7]]) for (const [c, k] of [[0xff5a1a, 1], [0xffd23f, .55]]) { const m = put(new THREE.ConeGeometry(r * k, hh * k, 8), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .9 }), x, 32 + H0 + 24 + hh * k / 2, z); fl.push({ m, ph: x * 3 + z + o.x }); }
+        const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xff7a2a, transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false })); gl.scale.set(130, 130, 1); gl.position.set(0, 32 + H0 + 40, 0); grp.add(gl); fl.push({ m: gl, ph: o.y, glow: true }); }
+      else for (let k = 0; k < 4; k++) { const r = put(new THREE.DodecahedronGeometry(10 + k * 3, 0), rk, (k - 1.5) * 22, 8, 30 + (k % 2) * 12); r.rotation.set(k, k * 2, 0); }   // its broken top lying beside it
+      grp.position.set(o.x, g0, o.y); flameM.push(...fl);
+    } else if (o.k === "gazebo") {   // a round white floor, six slim pillars, a pink dome with a white scalloped rim and a gold knob on top
       const wh = L(0xfbf7f2, 0x5a5652), pk = L(0xf07ab0, 0x3a1020), gd = L(0xffd75e, 0x403010);
       put(new THREE.CylinderGeometry(70, 74, 8, 32), wh, 0, 4, 0); put(new THREE.CylinderGeometry(62, 62, 3, 32), pk, 0, 9, 0);
       for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; put(new THREE.CylinderGeometry(4.5, 5.5, 96, 12), wh, Math.cos(a) * 58, 56, Math.sin(a) * 58); }
@@ -1117,7 +1147,7 @@ export function create(A) {
       F.pos[k * 3] = F.x + Math.cos(d.a) * r; F.pos[k * 3 + 1] = F.g0 + y; F.pos[k * 3 + 2] = F.z + Math.sin(d.a) * r; }
     F.pts.geometry.attributes.position.needsUpdate = true;
   }
-  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [], gondM = [], golemM = [], phantomM = [], fakeM = [];
+  let rockT = null, damT = null, goldT = null, faceT = null, thw = [], thFn = null, cartM = [], cartFn = null, fireM = [], fireFn = null, holeM = [], lapFn = null, clockM = null, fountM = null, balloonM = [], auroraM = [], flowM = [], gondM = [], golemM = [], phantomM = [], fakeM = [], flameM = [];
   // 🗿 a Thwomp's face: grey stone, heavy brows, glaring eyes and gritted teeth
   const faceTex = () => faceT || (faceT = (() => { const c = canvas(128, 128), g = c.getContext("2d"); g.fillStyle = "#8a8f9a"; g.fillRect(0, 0, 128, 128);
     g.fillStyle = "rgba(60,64,74,.35)"; for (let k = 0; k < 40; k++) g.fillRect((k * 37) % 128, (k * 53) % 128, 6, 3);
@@ -1265,9 +1295,10 @@ export function create(A) {
   const mdls = {};   // per-frame pools of moving 3D models (the living ice blocks)
   function mdl(kind, x, y, z, a, tt) {
     const P = mdls[kind] || (mdls[kind] = { list: [], i: 0 }); let g = P.list[P.i++];
-    if (!g) { g = kind === "freezie" ? freezieModel() : kind === "snowball" ? snowballModel() : kind === "stoneball" ? snowballModel(true) : kind === "tnt" ? tntModel() : new THREE.Group(); scene.add(g); P.list.push(g); }
+    if (!g) { g = kind === "freezie" ? freezieModel() : kind === "snowball" ? snowballModel() : kind === "stoneball" ? snowballModel(true) : kind === "tnt" ? tntModel() : kind === "rock" ? rockModel() : new THREE.Group(); scene.add(g); P.list.push(g); }
     g.visible = true;
     if (kind === "tnt") { const lit = z < 0; g.position.set(x, h(x, y) + (lit ? Math.abs(Math.sin(tt * 30)) * 2 : 0), y); g.rotation.set(0, -a, 0); const s2 = lit ? 1 + Math.abs(Math.sin(tt * 18)) * .08 : 1; g.scale.set(s2, s2, s2); for (const m of g.userData.flash) m.emissive.setHex(lit && Math.sin(tt * 22) > 0 ? 0xffffff : m.userData.e0); g.userData.spark.visible = lit; if (lit) g.userData.spark.scale.setScalar(.7 + Math.random() * .8); return; }   // 🧨 (lit: it flashes white, swells and sparks)
+    if (kind === "rock") { g.position.set(x, h(x, y) + 22 + (z || 0), y); g.rotation.set(tt * 5 + x, tt * 3, 0); return; }   // 🪨 a lava rock falling from the mine roof
     if (kind === "snowball" || kind === "stoneball") { g.position.set(x, h(x, y) + 30, y); g.rotation.set(tt * 4 + x * .01, -a, 0); return; }   // (a giant snowball rolls) const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
   }
   const boxes = []; let bi = 0;
@@ -1367,6 +1398,129 @@ export function create(A) {
   }
 
   // ---------------------------------------------------------------- camera and frame
+  let lavaRk = null;
+  function lavaRockTex() {   // 🔥 black basalt cracked through with glowing lava: [the rock picture, the glow only (for emissiveMap)]
+    if (lavaRk) return lavaRk; let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647, cracks = [];
+    for (let n = 0; n < 9; n++) { let x = rnd() * 256, y = rnd() * 256, a = rnd() * 6.3; const pts = [[x, y]]; for (let q = 0; q < 7; q++) { a += (rnd() - .5) * 1.4; x += Math.cos(a) * 18; y += Math.sin(a) * 18; pts.push([x, y]); } cracks.push(pts); }
+    const lines = (g, glow) => { for (const [w, c] of glow ? [[9, "rgba(255,90,10,.35)"], [4, "#ff8a1a"], [1.6, "#ffe080"]] : [[4, "#ff7a1a"], [1.6, "#ffd860"]]) { g.strokeStyle = c; g.lineWidth = w; g.lineCap = "round"; for (const pts of cracks) { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); } } };
+    sd = 7; const rock = ctex(256, 256, (g, W) => { g.fillStyle = "#2c2422"; g.fillRect(0, 0, W, W); for (let n = 0; n < 160; n++) { const v = 30 + rnd() * 40 | 0; g.fillStyle = `rgb(${v + 6},${v},${v - 4})`; g.beginPath(); g.arc(rnd() * W, rnd() * W, 4 + rnd() * 16, 0, 7); g.fill(); } lines(g, false); });
+    const glow = ctex(256, 256, (g, W) => { g.fillStyle = "#000"; g.fillRect(0, 0, W, W); lines(g, true); });
+    return (lavaRk = [rock, glow]);
+  }
+  const lavaMat = (o = {}) => new THREE.MeshLambertMaterial({ map: lavaRockTex()[0], emissiveMap: lavaRockTex()[1], emissive: 0xffffff, flatShading: true, ...o });
+  function fireGolemModel() {   // 🔥 a cute, chubby Fire Golem: a round lump of black lava rock with glowing cracks, big angry-cute glowing eyes, a pout, stubby fists, a little flame tuft on top
+    const g = new THREE.Group(), S1 = new THREE.SphereGeometry(1, 16, 12), rk = lavaMat(), bk = new THREE.MeshBasicMaterial({ color: 0x1a0a06 }), eyeM = new THREE.MeshBasicMaterial({ color: 0xffe27a }), hot = new THREE.MeshBasicMaterial({ color: 0xff7a2a });
+    const bg = new THREE.SphereGeometry(1, 28, 20), pa = bg.attributes.position;   // a rounded, lumpy block
+    for (let v = 0; v < pa.count; v++) { const f = q => Math.sign(q) * Math.pow(Math.abs(q), .6), x = pa.getX(v), y = pa.getY(v), z = pa.getZ(v), n = 1 + .05 * Math.sin(x * 7 + z * 5) * Math.cos(y * 6); pa.setXYZ(v, f(x) * n, f(y) * n, f(z) * n); }
+    bg.computeVertexNormals(); const body = new THREE.Mesh(bg, rk); body.scale.set(37, 31, 37); body.position.y = 33; g.add(body);
+    for (const z of [-1, 1]) {
+      const e = new THREE.Mesh(S1, eyeM); e.scale.set(3, 9, 7); e.position.set(35, 40, z * 12); g.add(e);   // big glowing eyes
+      const pu = new THREE.Mesh(S1, bk); pu.scale.set(2, 5, 3.6); pu.position.set(37, 38, z * 10.5); g.add(pu);   // pupils looking up the road
+      const sp = new THREE.Mesh(S1, new THREE.MeshBasicMaterial({ color: 0xffffff })); sp.scale.setScalar(1.6); sp.position.set(38.6, 41, z * 9.6); g.add(sp);
+      const br = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 15), bk); br.position.set(35, 52, z * 12); br.rotation.x = z * .42; g.add(br);   // grumpy brows
+      const ch = new THREE.Mesh(S1, hot); ch.scale.set(1.5, 3.6, 5.6); ch.position.set(33.5, 29, z * 21); g.add(ch);   // glowing cheeks
+      const fi = new THREE.Mesh(S1, rk); fi.scale.set(13, 12, 13); fi.position.set(14, 12, z * 41); g.add(fi);   // big round fists (they hit the ground first)
+      const ft = new THREE.Mesh(S1, rk); ft.scale.set(11, 7, 10); ft.position.set(4, 5, z * 16); g.add(ft); }
+    const mo = new THREE.Mesh(new THREE.TorusGeometry(4.5, 1.1, 6, 16, Math.PI), hot); mo.rotation.set(0, Math.PI / 2, 0); mo.position.set(36, 24, 0); g.add(mo);   // a pout (a little upside-down smile)
+    const fl = []; for (const [x, z, hh, r] of [[0, 0, 30, 10], [-8, 9, 20, 7], [-6, -10, 22, 7], [7, 4, 16, 6]]) for (const [c, k] of [[0xff5a1a, 1], [0xffd23f, .55]]) {   // a flickering flame tuft
+      const m = new THREE.Mesh(new THREE.ConeGeometry(r * k, hh * k, 8), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .92 })); m.position.set(x, 62 + hh * k / 2, z); g.add(m); fl.push({ m, hh: hh * k, ph: x + z }); }
+    g.userData.fl = fl; g.userData.body = body; return g;
+  }
+  function rockModel() { const geo = new THREE.DodecahedronGeometry(24, 1), pa = geo.attributes.position; for (let v = 0; v < pa.count; v++) { const k = 1 + .18 * Math.sin(pa.getX(v) * .4 + pa.getY(v) * .3) * Math.cos(pa.getZ(v) * .35); pa.setXYZ(v, pa.getX(v) * k, pa.getY(v) * k * .85, pa.getZ(v) * k); } geo.computeVertexNormals(); const g = new THREE.Group(); g.add(new THREE.Mesh(geo, lavaMat())); return g; }
+  function lavaSeaTex() { return ctex(256, 256, (g, W) => { g.fillStyle = "#e8481a"; g.fillRect(0, 0, W, W);   // smooth churning lava: soft bright and dark blobs (drawn wrapped round, so it tiles seamlessly) and glowing veins
+    const wrap = f => { for (const dx of [-W, 0, W]) for (const dy of [-W, 0, W]) f(dx, dy); };
+    for (let n = 0; n < 70; n++) { const x = Math.random() * W, y = Math.random() * W, r = 10 + Math.random() * 36, c0 = n % 3 ? "rgba(255,200,70,.8)" : "rgba(140,20,0,.6)"; wrap((dx, dy) => { const gr = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); gr.addColorStop(0, c0); gr.addColorStop(1, "rgba(255,120,30,0)"); g.fillStyle = gr; g.fillRect(x + dx - r, y + dy - r, r * 2, r * 2); }); }
+    g.lineWidth = 3; g.lineCap = "round"; for (let n = 0; n < 26; n++) { const pts = [[Math.random() * W, Math.random() * W]]; for (let q = 0; q < 5; q++) pts.push([pts[q][0] + (Math.random() - .5) * 50, pts[q][1] + (Math.random() - .5) * 50]); const c = n % 2 ? "#ffe27a" : "#ffb040"; wrap((dx, dy) => { g.strokeStyle = c; g.beginPath(); pts.forEach(([x, y], q) => q ? g.lineTo(x + dx, y + dy) : g.moveTo(x + dx, y + dy)); g.stroke(); }); } }, true); }
+  function lavaFlowTex() { return ctex(64, 256, (g, W, H) => { const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, "#ff5a10"); gr.addColorStop(.5, "#ffc040"); gr.addColorStop(1, "#ff5a10"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    for (let n = 0; n < 40; n++) { g.fillStyle = n % 3 ? "rgba(255,240,170,.7)" : "rgba(170,30,0,.6)"; g.fillRect(Math.random() * W, Math.random() * H, 3 + Math.random() * 6, 14 + Math.random() * 30); } }, true); }
+  let geyM = [], steamM = [], geyFn = null, lavaLk = null;
+  function buildGeysers(t) {   // 🌋 geysers: a mound of black lava rock round a bubbling pool, which shoots a column of lava sky-high when it erupts; 💨 steam vents puff white clouds
+    geyM = []; steamM = []; geyFn = t.geyserAt || null; const ft = lavaFlowTex();
+    for (const ge of t.geysers || []) { const R = ge.r || 36, g0 = h(ge.x, ge.y), grp = new THREE.Group(); grp.position.set(ge.x, g0, ge.y); scene.add(grp); roadObjs.push(grp);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(R + 4, 8, 6, 18), lavaMat()); rim.rotation.x = Math.PI / 2; rim.position.y = 2; grp.add(rim);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(R, 20), new THREE.MeshBasicMaterial({ color: 0xff6a1a })); pool.rotation.x = -Math.PI / 2; pool.position.y = 1.5; grp.add(pool);
+      const glow = new THREE.Mesh(new THREE.CircleGeometry(R * 2.4, 24), new THREE.MeshBasicMaterial({ map: glowDisc(), color: 0xff6a1a, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false })); glow.rotation.x = -Math.PI / 2; glow.position.y = 2.5; grp.add(glow);
+      const tx = ft.clone(); tx.needsUpdate = true; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(2, 1.5);
+      const fadeTx = ctex(8, 128, (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(.25, "rgba(255,255,255,.9)"); gr.addColorStop(1, "rgba(255,255,255,1)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); });   // (the jet fades out at its top)
+      const col = new THREE.Group(), jet = (r0, r1, c, op) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, 1, 16, 1, true), new THREE.MeshBasicMaterial({ map: tx, alphaMap: fadeTx, color: c, transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.y = .5; col.add(m); return m; };
+      jet(R * .75, R * .5, 0xff5a1a, .75); jet(R * .4, R * .28, 0xffe090, .9); grp.add(col);   // an orange jet round a white-hot core
+      const cap = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffa040, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false })); grp.add(cap);
+      const blobs = Array.from({ length: 8 }, (_, k) => { const m = new THREE.Mesh(new THREE.SphereGeometry(5 + k % 3 * 2, 8, 6), new THREE.MeshBasicMaterial({ color: k % 2 ? 0xffc040 : 0xff5a1a })); grp.add(m); return { m, a: k / 8 * 6.283, sp: 50 + k * 9 }; });
+      geyM.push({ ge, col, cap, glow, pool, tx, blobs, R }); }
+    for (const sv of t.steams || []) { const g0 = h(sv.x, sv.y), puffs = [];
+      for (let k = 0; k < 7; k++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshLambertMaterial({ color: 0xf4f6fa, emissive: 0x8a8e98, transparent: true, opacity: .5, depthWrite: false })); scene.add(m); roadObjs.push(m); puffs.push({ m, ph: k / 7, dx: (Math.random() - .5) * 30, dz: (Math.random() - .5) * 30 }); }
+      steamM.push({ sv, g0, puffs }); }
+  }
+  // 🗿 Zakum: the giant stone idol rising out of the lava sea - a fat stone body and head, a gold belt and chest disc, a scowling face with big glowing eyes and a
+  // glowing mouth, gold earrings, and a golden sun-crown fanning out behind its head. Its arms are separate (they come up out of the lava by the road).
+  const stoneMat = () => new THREE.MeshLambertMaterial({ map: rockTex(), color: 0xc0ae98, emissive: 0x2a1c14, flatShading: true });
+  function squircle(w, hh, d, pw = .6) { const g = new THREE.SphereGeometry(1, 28, 20), pa = g.attributes.position; for (let v = 0; v < pa.count; v++) { const f = q => Math.sign(q) * Math.pow(Math.abs(q), pw); pa.setXYZ(v, f(pa.getX(v)) * w / 2, f(pa.getY(v)) * hh / 2, f(pa.getZ(v)) * d / 2); } g.computeVertexNormals(); return g; }
+  function zakumModel() {
+    const g = new THREE.Group(), st = stoneMat(), gd = new THREE.MeshLambertMaterial({ color: 0xffc23a, emissive: 0x6a4000, flatShading: true }), dk = new THREE.MeshBasicMaterial({ color: 0x1a0c08 }), eyeM = new THREE.MeshBasicMaterial({ color: 0xffe060 }), hot = new THREE.MeshBasicMaterial({ color: 0xff7a1a });
+    const put = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+    put(new THREE.CylinderGeometry(190, 230, 90, 8), st, 0, 20, 0);   // the plinth, half sunk in the lava
+    put(squircle(300, 280, 230), st, 0, 200, 0);   // a fat body
+    put(new THREE.CylinderGeometry(156, 156, 34, 16), gd, 0, 150, 0).scale.set(1, 1, .8);   // gold belt
+    put(new THREE.CylinderGeometry(48, 48, 10, 20), gd, 118, 230, 0).rotation.z = Math.PI / 2;   // the chest disc
+    put(new THREE.CylinderGeometry(26, 26, 12, 6), new THREE.MeshBasicMaterial({ color: 0xff3a2a }), 122, 230, 0).rotation.z = Math.PI / 2;
+    put(squircle(240, 200, 210), st, 0, 420, 0);   // the head
+    put(new THREE.BoxGeometry(18, 168, 186), gd, 116, 425, 0);   // a gold mask over the face: outlined eyes with glowing pupils, a scowling brow, a stone mouth full of teeth
+    const eyes = [];
+    for (const z of [-1, 1]) { const o = put(new THREE.SphereGeometry(1, 18, 12), dk, 124, 448, z * 46); o.scale.set(4, 25, 33);
+      const w = put(new THREE.SphereGeometry(1, 18, 12), new THREE.MeshBasicMaterial({ color: 0xfff4d8 }), 127, 448, z * 46); w.scale.set(4, 20, 28);
+      const e = put(new THREE.SphereGeometry(1, 14, 10), eyeM, 130, 444, z * 42); e.scale.set(4, 11, 11); eyes.push(e);
+      const br = put(new THREE.BoxGeometry(14, 16, 76), dk, 128, 482, z * 46); br.rotation.x = z * .38;
+      const ear = put(new THREE.TorusGeometry(26, 7, 8, 18), gd, 0, 380, z * 118); ear.rotation.y = Math.PI / 2; }
+    put(new THREE.BoxGeometry(10, 44, 120), dk, 125, 378, 0);
+    const mouth = put(new THREE.BoxGeometry(10, 18, 104), hot, 128, 376, 0);   // (it glows when he wakes)
+    for (let k = -2.5; k <= 2.5; k++) { put(new THREE.BoxGeometry(8, 12, 15), new THREE.MeshLambertMaterial({ color: 0xf4ecd8, emissive: 0x3a3428 }), 131, 393, k * 19); put(new THREE.BoxGeometry(8, 10, 15), new THREE.MeshLambertMaterial({ color: 0xf4ecd8, emissive: 0x3a3428 }), 131, 361, k * 19); }
+    put(new THREE.CylinderGeometry(124, 124, 30, 16), gd, 0, 510, 0).scale.set(1, 1, .9);   // the crown band
+    put(new THREE.OctahedronGeometry(26), new THREE.MeshBasicMaterial({ color: 0xff3a2a }), 120, 512, 0);
+    for (let k = 0; k < 13; k++) { const a = -Math.PI / 2 + (k / 12 - .5) * Math.PI * 1.15 + Math.PI / 2, c = put(new THREE.ConeGeometry(26, 170, 6), gd, -30, 520 + Math.cos(a - Math.PI / 2) * 0, 0);   // the sun-crown fanned out behind its head
+      const ang = (k / 12 - .5) * 2.4; c.position.set(-40, 520 + Math.cos(ang) * 120, Math.sin(ang) * 160); c.rotation.x = ang; }
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xff6a1a, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(560, 200, 1); glow.position.y = 10; g.add(glow);
+    const fl = []; for (let k = 0; k < 9; k++) { const ang = (k / 8 - .5) * 2.2, m = new THREE.Mesh(new THREE.ConeGeometry(30, 160, 8), new THREE.MeshBasicMaterial({ color: k % 2 ? 0xffd23f : 0xff4a1a, transparent: true, opacity: .9 })); m.position.set(-50, 540 + Math.cos(ang) * 210, Math.sin(ang) * 230); m.rotation.x = ang; m.visible = false; g.add(m); fl.push({ m, ang, ph: k }); }   // flames bursting from the crown when he wakes
+    const eyeGl = eyes.map(e => { const s2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffd060, transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false })); s2.scale.set(60, 60, 1); s2.position.copy(e.position).x += 12; g.add(s2); return s2; });
+    g.userData = { eyeM, eyeGl, mouth, glow, fl }; return g;
+  }
+  function zakArm(L) {   // one of Zakum's stone arms: shoulder at the origin, pointing up +Y: upper arm, elbow, forearm, a gold cuff, and a big open hand
+    const g = new THREE.Group(), st = stoneMat(), gd = new THREE.MeshLambertMaterial({ color: 0xffc23a, emissive: 0x6a4000, flatShading: true }), u = L / 300;
+    const put = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+    put(new THREE.CylinderGeometry(30 * u, 36 * u, 120 * u, 10), st, 0, 60 * u, 0); put(new THREE.SphereGeometry(34 * u, 12, 10), st, 0, 125 * u, 0);
+    put(new THREE.CylinderGeometry(26 * u, 30 * u, 110 * u, 10), st, 0, 185 * u, 0); put(new THREE.CylinderGeometry(32 * u, 32 * u, 22 * u, 12), gd, 0, 238 * u, 0);
+    put(new THREE.BoxGeometry(70 * u, 50 * u, 24 * u), st, 0, 270 * u, 0).rotation.y = Math.PI / 2;   // the palm (flat, so it lies flat on the road)
+    for (let k = 0; k < 4; k++) put(new THREE.BoxGeometry(12 * u, 36 * u, 14 * u), st, 0, 310 * u, (k - 1.5) * 17 * u);
+    put(new THREE.BoxGeometry(12 * u, 30 * u, 14 * u), st, 0, 262 * u, 44 * u).rotation.x = -.7;
+    return g;
+  }
+  let armM = [], armFn = null, zakM = null, awakeFn = null, seaM = null;
+  function buildZakum(t) {
+    armM = []; armFn = t.armAt || null; awakeFn = t.awake || null; zakM = null; seaM = null;
+    if (t.sea != null && t.theme.heat) { const tx = lavaSeaTex(); tx.repeat.set(t.WORLD / 300, t.WORLD / 300); const m = new THREE.Mesh(new THREE.PlaneGeometry(t.WORLD * 1.6, t.WORLD * 1.6), new THREE.MeshBasicMaterial({ map: tx, color: 0xff9a60 })); m.rotation.x = -Math.PI / 2; m.position.set(t.WORLD / 2, t.sea + 4, t.WORLD / 2); scene.add(m); roadObjs.push(m); seaM = { m, tx }; }   // 🌋 a glowing, churning lava sea
+    if (t.zakum) { const z = zakumModel(); z.position.set(t.zakum.x, (t.sea ?? h(t.zakum.x, t.zakum.y)) - 10, t.zakum.y); z.scale.setScalar(t.zakum.s || 1); z.rotation.y = -(t.zakum.fa || 0); scene.add(z); roadObjs.push(z); zakM = z; }
+    for (const a of t.arms || []) { const outer = new THREE.Group(), pivot = new THREE.Group(), arm = zakArm(a.len + 20); pivot.add(arm); outer.add(pivot); outer.rotation.y = -a.ang; scene.add(outer); roadObjs.push(outer);
+      const base = RE[a.i % t.N] - 12, mx = (a.x + a.ex) / 2, my = (a.y + a.ey) / 2;
+      const warn = new THREE.Mesh(new THREE.PlaneGeometry(a.len + 40, 80), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); warn.rotation.set(-Math.PI / 2, 0, -a.ang); warn.position.set(mx, RE[a.i % t.N] + 3, my); scene.add(warn); roadObjs.push(warn);
+      const splash = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xff7a2a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); splash.position.set(a.x, base + 20, a.y); splash.scale.set(220, 160, 1); scene.add(splash); roadObjs.push(splash);
+      armM.push({ a, outer, pivot, base, warn, splash, L: a.len + 20 }); }
+  }
+  let awakeK = 0;
+  function zakumStep(now, dt) {
+    if (seaM) seaM.tx.offset.set(now * .01, Math.sin(now * .25) * .04);
+    for (const q of armM) { const s2 = armFn(q.a, now); q.outer.position.set(q.a.x, q.base - (1 - s2.up) * (q.L + 60), q.a.y); q.pivot.rotation.z = -s2.fall * Math.PI / 2;
+      q.warn.material.opacity = s2.warn ? .25 + .3 * Math.abs(Math.sin(now * 14)) : 0; q.splash.material.opacity = s2.up > 0 && s2.up < 1 ? .9 : 0; }
+    const aw = awakeFn && awakeFn() ? 1 : 0; awakeK += (aw - awakeK) * Math.min(1, dt * 1.5);
+    if (zakM) { const u = zakM.userData; u.eyeM.color.setRGB(1, .88 - .7 * awakeK, .38 - .3 * awakeK); for (const e of u.eyeGl) { e.material.color.copy(u.eyeM.color); const k = 60 + awakeK * (200 + 50 * Math.sin(now * 12)); e.scale.set(k, k, 1); } u.glow.material.opacity = .4 + .3 * awakeK + .1 * Math.sin(now * 2);
+      u.mouth.material.color.setRGB(1, .48 - .3 * awakeK + .2 * awakeK * Math.sin(now * 9), .1); for (const f of u.fl) { f.m.visible = awakeK > .3; f.m.scale.set(1, (.6 + .5 * Math.abs(Math.sin(now * 7 + f.ph))) * awakeK, 1); } }
+    if (awakeK > .01) { hemi.color.setRGB(1, .75 - .35 * awakeK, .6 - .4 * awakeK); }   // the whole place glows red once Zakum is awake
+  }
+  function geyserStep(now) {
+    for (const q of geyM) { const e = geyFn ? geyFn(q.ge, now) : 0, er = e >= .9 || (e > 0 && e < 1 && q.last >= .9), H = e > .3 ? 60 + 260 * e : 0;   // e: 0 calm, up to .3 rumbling, 1 erupting
+      q.tx.offset.y = -now * 1.6; q.col.visible = q.cap.visible = H > 0; q.col.scale.set(1 + .08 * Math.sin(now * 30), H, 1 + .08 * Math.cos(now * 27)); q.cap.position.y = H * .85; q.cap.scale.setScalar(q.R * (3 + .5 * Math.sin(now * 20)));
+      const rum = e > 0 && e <= .3 ? 1 : 0; q.glow.material.opacity = .45 + (rum ? .4 * Math.abs(Math.sin(now * 18)) : 0) + e * .3; q.pool.position.y = 1.5 + rum * Math.abs(Math.sin(now * 25)) * 3;   // it rumbles and glows before it blows
+      for (const b of q.blobs) { b.m.visible = H > 0; const u = (now * 1.3 + b.a) % 1; b.m.position.set(Math.cos(b.a) * u * 90, H * .7 + Math.sin(u * Math.PI) * 90, Math.sin(b.a) * u * 90); } q.last = e; }   // lava flung out of the top
+    for (const q of steamM) for (const p of q.puffs) { const u = (now * .55 + p.ph) % 1; p.m.position.set(q.sv.x + p.dx * u, q.g0 + 6 + u * 150, q.sv.y + p.dz * u); p.m.scale.setScalar(10 + u * 34); p.m.material.opacity = .55 * (1 - u) * Math.min(1, u * 6); }
+  }
   const cam = { yaw: null, y: 0, x: 0, z: 0 };
   let VW = 320, VH = 180, shake = 0;
   const fwd = new THREE.Vector3(), tmp = new THREE.Vector3(), look = new THREE.Vector3();
@@ -1380,6 +1534,7 @@ export function create(A) {
     for (const f of flowM) f.offset.y = performance.now() / 1000 * .22;
     if (phantomM.length || fakeM.length) { const now = performance.now() / 1000; for (const q of phantomM) { const a = q.fn ? q.fn(q.g, now) : 1; for (const m of q.mats) { m.opacity = a; m.visible = a > .02; } }
       for (const q of fakeM) { const d = Math.hypot(k.x - q.x, k.y - q.z); q.mat.opacity = Math.min(1, Math.max(0, (d - 120) / 260)) * (.75 + .25 * Math.sin(now * 5)); } }   // (a phantom road melts away as you get close)
+    if (flameM.length) { const now = performance.now() / 1000; for (const f of flameM) if (f.glow) f.m.material.opacity = .5 + .15 * Math.sin(now * 9 + f.ph); else f.m.scale.set(1, .8 + .3 * Math.sin(now * 12 + f.ph), 1); }   // 🔥 braziers flicker
     for (const q of golemM) { const z = q.o.sz || 0; q.g.position.y = q.y + z * .55; q.g.rotation.z = z > 1 ? Math.sin(z * .05) * .06 : 0; }   // 🗿 the Golems' stomp
     if (gondM.length) { const now = performance.now() / 1000; for (const q of gondM) { const f = ((now * q.sp + q.ph) % 2), u = f < 1 ? f : 2 - f, L = q.line, p = L.a.clone().lerp(L.b, u); p.addScaledVector(L.off, f < 1 ? 1 : -1); q.g.position.copy(p); q.g.rotation.z = Math.sin(now * 1.3 + q.ph) * .04; } }   // 🚡 gondolas gliding up one cable and down the other   // the dam's half-frozen waterfalls, trickling slowly
     if (auroraM.length) { const now = performance.now() / 1000; for (const q of auroraM) { const pa = q.m.geometry.attributes.position; for (let v = 0; v < pa.count; v++) { const b = q.base[v]; pa.setY(v, b[1] + Math.sin(now * .5 + b[3] * 3 + q.ph) * 40 * b[4]); pa.setZ(v, b[2] + Math.sin(now * .35 + b[3] * 5 + q.ph) * 90); } pa.needsUpdate = true; q.m.material.opacity = .62 + Math.sin(now * .7 + q.ph) * .15; } }
@@ -1387,7 +1542,13 @@ export function create(A) {
     if (lapFn) { const l = lapFn(); for (const q of holeM) q.g.visible = l >= q.hl.lap; for (const q of lapGapM) for (const m of q.ms) m.visible = l < q.g.lap; }
     if (waterP && tideFn) waterP.position.y = waterL + tideFn(performance.now() / 1000);   // 🌊 the tide
     if (cartFn) { const now = performance.now() / 1000; for (const q of cartM) { const p = cartFn(q.c, now); q.g.position.set(p.x, h(p.x, p.y), p.y); q.g.rotation.y = -p.a; } }
-    if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
+    if (geyM.length || steamM.length) geyserStep(performance.now() / 1000);
+    if (armM.length || zakM || seaM) zakumStep(performance.now() / 1000, o.dt || .016);
+    if (lavaLk) { const now = performance.now() / 1000; lavaLk.tx.offset.set(now * .012, Math.sin(now * .3) * .03); lavaLk.m.position.y = lavaLk.lv + Math.sin(now * .8) * 2; }   // the lava slowly churns
+    if (thFn) { const now = performance.now() / 1000; for (const q of thw) { const z = thFn(q.th, now); if (q.golem) { const p = ((now + q.th.ph) % q.th.T) / q.th.T, land = p >= .55 && p < .75 ? (p - .55) / .2 : -1;   // 💥 it lands with a squash and a ring of fire
+        q.m.position.set(q.th.x, q.g + z, q.th.y); q.m.scale.set(1, land >= 0 && land < .3 ? 1 - .22 * Math.sin(land / .3 * Math.PI) : z > 0 ? 1.06 : 1, 1); for (const f of q.m.userData.fl) f.m.scale.y = .8 + .3 * Math.sin(now * 14 + f.ph);
+        q.ring.visible = land >= 0; if (land >= 0) { q.ring.position.set(q.th.x, q.g + 3, q.th.y); q.ring.scale.setScalar(36 + land * 240); q.ring.material.opacity = (1 - land) * .9; } }
+      else q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const k in mdls) mdls[k].i = 0; for (const m of karts.values()) m.used = false;
     const a = k.a || 0;
     if (cam.yaw == null || o.snap) cam.yaw = a;

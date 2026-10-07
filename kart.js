@@ -78,7 +78,7 @@ const PETF = { husky: { move: 3, stand0: 3, jump: 1 }, blackpig: { move: 3, stan
   elephant: { move: 6, stand0: 4, jump: 1 }, babydragon: { move: 4, stand0: 4, jump: 3 }, porcupine: { move: 3, stand0: 4, jump: 1 }, snowman: { move: 6, stand0: 4, jump: 1 }, monkey: { move: 3, stand0: 4, jump: 1 } };
 const petFrame = (k, act, tt, fps = 7) => IMG[`pet_${k}_${act}${Math.floor(tt * fps) % ((PETF[k] || {})[act] || 1)}`];   // 🍄 mushroom-platform crossings: { a, b (track points with no road), kind: "gorge" | "water", caps: [{ x, y, r, col }] }
 let FINALMSG = null, AREAS = [], SPORES = [], areaAt = -1, OPEN = false, SPC = 6.6, START_I = 0, MECH = null, LAVA = null, PIDX = null, LAVAT = null, T = null, TRACK_KEY = null, TRACK_ID = "henesys2", PTS = [], N = 1, FORK_A = -1e9, FORK_B = -1e9, ALT = [], AN = 0, ALT_ROAD = 92, ALT_STYLE = "cobble",
-  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], FAIRY = null, BRIDGES3D = [], DYNA = [], FAKES = [], CAVEIN = null, HIDE = [];
+  ALTPADS = [], PEN = null, PADS = [], COINS = [], PIGS = [], KING = null, PENPIGS = [], BOXES = [], TUNNEL = null, LAKE = null, CAVES = [], BARE = [], STREAMS = [], LEAVES = [], PLANKS = [], CHUTES = [], FAIRY = null, BRIDGES3D = [], DYNA = [], FAKES = [], CAVEIN = null, HOTS = [], GEYSERS = [], STEAMS = [], ZARMS = [], ZAKUM = null, HIDE = [];
 const tangent = i => { const a = OPEN ? PTS[Math.max(0, i - 2)] : PTS[(i + N - 2) % N], b = OPEN ? PTS[Math.min(N - 1, i + 2)] : PTS[(i + 2) % N]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 function nearest(x, y, guess) {   // nearest track point, searching around the last one (or everywhere)
   let best = -1, bd = 1e12;
@@ -705,108 +705,131 @@ const TRACKS = {
   },
   // ---- Zakum Cup 🔥: normal 3-lap races. Fun to challenging: Golem Ruins, Dead Mine Rails, Zakum's Volcano.
   zk1: {
-    // 1. Thwomp Ruins (Mario Kart 8): stone ruins in the Zakum mine. The start straight and two lefts; the long tunnel along the top where Rollers
-    // roll out across the road; out of it the road splits round a pool (stay right past a Thwomp, go left past another, or splash straight across
-    // the shallow water); in through the Thwomp-mouth tunnel; the zig-zag past two more Thwomps; and a glide off the ledge back down to the line.
-    id: "thwomp", scale: 1.7, road: 180, cup: "zakum", music: "k_zakum1", name: "Golem Ruins", sub: "Block Golems · boulders in the tunnel · the pool split · glide home", icon: "🗿",
-    ctrl: [[1567, 768, 40], [1536, 563, 44], [1510, 384, 48], [1382, 302, 50], [1203, 320, 50], [1050, 461, 48], [845, 384, 44], [589, 243, 38], [307, 179, 32], [141, 294, 26], [159, 525, 18],
-      [218, 691, 12], [525, 845, 10], [563, 1101, 10], [512, 1280, 14], [576, 1459, 22], [678, 1741, 30], [845, 1766, 32], [1024, 1640, 34], [1150, 1580, 36], [1300, 1640, 38], [1485, 1592, 46],
-      [1766, 1395, 58], [1792, 1203, 40], [1690, 1024, 38], [1613, 896, 39]],
-    theme: { ...TH.mine, tufts: 8000, flowers: 300 }, art: { sky: "media/kart/zakum/sky1.webp", strip: "media/kart/zakum/strip1.webp" },
-    near: ["zk_rocks", "zk_rocks2", "zk_lantern", "zk_logs"], far: ["zk_rocks", "zk_rocks2", "zk_crane", "zk_board", "zk_lantern"], mobs: ["fire_boar", "drake"],
+    // 1. Golem Furnace (fun): the forge under El Nath where Zakum's Fire Golems are made. The start on the old causeway; up the geyser climb on hot lava
+    // crust (an erupting geyser launches you sky-high - a boost if you dare); cool off in the steam at the top; the Golem Gauntlet through the ruined
+    // colonnade where chubby Fire Golems slam down Thwomp-style; down and across the rope bridge over the lava lake (Firebombs leap out of it); the
+    // boar run; and the hot hairpin home. Stay on the hot crust too long and your kart overheats.
+    id: "golemfurnace", scale: 1.6, road: 180, cup: "zakum", music: "k_zakum1", name: "Golem Furnace", sub: "Fire Golems slam · geysers launch you · don't overheat", icon: "🗿",
+    ctrl: [[500, 1700, 20], [700, 1705, 20], [900, 1700, 20], [1100, 1695, 20], [1300, 1690, 22], [1480, 1670, 24], [1580, 1590, 26], [1620, 1460, 30], [1640, 1300, 38], [1650, 1120, 48], [1655, 940, 58],
+      [1650, 760, 66], [1620, 600, 70], [1540, 500, 72], [1420, 450, 72], [1250, 440, 72], [1080, 440, 72], [910, 440, 70], [740, 445, 66], [600, 480, 60], [520, 580, 52], [500, 720, 44], [500, 880, 36],
+      [520, 1000, 30], [600, 1080, 26], [740, 1100, 24], [900, 1100, 24], [1060, 1100, 24], [1220, 1100, 24], [1360, 1120, 24], [1420, 1220, 24], [1400, 1340, 22], [1300, 1420, 20], [1120, 1440, 18],
+      [940, 1440, 16], [760, 1440, 16], [600, 1445, 16], [470, 1465, 17], [385, 1530, 18], [365, 1615, 19], [410, 1685, 20]],
+    theme: { ...TH.mine, heat: true, rock: true, grass: ["#2a2120", "#262020"], cracks: true, flowers: 0, tufts: 5000, road: "basalt", curb: ["#2a2220", "#ff8a2a"], haze: [70, 24, 14], fog: [700, 2600], skyMirror: true,
+      dark: { sky: 0xffc8a0, gnd: 0x4a1a0a, hemiI: 1.1, sun: 0xffb070, sunI: 1 } },
+    art: { sky: "media/kart/zakum/sky2t.webp", strip: "media/kart/zakum/strip2.webp" },
+    near: ["zk_rocks", "zk_rocks2", "zk_skull", "zk_vase2"], far: ["zk_ruins", "zk_rubble2", "zk_volcano", "zk_rubble"], mobs: ["fire_boar", "firebomb", "drake"],
     build() {
       makeSnowArt();
-      const u = d => Math.round(d / SPC), coins = [], pads = [];
+      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      const tunnel = { a: I(1000, 440), b: I(250, 210), rock: true, mound: 0x5a5560 }, mouth = { a: I(530, 1330), b: I(610, 1560), rock: true, mound: 0x5a5560 };
-      const rollers = [I(800, 370), I(600, 250), I(420, 200)].map((i, n) => ({ i, ph: n * 2.1, k: "roller", sp: .9, s: .6 }));
-      const fa = I(218, 691), fb = I(512, 1280);
-      const gl = I(1766, 1395); pads.push({ t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD });   // 🪂 off the ledge, back down to the line
-      pads.push({ t: "boost", i: I(1300, 1640), len: 8, o: 0, w: 70 }, { t: "boost", i: I(141, 294) + 6, len: 8, o: 0, w: 70 });
-      row(I(1536, 563), I(1382, 302), 6, 0); row(tunnel.a + 10, tunnel.b - 10, 8, j => (j & 1 ? 35 : -35)); row(mouth.a + 6, mouth.b - 6, 5, 0); row(I(845, 1766), I(1300, 1640), 6, 30);
+      const climb = { a: I(1620, 1460), b: I(1620, 600) }, gaunt = { a: I(1250, 440), b: I(740, 445) }, hair = { a: I(600, 1445), b: I(410, 1685) }, desc = { a: I(520, 580), b: I(520, 1000) };
+      // 🌋 the geyser climb: geysers in the road on the hot crust; 💨 steam vents to cool off at the top, after the bridge and before the line
+      const geysers = [[1640, 1300, -45, 0], [1650, 1120, 45, 1.7], [1655, 940, -40, 3.4], [1650, 760, 40, .9], [365, 1615, 0, 2.5]].map(([x, y, o, ph]) => ({ i: I(x, y), o, ph, r: 34 }));
+      const steams = [[1420, 450, 0], [1400, 1340, 0], [1100, 1695, 0]].map(([x, y, o]) => ({ i: I(x, y), o, r: 50 }));
+      // 🗿 the Golem Gauntlet: Fire Golems slam down in turn, left, right, left, right (a Fire Golem on the ground is a solid block)
+      const thwomps = [[1250, 440, -48, 0], [1080, 440, 48, .85], [910, 440, -48, 1.7], [740, 445, 46, 2.55]].map(([x, y, o, ph]) => ({ i: I(x, y), o, ph, golem: true }));
+      // 🌉 the rope bridge over the lava lake; Firebombs leap out of the lava onto it
+      const ba = I(740, 1100), bb = I(1300, 1110); gaps.push({ a: ba, b: bb, kind: "bridge", deck: ROAD / 2 + CURB - 4, rail: true, open: true, depth: 120, caps: [] });
+      const fireballs = [[900, 1100, -30, 0], [1140, 1100, 30, 2.1]].map(([x, y, o, ph]) => ({ i: I(x, y), o, ph }));
+      // 🐗 the boar run: Fire Boars charge across, a Firebomb hops
+      const pigs = [[1120, 1440, "fire_boar", 0, false], [860, 1440, "firebomb", 1.4, true], [700, 1705, "fire_boar", 2.2, false], [500, 800, "firebomb", .6, true]].map(([x, y, k, ph, hop]) => ({ i: I(x, y), k, ph, hop, sp: 1, s: .5 }));
+      for (const [x, y, o] of [[1580, 1590, 55], [600, 480, -55], [500, 880, 55]]) pads.push({ t: "lava", i: I(x, y), len: 9, o, w: 46 });   // 🔥 bubbling lava on the edges (spins you out)
+      pads.push({ t: "boost", i: I(1300, 1690), len: 8, o: 0, w: 70 }, { t: "boost", i: I(600, 1080) - 4, len: 8, o: 0, w: 70 }, { t: "boost", i: I(1300, 1420), len: 8, o: 0, w: 70 });
+      row(I(700, 1705), I(1100, 1695), 5, 0); row(climb.a + 6, climb.b - 6, 8, j => (j & 1 ? 25 : -25)); row(gaunt.a - 8, gaunt.b + 6, 9, 0); row(ba + 4, bb - 4, 6, 0); row(I(1120, 1440), I(760, 1440), 5, j => (j & 1 ? 35 : -35));
       return {
-        gaps: [{ a: gl, b: gl + u(420), kind: "chasm", caps: [] }], caves: [tunnel, mouth], pads, coins, pigs: rollers,
-        lake: { cx: ws(385), cy: ws(1000), rx: ws(135), ry: ws(225), kind: "shallow" },   // the pool in the middle of the split
-        fork: { a: fa, b: fb, via: [[ws(185), ws(900)], [ws(235), ws(1120)], [ws(360), ws(1275)]], width: 150, style: "cobble" },
-        thwomps: [{ i: I(552, 980), o: 0, ph: 0 }, { x: ws(200), y: ws(1010), ph: 1.1 }, { i: I(845, 1766), o: -45, ph: 2.2 }, { i: I(1150, 1580), o: 45, ph: .6 }],
-        boxes: [...boxRow(I(1203, 320), [-60, -20, 20, 60]), ...boxRow(I(218, 691), [-60, -20, 20, 60]), ...boxRow(I(1485, 1592), [-60, -20, 20, 60])],
+        gaps, pads, coins, pigs, thwomps, geysers, steams, fireballs, finalMsg: "🌋 The furnace is boiling over!",
+        hot: [climb, { a: desc.a, b: desc.b }, hair, { a: I(1480, 1670), b: I(1620, 1460) }],
+        lake: { cx: ws(1030), cy: ws(1100), rx: ws(330), ry: ws(190), kind: "lava" },
+        boxes: [...boxRow(I(900, 1700), [-60, -20, 20, 60]), ...boxRow(I(1540, 500), [-50, 0, 50]), ...boxRow(I(520, 1000), [-50, 0, 50]), ...boxRow(I(940, 1440), [-60, -20, 20, 60])],
         extra(push) {
-          for (const [i, sd] of [[I(1567, 700), 1], [I(1550, 600), -1], [I(1530, 480), 1], [I(678, 1741), -1], [I(1024, 1640), 1], [I(1485, 1592), -1]]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 40)); BUILDINGS.push({ x, y, w: 40, d: 40, h: 150, a: tangent(i), stone: true }); }   // ruined pillars
-          for (let i = tunnel.a; i < tunnel.b; i += 14) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 4)); OBJS.push({ x, y, k: "zk_lantern", s: .3, r: 0, z: 0 }); }   // the tunnel's orange lamps
+          let sd0 = 31; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+          for (let i = 4, n = 0; i < N; i += 22, n++) { if (gaps.some(g => i >= g.a - 3 && i <= g.b + 3)) continue; const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB + 8)); OBJS.push({ x, y, k: "zk_lantern", s: .3, r: 0, z: 0 }); }   // the forge's lamps
+          for (let i = gaunt.a - 10, n = 0; i <= gaunt.b + 10; i += 24, n++) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB + 50)); OBJS.push({ x, y, k: "zkpillar", s: 1, r: 0, z: 0, f3d: true, broken: (n + (sd > 0)) % 3 === 2 }); }   // the ruined colonnade: basalt columns with fire braziers
+          for (const [x, y, k, sc] of [[1000, 300, "zk_idol", 1.1], [1350, 300, "zk_ruins", 1], [700, 300, "zk_ruins", 1], [1800, 1100, "zk_volcano", 1.4], [1780, 600, "zk_rubble2", 1], [250, 1000, "zk_rubble", 1], [1000, 1600, "zk_shell", .9], [1200, 1280, "zk_skull", .9], [300, 600, "zk_horn", .9]]) OBJS.push({ x: ws(x), y: ws(y), k, s: sc, r: 30, z: 0 });
+          for (let k2 = 0; k2 < 40; k2++) { const x = ws(150 + rr() * 1750), y = ws(150 + rr() * 1750); if (roadDist(x, y) > ROAD / 2 + CURB + 140 && !inLake(x, y)) push(x, y, ["zk_rocks", "zk_rocks2", "zk_rubble", "zk_vase"][k2 & 3]); }
+          for (const [x, y, z] of [[1100, 760, 120], [800, 1250, 90], [1300, 1250, 110], [300, 1300, 100]]) OBJS.push({ x: ws(x), y: ws(y), k: "drake", s: .5, r: 0, z, bob: 18, mob: true });
         },
       };
     },
   },
   zk2: {
-    // 2. Wario's Gold Mine (Mario Kart Wii / 8): the Zakum mine at dusk. From the line a slight right, a dash pad down into the dip (item boxes at
-    // the bottom) and up again; round the top and into the tunnel where bats flit about; inside the mine a right, down and up, then a ramp with a
-    // boost across the dark chasm; mine carts trundle along the rails (bump one and it shoves you on); out of the mine down the dipping road and
-    // the twisting stretch, and a right at the line. No railings in the mine or on the twisty bit: drive off the edge and you fall.
-    id: "goldmine", scale: 1.65, road: 180, cup: "zakum", music: "k_zakum2", name: "Dead Mine Rails", sub: "mine carts · the chasm jump · no railings", icon: "⛏️",
-    ctrl: [[179, 1306, 60], [307, 1126, 58], [480, 1010, 40], [640, 922, 30], [768, 768, 42], [845, 512, 56], [800, 330, 60], [740, 200, 60], [790, 110, 58], [920, 95, 56], [1178, 230, 52],
-      [1536, 435, 44], [1860, 500, 36], [1930, 666, 24], [1880, 820, 30], [1818, 930, 40], [1754, 1120, 26], [1741, 1280, 18], [1613, 1459, 10], [1357, 1613, 20], [1101, 1677, 30], [845, 1638, 36],
-      [512, 1562, 46], [260, 1510, 54], [150, 1420, 58]],
-    theme: { ...TH.mine, road: "planks", curb: ["#6a4424", "#c8a23a"], tufts: 6000, flowers: 200 }, art: { sky: "media/kart/zakum/sky1.webp", strip: "media/kart/zakum/strip1.webp" },
-    near: ["zk_crate", "zk_logs", "zk_lantern", "zk_rocks"], far: ["zk_crane", "zk_rig", "zk_board", "zk_rocks2", "zk_logs"], mobs: ["fire_boar", "drake"],
+    // 2. Dead Mine (medium): El Nath's abandoned mine, where Zakum's tremors never stop. From the pithead across the top; down the open pit's four
+    // sharp switchbacks (mine carts trundle down the rails: bump one for a shove); along the molten pit floor, where the quakes split the road on
+    // later laps (jump the fissures); past the carts at the bottom; and the long climb home through the tunnel - where a Fire Boar stampede comes
+    // thundering up behind you. And every few seconds the ground shakes and rocks rain from the roof.
+    id: "deadmine", scale: 1.55, road: 180, cup: "zakum", music: "k_zakum2", name: "Dead Mine", sub: "earthquakes · boar stampede · the road splits apart", icon: "⛏️",
+    ctrl: [[360, 285, 150], [600, 280, 150], [850, 282, 150], [1080, 290, 150], [1250, 320, 145], [1360, 410, 136], [1470, 500, 124], [1600, 530, 117], [1760, 530, 110], [1831, 559, 106], [1860, 630, 101], [1831, 701, 96], [1760, 730, 92], [1600, 730, 85], [1450, 730, 78], [1290, 730, 71], [1219, 759, 66], [1190, 830, 64], [1219, 901, 61], [1290, 930, 57], [1450, 930, 50], [1600, 930, 43], [1760, 930, 36], [1831, 959, 31], [1860, 1030, 26], [1831, 1101, 22], [1760, 1130, 17], [1600, 1130, 10], [1380, 1135, 10], [1160, 1140, 10], [980, 1160, 10], [880, 1240, 12], [840, 1380, 15], [800, 1520, 19], [720, 1650, 24], [560, 1720, 29], [380, 1720, 38], [240, 1660, 47], [190, 1520, 61], [180, 1320, 80], [180, 1100, 99], [190, 880, 117], [205, 640, 136], [210, 435, 148], [254, 329, 150]],
+    theme: { ...TH.mine, heat: true, rock: true, quake: true, cracks: true, grass: ["#2c2522", "#29211e"], flowers: 0, tufts: 5000, road: "planks", curb: ["#5a3a20", "#d8a23a"], haze: [40, 28, 26], fog: [600, 2300],
+      dark: { sky: 0xd8c0a8, gnd: 0x3a2014, hemiI: 1, sun: 0xffc890, sunI: .85 } },
+    art: { sky: "media/kart/zakum/sky1.webp", strip: "media/kart/zakum/strip1.webp" },
+    near: ["zk_crate", "zk_logs", "zk_rocks", "zk_barrier"], far: ["zk_crane", "zk_rig", "zk_board", "zk_rocks2", "zk_logs"], mobs: ["fire_boar", "firebomb", "drake"],
     build() {
       makeSnowArt();
-      const u = d => Math.round(d / SPC), coins = [], pads = [];
+      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      pads.push({ t: "boost", i: I(307, 1126), len: 10, o: 0, w: 80 });                            // the dash pad down into the dip
-      const tunnel = { a: I(1178, 230), b: I(1700, 460), rock: true, mound: 0x4a4048 };            // the tunnel into the mine (bats)
-      const mine = { a: I(1830, 520), b: I(1613, 1459), rock: true, mound: 0x4a4048 };              // inside the mine
-      const jp = I(1818, 930); pads.push({ t: "boost", i: jp - 14, len: 6, o: 0, w: 80 }, { t: "bigramp", i: jp - 5, len: 5, o: 0, w: ROAD });   // the boost ramp over the chasm
-      row(I(480, 1010), I(768, 768), 6, 0); row(tunnel.a + 8, tunnel.b - 8, 6, j => (j & 1 ? 40 : -40)); row(I(1357, 1613), I(845, 1638), 7, j => Math.sin(j) * 45);
-      const carts = [{ a: I(1930, 666), b: jp - 16, o: -50, sp: 120, ph: 0 }, { a: I(1930, 666), b: jp - 16, o: 50, sp: 110, ph: 30 }, { a: jp + 30, b: I(1613, 1459), o: -45, sp: 125, ph: 10 }, { a: jp + 30, b: I(1613, 1459), o: 45, sp: 115, ph: 60 }];
+      const leg2 = { a: I(1700, 730), b: I(1330, 730) }, leg3 = { a: I(1330, 930), b: I(1700, 930) }, floor = { a: I(1600, 1135), b: I(980, 1160) }, climb = { a: I(190, 1520), b: I(215, 480) };
+      // ⛏ the climb home is a tunnel through the rock, and that's where the stampede comes
+      const tunnel = { a: climb.a, b: climb.b, rock: true, timber: true, warm: true, mound: 0x3a3030 };
+      // 🔥 the quake fissures: the pit floor splits on lap 2, the climb on lap 3 (a boost and a big ramp before each, every lap)
+      for (const [x, y, lap] of [[1270, 1140, 2], [470, 1722, 3]]) { const g = I(x, y); pads.push({ t: "boost", i: g - 15, len: 6, o: 0, w: 80 }, { t: "bigramp", i: g - 6, len: 5, o: 0, w: ROAD }); gaps.push({ a: g, b: g + u(90), kind: "chasm", lap, lava: true, depth: 220, wall: 300, caps: [] }); }
+      // 🛒 mine carts down the switchbacks (bump one and it shoves you on)
+      const carts = [{ a: leg2.a, b: leg2.b, o: -48, sp: 110, ph: 0 }, { a: leg2.a, b: leg2.b, o: 48, sp: 100, ph: 25 }, { a: leg3.a, b: leg3.b, o: -46, sp: 115, ph: 10 }, { a: leg3.a, b: leg3.b, o: 46, sp: 105, ph: 40 }];
+      const pigs = [[840, 1380, "firebomb", 0, true], [720, 1650, "fire_boar", 1.3, false], [1080, 290, "firebomb", 2.1, true], [1450, 730, "firebomb", .5, true]].map(([x, y, k, ph, hop]) => ({ i: I(x, y), k, ph, hop, sp: 1, s: .5 }));
+      pads.push({ t: "boost", i: I(850, 282), len: 8, o: 0, w: 70 }, { t: "boost", i: I(1450, 930), len: 8, o: 0, w: 70 }, { t: "boost", i: I(560, 1720), len: 8, o: 0, w: 70 });
+      for (const [x, y, o] of [[1160, 1140, 55], [980, 1160, -55], [880, 1240, 55]]) pads.push({ t: "lava", i: I(x, y), len: 8, o, w: 46 });
+      row(I(600, 280), I(1080, 290), 6, 0); row(leg2.a + 4, leg2.b - 4, 5, 0); row(floor.a + 4, floor.b - 4, 7, j => (j & 1 ? 35 : -35)); row(climb.a + 10, climb.b - 10, 8, j => (j & 1 ? 30 : -30));
       return {
-        gaps: [{ a: jp, b: jp + u(170), kind: "chasm", caps: [] }], caves: [tunnel, mine], pads, coins, carts,
-        ledges: [{ a: mine.a, b: mine.b }, { a: I(1357, 1613), b: I(845, 1638) }],
-        boxes: [...boxRow(I(640, 922), [-60, -20, 20, 60]), ...boxRow(I(1536, 435), [-60, -20, 20, 60]), ...boxRow(I(1741, 1280), [-60, -20, 20, 60])],
+        gaps, pads, coins, pigs, carts, caves: [tunnel], finalMsg: "🌍 The whole mine is coming down!",
+        stampede: [{ a: climb.a + 8, b: climb.b + 20, n: 5 }],
+        hot: [floor, { a: I(880, 1240), b: I(800, 1520) }],
+        steams: [[1080, 290, 0], [380, 1720, 0]].map(([x, y, o]) => ({ i: I(x, y), o, r: 50 })),
+        lake: { cx: ws(600), cy: ws(860), rx: ws(210), ry: ws(290), kind: "lava" },
+        boxes: [...boxRow(I(1250, 320), [-50, 0, 50]), ...boxRow(I(1860, 1030), [-50, 0, 50]), ...boxRow(I(840, 1380), [-60, -20, 20, 60]), ...boxRow(I(180, 1100), [-50, 0, 50])],
         extra(push) {
-          for (let n = 0; n < 6; n++) { const [x, y] = at(tunnel.a + 10 + n * 14, (n & 1 ? 1 : -1) * 60); OBJS.push({ x, y, k: "bat", s: .35, r: 0, z: 70, bob: 14 }); }   // 🦇 bats in the tunnel
-          for (let i = mine.a; i < mine.b; i += 16) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 4)); OBJS.push({ x, y, k: "zk_lantern", s: .3, r: 0, z: 0 }); }   // lamps along the mine road
-          for (const [x, y] of [[560, 1180], [1000, 900], [1300, 1300], [400, 700], [1500, 900]]) push(ws(x), ws(y), "zk_crane");
+          let sd0 = 53; const rr = () => (sd0 = (sd0 * 16807) % 2147483647) / 2147483647;
+          for (let i = 6, n = 0; i < N; i += 20, n++) { if (gaps.some(g => i >= g.a - 3 && i <= g.b + 3) || (i > tunnel.a && i < tunnel.b)) continue; const [x, y] = at(i, (n & 1 ? 1 : -1) * (ROAD / 2 + CURB + 8)); OBJS.push({ x, y, k: "zk_lantern", s: .3, r: 0, z: 0 }); }   // the mine's signal lamps
+          for (const [x, y, k, sc] of [[450, 160, "zk_rig", 1.1], [900, 160, "zk_crane", 1], [1150, 170, "zk_board", .9], [700, 450, "zk_crane", 1], [1550, 330, "zk_rig", 1], [1000, 600, "zk_crane", 1.1], [1000, 1350, "zk_rig", 1], [1950, 850, "zk_crane", 1]]) OBJS.push({ x: ws(x), y: ws(y), k, s: sc, r: 30, z: 0 });
+          for (let k2 = 0; k2 < 46; k2++) { const x = ws(120 + rr() * 1820), y = ws(120 + rr() * 1820); if (roadDist(x, y) > ROAD / 2 + CURB + 120 && !inLake(x, y)) push(x, y, ["zk_rocks", "zk_rocks2", "zk_crate", "zk_logs", "zk_barrier"][k2 % 5]); }
+          for (const [x, y, z] of [[1500, 620, 110], [1500, 1030, 100], [600, 1300, 120], [900, 800, 130]]) OBJS.push({ x: ws(x), y: ws(y), k: "drake", s: .5, r: 0, z, bob: 18, mob: true });
         },
       };
     },
   },
   zk3: {
-    // 3. Grumble Volcano (Mario Kart Wii / 8): round the erupting volcano, on rock above a sea of lava (no railings: off the edge is the
-    // lava). Down from the line to the split round a rock; up the far side and leap the hexagon stepping stones; through the cave in the
-    // volcano's flank and glide out of it; round the summit hairpin and back down to the line. The volcano lobs fireballs onto the road
-    // (watch for their shadows), and on laps 2 and 3 more of the road crumbles away into the lava.
-    id: "volcano", scale: 1.42, road: 180, cup: "zakum", music: "k_zakum3", name: "Zakum's Volcano", sub: "lava all round · fireballs · the road crumbles on later laps", icon: "🌋",
-    ctrl: [[576, 1190, 40], [666, 1382, 34], [794, 1510, 28], [860, 1700, 22], [1040, 1820, 20], [1300, 1830, 22], [1530, 1780, 26], [1792, 1638, 30], [1870, 1520, 34], [1792, 1400, 38], [1600, 1310, 42],
-      [1430, 1200, 48], [1340, 1080, 54], [1270, 950, 60], [1210, 840, 64], [1150, 720, 68], [1060, 590, 72], [900, 520, 76], [800, 430, 80], [860, 330, 84], [1020, 300, 88], [1180, 260, 90], [1240, 150, 90],
-      [1130, 50, 90], [880, 60, 90], [620, 100, 88], [400, 160, 84], [210, 260, 78], [200, 400, 70], [330, 520, 62], [420, 770, 54], [500, 1000, 46]],
-    theme: { ...TH.mine, lava: true, ledgeDrop: 0, sea: -10, skyPic: 2700, grass: ["#c63e12", "#cc4416"], flowers: 0, tufts: 0, road: "basalt", haze: [120, 40, 20] },   // a plain lava sea just below the road edge
-    art: { sky: "media/kart/zakum/sky2t.webp" },   // just the lava pillars far away, mirrored upward so they rise tall from the horizon: clean
-    near: ["zk_rocks", "zk_rocks2", "zk_skull", "zk_bones"], far: [], mobs: ["fire_boar", "firebomb"],   // (small things only: no big pictures by the narrow road)
+    // 3. Zakum's Altar (challenging): the last race, round Zakum himself - a giant stone idol standing in a sea of lava. Rock causeways with no
+    // railings (off the edge is the lava); his stone arms rise out of the lava and slam across the road (watch for the red stripe, and bounce
+    // over an arm lying there); the altar pass dips right in under his gaze; leap the stepping stones; glide off the west cliff. Fireballs rain
+    // down all race, and on the last lap Zakum wakes up: his eyes blaze red, the whole place glows, and the arms come twice as fast.
+    id: "zakumaltar", scale: 1.6, road: 180, cup: "zakum", music: "k_zakum3", name: "Zakum's Altar", sub: "Zakum's arms slam the road · lava all round · he wakes on the last lap", icon: "🌋",
+    ctrl: [[500, 1760, 40], [780, 1770, 40], [1060, 1760, 40], [1320, 1730, 42], [1540, 1660, 46], [1690, 1530, 50], [1770, 1330, 55], [1790, 1100, 60], [1770, 870, 64], [1690, 660, 68], [1540, 520, 72],
+      [1360, 470, 74], [1210, 520, 72], [1110, 630, 68], [1020, 680, 66], [930, 630, 68], [830, 520, 72], [660, 470, 74], [500, 500, 74], [380, 590, 70], [290, 760, 60], [240, 960, 50], [230, 1160, 46],
+      [255, 1360, 44], [320, 1540, 42], [400, 1690, 40]],
+    theme: { ...TH.mine, heat: true, lava: true, ledgeDrop: 0, sea: -10, skyPic: 2700, grass: ["#c63e12", "#cc4416"], flowers: 0, tufts: 0, road: "basalt", curb: ["#2a1a14", "#ffb02a"], haze: [110, 36, 18], fog: [800, 3000],
+      skyMirror: true, dark: { sky: 0xffc099, gnd: 0x5a1a08, hemiI: 1.15, sun: 0xffb070, sunI: 1 } },
+    art: { sky: "media/kart/zakum/sky2t.webp" },
+    near: ["zk_skull", "zk_bones", "zk_rocks"], far: [], mobs: ["fire_boar", "firebomb", "crimson_balrog"],
     build() {
       const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      // the hexagon stepping stones: a leap over the lava
-      for (const [x, y] of [[1290, 990]]) { const g = I(x, y); pads.push({ t: "boost", i: g - 15, len: 6, o: 0, w: 70 }, { t: "bigramp", i: g - 5, len: 5, o: 0, w: ROAD }); gaps.push({ a: g, b: g + u(140), kind: "chasm", caps: [] }); }
-      const cave = { a: I(1060, 590), b: I(860, 330), rock: true, mound: 0x4a2a20 };
-      const gl = I(1000, 300); pads.push({ t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: gl, b: gl + u(300), kind: "chasm", caps: [] });   // 🪂 glide out of the cave (Mario Kart 8)
-      pads.push({ t: "boost", i: I(420, 770), len: 8, o: 0, w: 70 });
-      row(I(860, 1700), I(1300, 1830), 7, 0); row(cave.a + 8, cave.b - 8, 5, 0); row(I(620, 100), I(210, 260), 6, j => (j & 1 ? 40 : -40));
-      // 🕳️ the road that crumbles away: on lap 2 a few bites out of its edges, on lap 3 more
-      const holes = [[I(666, 1382), 55, 2], [I(1870, 1520), 50, 2], [I(1600, 1310), 55, 2], [I(880, 60), -50, 2], [I(330, 520), 55, 2],
-        [I(210, 260), -50, 3], [I(1430, 1200), -55, 3], [I(1130, 50), 50, 3], [I(400, 160), -55, 3], [I(500, 1000), 50, 3]].map(([i, o, lap]) => ({ i, o, r: 38, lap }));
-      const fireballs = [[I(1040, 1820), -30, 0], [I(1870, 1520), 30, 1.3], [I(1150, 720), 0, 2.6], [I(620, 100), 25, .7], [I(200, 400), -25, 2]].map(([i, o, ph]) => ({ i, o, ph }));
-      // 🔥 bubbling lava patches on the road's edges (they spin you out)
-      for (const [x, y, o] of [[1040, 1820, 50], [1600, 1310, -50], [620, 100, -50], [200, 400, 50]]) pads.push({ t: "lava", i: I(x, y), len: 10, o, w: 50 });
-      // 🐗 Zakum's creatures: Fire Boars charging across the road, Firebombs hopping across
-      const pigs = [[I(1300, 1830), "fire_boar", 0, false], [I(1792, 1400), "firebomb", 1.3, true], [I(880, 60), "fire_boar", 2.6, false], [I(330, 520), "firebomb", .7, true]]
-        .map(([i, k, ph, hop]) => ({ i, k, ph, hop, sp: 1, s: .5 }));
+      const Z = { x: ws(1024), y: ws(1150), s: 2.3, fa: -Math.PI / 2 };
+      // 🖐 Zakum's arms: they come up out of the lava on the side nearest him and slam across the road
+      const arms = [[1150, 590, 0], [930, 630, 2.2], [1785, 1010, 1.1], [1720, 1450, 3.6], [1200, 1745, 4.4], [700, 1768, .5]].map(([x, y, ph]) => { const i = I(x, y), bo = ROAD / 2 + CURB + 60, [px, py] = at(i, bo), [qx, qy] = at(i, -bo); return { i, ph, side: Math.hypot(px - Z.x, py - Z.y) < Math.hypot(qx - Z.x, qy - Z.y) ? 1 : -1 }; });
+      // 🪨 the stepping stones: a leap over the lava; 🪂 the glide off the west cliff
+      { const g = I(900, 1767); pads.push({ t: "boost", i: g - 15, len: 6, o: 0, w: 70 }, { t: "bigramp", i: g - 5, len: 5, o: 0, w: ROAD }); gaps.push({ a: g, b: g + u(150), kind: "chasm", caps: [] }); }
+      const gl = I(400, 570); pads.push({ t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: gl, b: gl + u(560), kind: "chasm", open: true, caps: [] });
+      pads.push({ t: "boost", i: I(1770, 870), len: 8, o: 0, w: 70 }, { t: "boost", i: I(1210, 520), len: 8, o: 0, w: 70 }, { t: "boost", i: I(320, 1540), len: 8, o: 0, w: 70 });
+      const fireballs = [[1320, 1730, -30, 0], [1790, 1100, 30, 1.4], [1360, 470, 0, 2.8], [1020, 680, 25, .7], [660, 470, -25, 2.1], [255, 1360, 20, 3.3]].map(([x, y, o, ph]) => ({ i: I(x, y), o, ph }));
+      for (const [x, y, o] of [[1540, 1660, -50], [1690, 660, 50], [830, 520, -50], [230, 1160, 50]]) pads.push({ t: "lava", i: I(x, y), len: 9, o, w: 46 });
+      const pigs = [[1540, 520, "firebomb", 0, true], [1060, 1760, "fire_boar", 1.3, false], [230, 1160, "firebomb", 2.6, true]].map(([x, y, k, ph, hop]) => ({ i: I(x, y), k, ph, hop, sp: 1, s: .5 }));
+      row(I(500, 1760), I(780, 1770), 4, 0); row(I(1770, 1330), I(1770, 870), 6, j => (j & 1 ? 30 : -30)); row(I(1210, 520), I(830, 520), 7, 0); row(I(255, 1360), I(400, 1690), 4, 0);
       return {
-        gaps, caves: [cave], pads, coins, holes, fireballs, pigs,
-        ledges: [{ a: 0, b: N - 1 }],
-        fork: { a: I(794, 1510), b: I(1530, 1780), via: [[ws(950), ws(1590)], [ws(1200), ws(1650)], [ws(1420), ws(1690)]], width: 140, style: "cobble" },
-        boxes: [...boxRow(I(860, 1700), [-60, -20, 20, 60]), ...boxRow(I(1600, 1310), [-60, -20, 20, 60]), ...boxRow(I(620, 100), [-60, -20, 20, 60])],
+        gaps, pads, coins, pigs, fireballs, arms, zakum: Z, ledges: [{ a: 0, b: N - 1 }], finalMsg: "🔥 Zakum is waking up!",
+        hot: [{ a: I(1540, 1660), b: I(1770, 1330) }, { a: I(1210, 520), b: I(830, 520) }, { a: I(1060, 1760), b: I(1320, 1730) }],
+        steams: [[1690, 660, 0], [500, 500, 0], [400, 1690, 0]].map(([x, y, o]) => ({ i: I(x, y), o, r: 50 })),
+        boxes: [...boxRow(I(1320, 1730), [-60, -20, 20, 60]), ...boxRow(I(1690, 660), [-50, 0, 50]), ...boxRow(I(660, 470), [-50, 0, 50]), ...boxRow(I(255, 1360), [-50, 0, 50])],
         extra(push) {
-          for (let i = 0; i < N; i += 40) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 6)); if (!gaps.some(g => i >= g.a - 3 && i <= g.b + 3)) OBJS.push({ x, y, k: "zk_lantern", s: .28, r: 0, z: 0 }); }   // lamp posts along the edges
+          for (let i = 0; i < N; i += 30) for (const sd of [-1, 1]) { const [x, y] = at(i, sd * (ROAD / 2 + CURB - 6)); if (!gaps.some(g => i >= g.a - 3 && i <= g.b + 3) && !arms.some(a => Math.abs(a.i - i) < 12)) OBJS.push({ x, y, k: "zk_lantern", s: .28, r: 0, z: 0 }); }   // lamp posts along the edges (not where an arm lands)
+          for (const [x, y, z] of [[1400, 900, 420], [700, 1200, 380]]) OBJS.push({ x: ws(x), y: ws(y), k: "crimson_balrog", s: 1, r: 0, z, bob: 30, mob: true });   // 🦇 Crimson Balrogs circling overhead
         },
       };
     },
@@ -950,6 +973,7 @@ function loadTrack(key) {
     ALT = pathPts([PTS[(FORK_A - 10 + N) % N], PTS[FORK_A], ...f.fork.via, PTS[FORK_B], PTS[(FORK_B + 10) % N]]); AN = ALT.length; ALTPADS = f.fork.pads || [];
   } else { FORK_A = FORK_B = -1e9; ALT = []; AN = 0; ALTPADS = []; }
   CHUTES = f.chutes || []; FAIRY = f.fairy || null; BRIDGES3D = []; T.cableDef = f.cable || null; T.icefallDefs = f.icefalls || []; T.trunkDef = f.trunk || null; T.templeDef = f.temple || null; T.supportDefs = f.supports || [];
+  HOTS = f.hot || []; ZAKUM = f.zakum || null; ZARMS = (f.arms || []).map(a => { const bo = ROAD / 2 + CURB + 60, [x, y] = at(a.i, a.side * bo), [ex, ey] = at(a.i, -a.side * (ROAD / 2 - 10)); return { T: 6, ...a, x, y, ex, ey, len: Math.hypot(ex - x, ey - y), ang: Math.atan2(ey - y, ex - x) }; }); STAMP.zones = f.stampede || []; STAMP.boars = []; STAMP.done = -1; QK.next = 9; QK.on = QK.warn = 0; QK.rocks = []; GEYSERS = (f.geysers || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y }; }); STEAMS = (f.steams || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y }; });
   DYNA = (f.dynamite || []).map(d => { const [x, y] = at(d.i, d.o || 0); return { ...d, x, y, st: 0, t: 0 }; }); FAKES = f.fakes || []; CAVEIN = f.caveIn ? { t: 2, rocks: [] } : null; HORROR.lvl = (T.theme && T.theme.horror) || 0; HORROR.next = 6; HORROR.black = 0; HORROR.warn = 0; HORROR.gl = 0; HORROR.nextBlack = 18 + Math.random() * 10;
   PEN = f.pen || null; LAKE = f.lake || null; TUNNEL = f.tunnel || null; CAVES = f.caves || []; STREAMS = f.streams || []; PLANKS = f.planks || [];
   LEAVES = (f.leaves || []).map(l => { const [x, y] = at(l.i, l.o || 0); return { ...l, x, y, a: tangent(l.i) }; });
@@ -961,7 +985,7 @@ function loadTrack(key) {
   MOLES = f.moles || []; CHOMPS = f.chomps || []; WANDER = f.wander || []; BUILDINGS = [];
   HOLES = (f.holes || []).map(h => { const [x, y] = at(h.i, h.o || 0); return { ...h, x, y }; });
   CARTS = f.carts || []; LEDGES = f.ledges || []; FIREBALLS = (f.fireballs || []).map(b => { const [x, y] = at(b.i, b.o || 0); return { T: 4.2, ...b, x, y }; });
-  THWOMPS = (f.thwomps || []).map(t => { if (t.x != null) return { T: 3.4, ...t }; const [x, y] = at(t.i, t.o || 0); return { T: 3.4, ...t, x, y }; });
+  THWOMPS = (f.thwomps || []).map(t => { if (t.x != null) return { T: 3.4, ...t }; const [x, y] = at(t.i, t.o || 0), [x1, y1] = at((t.i + N - 2) % N, 0), [x2, y2] = at((t.i + 2) % N, 0); return { T: 3.4, ...t, x, y, ra: Math.atan2(y2 - y1, x2 - x1) }; });
   RINGS = (f.rings || []).map(g => { const [x, y] = at(g.i, g.o || 0); return { ...g, x, y, a: tangent(g.i) }; });   // ⭕ boost rings in the air
   PLANE = f.plane ? (() => { const [x, y] = at(f.plane.i, f.plane.o || 0), [sx, sy] = at(f.plane.i, 0); return { x, y, a: tangent(f.plane.i) + (f.plane.turn || 0), at: [sx, sy] }; })() : null;
   HEDGES = (f.hedges || []).map(b => { if (b.x != null) return { ...b, a: 0 }; const [x, y] = at(b.i, b.o); return { ...b, x, y, a: tangent(b.i) }; });
@@ -1099,6 +1123,12 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
     g.globalAlpha = 1;
     g.lineJoin = g.lineCap = "round"; g.strokeStyle = "#2a1c1a"; g.lineWidth = ROAD + 2 * CURB + 60; g.beginPath(); PTS.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.stroke();
   }
+  else if (th.rock && !only) {   // 🪨 dark basalt ground: soft lighter and darker patches, a few warm glows from below (the glowing cracks come after)
+    g.fillStyle = th.grass[0]; g.fillRect(0, 0, WORLD, WORLD);
+    for (let k = 0, n = 700 * WS * WS; k < n; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 30 + rnd() * 90; g.fillStyle = ["#342a27", "#221b1a", "#2e2422", "#1c1716"][k & 3]; g.globalAlpha = .5; g.beginPath(); g.ellipse(x, y, r, r * .7, rnd() * 3, 0, 7); g.fill(); }
+    for (let k = 0, n = 60 * WS * WS; k < n; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 80 + rnd() * 160, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(255,110,30,.18)"); gr.addColorStop(1, "rgba(255,110,30,0)"); g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    g.globalAlpha = 1;
+  }
   else if (T.cup === "zakum" && !only) {   // 🔥 no ground beside the road: it's all lava (glowing blobs and bright veins)
     g.fillStyle = "#6a1806"; g.fillRect(0, 0, WORLD, WORLD);
     for (let k = 0; k < 2600; k++) { const x = rnd() * WORLD, y = rnd() * WORLD, r = 6 + rnd() * 26; g.fillStyle = ["#a8280a", "#d2441a", "#ff7a1e", "#8a1e08"][k & 3]; g.globalAlpha = .55; g.beginPath(); g.ellipse(x, y, r, r * .6, rnd() * 3, 0, 7); g.fill(); }
@@ -1135,7 +1165,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   const SURF = { icy: "#a2b0ee", garden: "#efe2c6", farm: "#d4a15c", planks: "#8a5a2e", dirt: "#b98b5a", cobble: "#bdb3a2", snow: "#dfe8f4", moss: "#5b5a4c", ruin: "#a08a62", basalt: "#4a4044", toy: "#f4f0ff" };
   const surface = (p, wd, st) => { p(); g.strokeStyle = SURF[st] || "#bdb3a2"; g.lineWidth = wd; g.stroke(); };
   const lake = () => {   // the forest lake (the wooden bridge crosses it), the swamp, or El Nath's frozen lake (drawn over the road: it's all ice)
-    const LC = { water: ["#2f6e2a", "#3d8de0", "#5aa8f0"], ice: ["#8fb4d8", "#bfe0fa", "#ffffff"], swamp: ["#1e3326", "#3d5e3a", "#6f8f4a"], shallow: ["#3f7a4a", "#4fb0a0", "#c8f4e8"], clock: ["#c8962a", "#e8dcc0", "#e8dcc0"] }[LAKE.kind || "water"];
+    const LC = { lava: ["#3a1408", "#ff5a1a", "#ffc040"], water: ["#2f6e2a", "#3d8de0", "#5aa8f0"], ice: ["#8fb4d8", "#bfe0fa", "#ffffff"], swamp: ["#1e3326", "#3d5e3a", "#6f8f4a"], shallow: ["#3f7a4a", "#4fb0a0", "#c8f4e8"], clock: ["#c8962a", "#e8dcc0", "#e8dcc0"] }[LAKE.kind || "water"];
     g.fillStyle = LC[0]; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx + 10, LAKE.ry + 10, 0, 0, 7); g.fill();
     g.fillStyle = LC[1]; g.beginPath(); g.ellipse(LAKE.cx, LAKE.cy, LAKE.rx, LAKE.ry, 0, 0, 7); g.fill();
     g.fillStyle = LC[2]; for (let k = 0; k < 40; k++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * .85; g.fillRect(LAKE.cx + Math.cos(a) * LAKE.rx * r, LAKE.cy + Math.sin(a) * LAKE.ry * r, 14, 3); }
@@ -1237,6 +1267,15 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   if (PEN) for (const pos of [PEN.a, PEN.b]) for (let o = -ROAD / 2; o < ROAD / 2; o += 8) { const [x, y] = at(pos, o); g.fillStyle = "#6b4426"; g.fillRect(x - 3, y - 3, 6, 6); }   // fence rails
   const tileFill = (set, path, alpha = 1) => { const c = TILEPAT[set]; if (!c) return false; const pat = g.createPattern(c, "repeat"); pat.setTransform(new DOMMatrix().scale(.75)); g.save(); g.globalAlpha = alpha; g.fillStyle = pat; path(); g.fill(); g.restore(); return true; };   // a shape filled with a MapleStory tile
   const band = (i0, len, o, w, shape) => () => { g.beginPath(); for (let j = 0; j <= len; j += .5) { const e = shape(j), [x, y] = at(i0 + j, o - w / 2 * e); j ? g.lineTo(x, y) : g.moveTo(x, y); } for (let j = len; j >= 0; j -= .5) { const e = shape(j), [x, y] = at(i0 + j, o + w / 2 * e); g.lineTo(x, y); } g.closePath(); };
+  for (const hs of HOTS) {   // 🔥 hot lava crust on the road (all drawn, no textures): the road darkens to scorched basalt, then a web of glowing cracks with bright cores and little ember dots
+    let sd = hs.a * 7 + 3; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647, L = hs.b - hs.a, fade = i => Math.min(1, (i - hs.a) / 8, (hs.b - i) / 8);
+    for (let i = hs.a; i < hs.b; i += .5) { const e = fade(i); quad(i, -ROAD / 2, ROAD / 2, `rgba(26,10,6,${.25 * e})`); }
+    const cracks = []; for (let n = 0; n < L / 2.2; n++) { let i = hs.a + 4 + rr() * (L - 8), o = (rr() - .5) * ROAD * .9, a = rr() * 6.28; const pts = []; for (let q = 0; q < 5; q++) { const [x, y] = at(i % N, o); pts.push([x, y]); a += (rr() - .5) * 1.6; i += Math.cos(a) * 1.6; o = Math.max(-ROAD * .46, Math.min(ROAD * .46, o + Math.sin(a) * 11)); } cracks.push([pts, fade(Math.round(i))]); }
+    for (const [w, c] of [[9, "rgba(255,80,10,.22)"], [4, "rgba(255,120,30,.85)"], [1.6, "rgba(255,230,140,.95)"]]) { g.lineWidth = w; g.lineCap = g.lineJoin = "round"; for (const [pts, e] of cracks) { if (e < .2) continue; g.strokeStyle = c; g.globalAlpha = e; g.beginPath(); pts.forEach(([x, y], q) => q ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke(); } }
+    g.globalAlpha = 1; for (let n = 0; n < L * 1.5; n++) { const i = hs.a + 3 + rr() * (L - 6), [x, y] = at(i % N, (rr() - .5) * ROAD * .9); g.fillStyle = rr() < .5 ? "#ffb040" : "#ff6a1a"; g.fillRect(x, y, 2.5, 2.5); }
+  }
+  for (const sv of STEAMS) { g.fillStyle = "#3a3a40"; g.beginPath(); g.arc(sv.x, sv.y, (sv.r || 44) * .8, 0, 7); g.fill(); g.strokeStyle = "#8a8d96"; g.lineWidth = 3; for (let k2 = -2; k2 <= 2; k2++) { g.beginPath(); g.moveTo(sv.x - 26, sv.y + k2 * 9); g.lineTo(sv.x + 26, sv.y + k2 * 9); g.stroke(); } }   // 💨 steam vent grates
+  for (const ge of GEYSERS) { g.fillStyle = "#2a1a14"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) + 8, 0, 7); g.fill(); g.fillStyle = "#ff6a1a"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) * .7, 0, 7); g.fill(); g.fillStyle = "#ffd060"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) * .35, 0, 7); g.fill(); }   // 🌋 geyser vents
   const blob = (x, y, a, rx, ry) => () => { g.beginPath(); g.ellipse(x, y, rx, ry, a, 0, 7); };
   for (const p of PADS) {
     if (p.t === "glide") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {   // 🪁 a glider ramp: blue with white chevrons
@@ -1377,7 +1416,7 @@ function lavaMap() {
 }
 // roadside things: real Henesys props (trees, mushroom houses, market stalls, hay, sunflowers) and a few monsters.
 // s = world units per picture pixel, r = how solid it is
-const K3D = new Set(["gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse", "xpillar", "engate", "swhotel", "golem"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
+const K3D = new Set(["zkpillar", "gazebo", "hotair", "icicle", "snowman_big", "igloo", "enhouse", "xpillar", "engate", "swhotel", "golem"]);   // big things that are real 3D models in the 3D view (drawn flat only in the flat view)
 const PROPS = { treehouse: [.62, 0], iv_crag0: [.5, 0, "elnath"], iv_crag1: [.5, 0, "elnath"], iv_ledge0: [.3, 0, "elnath"], iv_ledge1: [.4, 0, "elnath"], iv_ledge2: [.6, 0, "elnath"], iv_ledge3: [.6, 0, "elnath"], iv_ledge4: [.5, 0, "elnath"], iv_pine0: [1.4, 12, "elnath"], iv_pine1: [1.6, 12, "elnath"], iv_pine2: [1.6, 12, "elnath"], iv_pine3: [1.1, 16, "elnath"], iv_pine4: [1.3, 14, "elnath"], iv_bridge: [.4, 0, "elnath"], en_rock0: [.35, 40, "elnath"], en_rock1: [.4, 34, "elnath"], en_rock2: [.4, 32, "elnath"], en_rock3: [.5, 22, "elnath"], en_rock4: [.5, 20, "elnath"], en_rock5: [.5, 22, "elnath"], en_deadtree0: [.5, 16, "elnath"], en_deadtree1: [.45, 18, "elnath"], en_deadtree2: [.5, 14, "elnath"],
   en_icestone0: [.5, 18, "elnath"], en_icestone1: [.5, 20, "elnath"], en_icestone2: [.5, 18, "elnath"], en_icestone3: [.45, 22, "elnath"], en_icestone4: [.5, 16, "elnath"], en_icestone5: [.45, 24, "elnath"], hospital: [.55, 40], tree: [.36, 16], bush: [.3, 12], redshrooms: [.42, 10], sunflower: [.45, 6], tallshroom: [.4, 9], stall: [.42, 18], stall2: [.42, 18],
   hay: [.42, 12], haypile: [.38, 16], shroomtower: [.48, 16], shroomhouse: [.5, 18], posts: [.42, 10],
@@ -1670,11 +1709,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=155"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=165"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2220,6 +2259,91 @@ function selfGhostStep() {
   Object.assign(SELF.g, { x: q[1], y: q[2], a: q[3], z: q[4] }); SELF.on = true;
   if (t > 3 && !(K.chill > 0) && !(now < (SELF.cd || 0)) && Math.hypot(K.x - q[1], K.y - q[2]) < 24 && Math.abs((K.z || 0) - q[4]) < 30) { K.chill = 1.3; K.v *= .55; SELF.cd = now + 10; pop("🥶 Your ghost passed through you!", "#bfe6ff", true); tone(300, .4, "sine", .05, 120); }
 }
+// 🌋 a lava geyser (the same clock for everyone): it rumbles, then erupts for about a second; on the last lap it goes twice as often
+// 🖐 Zakum's arms: each rises out of the lava beside the road (a red stripe flashes across the road where it will land), slams down across it, lies there a
+// moment (drive over it and you bounce), then sinks back. On the last lap Zakum is awake and they come twice as fast.
+const zakAwake = () => !!K && lapNow() >= LAPS && state === "race";
+function armAt(a, now) { const T = zakAwake() ? a.T * .55 : a.T, p = (((now + a.ph) % T) + T) % T / T;   // up: how far out of the lava (0-1), fall: 0 standing up, 1 lying across the road
+  return p < .42 ? { up: 0, fall: 0, warn: 0, p } : p < .62 ? { up: (p - .42) / .2, fall: 0, warn: 1, p } : p < .7 ? { up: 1, fall: ((p - .62) / .08) ** 2, warn: 1, p } : p < .86 ? { up: 1, fall: 1, warn: 0, p } : { up: 1 - (p - .86) / .14, fall: 1, warn: 0, p }; }
+function armStep(dt) {
+  if (!ZARMS.length || !K) return; const now = performance.now() / 1000, rs = racers();
+  if (ZAKUM && zakAwake() && !ZAKUM.woke && state === "race") { ZAKUM.woke = 1; flash("🔥 ZAKUM AWAKENS!", 2200); K.shake = .5; tone(70, 1.6, "sawtooth", .07, 35); boomSound(0); }
+  for (const a of ZARMS) { const q = armAt(a, now), seg = r => { const ux = Math.cos(a.ang), uy = Math.sin(a.ang), t = Math.max(0, Math.min(a.len + 30, (r.x - a.x) * ux + (r.y - a.y) * uy)); return Math.hypot(r.x - a.x - ux * t, r.y - a.y - uy * t); };
+    const slam = q.fall >= 1 && q.p < .73, lying = q.fall >= 1 && q.up > .3, key = Math.floor((now + a.ph) / a.T);
+    if (slam && q.p >= .7 && q.p < .705 && Math.hypot(K.x - a.ex, K.y - a.ey) < 900) K.shake = Math.max(K.shake, .45);
+    for (const r of rs) { if (r.gone || r.rescue > 0 || r.z > 40) continue; const d = seg(r); if (d > 34) continue;
+      if (slam && r.armHit !== key + a.i) { r.armHit = key + a.i; r.squash = 1.1; r.v = 0; if (r === K) spinOut("🖐 Slammed by Zakum's arm!"); else hit(r); }
+      else if (lying && !slam && r.armHop !== key + a.i && !(r.z > 0)) { r.armHop = key + a.i; r.vz = 190 / SPD; r.z = .1; r.v *= .85; if (r === K) { bumpSound(); K.shake = Math.max(K.shake, .15); } } } }
+}
+function geyserAt(g, now) { const T = lapNow && K && lapNow() >= LAPS ? 2.6 : 5.2, p = (((now + (g.ph || 0)) % T) + T) % T / T; return p < .72 ? 0 : p < .8 ? (p - .72) / .08 * .3 : p < .95 ? 1 : (1 - p) / .05; }   // (0 calm, 0-.3 rumbling, 1 erupting)
+// 🔥 heat: lava-crust road and geyser vents heat your kart; steam vents and cool rock cool it; too hot and you overheat
+function heatStep(dt) {
+  if (!T.theme.heat || !K) return; const now = performance.now() / 1000, rs = racers();
+  for (const g of GEYSERS) { const e = geyserAt(g, now); if (e < .9) continue; for (const r of rs) if (!r.gone && !(r.z > 0) && Math.hypot(r.x - g.x, r.y - g.y) < (g.r || 36) && !(r.gT > now)) { r.gT = now + 1.2; r.vz = (420 + r.v * .3) / SPD; r.z = .1; giveBoost(r, .5, 90); if (r === K) { flash("🌋 Geyser launch!", 900); jumpSound(); K.heat = Math.min(.95, (K.heat || 0) + .15); } } }
+  if (state !== "race") { K.heat = Math.max(0, (K.heat || 0) - dt); return; }
+  const air = K.z > 0, onHot = !air && HOTS.some(h => K.idx >= h.a && K.idx <= h.b), nearVent = GEYSERS.some(g => Math.hypot(K.x - g.x, K.y - g.y) < 70), steam = STEAMS.find(g => Math.hypot(K.x - g.x, K.y - g.y) < (g.r || 44));
+  K.heat = K.heat || 0; if (steam && !air) { if (K.heat > .05 && !(K.coolT > now)) { K.coolT = now + 1.5; pop("💨 Cooled off!", "#cfe8ff"); } K.heat = Math.max(0, K.heat - dt * 1.6); }
+  else if (onHot || nearVent) K.heat = Math.min(1, K.heat + dt * (onHot ? .13 : .06)); else K.heat = Math.max(0, K.heat - dt * .22);
+  if (K.heat >= 1) { K.heat = .5; K.burn = 1.4; spinOut("🔥 Overheated!"); K.shake = .35; boomSound(0); }
+  if (K.burn > 0) K.burn -= dt; if (K.heat > .8 && !(K.hotBeep > now)) { K.hotBeep = now + .7; tone(880, .08, "square", .03); }
+}
+function drawHeat(W, H, k) {
+  if (!T.theme.heat) return; const h = Math.max(k.heat || 0, k.burn > 0 ? 1 : 0), el = $k("#k3d"), t = performance.now() / 1000;
+  if (el) { if (h > .15 && state === "race") { el.style.filter = `blur(${Math.max(0, h - .5) * .9}px) saturate(${1 + h * .45}) contrast(${1 + h * .12})`; el.style.transform = `translate(${Math.sin(t * 13) * h * 1.6}px, ${Math.cos(t * 11) * h * 1.2}px) skewX(${Math.sin(t * 4) * h * .6}deg)`; } else if (el.style.filter && !T.theme.hallu) { el.style.filter = ""; el.style.transform = ""; } }
+  if (h > .12) {
+    const vg = ctx.createRadialGradient(W / 2, H * .55, H * .2, W / 2, H * .55, W * .72); vg.addColorStop(0, "rgba(255,90,0,0)"); vg.addColorStop(1, `rgba(255,${60 - h * 40},0,${h * .55})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalCompositeOperation = "lighter";   // flames licking up from the bottom of the screen (and the sides when it's really hot)
+    const fl = (x, y, w, hh) => { const g2 = ctx.createLinearGradient(0, y, 0, y - hh); g2.addColorStop(0, "rgba(255,120,20,.75)"); g2.addColorStop(.5, "rgba(255,190,60,.45)"); g2.addColorStop(1, "rgba(255,240,160,0)"); ctx.fillStyle = g2; ctx.beginPath(); ctx.moveTo(x - w / 2, y); ctx.quadraticCurveTo(x - w * .4, y - hh * .5, x + Math.sin(t * 7 + x) * w * .3, y - hh); ctx.quadraticCurveTo(x + w * .4, y - hh * .5, x + w / 2, y); ctx.fill(); };
+    for (let x = 0; x <= W; x += 34) fl(x, H, 46, H * (.04 + .16 * h) * (.6 + .4 * Math.sin(t * 9 + x * .07)));
+    if (h > .6) for (let y = H; y > H * .3; y -= 40) { const hh = W * (.03 + .06 * (h - .6)) * (.6 + .4 * Math.sin(t * 8 + y)); ctx.save(); ctx.translate(0, y); ctx.rotate(Math.PI / 2); fl(0, 0, 40, hh); ctx.restore(); ctx.save(); ctx.translate(W, y); ctx.rotate(-Math.PI / 2); fl(0, 0, 40, hh); ctx.restore(); }
+    ctx.restore();
+    HEATFX.e = HEATFX.e.filter(e => (e.y -= e.v * .016, e.x += Math.sin(t * 3 + e.ph) * .6, e.y > -10)); if (HEATFX.e.length < 70 * h) HEATFX.e.push({ x: Math.random() * W, y: H + 5, v: 40 + Math.random() * 90, ph: Math.random() * 6, s: 1 + Math.random() * 2.5 });
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; for (const e of HEATFX.e) { ctx.fillStyle = Math.random() < .5 ? "rgba(255,170,50,.9)" : "rgba(255,90,20,.9)"; ctx.fillRect(e.x, e.y, e.s, e.s); } ctx.restore();   // embers rising
+    if (h > .5) { ctx.save(); for (let n = 0; n < 5; n++) { const a = ((t * .9 + n / 5) % 1), x = W / 2 + Math.sin(n * 2 + t) * 30 * a, y = H * .74 - a * H * .25; ctx.fillStyle = `rgba(60,55,50,${(1 - a) * .45 * h})`; ctx.beginPath(); ctx.arc(x, y, 10 + a * 30, 0, 7); ctx.fill(); } ctx.restore(); }   // the kart smoking
+  }
+  if (k.burn > 0) { ctx.fillStyle = `rgba(255,120,20,${Math.min(.5, k.burn * .4)})`; ctx.fillRect(0, 0, W, H); }
+  if (ZAKUM && zakAwake()) { const p = .18 + .1 * Math.sin(t * 2.4), vg = ctx.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, W * .75); vg.addColorStop(0, "rgba(160,0,0,0)"); vg.addColorStop(1, `rgba(150,0,0,${p * 2})`); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H); }   // 🔥 Zakum is awake: the edges of the screen pulse crimson
+  if (state === "race") { const x = 14, y = H - 54, w = 110; ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(x - 2, y - 2, w + 4, 14);   // the heat gauge
+    const g3 = ctx.createLinearGradient(x, 0, x + w, 0); g3.addColorStop(0, "#ffd23f"); g3.addColorStop(.6, "#ff7a1a"); g3.addColorStop(1, "#ff2a1a"); ctx.fillStyle = g3; ctx.fillRect(x, y, w * Math.min(1, k.heat || 0), 10);
+    ctx.font = "900 12px Ubuntu, sans-serif"; ctx.fillStyle = (k.heat || 0) > .8 && Math.sin(t * 14) > 0 ? "#ff3a1a" : "#fff"; ctx.textAlign = "left"; ctx.fillText((k.heat || 0) > .8 ? "TOO HOT!" : "HEAT", x + 2, y - 4); }
+}
+const HEATFX = { e: [] };
+// 🌍 earthquakes (Dead Mine): a rumble and a warning, then three seconds of shaking while rocks rain from the roof ahead of the karts; more often on the last lap
+const QK = { next: 9, warn: 0, on: 0, rt: 0, rocks: [], dust: [] }, STAMP = { zones: [], boars: [], done: -1 };
+function quakeStep(dt) {
+  if (!T.theme.quake || !K) return; const rs = racers(), last = lapNow() >= LAPS;
+  if (state !== "race") { QK.on = QK.warn = 0; QK.rocks.length = 0; return; }
+  if (QK.on > 0) { QK.on -= dt; K.shake = Math.max(K.shake, .26); QK.rt -= dt;
+    if (QK.rt <= 0) { QK.rt = last ? .2 : .3; const tg = Math.random() < .65 ? K : rs[Math.floor(Math.random() * rs.length)]; if (tg && !tg.gone) { const i = (Math.floor(tg.idx) + 12 + Math.floor(Math.random() * 30)) % N, [x, y] = at(i, (Math.random() - .5) * ROAD * .85); QK.rocks.push({ x, y, t: 1.1 }); } }
+    if (QK.on <= 0) QK.next = (last ? 7 : 11) + Math.random() * 4; }
+  else if (QK.warn > 0) { QK.warn -= dt; K.shake = Math.max(K.shake, .1); if (QK.warn <= 0) { QK.on = 3.2; QK.rt = 0; boomSound(250); } }
+  else { QK.next -= dt; if (QK.next <= 0) { QK.warn = 1.5; flash("⚠️ EARTHQUAKE!", 1400); tone(55, 1.5, "sawtooth", .06, 38); } }
+  for (let n = QK.rocks.length - 1; n >= 0; n--) { const q = QK.rocks[n]; q.t -= dt; if (q.t > 0) continue; BOOMS.push({ x: q.x, y: q.y, t: 0, debris: [] }); boomSound(Math.hypot(K.x - q.x, K.y - q.y));
+    for (const r of rs) if (!r.gone && !(r.z > 30) && Math.hypot(r.x - q.x, r.y - q.y) < 36 && !(r.rescue > 0)) { if (r === K) spinOut("🪨 Falling rocks!"); else { r.spin = .9; r.v *= .4; } } QK.rocks.splice(n, 1); }
+}
+// 🐗 the stampede: run into a stampede zone and a herd of Fire Boars charges up the road from behind, faster than you (like Bullet Bills); boost to stay ahead
+function stampStep(dt) {
+  if (!STAMP.zones.length || !K) return; const rs = racers(), now = performance.now();
+  if (state !== "race") { STAMP.boars.length = 0; return; }
+  STAMP.zones.forEach((z, n) => { const key = K.lap * 10 + n; if (K.idx >= z.a && K.idx < z.a + 15 && STAMP.done !== key) { STAMP.done = key; flash("🐗 STAMPEDE! Behind you!", 1300); tone(130, .7, "sawtooth", .05, 230);
+    for (let b = 0; b < z.n; b++) STAMP.boars.push({ i: K.idx - 34 - b * 8, o: [-50, 40, 0, -20, 55][b % 5], v: 335 + b * 10, end: z.b, ph: b * 1.7 }); } });
+  for (let n = STAMP.boars.length - 1; n >= 0; n--) { const b = STAMP.boars[n]; b.i += b.v * dt / SPC; if (b.i >= b.end) { STAMP.boars.splice(n, 1); continue; } [b.x, b.y] = at((b.i % N + N) % N, b.o + Math.sin(now / 300 + b.ph) * 10);
+    for (const r of rs) if (!r.gone && !(r.z > 20) && !(r.rescue > 0) && Math.hypot(r.x - b.x, r.y - b.y) < 24 && !(r.boarT > now)) { r.boarT = now + 1500; if (r === K) { spinOut("🐗 Trampled by a Fire Boar!"); K.shake = .3; } else { r.spin = .9; r.v *= .4; } } }
+}
+function quakeWorld(addDraw) {   // (the falling rocks and their shadows, drawn in the world)
+  const t = performance.now() / 1000;
+  for (const q of QK.rocks) addDraw(q.x, q.y, (sx, gy, sc) => { ctx.save(); ctx.fillStyle = `rgba(0,0,0,${.6 * (1.1 - q.t)})`; ctx.beginPath(); ctx.ellipse(sx, gy, 30 * sc * (1.5 - q.t * .5), 11 * sc * (1.5 - q.t * .5), 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = `rgba(255,60,30,${.5 + .5 * Math.sin(t * 20)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(sx, gy, 36 * sc, 13 * sc, 0, 0, 7); ctx.stroke(); ctx.restore(); }, 0);
+  if (G3 && G3.mdl) for (const q of QK.rocks) G3.mdl("rock", q.x, q.y, q.t * 520, 0, t);
+}
+function drawQuake(W, H) {
+  if (!T.theme.quake && !STAMP.zones.length) return; const t = performance.now() / 1000;
+  if (QK.on > 0 || QK.warn > 0) { const a = QK.on > 0 ? 1 : .3; if (QK.dust.length < 90 * a) QK.dust.push({ x: Math.random() * W, y: -10, v: 80 + Math.random() * 160, s: 1 + Math.random() * 3 });   // dust and grit pouring down from the roof
+    ctx.save(); ctx.fillStyle = `rgba(80,60,40,${.12 * a})`; ctx.fillRect(0, 0, W, H); for (const d of QK.dust) { ctx.fillStyle = d.s > 2.5 ? "rgba(70,55,45,.9)" : "rgba(160,140,110,.7)"; ctx.fillRect(d.x, d.y, d.s, d.s * 1.6); } ctx.restore();
+    if (QK.warn > 0 && Math.sin(t * 16) > 0) { ctx.save(); ctx.font = "900 26px Ubuntu, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#ffcf3a"; ctx.strokeStyle = "#3a1a00"; ctx.lineWidth = 5; ctx.strokeText("⚠️ QUAKE!", W / 2, H * .3); ctx.fillText("⚠️ QUAKE!", W / 2, H * .3); ctx.restore(); } }
+  QK.dust = QK.dust.filter(d => (d.y += d.v * .016) < H + 10);
+  if (STAMP.boars.length && K) { const behind = STAMP.boars.some(b => b.i < K.idx && K.idx - b.i < 60); if (behind && Math.sin(t * 12) > -.2) { ctx.save(); ctx.font = "900 22px Ubuntu, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#ff6a2a"; ctx.strokeStyle = "#2a0a00"; ctx.lineWidth = 5; ctx.strokeText("🐗 ▼ BEHIND YOU ▼ 🐗", W / 2, H - 70); ctx.fillText("🐗 ▼ BEHIND YOU ▼ 🐗", W / 2, H - 70); ctx.restore(); } }
+}
 function phantomAlpha(g, now) { const T = 7, p = ((now + g.a * .37) % T + T) % T; return p < 3.4 ? 1 : p < 4 ? 1 - (p - 3.4) / .6 * .94 : p < 6 ? .06 : .06 + (p - 6) / 1 * .94; }
 // 🧨 dynamite (lights when someone comes close, blows half a second later, the chain sets off the next) and the last lap's cave-in
 function mineStep(dt, tt) {
@@ -2254,7 +2378,7 @@ function stompStep(tt) {   // 🍄 the last lap: Mushmom (or Ice Valley's Yetis)
       for (const g of GAPS) for (const c of g.caps) c.squash = Math.max(c.squash || 0, .7); } }
 }
 function worldStep(dt, tt) {
-  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt); mineStep(dt, tt); selfGhostStep(); if (K && K.chill > 0) K.chill -= dt;
+  areaStep(); stompStep(tt); slideStep(tt); horrorStep(dt); mineStep(dt, tt); heatStep(dt); quakeStep(dt); stampStep(dt); armStep(dt); selfGhostStep(); if (K && K.chill > 0) K.chill -= dt;
   if (K && state === "race" && !(K.z > 0) && flooded(K)) { K.v = Math.min(K.v, 210); if (!K.wet) { K.wet = 1; pop("🌊 Flooded!", "#7ab8ff"); } } else if (K) K.wet = 0;
   if (thunderFx > 0) thunderFx -= dt;
   if (LAVA && state === "race") lavaStep(dt);
@@ -2438,8 +2562,9 @@ function petStep(r, air, tt) {
       if (!(r.hedgeT > performance.now())) { r.hedgeT = performance.now() + 500; r.v = Math.min(r.v, 160); if (r === K) { bumpSound(); K.shake = Math.max(K.shake, .15); } } } }
   { const now = performance.now() / 1000;
     for (const t of THWOMPS) { const d = Math.hypot(r.x - t.x, r.y - t.y), z = thwompZ(t, now), R0 = 38, ph = ((now + t.ph) % t.T) / t.T, slam = Math.floor((now + t.ph) / t.T);
-      if (d < R0 && ph >= .55 && ph < .66 && z < 30 && r.z < 30 && r.thwSlam !== slam) { r.thwSlam = slam; r.squash = 1.1; r.v = 0; if (r === K) { spinOut("🗿 Squashed by a Block Golem!"); K.shake = .4; } else hit(r); }   // 💥 caught under it as it lands (any frame rate)
-      else if (d < R0 + 10 && ph >= .66 && z === 0 && d > 0) { const nx = (r.x - t.x) / d, ny = (r.y - t.y) / d; r.x = t.x + nx * (R0 + 10); r.y = t.y + ny * (R0 + 10); r.v = Math.min(r.v, 150); } } }   // a Thwomp on the ground is a solid block
+      if (d < R0 && ph >= .55 && ph < .66 && z < 30 && r.z < 30 && r.thwSlam !== slam) { r.thwSlam = slam; r.squash = 1.1; r.v = 0; if (r === K) { spinOut(t.golem ? "🗿 Smashed by a Fire Golem!" : "🗿 Squashed by a Block Golem!"); K.shake = .4; } else hit(r); }
+      else if (d < R0 + 10 && ph >= .66 && z === 0 && d > 0) { const nx = (r.x - t.x) / d, ny = (r.y - t.y) / d; r.x = t.x + nx * (R0 + 10); r.y = t.y + ny * (R0 + 10); r.v = Math.min(r.v, 150); }
+      if (r === K && t.golem && ph >= .55 && ph < .6 && d < 600) K.shake = Math.max(K.shake, .3 * (1 - d / 600)); } }   // a Thwomp on the ground is a solid block; a Fire Golem landing shakes the ground
   { const now = performance.now() / 1000;
     for (const c of CARTS) { const q = cartAt(c, now); if (Math.abs(r.z) < 20 && Math.hypot(r.x - q.x, r.y - q.y) < 24 && !(r.cartT > now)) { r.cartT = now + 1; giveBoost(r, .7, 100); if (r === K) { flash("🛒 Cart boost!", 700); padSound(); } } } }   // 🛒 bump a mine cart: it shoves you on (like Mario Kart 8's)
   { const now = performance.now() / 1000;
@@ -2681,7 +2806,7 @@ function step(dt) {
   for (const l of LEDGES) if (l.wall && !air && k.idx >= l.a && k.idx <= l.b && near.d > near.half + CURB + 6 && !ledgeSide(l, k)) {   // 🏔️ the mountain's rock face: solid
     const [cx, cy] = at(near.i, 0), dx = k.x - cx, dy = k.y - cy, d = Math.hypot(dx, dy) || 1, lim = near.half + CURB + 6; k.x = cx + dx / d * lim; k.y = cy + dy / d * lim; if (k.bump <= 0) { k.v *= .75; k.bump = .3; bumpSound(); } k.drift = 0; }
   if (LEDGES.length && racing && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(k.x, k.y, 10) && LEDGES.some(l => k.idx >= l.a && k.idx <= l.b && ledgeSide(l, k)) && !(k.rescue > 0)) { rescue(k, T.fall || (T.theme.lava ? "🔥 Into the lava!" : "⛏️ Down into the dark!")); return; }   // no railings: off the edge you fall   // 🌊 off the boardwalk: into the lake
-  if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
+  if (LAKE && lakeFall() && !air && k.off && inLake(k.x, k.y)) { rescue(k, LAKE.kind === "lava" ? "🔥 Into the lava!" : LAKE.kind === "swamp" ? "🐊 Into the swamp!" : "💦 Splash!"); return; }   // fell off the bridge into the lake
   for (const p of PENPIGS) {
     p.dx *= Math.pow(.6, dt); p.dy *= Math.pow(.6, dt);
     for (const r of racers()) { if (r.z > 8) continue; const q = penPigPos(p, tt), dx = q.x - r.x, dy = q.y - r.y, d = Math.hypot(dx, dy);
@@ -2817,6 +2942,7 @@ function render() {
   else {
   for (const r of RIV) if (!r.gone) addDraw(r.x, r.y, (sx, gy, sc, fz) => drawRival(r, sx, gy, sc, fz));
   if (mode !== "tt") for (const b of BOXES) if (b.t <= 0) addDraw(b.x, b.y, (sx, gy, sc) => drawBox(sx, gy, sc, tt));
+  if (QK.rocks.length) quakeWorld(addDraw);
   if (mode === "tt" && topGhost && state !== "menu") {   // 🏆 the guild's #1, see-through and gold
     const gs = ghostAt(K.t, topGhost.data);
     if (gs) addDraw(gs.x, gs.y, (sx, gy, sc, fz) => drawRival({ name: `🏆 ${topGhost.name}`, img: topGhost.img, color: "#e8b43a", steer: 0, z: gs.z, spin: 0, squash: 0, inv: 0, ghost: true }, sx, gy, sc, fz));
@@ -2941,6 +3067,7 @@ function render() {
   for (const p of PENPIGS) { const q = penPigPos(p, tt); add(q.x, q.y, IMG[p.k], .45, 0, q.dir > 0); }
   if (IMG.meso) for (const c of COINS) if (!c.got && (G3 ? (c.x - k.x) * ca + (c.y - k.y) * sa > -12 : (c.x - cx) * ca + (c.y - cy) * sa > CD * 1.05)) add(c.x, c.y, IMG.meso[Math.floor(tt * 8 + c.x * .05) % 4], .55, (c.z || 0) + 6 + Math.sin(tt * 4 + c.x) * 2);
   for (const p of PIGS) { if ((p.lap && lapNow() < p.lap) || (p.tide && !tideHigh())) continue; const q = pigPos(p, tt); if (G3 && G3.mdl && (p.k === "freezie" || p.k === "snowball" || p.k === "stoneball")) G3.mdl(p.k, q.x, q.y, q.z, tangent(p.i) + Math.PI, tt); else add(q.x, q.y, IMG[p.k], p.s || .45, q.z, q.dir > 0, q.z > 2 ? .5 : 0); }
+  for (const b of STAMP.boars) if (b.x != null && IMG.fire_boar) add(b.x, b.y, IMG.fire_boar, .55, Math.abs(Math.sin(tt * 14 + b.ph)) * 7, false);   // 🐗 the stampede
   for (const m of MOLES) { const q = molePos(m, tt), im = IMG[m.img || "stump"]; add(q.x, q.y, IMG.farm_mound, .42, 0); if (q.up > 0 && im) add(q.x, q.y, im, m.img ? .75 : .5, -34 * (1 - q.up)); }   // 🌳 mounds, and stumps (or bunnies) popping out
   // 🐾 pets wandering the gardens, and the giant pets on their chains (with the chain drawn from its post)
   for (const w of WANDER) { const q = wanderPos(w, tt), im = petFrame(w.k, "move", tt + w.ph); if (im) add(q.x, q.y, im, w.s, 0, q.dx > 0); }
@@ -2980,7 +3107,7 @@ function render() {
   if (T.water && PTS[k.idx] && PTS[k.idx][2] + 30 < T.water.level * WS) {   // 🫧 under the lake: deep blue all round, light from above, bubbles drifting up
     const g2 = ctx.createLinearGradient(0, 0, 0, H); g2.addColorStop(0, "rgba(60,140,200,.28)"); g2.addColorStop(1, "rgba(5,25,60,.45)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "rgba(220,240,255,.55)"; const tb = performance.now() / 1000; for (let n = 0; n < 14; n++) { const x = (n * 53 + Math.sin(tb + n) * 6) % W, y = H - ((tb * 40 + n * 37) % H); ctx.beginPath(); ctx.arc(x, y, 1 + (n % 3) * .6, 0, 7); ctx.fill(); } }
-  drawHorror(k, W, H); drawHallu(W, H);
+  drawHorror(k, W, H); drawHallu(W, H); drawHeat(W, H, k); drawQuake(W, H);
   if (k.chill > 0) { const f = Math.min(1, k.chill / .5), g2 = ctx.createRadialGradient(W / 2, H / 2, H * .25, W / 2, H / 2, W * .65); g2.addColorStop(0, "rgba(200,235,255,0)"); g2.addColorStop(1, `rgba(200,235,255,${.7 * f})`); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }   // 🥶 frost creeping in
   for (const cv of CAVES) if (k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .75);
