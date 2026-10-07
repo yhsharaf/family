@@ -69,9 +69,12 @@ function rideStep(r, dt, steer) {
   if (!RIDES.length) return false;
   if (r.rideLock && (r.idx < r.rideLock.a - 8 || r.idx > r.rideLock.b + 8)) r.rideLock = null;   // (a ride just finished can't catch you again until you're clear of it)
   if (!r.ride) { if (r.z > 0 || r.rescue > 0) return false; const R = RIDES.find(R => r.idx >= R.a && r.idx < R.b - 2 && R !== r.rideLock); if (!R) return false; r.ride = R; r.rs = r.idx; r.rlat = Math.max(-ROAD / 2 + 18, Math.min(ROAD / 2 - 18, lat(r.x, r.y, r.idx))); r.drift = 0; r.charge = 0; }
-  const R = r.ride; r.v = Math.max(r.v, 235); r.rs += r.v * SPD * dt / RSPC; r.rlat = Math.max(-ROAD / 2 + 18, Math.min(ROAD / 2 - 18, r.rlat + steer * 150 * dt)); r.steer = steer;
+  const R = r.ride; boostTick(r, dt); const top = (r === K ? VMAX + (r.mesos || 0) * 3 : (r.skill || VMAX) * DIFF().skill) + (r.extra || 0);   // (on a ride you still drive the speed: accelerate, brake, boosts; it never drops below a crawl so you can't stall upside down)
+  if (r === K && r.brakeIn) r.v = Math.max(150, r.v - 380 * dt); else r.v += (r.v < top ? (r.extra > 5 ? 900 : 120) : -260) * dt; r.v = Math.max(r.v, 150);
+  for (const key of ["boost", "spin", "inv", "squash", "shake", "small"]) if (r[key] > 0) r[key] -= dt;
+  r.rs += r.v * SPD * dt / RSPC; r.rlat = Math.max(-ROAD / 2 + 18, Math.min(ROAD / 2 - 18, r.rlat + steer * 150 * dt)); r.steer = steer;
   if (r.rs >= R.b) { r.ride = null; r.rideLock = R; const i = R.b % N, [x, y] = at(i, r.rlat); r.x = x; r.y = y; r.idx = i; r.a = r.ma = tangent(i);
-    if (gapAt(i)) { r.z = 14; r.vz = 40; r.glide = 1; r.v = Math.max(r.v, 250); }   // (straight off the end into the air: the glider opens)
+    if (gapAt(i) || GAPS.some(g => { const d = (g.a - i + N) % N; return d < 16; })) { r.z = 14; r.vz = 40; r.glide = 1; r.v = Math.max(r.v, 250); }   // (straight off the end into the air: the glider opens)
     return false; }
   const i = Math.floor(r.rs), f = r.rs - i, p = PTS[i % N], q = PTS[(i + 1) % N], b = (i % N) * 3;
   r.x = p[0] + (q[0] - p[0]) * f + FRAMES[b] * r.rlat; r.y = p[1] + (q[1] - p[1]) * f + FRAMES[b + 1] * r.rlat; r.idx = i % N; r.z = 0; r.vz = 0;
@@ -106,8 +109,9 @@ function nearest(x, y, guess) {   // nearest track point, searching around the l
 const I = (x, y) => nearest(x * WS, y * WS).i;                    // the track point nearest a spot on the (2048-wide) layout map
 const ws = v => v * WS;                                            // a spot on the layout map, in world units
 // Mario Kart style extras placed along the track (i = track point, o = sideways offset from the middle, + is the right side)
-const lat = (x, y, i) => { const a = tangent(i); return (x - PTS[i][0]) * -Math.sin(a) + (y - PTS[i][1]) * Math.cos(a); };
-const at = (i, o) => { i = OPEN ? Math.max(0, Math.min(N - 1, Math.round(i))) : ((Math.round(i) % N) + N) % N; const a = tangent(i); return [PTS[i][0] - Math.sin(a) * o, PTS[i][1] + Math.cos(a) * o]; };
+const bxy = i => FRAMES ? Math.max(.35, Math.hypot(FRAMES[i * 3], FRAMES[i * 3 + 1])) : 1;   // (a banked 3D road: how much narrower it looks from above, so sideways distances are measured across the road itself)
+const lat = (x, y, i) => { const a = tangent(i); return ((x - PTS[i][0]) * -Math.sin(a) + (y - PTS[i][1]) * Math.cos(a)) / bxy(i); };
+const at = (i, o) => { i = OPEN ? Math.max(0, Math.min(N - 1, Math.round(i))) : ((Math.round(i) % N) + N) % N; const a = tangent(i); o *= bxy(i); return [PTS[i][0] - Math.sin(a) * o, PTS[i][1] + Math.cos(a) * o]; };
 // a fork (Henesys market path, the forest bridge): ALT is the second road between main points FORK_A and FORK_B
 const altTan = j => { const a = ALT[Math.max(0, j - 2)], b = ALT[Math.min(AN - 1, j + 2)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 const altIdx = j => Math.round(FORK_A + (FORK_B - FORK_A) * j / (AN - 1));   // where you are on the second road, as a main-road point (laps, positions)
@@ -116,7 +120,7 @@ function nearAlt(x, y) { let best = 0, bd = 1e12; for (let j = 0; j < AN; j++) {
 // which road you're on: the main loop, or the second road when you're on it (or nearer to it)
 function nav(x, y, guess) {
   const m = nearest(x, y, guess);
-  if (!AN) return { i: m.i, d: m.d, alt: false, half: ROAD / 2 };   // (a short cut can pass near any part of the road, so always check it)
+  if (!AN) return { i: m.i, d: m.d / bxy(m.i), alt: false, half: ROAD / 2 };   // (a short cut can pass near any part of the road, so always check it)
   const a = nearAlt(x, y);
   if (a.d < m.d && a.j > 0 && a.j < AN - 1) return { i: altIdx(a.j), d: a.d, alt: true, j: a.j, half: ALT_ROAD / 2 };
   return { i: m.i, d: m.d, alt: false, half: ROAD / 2 };
@@ -1870,7 +1874,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=219"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=222"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2860,6 +2864,7 @@ function step(dt) {
   if (k.hitFlash > 0) k.hitFlash -= dt;
   for (let i = COINFX.length - 1; i >= 0; i--) { const c = COINFX[i]; c.t -= dt; c.vy += 320 * dt; c.x += c.vx * dt; c.y += c.vy * dt; if (c.t <= 0) COINFX.splice(i, 1); }
   if (rescueStep(k, dt)) { if (racing) { k.t += dt * 1000; worldStep(dt, tt); } return; }
+  k.brakeIn = !!inp.brake;
   if (racing && rideStep(k, dt, k.frozen > 0 ? 0 : (k.flipped ? -inp.steer : inp.steer))) { k.t += dt * 1000; worldStep(dt, tt); return; }   // 🎢 on a ride
   const near = nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6 && !onRink(k.x, k.y); k.onAlt = near.alt; k.altJ = near.j;
   if (racing) {

@@ -206,7 +206,7 @@ export function create(A) {
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const w = smooth(L.rx + 150, L.rx + 20, Math.hypot(i * G - L.cx, j * G - L.cy)); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
     }
-    if (t.frames) { BANKS = new Float32Array(t.N); for (let i = 0; i < t.N; i++) { const F = t.frames, bh = Math.hypot(F[i * 3], F[i * 3 + 1]); BANKS[i] = bh > .2 ? Math.max(-1.6, Math.min(1.6, -F[i * 3 + 2] / bh)) : 0; } }   // (a measured road: its own banking, exactly)
+    if (t.frames) { BANKS = new Float32Array(t.N); for (let i = 0; i < t.N; i++) { const F = t.frames, bh = Math.hypot(F[i * 3], F[i * 3 + 1]); BANKS[i] = Math.max(-2.7, Math.min(2.7, -F[i * 3 + 2] / Math.max(.35, bh))); } }   // (a measured road: its own banking, exactly)
     else if (t.theme.bank) {   // ✨ banked corners: the outside of every bend rises (up to ~9°), like a real circuit; it fades into the grass beyond the verge
       const P = t.PTS, n = t.N, ang = i => { const a = P[(i + n - 4) % n], b = P[(i + 4) % n]; return Math.atan2(b[1] - a[1], b[0] - a[0]); }, KAP = new Float32Array(n);
       for (let i = 0; i < n; i++) { let d = ang((i + 5) % n) - ang((i + n - 5) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); KAP[i] = d / (10 * t.SPC); }
@@ -424,7 +424,8 @@ export function create(A) {
   const frameV = (f, o, up) => [f.p[0] + f.b[0] * o + f.nrm[0] * up, f.p[2] + f.b[2] * o + f.nrm[2] * up, f.p[1] + f.b[1] * o + f.nrm[1] * up];   // (game x, y, height -> three x, height, z)
   const rideFrame = (t, r) => { const i = Math.floor(r.rs), f = r.rs - i, A = frameAt(t, i), B = frameAt(t, i + 1), L = (u, v) => [u[0] + (v[0] - u[0]) * f, u[1] + (v[1] - u[1]) * f, u[2] + (v[2] - u[2]) * f];
     const p = L(A.p, B.p), b = L(A.b, B.b), tt = L(A.t, B.t), n = L(A.nrm, B.nrm), lat = r.rlat || 0, V3 = (x, y, z) => new THREE.Vector3(x, z, y);
-    return { P: V3(p[0] + b[0] * lat, p[1] + b[1] * lat, p[2] + b[2] * lat), T: V3(...tt).normalize(), N: V3(...n).normalize(), B: V3(...b).normalize() }; };
+    const T3 = V3(...tt).normalize(), N3 = V3(...n); N3.addScaledVector(T3, -N3.dot(T3)).normalize(); const B3 = new THREE.Vector3().crossVectors(T3, N3);   // (kept exactly square, so the kart's turn is always a clean rotation)
+    return { P: V3(p[0] + b[0] * lat, p[1] + b[1] * lat, p[2] + b[2] * lat), T: T3, N: N3, B: B3 }; };
   function ribbon3d(t, roadMat, curbMat, skip) {
     const n = t.N, W = t.ROAD, CUR = t.CURB || 14, K = 8, skipped = i => skip.some(g => i >= g.a && i < g.b), rows = n + 1;
     const L = [0]; for (let i = 1; i <= n; i++) { const p = t.PTS[i % n], q = t.PTS[i - 1]; L.push(L[i - 1] + Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])); }
@@ -2009,7 +2010,7 @@ export function create(A) {
       cam.yaw = a; cam.y = want; cam.base = base; cam.zu = zu;
     }
     { const FT = lastT && lastT.frames, riding = !!(FT && k.ride);   // 🎢 on a ride (or a steeply banked bend): the same chase camera (as far back, as high), but in the road's own frame, so it rolls with you
-      let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = rideFrame(lastT, { rs: k.idx, rlat: 0 }); F.P.set(k.x, kh, k.y); cam.rf = F; want = smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }
+      let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = rideFrame(lastT, { rs: k.idx, rlat: 0 }); F.P.set(k.x, kh + Math.min(k.z || 0, 260) * .95, k.y); cam.rf = F; want = smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }
       cam.rw = o.snap ? want : (cam.rw || 0) + (want - (cam.rw || 0)) * Math.min(1, o.dt * 5);
       if (riding) cam.rf = rideFrame(lastT, k);
       if (cam.rw > .001 && cam.rf) { const F = cam.rf, w = cam.rw, cp = F.P.clone().addScaledVector(F.T, -58 - 9 * (o.fov || 0)).addScaledVector(F.N, CU), lp = F.P.clone().addScaledVector(F.T, 56).addScaledVector(F.N, 2);
@@ -2066,5 +2067,5 @@ export function create(A) {
   function clearKarts() { for (const m of karts.values()) scene.remove(m.root); karts.clear(); cam.yaw = null; }
   const snap = () => { draw(); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
   const liftOf = r => { const m = karts.get(r); return m && m.lift != null ? m.lift : airLift(r); };   // how high above the ground a kart is drawn (for the 2D bits on top: name tags, held items)
-  return { snap, sync, begin, end, spr, box, mdl, kart, proj, hidden, h, liftOf, camera, surf: (x, y, i) => surfY(x, y, i), setQuality, get quality() { return Q; }, get ng() { return NG; }, tune: o => { if (!mood) return; Object.assign(mood, o); sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI; return { ...mood }; }, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
+  return { _karts: karts, snap, sync, begin, end, spr, box, mdl, kart, proj, hidden, h, liftOf, camera, surf: (x, y, i) => surfY(x, y, i), setQuality, get quality() { return Q; }, get ng() { return NG; }, tune: o => { if (!mood) return; Object.assign(mood, o); sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI; return { ...mood }; }, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
 }
