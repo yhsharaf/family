@@ -1457,7 +1457,7 @@ export function create(A) {
    vec3 cA = vec3(1.0, 0.22, 0.82), cB = vec3(0.46, 0.22, 1.0), cC = vec3(0.18, 0.55, 1.0);
    vec3 nc = mix(mix(cB, cA, smoothstep(0.35, 0.68, fbm(d * 1.7 + 20.0))), cC, smoothstep(0.42, 0.78, fbm(d * 2.2 + 40.0)));
    vec3 G = normalize(vec3(-0.15, 0.28, 0.90)), gx = normalize(cross(G, vec3(0.0, 1.0, 0.0))), gy = cross(gx, G); float along = dot(d, G), clear = 1.0;
-   float gr = 9.0; vec2 q = vec2(0.0); if (along > 0.25) { q = vec2(dot(d, gx), dot(d, gy)) / along / 0.1; q.y *= 1.3; gr = length(q); clear = 1.0 - 0.85 * exp(-gr * 0.45); }
+   float gr = 9.0; vec2 q = vec2(0.0); if (along > 0.25) { q = vec2(dot(d, gx), dot(d, gy)) / along / 0.1; q.y *= 1.3; gr = length(q); clear = 1.0 - 0.8 * exp(-gr * 0.9); }
    col += (nc * (cloud * 0.62 + wisp * 0.55) + vec3(1.0, 0.78, 0.95) * hot * 0.9) * clear;
    float mw = exp(-pow(dot(d, normalize(vec3(0.55, 0.45, -0.7))) * 4.0, 2.0)) * (0.35 + 0.65 * n2); col += vec3(0.5, 0.45, 0.8) * mw * 0.28 * clear;
    if (along > 0.25) { float r = gr, ang = atan(q.y, q.x);
@@ -1811,7 +1811,7 @@ export function create(A) {
         const rimL = new THREE.Mesh(new THREE.TorusGeometry(44, 6, 8, 32), gold); rimL.position.set(0, 30, 16); lamp.add(rimL);
         const face = new THREE.Mesh(new THREE.CircleGeometry(39, 32), new THREE.MeshBasicMaterial({ map: lampTex })); face.position.set(0, 30, 16.5); face.rotation.z = -(a2 - Math.PI / 2); lamp.add(face); const back = face.clone(); back.rotation.set(0, Math.PI, a2 - Math.PI / 2); back.position.z = -16.5; lamp.add(back); }   // (the crowns stand upright on every lamp)
       // (nothing inside the wheel: the white wings read as a face without the original's inner ring, so the wheel stays clean)
-      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffc870, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(R * 2.4, R * 2.4, 1); glow.position.y = cy; g.add(glow); });
+      });   // (no glow disc inside the wheel: over the dark sky it read as a pane filling the gate)
     // enormous rainbow rings floating beside the course, tilted every which way (a big one just left of the start, more further off)
     if (!t.frames) { const rtx = surfaceTex("rainbow64", t.theme, 180); rtx.wrapS = rtx.wrapT = THREE.RepeatWrapping; rtx.repeat.set(36, 2);
       const rm = new THREE.MeshStandardMaterial({ map: rtx, emissive: 0xffffff, emissiveMap: rtx, emissiveIntensity: .55, roughness: .3, metalness: .05, side: THREE.DoubleSide });
