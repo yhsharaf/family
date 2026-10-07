@@ -1563,7 +1563,7 @@ export function create(A) {
     const t = performance.now() / 1000, spin = (r.spin > 0 ? (.9 - r.spin) / .9 * Math.PI * 4 : 0) + (r.spinB > 0 ? (1 - r.spinB / .5) * Math.PI * 2 : 0), flip = r.flip > 0 ? (1 - r.flip / .4) * Math.PI * 2 : 0;   // (spinB: the anti-gravity spin boost, one quick turn round)
     const hop = r.hop > 0 ? Math.sin((r.hop / .18) * Math.PI) * 4 : 0, lift = r.rescue > 0 ? (r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7) * 40 : 0;
     m.body.position.y = Math.max(0, r.z || 0) + hop + lift;
-    m.body.rotation.set(flip, -((r.drift || 0) * .34 + (r.steer || 0) * .07) - spin, 0, "YXZ");
+    m.body.rotation.set(flip, -((r.drift || 0) * (lastT && lastT.frames ? .55 : .34) + (r.steer || 0) * .07) - spin, 0, "YXZ");   // (a bigger drift angle on the sky road, like the original's anti-gravity drifts)
     if (r.glide && !m.wing) { const g = new THREE.Group(), cloth = new THREE.MeshLambertMaterial({ color: 0xffcf3a, side: THREE.DoubleSide, transparent: true, opacity: .72, depthWrite: false }), geo = new THREE.BufferGeometry();   // 🪁 a hang-glider over the kart
       geo.setAttribute("position", new THREE.Float32BufferAttribute([12, 29.5, 0, -10, 27, -26, -10, 27, 26, 12, 29.5, 0, -10, 27, 26, -5, 28, 0, 12, 29.5, 0, -5, 28, 0, -10, 27, -26], 3)); geo.computeVertexNormals();   // (right over the driver's head, nose up, and see-through: high in the air the camera sits level with it, so it must never wipe out the view)
       g.add(new THREE.Mesh(geo, cloth)); for (const z of [-5, 5]) { const st = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x555b66 })); st.scale.set(1.5, 16, 1.5); st.position.set(-4, 19.5, z); g.add(st); }
@@ -2034,7 +2034,7 @@ export function create(A) {
       cam.yaw = a; cam.y = want; cam.base = base; cam.zu = zu;
     }
     { const FT = lastT && lastT.frames, riding = !!(FT && k.ride);   // 🎢 on a ride (or a steeply banked bend): the same chase camera (as far back, as high), but in the road's own frame, so it rolls with you
-      let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = GF || rideFrame(lastT, { rs: k.idx, rlat: 0 }); if (GF) F.P.addScaledVector(F.N, Math.min(k.z || 0, 260) * .95); else F.P.set(k.x, kh + Math.min(k.z || 0, 260) * .95, k.y); cam.rf = F; want = smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }
+      let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = GF || rideFrame(lastT, { rs: k.idx, rlat: 0 }); if (GF) F.P.addScaledVector(F.N, Math.min(k.z || 0, 260) * .95); else F.P.set(k.x, kh + Math.min(k.z || 0, 260) * .95, k.y); cam.rf = F; want = GF ? 1 : smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }   // (a glued kart: always in the road's frame, like anti-gravity)
       cam.rw = o.snap ? want : (cam.rw || 0) + (want - (cam.rw || 0)) * Math.min(1, o.dt * 5);
       if (riding) cam.rf = rideFrame(lastT, k);
       if (GF) { const tp = k.mphi != null ? k.mphi : (k.phi || 0); let dp = tp - (cam.phi || 0); dp = Math.atan2(Math.sin(dp), Math.cos(dp)); cam.phi = o.snap ? tp : (cam.phi || 0) + dp * Math.min(1, o.dt * 4.5); if (cam.rw > .5) { let dy = a - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); cam.yaw += dy * Math.min(1, o.dt * 12); } }   // (behind the way a glued kart moves, a moment after it; the flat camera's yaw keeps up meanwhile, for the hand-over)

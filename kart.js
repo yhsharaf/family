@@ -108,13 +108,15 @@ const pathTan = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i
 const pathSide = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, b = i * 3, c = ((i + 1) % N) * 3, v = [FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f, FRAMES[b + 2] + (FRAMES[c + 2] - FRAMES[b + 2]) * f], l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
 const roadPt = (i, u, up) => { i = ((i % N) + N) % N; const i0 = Math.floor(i), f = i - i0, p0 = PTS[i0], p1 = PTS[(i0 + 1) % N], p = [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f, p0[2] + (p1[2] - p0[2]) * f], b = pathSide(i), t = pathTan(i), n = [t[1] * b[2] - t[2] * b[1], t[2] * b[0] - t[0] * b[2], t[0] * b[1] - t[1] * b[0]]; return [p[0] + b[0] * u + n[0] * up, p[2] + b[2] * u + n[2] * up, p[1] + b[1] * u + n[1] * up]; };   // a spot by the road (u across, up above it) in the 3D picture's coordinates: x, height, y
 const pathTurn = (s0, s1) => { const t0 = pathTan(s0), b0 = pathSide(s0), t1 = pathTan(s1); return Math.atan2(t1[0] * b0[0] + t1[1] * b0[1] + t1[2] * b0[2], t1[0] * t0[0] + t1[1] * t0[1] + t1[2] * t0[2]); };   // how far the road turns within its own surface between two spots (+ right); a loop bends out of the surface, which doesn't count
-function pathMove(r, v, slide, dt, free) {   // the speed, taken along and across the road's surface. The heading is carried along the surface like a real kart's: the road's
-  // own bends don't turn you (you steer round them, and drift), only its tilts carry you (a loop needs no steering). The computer racers keep the road's turn for free (free).
-  // 🧊 grip: the kart keeps moving the way it was going and only follows its nose at the road's grip (ice is 1.7, snow 4-5, a normal road at once): the Star Road has a touch of it
-  const grip = free ? 99 : T.theme.grip || 99; if (r.mphi == null || grip > 50) r.mphi = r.phi; else r.mphi = wrapA(r.mphi + wrapA(r.phi - r.mphi) * Math.min(1, grip * dt));
-  const along = Math.cos(r.mphi) * v, across = Math.sin(r.mphi) * v + slide;
+function pathMove(r, v, slide, dt, free, dr) {   // the speed, taken along and across the road's surface. The heading is carried along the surface like a real kart's: the road's
+  // own bends don't turn you (you steer round them), only its tilts carry you (a loop needs no steering). The computer racers keep the road's turn for free (free).
+  // 🌀 a drift (dr: its direction and the steering) is anti-gravity's: the road's bend carries it round when it bends the drift's way, and from there steering in
+  // tightens the arc and steering out widens it, so a held drift flows with the track; drifting against a bend slides out like anywhere else
+  const along = Math.cos(r.phi) * v, across = Math.sin(r.phi) * v + slide; r.mphi = v > 40 ? Math.atan2(across, along) : r.phi;   // (mphi: the way it's actually moving, for the camera)
   const s0 = r.ps; r.ps += along * dt * SPD / RSPC; r.pu += across * dt * SPD; r.ps = ((r.ps % N) + N) % N;
-  const turn = free ? 0 : pathTurn(s0, r.ps); r.phi = wrapA(r.phi - turn); r.mphi = wrapA(r.mphi - turn);
+  const rt = free ? 0 : pathTurn(s0, r.ps); let add = 0;
+  if (dr && dr.d && !free) { const d = dr.d, carried = Math.sign(rt) === d ? Math.abs(rt) / dt : 0; add = d * Math.max(T.theme.driftMin ?? .2, carried + (T.theme.driftBase ?? .04) + d * dr.steer * .9) * dt; }   // (a neutral drift holds the bend's line with the faintest pull inside; on a straight it always curves, so a straight drift drags you off in a couple of seconds, like the original's)
+  r.phi = wrapA(r.phi + add - rt); r.mphi = wrapA(r.mphi + add - rt);
   const i = Math.floor(r.ps), p = PTS[(i + N - 1) % N], q = PTS[(i + 1) % N], b = i * 3, tx = q[0] - p[0], ty = q[1] - p[1], tl = Math.hypot(tx, ty, q[2] - p[2]) || 1;
   if ((tx * FRAMES[b + 1] - ty * FRAMES[b]) / tl < .35 && !(r.z > 0)) r.v = Math.max(r.v, 150);   // (on a wall or upside down the road's "up" points sideways or down: you can't stall there)
   pathPlace(r);
@@ -1051,7 +1053,7 @@ const TRACKS = {
     intro: [{ from: [698, 200, 60], to: [696, -260, 110], look: [724, 0, 60], look2: [790, 0, 70], dur: 4 }, { from: [52, 240, 95], to: [98, 175, 60], look: [68, 0, 22], look2: [112, 0, 30], dur: 3.6 },
       { from: [1088, 0, 34], to: [1102, 0, 70], look: [0, 0, 130], look2: [0, 0, 105], dur: 3.4 }],   // (from the grid side, so the gate's banner reads the right way round)
     marks: { boosts: [[66, -42], [80, 42], [95, -42], [1003, -42], [1020, 42]], dashes: [182, 372, 625], airRings: [[126, 116, 0], [143, 98, 0], [270, 115, -45], [286, 101, 45], [303, 40, -45], [319, 26, 45], [335, 26, -45], [352, 26, 45], [537, 111, 0], [562, 33, 0]] },   // (air rings: [point, height of the ring's centre over the flight line, sideways offset]: measured from the glider's own flight)
-    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, grip: 5, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, steerEase: 6, driftBase: .04, driftMin: .2, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
     near: [], far: [], mobs: [],
@@ -1934,7 +1936,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=240"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=242"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2960,7 +2962,7 @@ function step(dt) {
     flash(k.flipped ? "🔀 Controls swapped!" : "✅ Controls back to normal", 1200); tone(k.flipped ? 330 : 660, .25, "square", .07, k.flipped ? 165 : 990); } }
   if (k.flipped && !(DEV && DEV.auto)) inp.steer = -inp.steer;
   if (k.frozen > 0) { inp.steer = 0; inp.drift = false; }   // 🧊 frozen solid: no steering for a moment
-  k.steer += ((k.spin > 0 ? 0 : inp.steer) - k.steer) * Math.min(1, dt * 10);
+  k.steer += ((k.spin > 0 ? 0 : inp.steer) - k.steer) * Math.min(1, dt * (T.theme.steerEase || 10));
   // what's under the wheels
   const pad = air ? null : ground.pad;
   if (pad && pad !== k.lastPad) {
@@ -3020,7 +3022,7 @@ function step(dt) {
   let turn = k.steer * 2.1 * SK * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? (GL.turn || .8) : .5) : 1);
   if (k.drift) { turn = (k.drift * 1.55 * DK + k.steer * .9 * SK) * Math.min(1, k.v / 110); if (!k.off) { const before = k.charge; k.charge += dt * Math.max(.4, 1 + .7 * k.steer * k.drift);   // steering into the turn charges faster
     if ([.7, 1.5, 2.4].some(th => before < th && k.charge >= th)) tone(k.charge > 2.4 ? 1320 : k.charge > 1.5 ? 990 : 740, .1, "triangle", .06); } }
-  if (FRAMES) { k.phi = wrapA(k.phi + turn * dt); pathMove(k, k.v, k.drift ? -k.drift * k.v * .16 * SK : 0, dt); }   // 🧲 glued to the measured road: the turn and the speed are taken on its surface
+  if (FRAMES) { k.phi = wrapA(k.phi + (k.drift ? 0 : turn) * dt); pathMove(k, k.v, k.drift ? -k.drift * k.v * .06 : 0, dt, false, k.drift ? { d: k.drift, steer: k.steer } : null); }   // (a drift's turn is worked out on the road, see pathMove; a light outward slide)   // 🧲 glued to the measured road: the turn and the speed are taken on its surface
   else {
   k.a += turn * dt;
   // ❄️ El Nath: on ice the kart keeps going the way it was moving and only slowly follows where it's pointing
