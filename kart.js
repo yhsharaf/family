@@ -1042,7 +1042,7 @@ const TRACKS = {
     path3d: "star64",
     // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
     // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
-    marks: { boosts: [66, 80, 95, 1003, 1020], dashes: [182, 372, 625], airRings: [126, 143], airZ: [116, 98] },
+    marks: { boosts: [66, 80, 95, 1003, 1020], dashes: [182, 372, 625], airRings: [[126, 116, 0], [143, 98, 0], [270, 115, -45], [286, 101, 45], [303, 40, -45], [319, 26, 45], [335, 26, -45], [352, 26, 45], [537, 111, 0], [562, 33, 0]] },   // (air rings: [point, height of the ring's centre over the flight line, sideways offset]: measured from the glider's own flight)
     theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, boostT: 1.5, glide: { up: 180, g: 40, sink: 32, turn: .6, dive: 170, diveG: 260, dash: 70 }, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
@@ -1055,7 +1055,7 @@ const TRACKS = {
       for (const i of M.glide) pads.push({ t: "glide", i: i - 3, len: 6, o: 0, w: ROAD });   // the glide panels where the road drops away beneath you
       for (const i of [...M.dash, ...(M.own.dashes || [])]) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: ROAD });   // the blue dash panels, right across the road
       for (const i of M.own.boosts || []) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: ROAD, col: "green" });   // the green boost panels under the star rings
-      const rings = [...(M.own.airRings || []).map((i, k) => ({ i, o: 0, z: ((M.own.airZ || [])[k] ?? 62) - 12, r: 55, w: 70 })), ...(M.own.boosts || []).map(i => ({ i, o: 0, z: 14, r: 40, w: 60 }))];   // ⭕ the rings: a boost when you fly through one (the two in the air, or a road ring while gliding low)
+      const rings = [...(M.own.airRings || []).map(g => ({ i: g.i, o: g.o, z: g.z - 12, r: 36, w: 46 })), ...(M.own.boosts || []).map(i => ({ i, o: 0, z: 14, r: 30, w: 50 }))];   // ⭕ the rings: a boost when you fly through one (the ones on the flight lines, or a road ring while gliding low)
       const free = i => !RIDES.some(R => i >= R.a - 15 && i <= R.b + 15) && !M.gaps.some(([a, b]) => i >= a - 20 && i <= b + 15);
       const boxAt = [u(500), M.sections[0] + u(240), M.sections[1] + u(300), N - u(900)].map(i => { let k = i; while (!free(k) && k < N - 1) k++; return k; });
       row(u(160), u(320), 5, 0); row(M.sections[0] + u(80), M.sections[0] + u(200), 4, 0);
@@ -1131,7 +1131,7 @@ function loadTrack(key) {
     for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
       PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
     const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove. The fences' measured sides are negated: the model was mirrored into the game, so its left is our right)
-    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(i => [mi(i), null, 26, 30]), ...(T.marks.airRings || []).map((i, k) => [mi(i), null, (T.marks.airZ || [])[k] ?? 62, 30])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, k === "airZ" ? v : v.map(mi)])) };   // (rings: [point, height, height above the road, radius]: kart-sized, over the road or at the glider's height)
+    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(i => [mi(i), null, 16, 18, 0]), ...(T.marks.airRings || []).map(([i, z, o]) => [mi(i), null, z, 18, o || 0])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, k === "airRings" ? v.map(([i, z, o]) => ({ i: mi(i), z, o: o || 0 })) : v.map(mi)])) };   // (rings: [point, height, height above the road, radius, sideways]: just bigger than a kart, over the road or on the glider's flight line)
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1925,7 +1925,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=231"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=232"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2819,8 +2819,9 @@ function petStep(r, air, tt) {
     if (!air && LAKE) for (const h of HANDS) { const a = handAng(h, now), ux = Math.cos(a), uy = Math.sin(a), dx = r.x - LAKE.cx, dy = r.y - LAKE.cy, t = Math.max(0, Math.min(h.len, dx * ux + dy * uy)), d = Math.hypot(dx - ux * t, dy - uy * t);
       if (d < h.w / 2 + 9 && !(r.handT > now) && d > 0) { r.handT = now + 1; const px = dx - ux * t, py = dy - uy * t; r.x += px / d * 14; r.y += py / d * 14; r.v *= .8; if (r === K) { bumpSound(); pop("🕰️ Clock hand!", "#ffb347", true); } } }   // (a nudge, not a spin: in Mario Kart 8 you can even drive on them)
     for (const p of PENDS) { const q = pendAt(p, now); if (r.z < 30 && Math.hypot(r.x - q.x, r.y - q.y) < 28 && !(r.pendT > now)) { r.pendT = now + 1.2; if (r === K) spinOut("🕰️ Bonked by the pendulum!"); else hit(r); } } }
-  if (air) for (const g of RINGS) if (Math.hypot(r.x - g.x, r.y - g.y) < (g.w || 30) && Math.abs(r.z - g.z) < (g.r || 40) && r.ringT !== g) {   // ⭕ through a boost ring
+  if (air) for (const g of RINGS) if ((FRAMES && g.i != null && r.ridx != null ? (() => { const step = ((r.idx - r.ridx) % N + N) % N, off = ((g.i - r.ridx) % N + N) % N; return step < 60 && off <= step && off > 0 && Math.abs((r.pu || 0) - (g.o || 0)) < (g.w || 30); })() : Math.hypot(r.x - g.x, r.y - g.y) < (g.w || 30)) && Math.abs(r.z - g.z) < (g.r || 40) && r.ringT !== g) {   // ⭕ through a boost ring (on a measured road: the points passed this step are swept, so a fast kart can't skip one)
     r.ringT = g; giveBoost(r, 1.2, 130); if (r === K) { padSound(); flash("⭕ Boost ring!", 700); } }
+  r.ridx = r.idx;
   if (air) return;
   for (const c of CHOMPS) { const q = chompPos(c, tt); if (q.z < 14 && Math.hypot(r.x - q.x, r.y - q.y) < 24 * c.s) hit(r, `🐾 Chomped by the ${c.k === "jrbalrog" ? "Jr. Balrog" : c.k === "blackpig" ? "Black Pig" : "Husky"}!`); }
 }
