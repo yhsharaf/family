@@ -297,7 +297,7 @@ export function create(A) {
     else if (style === "rainbow64") {   // 🌈 the star road: big glowing glass tiles in deep rainbow colours, darker toward their edges, a grid of light dots that glows brightest in the middle, a glossy sheen, and dark seams with a fine gold line
       const cols = ["#e8324a", "#f07a2a", "#e8b428", "#3cc060", "#1fb4a8", "#2a92e8", "#3c56e0", "#8c44e0", "#e03ca4"], C = 6, R = 4, tw = U / C, thh = 192 / R;
       g.fillStyle = "#120c22"; g.fillRect(0, 0, U, 192);
-      for (let row = 0; row < R; row++) for (let c = 0; c < C; c++) { const col = cols[(row * 4 + c * 2 + Math.floor(r() * 3)) % cols.length], x = c * tw + 1.6, y = row * thh + 1.6, w = tw - 3.2, hh = thh - 3.2, cx = x + w / 2, cy = y + hh / 2;
+      for (let row = 0; row < R; row++) for (let c = 0; c < C; c++) { const col = cols[(c + row * 3) % cols.length], x = c * tw + 1.6, y = row * thh + 1.6, w = tw - 3.2, hh = thh - 3.2, cx = x + w / 2, cy = y + hh / 2;
         g.fillStyle = col; g.fillRect(x, y, w, hh);
         const vg = g.createRadialGradient(cx, cy, w * .15, cx, cy, w * .8); vg.addColorStop(0, "rgba(255,255,255,.16)"); vg.addColorStop(.5, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(8,4,24,.72)"); g.fillStyle = vg; g.fillRect(x, y, w, hh);
         for (let dy = 2.2; dy < hh - 1; dy += 3.1) for (let dx = 2.2; dx < w - 1; dx += 3.1) { const e = 1 - Math.min(1, Math.hypot(x + dx - cx, y + dy - cy) / (w * .62)); g.fillStyle = `rgba(255,255,240,${.12 + .4 * e})`; g.fillRect(x + dx, y + dy, 1.1, 1.1); }   // the dotted glass, brightest in the middle
@@ -433,6 +433,7 @@ export function create(A) {
     for (const o of extraObjs) scene.remove(o); extraObjs = [];
     const th = t.theme, RS = th.road || "cobble", decal = new THREE.CanvasTexture(t.decal()); decal.colorSpace = THREE.SRGBColorSpace; decal.anisotropy = aniso;
     const cm = new THREE.MeshLambertMaterial({ map: curbTex(th.curb || ["#d8352d", "#f4f1ea"]), flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+    if (th.skyroad) { cm.emissive = new THREE.Color(0xffc040); cm.emissiveIntensity = .95; }   // (the sky road's edges glow gold)
     // where a second road (a fork) leaves and rejoins, neither road has curbs across the other: the junction stays open and clean
     const mainBare = [...(t.bare || [])], altBare = [];
     if (t.AN > 1) {
@@ -1608,43 +1609,59 @@ export function create(A) {
     const n = t.N, P = t.PTS, ang = i => { const a = P[(i + n - 2) % n], b = P[(i + 2) % n]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
     const gold = new THREE.MeshStandardMaterial({ color: 0xffc860, metalness: 1, roughness: .22, emissive: 0x3a2404, envMapIntensity: 1.2 }), glowGold = new THREE.MeshStandardMaterial({ color: 0xffe08a, metalness: .6, roughness: .3, emissive: 0xffb84a, emissiveIntensity: 1.1 }), white = new THREE.MeshBasicMaterial({ color: 0xfff6dc });
     const grp = new THREE.Group(); scene.add(grp); roadObjs.push(grp);
-    // the golden ring gate: a massive gold ring studded with stars and spikes, a chequered light band inside, two great pillars with chequered
-    // light panels and the course name down them, a big star crowning it and the FAMILY KART banner
-    { const i = 0, [x, z] = P[i], a = ang(i), y = RE[i], R = t.ROAD / 2 + 130, g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = -a + Math.PI / 2; grp.add(g);
-      const cy = R * .55, ring = new THREE.Mesh(new THREE.TorusGeometry(R, 22, 16, 80), gold); ring.position.y = cy; g.add(ring);
-      for (const [rr, tt, m] of [[R + 34, 7, glowGold], [R - 30, 5, glowGold]]) { const q = new THREE.Mesh(new THREE.TorusGeometry(rr, tt, 8, 80), m); q.position.y = cy; g.add(q); }
-      const chk = ctex(512, 32, (c, W, H) => { for (let k = 0; k < 32; k++) for (let j = 0; j < 2; j++) { c.fillStyle = (k + j) % 2 ? "#1a1408" : "#fff4d8"; c.fillRect(k * 16, j * 16, 16, 16); } }, true); chk.repeat.set(6, 1);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(R - 48, 10, 6, 80), new THREE.MeshBasicMaterial({ map: chk })); band.position.y = cy; g.add(band);
-      for (let k = 0; k < 24; k++) { const a2 = k / 24 * Math.PI * 2; if (Math.sin(a2) < -.45) continue;   // spikes and stars all round the outside (not down into the road)
-        const sp = new THREE.Mesh(new THREE.ConeGeometry(11, 46, 6), gold); sp.position.set(Math.cos(a2) * (R + 54), cy + Math.sin(a2) * (R + 54), 0); sp.rotation.z = a2 - Math.PI / 2; g.add(sp);
-        if (k % 2 === 0) { const st = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape(26, 11), { depth: 8, bevelEnabled: false }), glowGold); st.position.set(Math.cos(a2 + .13) * (R + 4), cy + Math.sin(a2 + .13) * (R + 4), 18); st.rotation.z = a2; g.add(st); const st2 = st.clone(); st2.position.z = -26; g.add(st2); } }
-      const big = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape(70, 30), { depth: 16, bevelEnabled: true, bevelSize: 4, bevelThickness: 4 }), gold); big.position.set(0, cy + R + 96, -8); g.add(big);
-      const bigGl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffd890, transparent: true, opacity: .7, blending: THREE.AdditiveBlending, depthWrite: false })); bigGl.scale.set(360, 360, 1); bigGl.position.set(0, cy + R + 96, 0); g.add(bigGl);
-      const lights = ctex(64, 256, (c, W, H) => { c.fillStyle = "#1a1206"; c.fillRect(0, 0, W, H); for (let yy = 0; yy < 16; yy++) for (let xx = 0; xx < 4; xx++) { c.fillStyle = (xx + yy) % 2 ? "#fff6d8" : "#2a1e08"; c.fillRect(xx * 16 + 1, yy * 16 + 1, 14, 14); } });
-      const nameTex = ctex(128, 512, (c, W, H) => { c.fillStyle = "#3a2608"; c.fillRect(0, 0, W, H); c.strokeStyle = "#ffd86a"; c.lineWidth = 6; c.strokeRect(4, 4, W - 8, H - 8); c.save(); c.translate(W / 2, H / 2); c.rotate(-Math.PI / 2); const gr = c.createLinearGradient(0, -40, 0, 40); gr.addColorStop(0, "#fff0b0"); gr.addColorStop(1, "#d8902a"); c.fillStyle = gr; c.font = "900 72px Ubuntu, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("STAR ROAD", 0, 4); c.restore(); });
-      for (const sd of [-1, 1]) { const px = sd * (t.ROAD / 2 + 70), PH = cy + R * .2;
-        const pil = new THREE.Mesh(new THREE.BoxGeometry(110, PH, 90), gold); pil.position.set(px, PH / 2, 0); g.add(pil);
-        for (const fz of [-46, 46]) { const lp = new THREE.Mesh(new THREE.PlaneGeometry(56, PH * .8), new THREE.MeshBasicMaterial({ map: lights, side: THREE.DoubleSide })); lp.position.set(px - sd * 22, PH * .5, fz); if (fz < 0) lp.rotation.y = Math.PI; g.add(lp);
-          const np = new THREE.Mesh(new THREE.PlaneGeometry(40, PH * .8), new THREE.MeshBasicMaterial({ map: nameTex, side: THREE.DoubleSide })); np.position.set(px + sd * 30, PH * .5, fz); if (fz < 0) np.rotation.y = Math.PI; g.add(np); }
-        const cap = new THREE.Mesh(new THREE.BoxGeometry(130, 16, 110), glowGold); cap.position.set(px, PH + 8, 0); g.add(cap); }
-      const sign = ctex(1024, 192, (c, W, H) => { const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "#ffe9a8"); gr.addColorStop(1, "#c8862a"); c.fillStyle = "#2a1a08"; c.fillRect(0, 0, W, H); c.fillStyle = gr; c.font = "900 128px Ubuntu, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("FAMILY KART", W / 2, H / 2 + 6); c.strokeStyle = "#ffd86a"; c.lineWidth = 8; c.strokeRect(6, 6, W - 12, H - 12); });
-      const sg = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.1, R * .21), new THREE.MeshBasicMaterial({ map: sign, side: THREE.DoubleSide })); sg.position.set(0, cy + R - 70, 0); g.add(sg); }
-    // glowing star railings along both edges by the start / finish
-    { const rail = new THREE.MeshStandardMaterial({ color: 0xffd36a, metalness: .7, roughness: .3, emissive: 0xffb040, emissiveIntensity: 1.25 }), sgeo = new THREE.ShapeGeometry(starShape(17, 8)), ringGeo = new THREE.ExtrudeGeometry((() => { const o = starShape(17, 8), h2 = new THREE.Path(starShape(12, 5.5).getPoints().reverse()); o.holes.push(h2); return o; })(), { depth: 2.5, bevelEnabled: true, bevelThickness: 1.2, bevelSize: 1, bevelSegments: 2, curveSegments: 4 });
-      const runs = [[n - 75, n + 95, 0], [Math.round(n * .34), Math.round(n * .43), 1], [Math.round(n * .56), Math.round(n * .62), 1]], inGap = k => (t.gaps || []).some(g => k >= g.a - 4 && k <= g.b + 4), cnt = runs.reduce((q, [a, b]) => q + Math.ceil((b - a) / 7) * 2, 0);   // (as in the video: both sides along the start, and on the outside of two bends)
-      const outer = k => { let d = ang((k + 6) % n) - ang((k + n - 6) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); return d > 0 ? -1 : 1; }, sides = (only, k) => only ? [outer(k)] : [-1, 1];
-      const inst = new THREE.InstancedMesh(ringGeo, rail, cnt), M4 = new THREE.Matrix4(), Qn = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), V = new THREE.Vector3(), Sc = new THREE.Vector3(1.15, 1.15, 1.15); let c0 = 0;
-      for (const [ra, rb, only] of runs) { for (let i = ra; i < rb; i += 7) { const k = ((i % n) + n) % n; if (inGap(k)) continue; const a = ang(k); for (const sd of sides(only, k)) { const o = sd * (t.ROAD / 2 + t.CURB + 4), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o, y = surfY(x, z, k);
-          Qn.setFromAxisAngle(up, -a); M4.compose(V.set(x, y + 20, z), Qn, Sc); inst.setMatrixAt(c0++, M4); } }
-        for (const sd of (only ? [outer(((Math.round((ra + rb) / 2) % n) + n) % n)] : [-1, 1])) { const pts = []; for (let i = ra; i <= rb; i += 2) { const k = ((i % n) + n) % n; if (inGap(k)) { if (pts.length > 3) grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 1.8, 6), rail)); pts.length = 0; continue; } const a = ang(k), o = sd * (t.ROAD / 2 + t.CURB + 4), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o; pts.push(new THREE.Vector3(x, surfY(x, z, k) + 38, z)); }
-          if (pts.length > 3) grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), pts.length * 2, 1.8, 6), rail)); } }
-      inst.count = c0; inst.instanceMatrix.needsUpdate = true; grp.add(inst); }
-    { const chk = ctex(128, 128, (c, W) => { for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = (x + y) % 2 ? "#7a5a22" : "#e6bc62"; c.fillRect(x * 32, y * 32, 32, 32); c.fillStyle = "rgba(255,255,255,.18)"; c.fillRect(x * 32 + 2, y * 32 + 2, 28, 3); } }, true);   // 🏁 the golden chequered start, as its own crisp strip on the road
-      const SP = [], UV = [], IX = [], A0 = -34, A1 = 30, Wd = t.ROAD; let L = 0, prev = null;
+    // the start gate: a gigantic golden wheel over the line - a thick bronze-and-gold rim with star reliefs, five round star lamps standing on it,
+    // spokes carrying chequered flags and white flame shapes, a glowing hub ring, and the FAMILY KART banner curving across the middle
+    const bronze = new THREE.MeshStandardMaterial({ color: 0x4a3214, metalness: .85, roughness: .38, emissive: 0x120a02 });
+    const ringAt = (i, R, cy, build) => { const k = ((i % n) + n) % n, [x, z] = P[k], a = ang(k), g = new THREE.Group(); g.position.set(x, RE[k], z); g.rotation.y = -a + Math.PI / 2; grp.add(g); build(g, R, cy); return g; };
+    ringAt(0, t.ROAD / 2 + 120, (t.ROAD / 2 + 120) * .6, (g, R, cy) => {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 26, 18, 96), bronze); rim.position.y = cy; g.add(rim);
+      for (const [rr, tt] of [[R + 26, 6], [R - 26, 6], [R * .46, 9]]) { const q = new THREE.Mesh(new THREE.TorusGeometry(rr, tt, 10, 96), gold); q.position.y = cy; g.add(q); }
+      for (let k = 0; k < 16; k++) { const a2 = k / 16 * Math.PI * 2; if (Math.sin(a2) < -.3) continue; const st = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape(13, 6), { depth: 4, bevelEnabled: true, bevelSize: 1, bevelThickness: 1 }), gold); st.position.set(Math.cos(a2) * R, cy + Math.sin(a2) * R, 24); st.rotation.z = a2; g.add(st); }
+      const lampTex = ctex(128, 128, (c, W) => { const gr = c.createRadialGradient(W / 2, W / 2, 4, W / 2, W / 2, W / 2); gr.addColorStop(0, "#ffffff"); gr.addColorStop(.75, "#fff4d8"); gr.addColorStop(1, "#e8c070"); c.fillStyle = gr; c.fillRect(0, 0, W, W); c.fillStyle = "#3a2608"; c.beginPath(); for (let k = 0; k <= 10; k++) { const a3 = -Math.PI / 2 + k * Math.PI / 5, r3 = k % 2 ? 18 : 42; c.lineTo(W / 2 + Math.cos(a3) * r3, W / 2 + 4 + Math.sin(a3) * r3); } c.fill(); });
+      for (const deg of [90, 50, 130, 12, 168]) { const a2 = deg * Math.PI / 180, lamp = new THREE.Group(); lamp.position.set(Math.cos(a2) * (R + 30), cy + Math.sin(a2) * (R + 30), 0); lamp.rotation.z = a2 - Math.PI / 2; g.add(lamp);   // the round star lamps on the rim
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(44, 44, 30, 32), bronze); body.rotation.x = Math.PI / 2; body.position.y = 30; lamp.add(body);
+        const rimL = new THREE.Mesh(new THREE.TorusGeometry(44, 6, 8, 32), gold); rimL.position.set(0, 30, 16); lamp.add(rimL);
+        const face = new THREE.Mesh(new THREE.CircleGeometry(39, 32), new THREE.MeshBasicMaterial({ map: lampTex })); face.position.set(0, 30, 16.5); lamp.add(face); const back = face.clone(); back.rotation.y = Math.PI; back.position.z = -16.5; lamp.add(back); }
+      const flame = new THREE.Shape(); flame.moveTo(0, 0); flame.quadraticCurveTo(18, 30, 4, 70); flame.quadraticCurveTo(-4, 40, -16, 52); flame.quadraticCurveTo(-14, 20, 0, 0);
+      const flameM = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2d8, emissiveIntensity: .9, side: THREE.DoubleSide });
+      const flagTex = ctex(64, 64, (c, W) => { for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = (x + y) % 2 ? "#141414" : "#ffffff"; c.fillRect(x * 16, y * 16, 16, 16); } });
+      for (let k = 0; k < 10; k++) { const a2 = (k / 10) * Math.PI * 2 + Math.PI / 10; if (Math.sin(a2) < -.2) continue; const r0 = R * .48, r1 = R - 24, mid = (r0 + r1) / 2;   // spokes
+        const sp = new THREE.Mesh(new THREE.BoxGeometry(r1 - r0, 16, 14), bronze); sp.position.set(Math.cos(a2) * mid, cy + Math.sin(a2) * mid, 0); sp.rotation.z = a2; g.add(sp);
+        if (k % 2) { const f = new THREE.Mesh(new THREE.ShapeGeometry(flame), flameM); f.position.set(Math.cos(a2) * (mid - 10), cy + Math.sin(a2) * (mid - 10), 9); f.rotation.z = a2 - Math.PI / 2; f.scale.setScalar(1.3); g.add(f); }
+        else { const fl = new THREE.Mesh(new THREE.PlaneGeometry(56, 40), new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide })); fl.position.set(Math.cos(a2) * (r1 - 40), cy + Math.sin(a2) * (r1 - 40), 9); fl.rotation.z = a2 - Math.PI / 2; g.add(fl); } }
+      const banTex = ctex(1024, 160, (c, W, H) => { c.fillStyle = "#2a1406"; c.fillRect(0, 0, W, H); c.strokeStyle = "#ffd86a"; c.lineWidth = 10; c.strokeRect(5, 5, W - 10, H - 10); const gr = c.createLinearGradient(0, 30, 0, 130); gr.addColorStop(0, "#ffffff"); gr.addColorStop(1, "#ffe0a0"); c.fillStyle = gr; c.font = "900 112px Ubuntu, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("FAMILY KART", W / 2, H / 2 + 6); });
+      const ban = new THREE.Mesh(new THREE.CylinderGeometry(R * .7, R * .7, 52, 48, 1, true, -.62, 1.24), new THREE.MeshBasicMaterial({ map: banTex, side: THREE.DoubleSide })); ban.rotation.x = Math.PI / 2; ban.rotation.y = Math.PI; ban.position.set(0, cy - R * .7 + R * .82, 18); g.add(ban);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffc870, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(R * 2.4, R * 2.4, 1); glow.position.y = cy; g.add(glow); });
+    // enormous rainbow rings floating beside the course, tilted every which way (a big one just left of the start, more further off)
+    { const rtx = surfaceTex("rainbow64", t.theme, 180); rtx.wrapS = rtx.wrapT = THREE.RepeatWrapping; rtx.repeat.set(36, 2);
+      const rm = new THREE.MeshStandardMaterial({ map: rtx, emissive: 0xffffff, emissiveMap: rtx, emissiveIntensity: .55, roughness: .3, metalness: .05, side: THREE.DoubleSide });
+      const [sx, sz] = P[0], a0 = ang(0), fw = [Math.cos(a0), Math.sin(a0)], lt = [Math.sin(a0), -Math.cos(a0)];
+      for (const [lat, fwd, up, R, tube, rx, ry] of [[-760, 520, 120, 360, 46, 1.25, .5], [980, 1500, 300, 300, 40, .4, 1.1], [-1500, 2300, 420, 420, 50, .9, -.4], [1500, -900, 260, 330, 42, 1.4, .2]]) {
+        const m = new THREE.Mesh(new THREE.TorusGeometry(R, tube, 20, 96), rm); m.position.set(sx + lt[0] * lat + fw[0] * fwd, RE[0] + up, sz + lt[1] * lat + fw[1] * fwd); m.rotation.set(rx, ry - a0, .3); grp.add(m); } }
+    // the second arch down the start straight: a gold ring with a band of chequered lights
+    ringAt(150, t.ROAD / 2 + 70, (t.ROAD / 2 + 70) * .55, (g, R, cy) => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 14, 14, 80), gold); ring.position.y = cy; g.add(ring);
+      const chk = ctex(512, 32, (c, W, H) => { for (let k = 0; k < 32; k++) for (let j = 0; j < 2; j++) { c.fillStyle = (k + j) % 2 ? "#141008" : "#fff4d8"; c.fillRect(k * 16, j * 16, 16, 16); } }, true); chk.repeat.set(5, 1);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(R - 22, 9, 6, 80), new THREE.MeshBasicMaterial({ map: chk })); band.position.y = cy; g.add(band);
+      for (let k = 0; k < 18; k++) { const a2 = k / 18 * Math.PI * 2; if (Math.sin(a2) < -.35) continue; const b = new THREE.Mesh(new THREE.SphereGeometry(6, 8, 6), glowGold); b.position.set(Math.cos(a2) * (R + 18), cy + Math.sin(a2) * (R + 18), 0); g.add(b); } });
+    // glowing star railings: a continuous band of tall gold star outlines standing shoulder to shoulder along the edge (two sizes, overlapping),
+    // along both sides of the start straight and on the outside of two bends - just the stars, glowing
+    { const rail = new THREE.MeshStandardMaterial({ color: 0xffd36a, metalness: .5, roughness: .35, emissive: 0xffb848, emissiveIntensity: .85 });
+      const outline = (ro, ri) => { const o = starShape(ro, ri), h2 = new THREE.Path(starShape(ro * .76, ri * .7).getPoints().reverse()); o.holes.push(h2); return new THREE.ExtrudeGeometry(o, { depth: 2, bevelEnabled: true, bevelThickness: 1, bevelSize: .8, bevelSegments: 2, curveSegments: 3 }); };
+      const big = outline(17, 8), small = outline(12, 5.6);
+      const runs = [[n - 110, n + 14, 0], [Math.round(n * .34), Math.round(n * .43), 1], [Math.round(n * .56), Math.round(n * .62), 1]], inGap = k => (t.gaps || []).some(g => k >= g.a - 4 && k <= g.b + 4);
+      const outer = k => { let d = ang((k + 6) % n) - ang((k + n - 6) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); return d > 0 ? -1 : 1; };
+      const place = (geo, step, off, hy, cnt) => { const inst = new THREE.InstancedMesh(geo, rail, cnt), M4 = new THREE.Matrix4(), Qn = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), V = new THREE.Vector3(), Sc = new THREE.Vector3(1, 1, 1); let c0 = 0;
+        for (const [ra, rb, only] of runs) { const side0 = only ? outer(((Math.round((ra + rb) / 2) % n) + n) % n) : 0; for (let i = ra + off; i < rb; i += step) { const k = ((Math.round(i) % n) + n) % n; if (inGap(k)) continue; const a = ang(k);
+          for (const sd of only ? [side0] : [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB + 2), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o, y = surfY(x, z, k); if (c0 >= cnt) break; Qn.setFromAxisAngle(up, -a); M4.compose(V.set(x, y + hy, z), Qn, Sc); inst.setMatrixAt(c0++, M4); } } }
+        inst.count = c0; inst.instanceMatrix.needsUpdate = true; grp.add(inst); };
+      const tot = runs.reduce((q, [a, b]) => q + (b - a), 0); place(big, 5, 0, 17, Math.ceil(tot / 5) * 2 + 8); place(small, 5, 2.5, 11, Math.ceil(tot / 5) * 2 + 8); }
+    { const chk = ctex(128, 128, (c, W) => { for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = (x + y) % 2 ? "#2c2c26" : "#4e4c40"; c.fillRect(x * 32, y * 32, 32, 32); c.fillStyle = "rgba(255,240,200,.08)"; c.fillRect(x * 32 + 2, y * 32 + 2, 28, 3); } }, true);   // 🏁 the golden chequered start, as its own crisp strip on the road
+      const SP = [], UV = [], IX = [], A0 = -95, A1 = 1, Wd = t.ROAD; let L = 0, prev = null;
       for (let i = A0; i <= A1; i++) { const k = ((i % n) + n) % n, a = ang(k), p = P[k]; if (prev) L += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p; for (let q = 0; q <= 6; q++) { const o = -Wd / 2 + Wd * q / 6, x = p[0] - Math.sin(a) * o, z = p[1] + Math.cos(a) * o; SP.push(x, surfY(x, z, k) + 1.2, z); UV.push(q / 6 * 3, L / (Wd / 3)); } }
       for (let r0 = 0; r0 < A1 - A0; r0++) for (let q = 0; q < 6; q++) { const a = r0 * 7 + q, b = a + 7; IX.push(a, a + 1, b, a + 1, b + 1, b); }
       const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(SP, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
-      const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: chk, emissive: 0xffffff, emissiveMap: chk, emissiveIntensity: .35, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -10 })); grp.add(m); }
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: chk, roughness: .25, metalness: .2, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -10 })); grp.add(m); }
     // ⚡ dash panels (blue glass with bright chevrons racing forward) and the glider ramp (a raised blue ramp with white wing stripes)
     const dashTex = ctex(128, 128, (c, W) => { const gr = c.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, "#0a6aff"); gr.addColorStop(.5, "#3ad8ff"); gr.addColorStop(1, "#0a6aff"); c.fillStyle = gr; c.fillRect(0, 0, W, W); c.strokeStyle = "#ffffff"; c.lineWidth = 10; c.lineJoin = "round"; for (const y0 of [20, 84]) { c.beginPath(); c.moveTo(18, y0 + 30); c.lineTo(64, y0); c.lineTo(110, y0 + 30); c.stroke(); } }, true);
     const glideTex = ctex(128, 128, (c, W) => { c.fillStyle = "#1a4ad8"; c.fillRect(0, 0, W, W); for (let k = 0; k < 4; k++) { c.fillStyle = k % 2 ? "#ffffff" : "#5ab8ff"; c.fillRect(0, k * 32 + 8, W, 14); } c.fillStyle = "rgba(255,255,255,.25)"; c.fillRect(0, 0, 8, W); c.fillRect(W - 8, 0, 8, W); }, true);
@@ -1667,7 +1684,7 @@ export function create(A) {
       let base = 0; { let bi = 0, bd = 1e12; for (let i = 0; i < n; i += 4) { const d = (P[i][0] - x) ** 2 + (P[i][1] - z) ** 2; if (d < bd) { bd = d; bi = i; } } base = RE[bi]; }
       m.position.set(x, base - 150 + rnd() * 300, z); m.rotation.set(rnd() * .6 - .3, rnd() * 6, rnd() * .6 - .3); grp.add(m); coils.push({ m, sp: (rnd() - .5) * .3 }); }
     const meds = [];
-    for (const fr of [.07, .93]) { const i = Math.round(n * fr), a = ang(i), [x, z] = P[i], R = t.ROAD / 2 + 110, g = new THREE.Group(), wm = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });   // 🌟 the giant glowing star rings you drive through
+    for (const fr of [.1, .93]) { const i = Math.round(n * fr), a = ang(i), [x, z] = P[i], R = t.ROAD / 2 + 110, g = new THREE.Group(), wm = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });   // 🌟 the giant glowing star rings you drive through
       g.add(new THREE.Mesh(new THREE.TorusGeometry(R, 9, 10, 72), wm)); const pts = starShape(R * .78, R * .36).getPoints().map(p => new THREE.Vector3(p.x, p.y, 0)); g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, "catmullrom", 0), 200, 6, 6, true), wm));
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xfff0c8, transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(R * 3, R * 3, 1); g.add(halo);
       g.position.set(x, RE[i] + R * .82, z); g.rotation.y = -a + Math.PI / 2; grp.add(g); }
@@ -1867,13 +1884,13 @@ export function create(A) {
     const a = k.a || 0;
     if (cam.yaw == null || o.snap) cam.yaw = a;
     let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * 7);   // the camera swings round a moment after the kart
-    const dist = 58 + 9 * (o.fov || 0), up = 34 + Math.min(k.z || 0, 260) * .95;   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
+    const CU = SKY ? 30 : 34, dist = (SKY ? 72 : 58) + 9 * (o.fov || 0), up = CU + Math.min(k.z || 0, 260) * .95;   // (the sky road: a touch farther back, so the road leads the eye to the horizon)   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
     const gx = k.x - Math.cos(cam.yaw) * dist, gz = k.y - Math.sin(cam.yaw) * dist;
     const lift = airLift(k); cam.lift = o.snap || cam.lift == null ? lift : cam.lift + (lift - cam.lift) * Math.min(1, o.dt * (lift > cam.lift ? 20 : 6));
     const kh = SKY && k.idx != null ? surfY(k.x, k.y, k.idx) : h(k.x, k.y) + cam.lift, base = SKY ? kh : Math.max(kh, h(gx, gz) - 6), want = base + up;   // (flying off the road: follow the road's height, not the ravine under you)
     // the ground part eases (hills, bumps); the jump / glide height follows almost at once, or a fast take-off leaves the camera level with the kart
-    const zu = up - 34; cam.base = o.snap || cam.base == null ? base : cam.base + (base - cam.base) * Math.min(1, o.dt * 6); cam.zu = o.snap || cam.zu == null ? zu : cam.zu + (zu - cam.zu) * Math.min(1, o.dt * 16);
-    cam.y = cam.base + 34 + cam.zu;
+    const zu = up - CU; cam.base = o.snap || cam.base == null ? base : cam.base + (base - cam.base) * Math.min(1, o.dt * 6); cam.zu = o.snap || cam.zu == null ? zu : cam.zu + (zu - cam.zu) * Math.min(1, o.dt * 16);
+    cam.y = cam.base + CU + cam.zu;
     camera.position.set(gx, SKY ? cam.y : Math.max(cam.y, h(gx, gz) + 5), gz);
     look.set(k.x + Math.cos(cam.yaw) * 56, Math.max(SKY && k.idx != null ? surfY(k.x + Math.cos(cam.yaw) * 56, k.y + Math.sin(cam.yaw) * 56, k.idx + 9) : h(k.x + Math.cos(cam.yaw) * 56, k.y + Math.sin(cam.yaw) * 56), kh - 40) * .5 + kh * .5 + 2 + Math.min(k.z || 0, 260) * .95, k.y + Math.sin(cam.yaw) * 56);   // rises with you in a jump (no tilting up at the sky)
     if (o.intro != null && o.intro < 1 && o.grid) {   // before the start: from in front of the grid (everyone facing you), swooping up and round to behind your kart
