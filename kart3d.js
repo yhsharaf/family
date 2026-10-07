@@ -136,6 +136,7 @@ export function create(A) {
     if (f < 0) { j = (i + n - 1) % n; q = SPTS[j]; dx = q[0] - p[0]; dy = q[1] - p[1]; f = ((x - p[0]) * dx + (y - p[1]) * dy) / (dx * dx + dy * dy || 1); }
     f = Math.max(0, Math.min(1, f)); const q0 = SPTS[(i + n - 2) % n], q1 = SPTS[(i + 2) % n], a = Math.atan2(q1[1] - q0[1], q1[0] - q0[0]), dn = -(x - p[0]) * Math.sin(a) + (y - p[1]) * Math.cos(a);
     const bank = BANKS ? BANKS[i] + (BANKS[j] - BANKS[i]) * f : 0; return RE[i] + (RE[j] - RE[i]) * f - bank * Math.max(-210, Math.min(210, dn)); };
+  const surfAt = (x, y, idx) => { const n = SPTS.length, c = Math.round(idx); let bj = c, bd = 1e18; for (let k = -5; k <= 5; k++) { const j = (((c + k) % n) + n) % n, p = SPTS[j], d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd) { bd = d; bj = j; } } return surfY(x, y, bj); };   // (a spot a little way from the kart: measured on its own stretch of road, so the kart tilts with the real slope)
   const airLift = r => { if (!RE || r.idx == null) return 0; if (!(r.z > 0)) { const i = r.idx | 0; if (!bridgeG.some(g => i > g.a && i < g.b)) return 0; } const g = h(r.x, r.y), e = RE[Math.max(0, Math.min(RE.length - 1, r.idx | 0))]; return Math.max(0, e - g); };   // (and on a rope bridge, over the ravine, you're held up at the road's height)
   const h = (x, y) => {
     const fx = Math.max(0, Math.min(GN - 1.001, x / G)), fy = Math.max(0, Math.min(GN - 1.001, y / G)), i = fx | 0, j = fy | 0, ax = fx - i, ay = fy - j, o = j * GN + i;
@@ -392,7 +393,7 @@ export function create(A) {
   }
   function roadMat(tex, decal, glow) {
     const w = WORLD;
-    const m = glow === 2 ? new THREE.MeshStandardMaterial({ map: tex, roughness: .3, metalness: .05, envMapIntensity: .55, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }) : new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // (the star road's glass tiles are glossy: they catch reflections)
+    const m = glow === 2 ? new THREE.MeshStandardMaterial({ map: tex, roughness: .92, metalness: 0, envMapIntensity: .08, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }) : new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // (the star road's glass tiles are glossy: they catch reflections)
     if (glow) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = tex; m.emissiveIntensity = glow === 2 ? .5 : .55; }   // (Rainbow Road's tiles glow)
     m.onBeforeCompile = sh => { sh.uniforms.decal = { value: decal };
       sh.vertexShader = "varying vec2 vWXZ;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWXZ = position.xz;");
@@ -1475,11 +1476,11 @@ export function create(A) {
       m.driver.material.opacity = m.booOn ? .3 : (m.ghost ? .5 : 1); m.driver.material.transparent = true; m.faded = m.booOn; }
     const gx = r.x, gy = r.y, a = r.a || 0, ca = Math.cos(a), sa = Math.sin(a);
     const al = airLift(r); m.lift = m.lift == null ? al : m.lift + (al - m.lift) * Math.min(1, (o.dt || .016) * (al > m.lift ? 20 : 8));   // (eased, so landing off the road doesn't jump)
-    const H = SKY && r.idx != null ? (x, y) => surfY(x, y, r.idx) : h;   // (on the sky road: the road's own height, even where it crosses itself)
-    m.root.position.set(gx, H(gx, gy) + (SKY ? 0 : m.lift), gy); m.root.rotation.y = -a;
+    const H = SKY && r.idx != null ? (x, y) => surfAt(x, y, r.idx) : h;   // (on the sky road: the road's own height, even where it crosses itself)
+    m.root.position.set(gx, (SKY && r.idx != null ? surfY(gx, gy, r.idx) : h(gx, gy)) + (SKY ? 0 : m.lift), gy); m.root.rotation.y = -a;
     // lean with the ground: nose up on a climb, tipped on a side slope
     const f = H(gx + ca * 11, gy + sa * 11) - H(gx - ca * 11, gy - sa * 11), sd = H(gx - sa * 8, gy + ca * 8) - H(gx + sa * 8, gy - ca * 8);
-    m.tilt.rotation.set(Math.atan2(sd, 16) * .9, 0, Math.atan2(f, 22));
+    m.tilt.rotation.set(Math.atan2(sd, 16) * (SKY ? 1 : .9), 0, Math.atan2(f, 22));
     const t = performance.now() / 1000, spin = r.spin > 0 ? (.9 - r.spin) / .9 * Math.PI * 4 : 0, flip = r.flip > 0 ? (1 - r.flip / .4) * Math.PI * 2 : 0;
     const hop = r.hop > 0 ? Math.sin((r.hop / .18) * Math.PI) * 4 : 0, lift = r.rescue > 0 ? (r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7) * 40 : 0;
     m.body.position.y = Math.max(0, r.z || 0) + hop + lift;
