@@ -1,14 +1,14 @@
--- Family Kart v60: two new boards. starroad (the Star Road: one long lap in three sections, so 1 lap with a 45 s floor) and toyfactory
+-- Family Kart v60: two new boards. starroad (the Star Road: one long lap in three sections, so 1 lap with a 45 s floor) and toyfactory, plus discovery (Discovery, 3 laps)
 -- (Ludibrium Toy Factory: 3 laps, the normal 18 s lap floor). Every other board is unchanged.
 alter table kart_times drop constraint if exists kart_times_track_check;
 alter table kart_times add constraint kart_times_track_check
-  check (track ~ '^(henesys|henesys2|henesys3|town|park|meadows|pets|meadows2|gorge|pets2|snowland|sherbet|mtwario|mtelnath|elsummit|treetop|golemtemple|goldcave|phantomlake|golemfurnace|deadmine|zakumaltar|toyfactory|starroad|woods|jungle|boolake|goldmine|volcano|thwomp|rrsnes|rrwii|ticktock|forest|elnath[123]|sleepy[123]|zakum[123]|ludi[123])(_50|_100)?$');
+  check (track ~ '^(henesys|henesys2|henesys3|town|park|meadows|pets|meadows2|gorge|pets2|snowland|sherbet|mtwario|mtelnath|elsummit|treetop|golemtemple|goldcave|phantomlake|golemfurnace|deadmine|zakumaltar|toyfactory|starroad|discovery|woods|jungle|boolake|goldmine|volcano|thwomp|rrsnes|rrwii|ticktock|forest|elnath[123]|sleepy[123]|zakum[123]|ludi[123])(_50|_100)?$');
 create or replace function kart_submit(p_track text, p_name text, p_laps int[], p_ghost text default null) returns json
 language plpgsql security definer set search_path = public as $$
 declare nm text; total int; bestlap int; minlap int := 18000; nlaps int := 3; r kart_times; g text;
 begin
   perform rl_check('kart', 12, 60);
-  if p_track !~ '^(henesys2|henesys3|town|meadows2|gorge|pets2|snowland|sherbet|mtwario|mtelnath|elsummit|treetop|golemtemple|goldcave|phantomlake|golemfurnace|deadmine|zakumaltar|toyfactory|starroad|woods|jungle|boolake|goldmine|volcano|thwomp|rrsnes|rrwii|ticktock|forest|elnath[123]|sleepy[123]|zakum[123]|ludi[123])(_50|_100)?$' then return json_build_object('r', 'track'); end if;
+  if p_track !~ '^(henesys2|henesys3|town|meadows2|gorge|pets2|snowland|sherbet|mtwario|mtelnath|elsummit|treetop|golemtemple|goldcave|phantomlake|golemfurnace|deadmine|zakumaltar|toyfactory|starroad|discovery|woods|jungle|boolake|goldmine|volcano|thwomp|rrsnes|rrwii|ticktock|forest|elnath[123]|sleepy[123]|zakum[123]|ludi[123])(_50|_100)?$' then return json_build_object('r', 'track'); end if;
   if p_track like 'zakum%' then nlaps := 1; minlap := 36000; end if;
   if p_track like 'mtwario%' then nlaps := 1; minlap := 70000; end if;
   if p_track like 'starroad%' then nlaps := 1; minlap := 45000; end if;

@@ -61,8 +61,10 @@ function openPts(c) {
   return out;
 }
 // the current track (loadTrack fills these in)
-let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], FIREBALLS = [], GEARS = [], HANDS = [], PENDS = [];
+let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], HMAP = null, FIREBALLS = [], GEARS = [], HANDS = [], PENDS = [];
 // 🕰️ the clockwork: a hand's angle, a pendulum's bob (swinging across the road), a gear's turn
+const hmBare = (x, y) => { const M = HMAP, i = Math.round((x - M.x0) / M.step), j = Math.round((y - M.x0) / M.step); if (i < 0 || j < 0 || i >= M.n || j >= M.n) return true; const k = j * M.n + i; return !(M.z[k] === M.z[k]) || M.c[k] === 3; };
+const hmDrop = r => { const M = HMAP, i = Math.round((r.x - M.x0) / M.step), j = Math.round((r.y - M.x0) / M.step); if (i < 0 || j < 0 || i >= M.n || j >= M.n) return true; const z = M.z[j * M.n + i], road = PTS[r.idx] ? PTS[r.idx][2] || 0 : 0; return !(z === z) || z < road - 90; };   // (no ground there, or a sheer drop below the road)
 const handAng = (h, now) => h.ph + now * h.sp;
 const pendAt = (p, now) => { const s = Math.sin(now * p.sp + p.ph), [x, y] = [p.base[0] - Math.sin(p.a) * s * p.amp, p.base[1] + Math.cos(p.a) * s * p.amp]; return { x, y, s }; };
 // 🔥 a fireball from the volcano: unseen high up, then it drops onto its spot and bursts
@@ -1001,10 +1003,47 @@ const TRACKS = {
       return { pads, coins, gaps, rollers, ledges: [{ a: 0, b: N - 1 }], boxes: [...boxRow(Math.round(N * .14), [-60, -20, 20, 60]), ...boxRow(Math.round(N * .38), [-60, -20, 20, 60]), ...boxRow(Math.round(N * .58), [-60, -20, 20, 60]), ...boxRow(Math.round(N * .76), [-60, -20, 20, 60])], extra() {} };
     },
   },
+  // 🔭 Discovery: laid out exactly like Mario Kart 8 Deluxe's Wii Mushroom Gorge (traced from above, every model drawn by us). Down the
+  // start straight, a slight right and left, over the curving wooden bridge, off the ramp onto one giant bouncy mushroom across the
+  // gorge, round the long U, along the cliff into the crystal cave, off the ramp over the cave's pit on two rows of mushrooms, out
+  // into the light, and the left U-turn round the abyss (three Orange Mushrooms wandering across) to the line.
+  discovery: {
+    id: "discovery", scale: 2.85, road: 180, hmap: "discovery", hmapWS: 3.3, cup: "henesys", music: "town", name: "Discovery", sub: "the gorge · bouncy mushrooms · the crystal cave", icon: "🔭",
+    ctrl: [[440, 525, 0.2], [440, 600, 0.0], [437, 680, 0.6], [425, 745, 4.0], [398, 795, 7.5], [378, 845, 12.2], [380, 895, 17.6], [405, 935, 22.0], [448, 962, 24.5], [492, 985, 25.0], [530, 995, 24.9], [565, 1010, 26.2], [592, 1040, 23.9], [598, 1075, 18.5], [594, 1110, 20.7], [588, 1160, 22.9], [585, 1215, 24.9], [588, 1270, 26.6], [612, 1325, 31.0], [662, 1367, 37.9], [740, 1385, 42.8], [815, 1362, 46.1], [855, 1315, 51.1], [848, 1255, 52.0], [846, 1185, 51.8], [862, 1115, 56.6], [905, 1085, 58.1], [965, 1078, 53.9], [1035, 1088, 48.4], [1105, 1103, 42.8], [1175, 1115, 42.8], [1245, 1132, 49.9], [1300, 1148, 59.3], [1350, 1150, 55.9], [1395, 1120, 52.5], [1415, 1065, 49.2], [1400, 1000, 45.8], [1350, 930, 42.4], [1270, 855, 39.0], [1180, 770, 35.7], [1090, 700, 32.3], [1000, 630, 28.9], [910, 555, 25.5], [830, 480, 22.2], [760, 420, 18.8], [700, 380, 15.4], [640, 345, 12.0], [602, 300, 10.5], [585, 258, 10.5], [560, 230, 12.0], [520, 218, 12.6], [482, 225, 12.2], [460, 250, 10.5], [450, 300, 8.2], [446, 380, 1.9], [442, 450, 0.0]],
+    theme: { grass: ["#7cc443", "#76bf3f"], flowers: 0, tufts: 0, road: "sand", curb: ["#6cb53a", "#6cb53a"], sky: "#8fd0ff", bluesky: true, noCurb: true,
+      gorge: { clouds: -330, shrooms: [[90, 70, 40, -20, "r"], [160, 145, 38, -50, "g"], [510, 15, 30, -10, "r"], [290, 785, 38, 10, "g"], [235, 895, 38, -30, "g"], [510, 755, 30, 30, "r"], [290, 1080, 40, 0, "r"], [675, 925, 38, 40, "g"], [0, 890, 40, -40, "r"], [110, 1295, 38, -20, "g"], [210, 1305, 38, 10, "g"], [1335, 1440, 42, 60, "g"]] }, haze: [168, 214, 244], fog: [2200, 7000], hills: 1, ledgeDrop: 700, line: "rgba(0,0,0,0)", noArch: true,
+      clean: { sun: 0xfff4e0, sunI: 2.2, dir: [.35, .8, -.45], sky: 0xd8ecff, gnd: 0x86b45a, hemiI: 1.25, exp: 1, sat: 1, con: 1, warm: 0, vig: 0, bloom: 0, thr: 1, trees: 25, tufts: 500, mobs: 0 } },
+    near: [], far: [], mobs: ["orange_mushroom"],
+    build() {
+      const u = d => Math.round(d / SPC), coins = [];
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      const cap = (a, along, o, r, top, col) => ({ i: a + u(along), o, r, top, col });
+      // the curving wooden bridge, its ramp, and the one giant mushroom across the gorge
+      const ba = I(492, 985), bb = I(598, 1075), g1a = bb + 2;
+      const G1 = { a: g1a, b: I(585, 1212) - 2, kind: "gorge", caps: [{ ...cap(g1a, 150, 0, 165, 0, "r"), hop: 420 }] };   // (one big bounce carries you right across)
+      // the crystal cave: in through the cliff, off the ramp over the pit (two rows of mushrooms), out into the light by the hairpin
+      const ca = I(1300, 1148), cb = I(700, 380), pa = I(1180, 770);
+      const pit = [{ ...cap(pa, 110, 0, 150, 0, "b"), hop: 170 }];   // (off the ramp, a short hop or a full jump: either way you land on the first, big one)
+      [[335, -62, 78, 16], [525, -48, 66, 30], [715, -70, 78, 10], [905, -54, 68, 24]].forEach(([d, o, r, top], k) => pit.push(cap(pa, d, o, r, top, ["r", "g", "o", "b"][k])));
+      [[335, 64, 70, 28], [525, 56, 80, 8], [715, 66, 64, 32], [905, 50, 76, 12]].forEach(([d, o, r, top], k) => pit.push(cap(pa, d, o, r, top, ["g", "o", "b", "r"][k])));
+      const G2 = { a: pa, b: pa + u(1020), kind: "gorge", noDip: true, caps: pit };
+      row(I(440, 640), I(430, 740), 4, 0); row(I(612, 1325), I(740, 1385), 5, 0); row(I(1035, 1088), I(1175, 1115), 5, 0); row(I(560, 230), I(460, 250), 4, 30);
+      // 🍄 the three Orange Mushrooms wandering across the hairpin
+      const shrooms = [[I(590, 268), 0], [I(520, 218), 2.1], [I(458, 262), 4.2]].map(([i, ph]) => ({ i, ph, k: "orange_mushroom", sp: .5, s: .7 }));
+      return {
+        gaps: [{ a: ba, b: bb, kind: "bridge", deck: ROAD / 2 + CURB - 4, rail: true, caps: [] }, G1, G2],
+        caves: [{ a: ca, b: cb, gorge: true, half: 150, height: 170 }],
+        pads: [{ t: "ramp", i: bb - 6, len: 6, o: 0, w: ROAD }, { t: "ramp", i: pa - 8, len: 7, o: 0, w: ROAD },
+          { t: "boost", i: I(662, 1367), len: 10, o: 0, w: 70 }, { t: "boost", i: I(846, 1185), len: 10, o: 0, w: 70 }],
+        coins, pigs: shrooms,
+        boxes: [...boxRow(I(390, 875), [-60, -20, 20, 60]), ...boxRow(I(862, 1115), [-60, -20, 20, 60]), ...boxRow(I(1395, 1120), [-60, -20, 20, 60]), ...boxRow(I(602, 300), [-60, -20, 20, 60])], extra() {},
+      };
+    },
+  },
 };
 // the cups: 3 tracks each, raced in this order in the Grand Prix. Each new cup has its own twist.
 const CUPS = {
-  henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "town", "forest"], rule: "" },
+  henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "discovery", "forest"], rule: "" },
   elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: brake early and drift round the corners" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Deep in the forest: boardwalks, ponds and gliders" },
   zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Block Golems, mine carts and lava: no railings in places, so mind the edges" },
@@ -1017,6 +1056,11 @@ function loadTrack(key) {
   WS = T.scale || 1; WORLD = Math.round(TW * WS / 8) * 8;   // a bigger world for a longer lap: the layout (drawn on a 2048 map) is stretched, the road, karts and speed are not
   const ctrl = WS === 1 ? T.ctrl : T.ctrl.map(p => p.map((v, j) => v * WS));   // (hills scale too, so the slopes stay the same)
   PTS = OPEN ? openPts(ctrl) : loopPts(ctrl); N = PTS.length; TRACK_LEN = 0;
+  HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
+    if (src) { const n = Math.round(Math.sqrt(src.length / 2)), lut = {}, z = new Float32Array(n * n), c = new Uint8Array(n * n); "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".split("").forEach((ch, k) => lut[ch] = k);
+      const hk = WS / (T.hmapWS || WS);   // (the heights were sampled for one size of the track: they scale with it)
+      for (let k = 0; k < n * n; k++) { const v = lut[src[2 * k]] * 64 + lut[src[2 * k + 1]]; if (!v) { z[k] = NaN; continue; } z[k] = ((v & 1023) * 4 - 500) * hk; c[k] = v >> 10; }
+      HMAP = { n, x0: 5 * WS, step: 10 * WS, z, c, deep: -900 * hk, k: hk, ws: WS }; } }
   if (T.theme.smoothXY && !OPEN) { const sg = T.theme.smoothXY, W = Math.ceil(sg * 3), wt = []; let ws = 0; for (let k = -W; k <= W; k++) { const w = Math.exp(-k * k / (2 * sg * sg)); wt.push(w); ws += w; }   // (a traced layout's little wobbles eased out, so every bend is one smooth sweep)
     const src = PTS.map(p => p.slice()); for (let i = 0; i < N; i++) { let sx = 0, sy = 0; for (let k = -W; k <= W; k++) { const q = src[(i + k + N) % N]; sx += q[0] * wt[k + W]; sy += q[1] * wt[k + W]; } PTS[i][0] = sx / ws; PTS[i][1] = sy / ws; } }
   LAPS = OPEN ? 1 : (T.laps || 3); START_I = OPEN ? (PTS[0].length > 2 ? 90 : 44) : 0;   // (a 3D grid is deeper: it needs more road behind the line)
@@ -1300,7 +1344,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
     g.save(); g.translate(lf.x, lf.y); g.rotate(lf.a); g.fillStyle = "#3f9a3a"; g.beginPath(); g.ellipse(0, 0, lf.r * 1.25, lf.r * .8, 0, 0, 7); g.fill();
     g.fillStyle = "#5cc04e"; g.beginPath(); g.ellipse(0, 0, lf.r * 1.15, lf.r * .7, 0, 0, 7); g.fill(); g.strokeStyle = "#2f7a2c"; g.lineWidth = 3; g.beginPath(); g.moveTo(-lf.r * 1.1, 0); g.lineTo(lf.r * 1.1, 0); g.stroke();
     for (const sx of [-.6, -.2, .2, .6]) for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sx * lf.r, 0); g.lineTo((sx + .25) * lf.r, sd * lf.r * .55); g.stroke(); } g.restore(); }
-  for (const cv of CAVES) if (!cv.rock && !cv.temple) {   // ❄ the ice cave's floor: glassy blue ice
+  for (const cv of CAVES) if (!cv.rock && !cv.temple && !cv.gorge) {   // ❄ the ice cave's floor: glassy blue ice
     g.lineJoin = g.lineCap = "round"; g.beginPath(); for (let i = cv.a; i <= cv.b; i++) { const p = PTS[i % N]; i === cv.a ? g.moveTo(p[0], p[1]) : g.lineTo(p[0], p[1]); }
     g.strokeStyle = "rgba(110,175,235,.5)"; g.lineWidth = ROAD; g.stroke(); g.strokeStyle = "rgba(220,242,255,.45)"; g.lineWidth = 3; for (const o of [-40, 25]) { g.beginPath(); for (let i = cv.a; i <= cv.b; i += 2) { const [x, y] = at(i, o); i === cv.a ? g.moveTo(x, y) : g.lineTo(x, y); } g.stroke(); } }
   if (!only) { let acc = 0;   // speed bands
@@ -1714,14 +1758,15 @@ function vnoise2(x, y, sd) { const h = (i, j) => { let n = (i * 374761393 + j * 
   const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return (h(i, j) * (1 - u) + h(i + 1, j) * u) * (1 - v) + (h(i, j + 1) * (1 - u) + h(i + 1, j + 1) * u) * v; }
 function greenery(rnd) {
   const G = T.theme.clean, greens = G.greens || [0x5cb338, 0x76c442, 0x4a9e31, 0x8fd14f, 0x6bbf3d], pinesC = [0x2f7d3a, 0x3a8f44, 0x286e34, 0x44a04c], flowers = G.flowers || [0xffffff, 0xffd21f, 0xff8fb8, 0xe8322f, 0xb48aff];
-  const clear = ROAD / 2 + CURB + (G.clear || 110), want = Math.round((G.trees || 260) * WS * WS / 3);
+  const clear = ROAD / 2 + CURB + (G.clear || 110), want = Math.round((G.trees ?? 260) * WS * WS / 3);
   for (let tries = 0; TREES3D.length < want && tries < want * 40; tries++) { const x = 60 + rnd() * (WORLD - 120), y = 60 + rnd() * (WORLD - 120), d = roadDist(x, y);
     if (d < clear || inLake(x, y) || (GAPS.length && d < 560 && gapAt(nearest(x, y).i))) continue;
     const f = vnoise2(x / 420, y / 420, 3) * .7 + vnoise2(x / 150, y / 150, 4) * .3; if (f < .45 && rnd() < .9) continue;   // (groves, with open meadow between them)
     if (TREES3D.some(o => Math.hypot(o.x - x, o.y - y) < 70)) continue;
+    if (HMAP && hmBare(x, y)) continue;   // (not out over the clouds, nor on bare rock)
     const pine = f > .66 && rnd() < .7, pal = pine ? pinesC : greens; TREES3D.push({ x, y, k: pine ? "pine" : "round", s: .8 + rnd() * .7, r: rnd() * 6.28, c: pal[Math.floor(rnd() * pal.length)], c2: pal[Math.floor(rnd() * pal.length)] }); }
   for (let k = 0, n = Math.round((G.tufts || 1400) * WS * WS / 3); k < n; k++) { const i = Math.floor(rnd() * N), sd = rnd() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 18 + rnd() * rnd() * 260));
-    if (roadDist(x, y) < ROAD / 2 + CURB + 10 || inLake(x, y)) continue; const fl = vnoise2(x / 90, y / 90, 9) > .62;
+    if (roadDist(x, y) < ROAD / 2 + CURB + 10 || inLake(x, y) || (HMAP && hmBare(x, y))) continue; const fl = vnoise2(x / 90, y / 90, 9) > .62;
     TUFTS3D.push({ x, y, r: rnd() * 6.28, c: greens[Math.floor(rnd() * greens.length)], f: fl ? flowers[Math.floor(rnd() * flowers.length)] : 0 }); }
   for (let k = 0, got = 0; got < (G.mobs ?? 10) && k < 400; k++) { const x = 80 + rnd() * (WORLD - 160), y = 80 + rnd() * (WORLD - 160), d = roadDist(x, y);   // a few of the map's creatures out in the open meadows (never by the road)
     if (d < ROAD / 2 + CURB + 140 || inLake(x, y) || vnoise2(x / 420, y / 420, 3) > .45 || !T.mobs.length) continue; OBJS.push({ x, y, k: T.mobs[got % T.mobs.length], s: .45, r: 10, mob: true }); got++; }
@@ -1798,11 +1843,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, dashPads: T.theme.skyroad ? PADS.filter(p => p.t === "boost" || p.t === "glide") : [], rollers: ROLLERS, rollerAt, trees3d: TREES3D, tufts3d: TUFTS3D, belts: BELTS, trains: TRAINS, trainAt, tdrops: TDROPS, tdropAt, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, dashPads: T.theme.skyroad ? PADS.filter(p => p.t === "boost" || p.t === "glide") : [], rollers: ROLLERS, rollerAt, trees3d: TREES3D, tufts3d: TUFTS3D, belts: BELTS, trains: TRAINS, trainAt, tdrops: TDROPS, tdropAt, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, hmap: HMAP, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=204"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=213"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2232,7 +2277,7 @@ function rivalStep(r, dt, tt) {
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
   if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 100; r.laneT = 1.5 + Math.random() * 3; }
   if (!r.item && !(r.noItem > 0) && mode !== "tt") for (const b of BOXES) if (b.i != null && !(b.z > 0) && b.t <= 0) { const di = OPEN ? b.i - r.idx : (b.i - r.idx + N) % N; if (di > 4 && di < 45) { r.lane = b.o; break; } }   // 🎁 no item: head for a box (dodging below still wins)
-  if (LEDGES.length && LEDGES.some(l => { const j = OPEN ? r.idx + 30 : (r.idx + 30) % N; return (r.idx >= l.a && r.idx <= l.b) || (j >= l.a && j <= l.b); })) r.lane = Math.max(-ROAD / 2 + 42, Math.min(ROAD / 2 - 42, r.lane));   // no railing here: stay off the edge (holes and hedges below still win)
+  if (HMAP || (LEDGES.length && LEDGES.some(l => { const j = OPEN ? r.idx + 30 : (r.idx + 30) % N; return (r.idx >= l.a && r.idx <= l.b) || (j >= l.a && j <= l.b); }))) r.lane = Math.max(-ROAD / 2 + 42, Math.min(ROAD / 2 - 42, r.lane));   // no railing here: stay off the edge (holes and hedges below still win)
   for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
   for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
   for (const b of HEDGES) if (b.i != null) { const di = (b.i - r.idx + N) % N; if (di > 0 && di < 32 && Math.abs(r.lane - b.o) < b.w / 2 + 24) r.lane = b.o > 0 ? b.o - b.w / 2 - 40 : b.o < 0 ? b.o + b.w / 2 + 40 : (r.lane >= 0 ? b.w / 2 + 40 : -b.w / 2 - 40); }   // 🌿 round the hedges
@@ -2280,6 +2325,8 @@ function rivalStep(r, dt, tt) {
   if (LAKE && lakeFall() && !air && near.d > near.half + 4 && inLake(r.x, r.y)) rescue(r);   // fell off the bridge
   if (T.water && !air && near.d > near.half + CURB + 8) rescue(r);   // 🌊 off the boardwalk
   if (LEDGES.length && !air && !near.alt && near.d > near.half + CURB + 10 && offAlt(r.x, r.y, 10) && LEDGES.some(l => r.idx >= l.a && r.idx <= l.b && ledgeSide(l, r))) rescue(r);
+  if (HMAP && !air && !near.alt && near.d > near.half + CURB + 6 && !gapAt(r.idx) && hmDrop(r)) rescue(r);   // 🗺️ over the edge of the grass, into the clouds
+  if (r !== K) for (const c of CAVES) if (c.gorge && r.idx >= c.a + 1 && r.idx <= c.b - 1 && near.d > c.half - 22) { const [cx, cy] = at(near.i, 0), dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy) || 1; r.x = cx + dx / d * (c.half - 22); r.y = cy + dy / d * (c.half - 22); r.v *= .9; }   // (the computer racers keep inside the rock tunnel too)
   // items: Elixirs and the Arm right away, a slime when someone is close behind, an arrow when someone is ahead
   if (r.item && r.itemT <= 0 && r.spin <= 0 && !r.done) {
     const p = progOf(r), others = racers().filter(o => o !== r);
@@ -2718,7 +2765,7 @@ function gapStep(r, air) {
     else if (!c) r.lastCap = null;
     return;
   }
-  if (c) { if (c !== r.lastCap) bounce(r, c); return; }
+  if (c) { if (c !== r.lastCap || T.theme.gorge) bounce(r, c); return; }   // (Discovery's mushrooms are real trampolines: land on one again and it bounces you again)
   r.lastCap = null;
   const m = nearest(r.x, r.y, r.idx), g0 = gapAt(m.i), g = g0 && g0.lap && r.lap + 1 < g0.lap ? null : g0; if (g && g.kind === "bridge") { if (m.i < g.b - 1 && m.i > g.a + 1 && m.d > g.deck) { if (g.rail) { const [cx, cy] = at(m.i, 0), dx = r.x - cx, dy = r.y - cy, d = Math.hypot(dx, dy) || 1; r.x = cx + dx / d * g.deck; r.y = cy + dy / d * g.deck; r.v *= .97; r.drift = 0; } else rescue(r, g.phantom ? "😵 It was a hallucination!" : "🌉 Off the rope bridge!"); } return; }   // (a railed walkway: you bump along its rail)
   if (g && m.i < g.b - 2 && m.i > g.a + 1) rescue(r, g.lap ? "🪵 The boardwalk collapsed!" : g.kind === "water" ? "💦 Splash! Into the pond" : g.kind === "chasm" ? "🏔️ Down the mountain!" : "🍄 Missed! Into the gorge");
@@ -3226,7 +3273,7 @@ function render() {
     ctx.fillStyle = "rgba(220,240,255,.55)"; const tb = performance.now() / 1000; for (let n = 0; n < 14; n++) { const x = (n * 53 + Math.sin(tb + n) * 6) % W, y = H - ((tb * 40 + n * 37) % H); ctx.beginPath(); ctx.arc(x, y, 1 + (n % 3) * .6, 0, 7); ctx.fill(); } }
   drawHorror(k, W, H); drawHallu(W, H); drawHeat(W, H, k); drawQuake(W, H);
   if (k.chill > 0) { const f = Math.min(1, k.chill / .5), g2 = ctx.createRadialGradient(W / 2, H / 2, H * .25, W / 2, H / 2, W * .65); g2.addColorStop(0, "rgba(200,235,255,0)"); g2.addColorStop(1, `rgba(200,235,255,${.7 * f})`); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }   // 🥶 frost creeping in
-  for (const cv of CAVES) if (k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
+  for (const cv of CAVES) if (!cv.gorge && k.idx >= cv.a && k.idx <= cv.b) {   // ❄ inside the ice cave: a cold blue gloom round the edges
     const g2 = ctx.createRadialGradient(W / 2, HOR + 10, 10, W / 2, HOR + 10, W * .75);
     g2.addColorStop(0, "rgba(160,220,255,0)"); g2.addColorStop(1, cv.crystal ? "rgba(8,20,60,.7)" : "rgba(10,40,90,.5)"); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); }
   // inside the tree house tunnel: dark, with a warm glow ahead
