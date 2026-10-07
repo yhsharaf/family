@@ -290,7 +290,7 @@ export function create(A) {
   }
   // ---------------------------------------------------------------- the road: its own sharp surface (in the track's style) with raised curbs;
   // the pads, ramps, black ice and start line come from a see-through overlay painted by kart.js
-  let roadObjs = [], starRoadMat = null, cosmosDome = null;
+  let roadObjs = [], starRoadMat = null, cosmosDome = null, cosmosRT = null;
   function surfaceTex(style, th, U) {
     const R = 2048, c = canvas(R, R), g = c.getContext("2d"); g.scale(R / U, R / 192);
     let sd = 11; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647, pick = a => a[Math.floor(r() * a.length)];
@@ -1441,23 +1441,48 @@ export function create(A) {
     skyMesh.renderOrder = -1; scene.add(skyMesh);
     if (skyDome) { scene.remove(skyDome); skyDome.geometry.dispose(); skyDome.material.dispose(); skyDome = null; }
     cosmosDome = null;
-    if (t.theme.cosmos) {   // 🌌 the whole sky, painted by a shader: indigo at the horizon to near-black overhead, teal and magenta nebula wisps, a band of star dust, and thousands of stars that twinkle
-      skyDome = new THREE.Mesh(new THREE.SphereGeometry(SKY_R * 1.3, 48, 24), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uT: { value: 0 } },
-        vertexShader: "varying vec3 vd; void main() { vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
-        fragmentShader: `uniform float uT; varying vec3 vd;
+    if (t.theme.cosmos) {   // 🌌 the cosmos: the nebula and the galaxy are baked once into a sky texture (one GPU pass at load), and the dome's live shader adds the twinkling stars, their halos and cross-flares
+      const NOISE = `
  float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
  float vnoise(vec3 p) { vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
    return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y), mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+ float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int k = 0; k < 6; k++) { v += a * vnoise(p); p = p * 2.03 + 11.7; a *= 0.5; } return v; }
+ float ridged(vec3 p) { float v = 0.0, a = 0.55; for (int k = 0; k < 5; k++) { v += a * (1.0 - abs(2.0 * vnoise(p) - 1.0)); p = p * 2.1 + 5.3; a *= 0.5; } return v; }`;
+      const BAKE = NOISE + `
+ varying vec2 vUv;
+ void main() { float ph = (vUv.x - 0.5) * 6.28318530, th = (vUv.y - 0.5) * 3.14159265; vec3 d = vec3(cos(th) * cos(ph), sin(th), cos(th) * sin(ph));
+   vec3 col = vec3(0.018, 0.016, 0.07);
+   float n1 = fbm(d * 2.6 + 3.1), n2 = fbm(d * 6.0 + 9.7), fil = ridged(d * 9.0 + 1.3);
+   float dens = n1 * 0.68 + n2 * 0.32, cloud = smoothstep(0.45, 0.80, dens), wisp = pow(fil, 3.2) * (0.3 + cloud), hot = pow(max(dens - 0.52, 0.0) * 2.4, 3.0);
+   vec3 cA = vec3(1.0, 0.22, 0.82), cB = vec3(0.46, 0.22, 1.0), cC = vec3(0.18, 0.55, 1.0);
+   vec3 nc = mix(mix(cB, cA, smoothstep(0.35, 0.68, fbm(d * 1.7 + 20.0))), cC, smoothstep(0.42, 0.78, fbm(d * 2.2 + 40.0)));
+   vec3 G = normalize(vec3(-0.15, 0.28, 0.90)), gx = normalize(cross(G, vec3(0.0, 1.0, 0.0))), gy = cross(gx, G); float along = dot(d, G), clear = 1.0;
+   float gr = 9.0; vec2 q = vec2(0.0); if (along > 0.25) { q = vec2(dot(d, gx), dot(d, gy)) / along / 0.1; q.y *= 1.3; gr = length(q); clear = 1.0 - 0.85 * exp(-gr * 0.45); }
+   col += (nc * (cloud * 0.62 + wisp * 0.55) + vec3(1.0, 0.78, 0.95) * hot * 0.9) * clear;
+   float mw = exp(-pow(dot(d, normalize(vec3(0.55, 0.45, -0.7))) * 4.0, 2.0)) * (0.35 + 0.65 * n2); col += vec3(0.5, 0.45, 0.8) * mw * 0.28 * clear;
+   if (along > 0.25) { float r = gr, ang = atan(q.y, q.x);
+     float arms = 0.5 + 0.5 * cos(2.0 * ang - 3.2 * log(r + 0.08)), disk = exp(-r * 0.95), core = exp(-r * r * 5.0), gn = fbm(vec3(q * 2.4, 0.7) + 7.0), fade = 1.0 - smoothstep(1.2, 3.8, r);
+     float gal = disk * (0.12 + 0.88 * pow(arms, 2.0)) * (0.3 + 1.1 * gn) * fade * 4.2 + core * 1.1;
+     vec3 gc = mix(mix(vec3(0.5, 0.55, 1.0), vec3(1.0, 0.6, 0.95), smoothstep(0.3, 0.8, gn)), vec3(1.0, 0.92, 0.82), clamp(core * 1.4, 0.0, 1.0)); col += gc * gal + vec3(0.25, 0.28, 0.75) * exp(-r * 0.65) * 0.25; }
+   gl_FragColor = vec4(col, 1.0); }`;
+      if (cosmosRT) cosmosRT.dispose();
+      cosmosRT = new THREE.WebGLRenderTarget(2048, 1024, { depthBuffer: false, stencilBuffer: false }); cosmosRT.texture.wrapS = THREE.RepeatWrapping; cosmosRT.texture.minFilter = THREE.LinearFilter; cosmosRT.texture.magFilter = THREE.LinearFilter; cosmosRT.texture.generateMipmaps = false;
+      { const bs = new THREE.Scene(), bc = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }", fragmentShader: BAKE, depthTest: false, depthWrite: false }));
+        bs.add(quad); const prev = renderer.getRenderTarget(); renderer.setRenderTarget(cosmosRT); renderer.render(bs, bc); renderer.setRenderTarget(prev); quad.geometry.dispose(); quad.material.dispose(); }
+      skyDome = new THREE.Mesh(new THREE.SphereGeometry(SKY_R * 1.3, 48, 24), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uT: { value: 0 }, uSky: { value: cosmosRT.texture } },
+        vertexShader: "varying vec3 vd; void main() { vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
+        fragmentShader: `uniform float uT; uniform sampler2D uSky; varying vec3 vd;
+ float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
  void main() { vec3 d = normalize(vd);
-   vec3 col = vec3(0.03, 0.024, 0.08);
-   float n = vnoise(d * 3.0) * 0.55 + vnoise(d * 6.5) * 0.3 + vnoise(d * 13.0) * 0.15, n2 = vnoise(d * 2.2 + 7.0);
-   col += mix(vec3(0.05, 0.35, 0.40), vec3(0.42, 0.08, 0.38), n2) * pow(n, 2.6) * 0.8;
-   float mw = exp(-pow(dot(d, normalize(vec3(0.55, 0.45, -0.7))) * 5.0, 2.0)) * (0.5 + 0.5 * n); col += vec3(0.55, 0.55, 0.75) * mw * 0.22;
+   vec3 col = texture2D(uSky, vec2(atan(d.z, d.x) / 6.28318530 + 0.5, asin(clamp(d.y, -1.0, 1.0)) / 3.14159265 + 0.5)).rgb;
    vec3 p = d * 170.0, c = floor(p); float h = hash(c); vec3 off = (vec3(hash(c + 1.0), hash(c + 2.0), hash(c + 3.0)) - 0.5) * 0.8; float dd = length(fract(p) - 0.5 - off);
    float star = step(0.962, h) * smoothstep(0.30, 0.04, dd) * (0.45 + 0.55 * fract(h * 91.7)) * (0.72 + 0.28 * sin(uT * 2.5 + h * 60.0));
-   vec3 p2 = d * 60.0, c2 = floor(p2); float h2 = hash(c2 + 3.0); vec3 off2 = (vec3(hash(c2 + 4.0), hash(c2 + 5.0), hash(c2 + 6.0)) - 0.5) * 0.8; float dd2 = length(fract(p2) - 0.5 - off2);
-   float big = step(0.986, h2) * smoothstep(0.26, 0.0, dd2) * (0.8 + 0.2 * sin(uT * 1.7 + h2 * 40.0));
-   col += star * mix(vec3(1.0, 0.95, 0.85), vec3(0.8, 0.9, 1.0), fract(h * 13.0)) * 1.1 + big * vec3(1.0, 0.97, 0.9) * 1.3;
+   vec3 p2 = d * 60.0, c2 = floor(p2); float h2 = hash(c2 + 3.0); vec3 off2 = (vec3(hash(c2 + 4.0), hash(c2 + 5.0), hash(c2 + 6.0)) - 0.5) * 0.8; vec3 o2 = fract(p2) - 0.5 - off2; float dd2 = length(o2);
+   float big = step(0.984, h2) * (smoothstep(0.26, 0.0, dd2) + exp(-dd2 * 9.0) * 0.35) * (0.8 + 0.2 * sin(uT * 1.7 + h2 * 40.0));
+   vec3 p3 = d * 22.0, c3 = floor(p3); float h3 = hash(c3 + 9.0); vec3 off3 = (vec3(hash(c3 + 10.0), hash(c3 + 11.0), hash(c3 + 12.0)) - 0.5) * 0.7; vec3 o3 = fract(p3) - 0.5 - off3; float dd3 = length(o3), tw3 = 0.75 + 0.25 * sin(uT * 1.1 + h3 * 50.0);
+   float cross3 = exp(-abs(o3.x) * 12.0) * exp(-(abs(o3.y) + abs(o3.z)) * 90.0) + exp(-abs(o3.y) * 12.0) * exp(-(abs(o3.x) + abs(o3.z)) * 90.0) + exp(-abs(o3.z) * 12.0) * exp(-(abs(o3.x) + abs(o3.y)) * 90.0);
+   float flare = step(0.985, h3) * (smoothstep(0.07, 0.0, dd3) * 1.4 + cross3 * 0.8 + exp(-dd3 * 7.0) * 0.45) * tw3;
+   col += star * mix(vec3(1.0, 0.95, 0.85), vec3(0.8, 0.9, 1.0), fract(h * 13.0)) * 1.1 + big * vec3(1.0, 0.97, 0.9) * 1.3 + flare * mix(vec3(1.0, 0.92, 0.75), vec3(0.85, 0.9, 1.0), fract(h3 * 7.0));
    gl_FragColor = vec4(col, 1.0); }` }));
       skyDome.renderOrder = -2; scene.add(skyDome); cosmosDome = skyDome; }
     else if (t.theme.clean) { const zen = new THREE.Color(t.theme.blackbg ? 0x000000 : t.theme.zenith || 0x3f86e0), hc = new THREE.Color(t.theme.blackbg ? "#000000" : topCol);   // ✨ above the painted sky: a smooth gradient dome (no hard rim when the low camera looks up)
