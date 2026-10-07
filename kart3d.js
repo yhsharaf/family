@@ -314,15 +314,23 @@ export function create(A) {
       for (let k = 0; k < 5000; k++) { g.fillStyle = r() < .6 ? "rgba(255,255,255,.35)" : "rgba(80,90,180,.15)"; g.fillRect(r() * U, r() * 192, .5, .5); }
       g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(0, 0, 3, 192); g.fillRect(U - 3, 0, 3, 192);
     }
-    else if (style === "rainbow64") {   // 🌈 the star road: big glowing glass tiles in deep rainbow colours, darker toward their edges, a grid of light dots that glows brightest in the middle, a glossy sheen, and dark seams with a fine gold line
-      const cols = ["#e8324a", "#f07a2a", "#e8b428", "#3cc060", "#1fb4a8", "#2a92e8", "#3c56e0", "#8c44e0", "#e03ca4"], C = 6, R = 4, tw = U / C, thh = 192 / R;
-      g.fillStyle = "#120c22"; g.fillRect(0, 0, U, 192);
-      for (let row = 0; row < R; row++) for (let c = 0; c < C; c++) { const col = cols[(c + row * 3) % cols.length], x = c * tw + 1.6, y = row * thh + 1.6, w = tw - 3.2, hh = thh - 3.2, cx = x + w / 2, cy = y + hh / 2;
-        g.fillStyle = col; g.fillRect(x, y, w, hh);
-        const vg = g.createRadialGradient(cx, cy, w * .15, cx, cy, w * .8); vg.addColorStop(0, "rgba(255,255,255,.16)"); vg.addColorStop(.5, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(8,4,24,.72)"); g.fillStyle = vg; g.fillRect(x, y, w, hh);
-        for (let dy = 2.2; dy < hh - 1; dy += 3.1) for (let dx = 2.2; dx < w - 1; dx += 3.1) { const e = 1 - Math.min(1, Math.hypot(x + dx - cx, y + dy - cy) / (w * .62)); g.fillStyle = `rgba(255,255,240,${.12 + .4 * e})`; g.fillRect(x + dx, y + dy, 1.1, 1.1); }   // the dotted glass, brightest in the middle
-        const sh = g.createLinearGradient(x, y, x + w * .7, y + hh); sh.addColorStop(0, "rgba(255,255,255,.22)"); sh.addColorStop(.35, "rgba(255,255,255,.04)"); sh.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = sh; g.fillRect(x, y, w, hh); }
-      g.strokeStyle = "rgba(255,200,110,.55)"; g.lineWidth = .7; for (let c = 0; c <= C; c++) { g.beginPath(); g.moveTo(c * tw, 0); g.lineTo(c * tw, 192); g.stroke(); } for (let row = 0; row <= R; row++) { g.beginPath(); g.moveTo(0, row * thh); g.lineTo(U, row * thh); g.stroke(); }   // the fine gold line in each seam
+    else if (style === "rainbow64") {   // 🌈 the star road's surface, laid out like the original's: a 7 x 7 grid of big glowing light-panel tiles in the seven rainbow colours.
+      // Each row's colours are the row above's moved one tile to the left (red in the last column, then one column earlier on every row down), so the colours run in
+      // diagonals. Every tile has a dark bevelled frame of its own colour, a lit face with a grid of little lights that glows brightest in the middle, a glossy sheen, and
+      // its own brightness (some panels dim, some lit right up); a thin gold line runs between the rows (along the road, once it's laid)
+      const cols = [[255, 40, 44], [255, 124, 24], [255, 208, 36], [78, 228, 48], [36, 214, 226], [40, 120, 255], [164, 52, 236]], C = 7, tw = U / C, th = 192 / C;
+      const hsh = (a, b) => { const q = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return q - Math.floor(q); };
+      g.fillStyle = "#0a0612"; g.fillRect(0, 0, U, 192);
+      for (let row = 0; row < C; row++) for (let c = 0; c < C; c++) { const [cr, cg, cb] = cols[(c + row + 1) % 7], k = .45 + .55 * hsh(row + 1, c + 1), x = c * tw, y = row * th, cx = x + tw / 2, cy = y + th / 2;
+        const rgb = (m, a = 1) => `rgba(${Math.round(Math.min(255, cr * m))},${Math.round(Math.min(255, cg * m))},${Math.round(Math.min(255, cb * m))},${a})`, inset = tw * .055, face = inset * 1.9, fw = tw - 2 * face, fh = th - 2 * face;
+        g.fillStyle = rgb(.2 * k + .05); g.fillRect(x + .5, y + .5, tw - 1, th - 1);   // the frame: the tile's own colour, deep and dark
+        g.fillStyle = rgb(.4 * k + .08); g.fillRect(x + inset, y + inset, tw - 2 * inset, th - 2 * inset);   // the bevel
+        g.fillStyle = rgb(.55 + .45 * k); g.fillRect(x + face, y + face, fw, fh);   // the lit face
+        const vg = g.createRadialGradient(cx, cy, tw * .1, cx, cy, tw * .72); vg.addColorStop(0, `rgba(255,255,255,${(.14 * k).toFixed(3)})`); vg.addColorStop(.55, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.32)"); g.fillStyle = vg; g.fillRect(x + face, y + face, fw, fh);
+        const n = 11, st = fw / n, sz = st * .42;   // the little lights in a grid, brightest in the middle
+        for (let j = 0; j < n; j++) for (let i2 = 0; i2 < n; i2++) { const px = x + face + (i2 + .5) * st, py = y + face + (j + .5) * (fh / n), e = 1 - Math.min(1, Math.hypot(px - cx, py - cy) / (tw * .6)); g.fillStyle = `rgba(255,255,246,${((.1 + .5 * e) * (.35 + .65 * k)).toFixed(3)})`; g.fillRect(px - sz / 2, py - sz / 2, sz, sz); }
+        const sh = g.createLinearGradient(x, y, x + tw * .6, y + th); sh.addColorStop(0, `rgba(255,255,255,${(.16 * k).toFixed(3)})`); sh.addColorStop(.4, "rgba(255,255,255,.02)"); sh.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = sh; g.fillRect(x + face, y + face, fw, fh); }
+      g.strokeStyle = "rgba(255,206,100,.75)"; g.lineWidth = .9; for (let row = 1; row < C; row++) { g.beginPath(); g.moveTo(0, row * th); g.lineTo(U, row * th); g.stroke(); }   // the thin gold line between the rows
     }
     else if (style === "sand") {   // 🏜 a soft sandy dirt road (drawn): warm sand, lighter down the worn middle, darker towards the grass, the odd little pebble
       const gr0 = g.createLinearGradient(0, 0, U, 0); gr0.addColorStop(0, "#d4925c"); gr0.addColorStop(.14, "#e2a46c"); gr0.addColorStop(.5, "#f0c28c"); gr0.addColorStop(.86, "#e2a46c"); gr0.addColorStop(1, "#d4925c"); g.fillStyle = gr0; g.fillRect(0, 0, U, 192);
@@ -379,7 +387,7 @@ export function create(A) {
     else specks("#5d5d64", ["#555560", "#66666e", "#4f4f58"], 3000, 1.2);
     if (style !== "planks" && style !== "toy" && style !== "toyplates" && style !== "asphalt" && style !== "rainbow64" && style !== "farm" && style !== "garden" && style !== "sand") { g.fillStyle = "rgba(255,255,255,.88)"; g.fillRect(3, 0, 2.2, 192); g.fillRect(U - 5.2, 0, 2.2, 192); }   // edge lines
     if (style !== "planks" && style !== "farm" && style !== "garden" && style !== "icy" && style !== "sand") { g.fillStyle = th.line || "rgba(255,255,255,.8)"; for (let y = 0; y < 192; y += 48) g.fillRect(U / 2 - 1.5, y + 14, 3, 20); }   // centre dashes
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; t.anisotropy = aniso; t.minFilter = THREE.LinearMipmapLinearFilter; return t;
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapT = THREE.RepeatWrapping; if (style === "rainbow64") t.wrapS = THREE.RepeatWrapping; t.anisotropy = aniso; t.minFilter = THREE.LinearMipmapLinearFilter; return t;   // (the star road's tiles repeat along the road, in u)
   }
   const curbTex = cc => { const c = canvas(8, 64), g = c.getContext("2d"); g.fillStyle = cc[0]; g.fillRect(0, 0, 8, 32); g.fillStyle = cc[1]; g.fillRect(0, 32, 8, 32);
     g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(0, 30, 8, 2); g.fillRect(0, 62, 8, 2);
@@ -431,7 +439,8 @@ export function create(A) {
     const L = [0]; for (let i = 1; i <= n; i++) { const p = t.PTS[i % n], q = t.PTS[i - 1]; L.push(L[i - 1] + Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])); }
     const rv = Math.max(1, Math.round(L[n] / 192)) / L[n], rc = Math.max(1, Math.round(L[n] / 32)) / L[n], FR = []; for (let i = 0; i < rows; i++) FR.push(frameAt(t, i));
     const P = [], UV = [], I = [];
-    for (let i = 0; i < rows; i++) for (let k = 0; k <= K; k++) { P.push(...frameV(FR[i], -W / 2 + W * k / K, .5)); UV.push(k / K, L[i] * rv); }
+    const RB = t.theme.road === "rainbow64", rep = 7 * W / 6;   // (the star road's tiles: six square ones across the road, the seventh colour's row off each edge, laid exactly as the original maps them)
+    for (let i = 0; i < rows; i++) for (let k = 0; k <= K; k++) { const o = -W / 2 + W * k / K; P.push(...frameV(FR[i], o, .5)); UV.push(RB ? L[i] / rep : k / K, RB ? .5 + o / rep : L[i] * rv); }
     for (let i = 0; i < rows - 1; i++) if (!skipped(i)) for (let k = 0; k < K; k++) { const a = i * (K + 1) + k, b = a + K + 1; I.push(a, a + 1, b, a + 1, b + 1, b); }
     const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I); geo.computeVertexNormals();
     const CP = [], CU = [], CI = [];
@@ -1542,6 +1551,8 @@ export function create(A) {
     const al = airLift(r); m.lift = m.lift == null ? al : m.lift + (al - m.lift) * Math.min(1, (o.dt || .016) * (al > m.lift ? 20 : 8));   // (eased, so landing off the road doesn't jump)
     const H = RY && r.idx != null ? (x, y) => surfAt(x, y, r.idx) : h;   // (on the sky road: the road's own height, even where it crosses itself)
     if (lastT && lastT.frames && r.ride) { const F = rideFrame(lastT, r); m.root.position.copy(F.P); m.root.quaternion.setFromRotationMatrix(M4R.makeBasis(F.T, F.N, F.B)); m.tilt.rotation.set(0, 0, 0); }   // 🎢 on a ride: sitting on the road's own 3D path, rolled with it
+    else if (lastT && lastT.frames && r.ps != null) { const F = rideFrame(lastT, { rs: r.ps, rlat: r.pu }), ph = r.phi || 0, fw = F.T.clone().multiplyScalar(Math.cos(ph)).addScaledVector(F.B, Math.sin(ph)).normalize(), sd = new THREE.Vector3().crossVectors(fw, F.N);   // 🧲 glued to the road: on its surface, in its tilt, facing phi from the road's own direction
+      m.root.position.copy(F.P); m.root.quaternion.setFromRotationMatrix(M4R.makeBasis(fw, F.N, sd)); m.tilt.rotation.set(0, 0, 0); }
     else if (lastT && lastT.frames && r.idx != null) { const F = rideFrame(lastT, { rs: r.idx, rlat: 0 }), fw = new THREE.Vector3(ca, 0, sa); fw.addScaledVector(F.N, -fw.dot(F.N)).normalize(); const sd = new THREE.Vector3().crossVectors(fw, F.N);   // (on a measured road: sitting in the road's own tilt, facing where you're heading)
       m.root.position.set(gx, surfY(gx, gy, r.idx), gy); m.root.quaternion.setFromRotationMatrix(M4R.makeBasis(fw, F.N, sd)); }
     else { m.root.position.set(gx, (RY && r.idx != null ? surfY(gx, gy, r.idx) : h(gx, gy)) + (RY ? 0 : m.lift), gy); m.root.rotation.set(0, -a, 0); }
@@ -1552,9 +1563,9 @@ export function create(A) {
     const hop = r.hop > 0 ? Math.sin((r.hop / .18) * Math.PI) * 4 : 0, lift = r.rescue > 0 ? (r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7) * 40 : 0;
     m.body.position.y = Math.max(0, r.z || 0) + hop + lift;
     m.body.rotation.set(flip, -((r.drift || 0) * .34 + (r.steer || 0) * .07) - spin, 0, "YXZ");
-    if (r.glide && !m.wing) { const g = new THREE.Group(), cloth = new THREE.MeshLambertMaterial({ color: 0xffcf3a, side: THREE.DoubleSide }), geo = new THREE.BufferGeometry();   // 🪁 a hang-glider over the kart
-      geo.setAttribute("position", new THREE.Float32BufferAttribute([14, 33, 0, -12, 30, -30, -12, 30, 30, 14, 33, 0, -12, 30, 30, -6, 31.5, 0, 14, 33, 0, -6, 31.5, 0, -12, 30, -30], 3)); geo.computeVertexNormals();   // (just over the driver's head)
-      g.add(new THREE.Mesh(geo, cloth)); for (const z of [-5, 5]) { const st = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x555b66 })); st.scale.set(1.5, 19, 1.5); st.position.set(-4, 21, z); g.add(st); }
+    if (r.glide && !m.wing) { const g = new THREE.Group(), cloth = new THREE.MeshLambertMaterial({ color: 0xffcf3a, side: THREE.DoubleSide, transparent: true, opacity: .72, depthWrite: false }), geo = new THREE.BufferGeometry();   // 🪁 a hang-glider over the kart
+      geo.setAttribute("position", new THREE.Float32BufferAttribute([12, 29.5, 0, -10, 27, -26, -10, 27, 26, 12, 29.5, 0, -10, 27, 26, -5, 28, 0, 12, 29.5, 0, -5, 28, 0, -10, 27, -26], 3)); geo.computeVertexNormals();   // (right over the driver's head, nose up, and see-through: high in the air the camera sits level with it, so it must never wipe out the view)
+      g.add(new THREE.Mesh(geo, cloth)); for (const z of [-5, 5]) { const st = new THREE.Mesh(BOX, new THREE.MeshLambertMaterial({ color: 0x555b66 })); st.scale.set(1.5, 16, 1.5); st.position.set(-4, 19.5, z); g.add(st); }
       m.body.add(g); m.wing = g; }
     if (m.wing) m.wing.visible = !!r.glide;
     const sc = (r.small > 0 ? .6 : 1) * (r.hyper > 0 ? 1.3 : 1); m.body.scale.set(sc * (r.squash > 0 ? 1.35 : 1), sc * (r.squash > 0 ? .45 : 1), sc * (r.squash > 0 ? 1.35 : 1));
@@ -1998,7 +2009,8 @@ export function create(A) {
     const CU = 34, dist = 58 + 9 * (o.fov || 0), up = CU + Math.min(k.z || 0, 260) * .95;   // (the same camera on every track: the user's favourite - keep it)   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
     const gx = k.x - Math.cos(cam.yaw) * dist, gz = k.y - Math.sin(cam.yaw) * dist;
     const lift = airLift(k); cam.lift = o.snap || cam.lift == null ? lift : cam.lift + (lift - cam.lift) * Math.min(1, o.dt * (lift > cam.lift ? 20 : 6));
-    const kh = RY && k.idx != null ? surfY(k.x, k.y, k.idx) : h(k.x, k.y) + cam.lift, base = RY ? kh : Math.max(kh, h(gx, gz) - 6), want = base + up;   // (flying off the road: follow the road's height, not the ravine under you)
+    const GF = lastT && lastT.frames && k.ps != null ? rideFrame(lastT, { rs: k.ps, rlat: k.pu }) : null;   // 🧲 a glued kart: the road's own frame right under it
+    const kh = GF ? GF.P.y : RY && k.idx != null ? surfY(k.x, k.y, k.idx) : h(k.x, k.y) + cam.lift, base = RY ? kh : Math.max(kh, h(gx, gz) - 6), want = base + up;   // (flying off the road: follow the road's height, not the ravine under you)
     // the ground part eases (hills, bumps); the jump / glide height follows almost at once, or a fast take-off leaves the camera level with the kart
     const zu = up - CU; cam.base = o.snap || cam.base == null ? base : cam.base + (base - cam.base) * Math.min(1, o.dt * 6); cam.zu = o.snap || cam.zu == null ? zu : cam.zu + (zu - cam.zu) * Math.min(1, o.dt * 16);
     cam.y = cam.base + CU + cam.zu;
@@ -2011,10 +2023,11 @@ export function create(A) {
       cam.yaw = a; cam.y = want; cam.base = base; cam.zu = zu;
     }
     { const FT = lastT && lastT.frames, riding = !!(FT && k.ride);   // 🎢 on a ride (or a steeply banked bend): the same chase camera (as far back, as high), but in the road's own frame, so it rolls with you
-      let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = rideFrame(lastT, { rs: k.idx, rlat: 0 }); F.P.set(k.x, kh + Math.min(k.z || 0, 260) * .95, k.y); cam.rf = F; want = smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }
+      let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = GF || rideFrame(lastT, { rs: k.idx, rlat: 0 }); if (GF) F.P.addScaledVector(F.N, Math.min(k.z || 0, 260) * .95); else F.P.set(k.x, kh + Math.min(k.z || 0, 260) * .95, k.y); cam.rf = F; want = smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }
       cam.rw = o.snap ? want : (cam.rw || 0) + (want - (cam.rw || 0)) * Math.min(1, o.dt * 5);
       if (riding) cam.rf = rideFrame(lastT, k);
-      if (cam.rw > .001 && cam.rf) { const F = cam.rf, w = cam.rw, cp = F.P.clone().addScaledVector(F.T, -58 - 9 * (o.fov || 0)).addScaledVector(F.N, CU), lp = F.P.clone().addScaledVector(F.T, 56).addScaledVector(F.N, 2);
+      if (GF) { let dp = (k.phi || 0) - (cam.phi || 0); dp = Math.atan2(Math.sin(dp), Math.cos(dp)); cam.phi = o.snap ? (k.phi || 0) : (cam.phi || 0) + dp * Math.min(1, o.dt * 7); if (cam.rw > .5) cam.yaw = a; }   // (behind a glued kart's own heading, a moment after it, like on the flat)
+      if (cam.rw > .001 && cam.rf) { const F = cam.rf, w = cam.rw, fT = GF ? F.T.clone().multiplyScalar(Math.cos(cam.phi || 0)).addScaledVector(F.B, Math.sin(cam.phi || 0)).normalize() : F.T, cp = F.P.clone().addScaledVector(fT, -58 - 9 * (o.fov || 0)).addScaledVector(F.N, CU), lp = F.P.clone().addScaledVector(fT, 56).addScaledVector(F.N, 2);
         camera.position.lerp(cp, w); look.lerp(lp, w); camera.up.set(0, 1, 0).lerp(F.N, w).normalize(); } else camera.up.set(0, 1, 0); }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
     if (window.__camOv) { const c = window.__camOv; camera.position.set(c[0], c[1], c[2]); look.set(c[3], c[4], c[5]); camera.up.set(0, 1, 0); if (scene.fog) { scene.__fog = scene.fog; scene.fog = null; } }   // (a dev hook: a fixed camera with no haze, for overview pictures)

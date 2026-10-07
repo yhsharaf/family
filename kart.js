@@ -81,6 +81,35 @@ function rideStep(r, dt, steer) {
   const tx = q[0] - p[0], ty = q[1] - p[1]; if (Math.hypot(tx, ty) > 1) r.a = r.ma = Math.atan2(ty, tx);
   return true;
 }
+// 🧲 a road laid along its own 3D path (the Star Road): every kart is glued to its surface. Its place is kept as ps (how far along, in track points) and pu
+// (how far across, + the right side), its heading as phi (the angle from the road's own direction, measured in the road's surface). Steering turns phi; the
+// speed moves it along and across the surface, whichever way the road is tilted (banked bends, twists, the loop): it can only leave the road off its edge or
+// by jumping. x, y, a and idx are worked out from that for everything else (items, the other karts, the picture)
+const wrapA = d => Math.atan2(Math.sin(d), Math.cos(d));
+function pathRead(r) {   // the kart's place on the road, read from where it stands (put on the grid, rescued, or placed by a test)
+  const m = nearest(r.x, r.y, r.ps != null ? Math.floor(r.ps) : r.idx); let i = m.i, p = PTS[i], q = PTS[(i + 1) % N], dx = q[0] - p[0], dy = q[1] - p[1], f = ((r.x - p[0]) * dx + (r.y - p[1]) * dy) / (dx * dx + dy * dy || 1);
+  if (f < 0) { i = (i + N - 1) % N; p = PTS[i]; q = PTS[(i + 1) % N]; dx = q[0] - p[0]; dy = q[1] - p[1]; f = ((r.x - p[0]) * dx + (r.y - p[1]) * dy) / (dx * dx + dy * dy || 1); }
+  r.ps = i + Math.max(0, Math.min(.999, f)); r.pu = Math.max(-ROAD, Math.min(ROAD, lat(r.x, r.y, i))); r.phi = wrapA((r.a || 0) - tangent(i)); r.idx = i; r.px = r.x; r.py = r.y;
+}
+function pathSync(r) {   // before a step: whatever moved the kart from outside (a bump from another kart, a rescue, the grid) is taken onto the road
+  if (r.ps == null || r.px == null || !isFinite(r.ps) || !isFinite(r.pu)) { pathRead(r); return; }
+  const dx = r.x - r.px, dy = r.y - r.py; if (!dx && !dy) return;
+  if (Math.hypot(dx, dy) > 40) { pathRead(r); return; }
+  const i = ((Math.floor(r.ps) % N) + N) % N, b = i * 3, bx = FRAMES[b], by = FRAMES[b + 1], l2 = bx * bx + by * by, a = tangent(i);   // a nudge: taken across the banked road, and along it
+  if (l2 > .12) r.pu += (dx * bx + dy * by) / l2; r.ps += (dx * Math.cos(a) + dy * Math.sin(a)) / RSPC; r.px = r.x; r.py = r.y;
+}
+function pathPlace(r) {   // where the kart is in the world, from its place on the road
+  r.ps = ((r.ps % N) + N) % N; const i = Math.floor(r.ps), j = (i + 1) % N, f = r.ps - i, p = PTS[i], q = PTS[j], b = i * 3, c = j * 3;
+  const bx = FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, by = FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f;
+  r.x = r.px = p[0] + (q[0] - p[0]) * f + bx * r.pu; r.y = r.py = p[1] + (q[1] - p[1]) * f + by * r.pu; r.idx = Math.round(r.ps) % N; r.a = r.ma = wrapA(tangent(r.idx) + r.phi);
+}
+const pathNav = r => ({ i: r.idx, d: Math.abs(r.pu), alt: false, half: ROAD / 2, u: r.pu });
+function pathMove(r, along, across, dt) {   // the speed, taken along and across the road's surface
+  r.ps += along * dt * SPD / RSPC; r.pu += across * dt * SPD; r.ps = ((r.ps % N) + N) % N;
+  const i = Math.floor(r.ps), p = PTS[(i + N - 1) % N], q = PTS[(i + 1) % N], b = i * 3, tx = q[0] - p[0], ty = q[1] - p[1], tl = Math.hypot(tx, ty, q[2] - p[2]) || 1;
+  if ((tx * FRAMES[b + 1] - ty * FRAMES[b]) / tl < .35 && !(r.z > 0)) r.v = Math.max(r.v, 150);   // (on a wall or upside down the road's "up" points sideways or down: you can't stall there)
+  pathPlace(r);
+}
 const hmBare = (x, y) => { const M = HMAP, i = Math.round((x - M.x0) / M.step), j = Math.round((y - M.x0) / M.step); if (i < 0 || j < 0 || i >= M.n || j >= M.n) return true; const k = j * M.n + i; return !(M.z[k] === M.z[k]) || M.c[k] === 3; };
 const hmDrop = r => { const M = HMAP, i = Math.round((r.x - M.x0) / M.step), j = Math.round((r.y - M.x0) / M.step); if (i < 0 || j < 0 || i >= M.n || j >= M.n) return true; const z = M.z[j * M.n + i], road = PTS[r.idx] ? PTS[r.idx][2] || 0 : 0; return !(z === z) || z < road - 90; };   // (no ground there, or a sheer drop below the road)
 const handAng = (h, now) => h.ph + now * h.sp;
@@ -110,8 +139,8 @@ const I = (x, y) => nearest(x * WS, y * WS).i;                    // the track p
 const ws = v => v * WS;                                            // a spot on the layout map, in world units
 // Mario Kart style extras placed along the track (i = track point, o = sideways offset from the middle, + is the right side)
 const bxy = i => FRAMES ? Math.max(.35, Math.hypot(FRAMES[i * 3], FRAMES[i * 3 + 1])) : 1;   // (a banked 3D road: how much narrower it looks from above, so sideways distances are measured across the road itself)
-const lat = (x, y, i) => { const a = tangent(i); return ((x - PTS[i][0]) * -Math.sin(a) + (y - PTS[i][1]) * Math.cos(a)) / bxy(i); };
-const at = (i, o) => { i = OPEN ? Math.max(0, Math.min(N - 1, Math.round(i))) : ((Math.round(i) % N) + N) % N; const a = tangent(i); o *= bxy(i); return [PTS[i][0] - Math.sin(a) * o, PTS[i][1] + Math.cos(a) * o]; };
+const lat = (x, y, i) => { if (FRAMES) { const b = i * 3, bx = FRAMES[b], by = FRAMES[b + 1], l2 = bx * bx + by * by; if (l2 > .12) return ((x - PTS[i][0]) * bx + (y - PTS[i][1]) * by) / l2; } const a = tangent(i); return ((x - PTS[i][0]) * -Math.sin(a) + (y - PTS[i][1]) * Math.cos(a)) / bxy(i); };   // (a measured road: across its own sideways direction, exactly as the road is built)
+const at = (i, o) => { i = OPEN ? Math.max(0, Math.min(N - 1, Math.round(i))) : ((Math.round(i) % N) + N) % N; if (FRAMES) { const b = i * 3, bx = FRAMES[b], by = FRAMES[b + 1]; if (bx * bx + by * by > .12) return [PTS[i][0] + bx * o, PTS[i][1] + by * o]; } const a = tangent(i); o *= bxy(i); return [PTS[i][0] - Math.sin(a) * o, PTS[i][1] + Math.cos(a) * o]; };
 // a fork (Henesys market path, the forest bridge): ALT is the second road between main points FORK_A and FORK_B
 const altTan = j => { const a = ALT[Math.max(0, j - 2)], b = ALT[Math.min(AN - 1, j + 2)]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
 const altIdx = j => Math.round(FORK_A + (FORK_B - FORK_A) * j / (AN - 1));   // where you are on the second road, as a main-road point (laps, positions)
@@ -129,7 +158,7 @@ const offAlt = (x, y, m) => !AN || nearAlt(x, y).d > ALT_ROAD / 2 + CURB + m;   
 const roadDist = (x, y) => Math.min(nearest(x, y).d, AN ? nearAlt(x, y).d : 1e9);
 // sideways offset and the pad under you, on whichever road you're on
 function under(nv, x, y) {
-  if (!nv.alt) { const L = lat(x, y, nv.i); return { L, pad: padAt(nv.i, L) }; }
+  if (!nv.alt) { const L = nv.u != null ? nv.u : lat(x, y, nv.i); return { L, pad: padAt(nv.i, L) }; }
   const a = altTan(nv.j), L = (x - ALT[nv.j][0]) * -Math.sin(a) + (y - ALT[nv.j][1]) * Math.cos(a);
   for (const p of ALTPADS) { const dj = nv.j - p.j * (AN - 1); if (dj >= 0 && dj <= p.len && Math.abs(L - p.o) < p.w / 2) return { L, pad: p }; }
   return { L, pad: null };
@@ -1075,12 +1104,17 @@ function loadTrack(key) {
   const ctrl = !T.ctrl ? null : WS === 1 ? T.ctrl : T.ctrl.map(p => p.map((v, j) => v * WS));   // (hills scale too, so the slopes stay the same)
   FRAMES = null; RIDES = []; PMK = null; const PD = T.path3d && window.KART_PATHS && KART_PATHS[T.path3d];
   if (PD) {   // 🎢 a track laid along its own 3D path: points every ~6 units along it (measured in 3D, so a loop has its full length), each with the road's sideways direction
-    const P = PD.P, B = PD.B, n = P.length, cum = [0]; for (let k = 1; k <= n; k++) { const a = P[k - 1], c = P[k % n]; cum.push(cum[k - 1] + Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2])); }
+    const P = PD.P.map(p => p.slice()), B = PD.B, n = P.length, cum = [0];
+    for (const [ga, gb] of PD.gaps) { const a = ga - 1, m = gb - a; if (m < 6 || a < 3 || gb + 3 >= n) continue;   // 🪂 a gap's bridge is a smooth flight curve, not a straight line: it leaves the road along the road's own direction and lands along the next piece's, so there's no kink at either end
+      const pa = P[a], pb = P[gb], L = Math.hypot(pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]) * .45, dir = (u, v) => { const d = [v[0] - u[0], v[1] - u[1], v[2] - u[2]], l = Math.hypot(d[0], d[1], d[2]) || 1; return d.map(c => c / l * L); }, ta = dir(P[a - 3], pa), tb = dir(pb, P[gb + 3]);
+      for (let q = 1; q < m; q++) { const t = q / m, t2 = t * t, t3 = t2 * t, h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = 3 * t2 - 2 * t3, h11 = t3 - t2; P[a + q] = [0, 1, 2].map(j => h00 * pa[j] + h10 * ta[j] + h01 * pb[j] + h11 * tb[j]); } }
+    for (let k = 1; k <= n; k++) { const a = P[k - 1], c = P[k % n]; cum.push(cum[k - 1] + Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2])); }
     const tot = cum[n], M = Math.round(tot / 6); RSPC = tot / M; PTS = []; FRAMES = new Float32Array(M * 3); let k = 0;
-    for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), a = P[k], c = P[(k + 1) % n], ba = B[k], bc = B[(k + 1) % n];
-      PTS.push([a[0] + (c[0] - a[0]) * f, a[1] + (c[1] - a[1]) * f, a[2] + (c[2] - a[2]) * f]); let bx = ba[0] + (bc[0] - ba[0]) * f, by = ba[1] + (bc[1] - ba[1]) * f, bz = ba[2] + (bc[2] - ba[2]) * f; const bl = Math.hypot(bx, by, bz) || 1; FRAMES.set([bx / bl, by / bl, bz / bl], q * 3); }
-    const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;
-    RIDES = PD.rides.map(([a, b]) => ({ a: mi(a), b: mi(b) })); PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), sd || 0]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) };
+    const CR = (p0, p1, p2, p3, f, j) => .5 * (2 * p1[j] + (p2[j] - p0[j]) * f + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * f * f + (3 * p1[j] - p0[j] - 3 * p2[j] + p3[j]) * f * f * f);   // (a smooth curve through the measured points: no facets or kinks between them, for the road, the karts and the camera)
+    for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
+      PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
+    const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove)
+    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), sd || 0]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) };
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1874,7 +1908,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=225"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=227"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2295,7 +2329,7 @@ function rivalStep(r, dt, tt) {
   if (r.remote) { remoteStep(r, dt); return; }
   if (rescueStep(r, dt)) return;
   if (rideStep(r, dt, Math.max(-1, Math.min(1, ((r.lane || 0) * .5 - (r.rlat || 0)) / 40)))) return;   // 🎢
-  const near = nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
+  if (FRAMES) pathSync(r); const near = FRAMES ? pathNav(r) : nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
   if (r.z > 0 || r.vz > 0) { r.vz -= (r.glide ? 150 : 720) * dt; if (r.glide) { r.vz = Math.max(r.vz, -95); r.v = Math.max(r.v, 245); } r.z += r.vz * dt; if (r.glide && r.z < 14 && gapAt(r.idx)) r.z = 14; if (r.z <= 0) { r.z = 0; r.vz = 0; r.glide = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
   const air = r.z > 0;
@@ -2314,13 +2348,14 @@ function rivalStep(r, dt, tt) {
   for (const h of HOLES) if (!h.lap || r.lap + 1 >= h.lap) { const di = (h.i - r.idx + N) % N; if (di > 0 && di < 60 && Math.abs(r.lane - (h.o || 0)) < h.r + 22) { const ho = h.o || 0, sd = Math.abs(ho) > 20 ? -Math.sign(ho) : (r.lane >= ho ? 1 : -1); r.lane = ho + sd * (h.r + (Math.abs(ho) > 20 ? 30 : 20)); } }   // 🕳️ and round holes (always round the side that stays on the road)
   r.lane = Math.max(-ROAD / 2 + 14, Math.min(ROAD / 2 - 14, r.lane));
   const onFork = r.useAlt && r.idx >= FORK_A - 4 && r.idx < FORK_B - 6;
-  const [tx, ty] = onFork ? altAt((near.alt ? near.j : nearAlt(r.x, r.y).j) + 12, Math.max(-ALT_ROAD / 2 + 12, Math.min(ALT_ROAD / 2 - 12, r.lane * .7))) : at(r.idx + 14, r.lane);
-  let d = Math.atan2(ty - r.y, tx - r.x) - r.a; d = Math.atan2(Math.sin(d), Math.cos(d));
+  let d; if (FRAMES) d = wrapA(Math.atan2(r.lane - r.pu, 14 * RSPC) - r.phi);   // 🧲 on a measured road: just steer across to the lane (the road's own direction comes free)
+  else { const [tx, ty] = onFork ? altAt((near.alt ? near.j : nearAlt(r.x, r.y).j) + 12, Math.max(-ALT_ROAD / 2 + 12, Math.min(ALT_ROAD / 2 - 12, r.lane * .7))) : at(r.idx + 14, r.lane);
+    d = Math.atan2(ty - r.y, tx - r.x) - r.a; d = Math.atan2(Math.sin(d), Math.cos(d)); }
   // inked rivals don't swerve (like Mario Kart 8): they're a little slower and slippery, so they turn late
   if (!air && r.v > 150 && Math.abs(d) > .18) r.cornerT = (r.cornerT || 0) + dt;   // 💨 the computer racers drift too: a mini-turbo out of a long corner
   else if (Math.abs(d) < .08) { if (r.cornerT > .6 && !(r.spin > 0) && !r.done && Math.random() < DIFF().drift) { const i2 = OPEN ? Math.min(N - 1, r.idx + 30) : (r.idx + 30) % N; let ta = tangent(i2) - tangent(r.idx); ta = Math.atan2(Math.sin(ta), Math.cos(ta)); if (Math.abs(ta) < .3) giveBoost(r, Math.min(.8, .3 + r.cornerT * .3), 45); } r.cornerT = 0; }   // (only onto a straight, so it can't fling them off the next bend)
   const turn = Math.max(-2.6, Math.min(2.6, d * 4)); r.steer += (Math.sign(turn) * Math.min(1, Math.abs(turn) / 2) - r.steer) * Math.min(1, dt * 8);
-  if (r.spin <= 0) r.a += turn * dt * Math.min(1, r.v / 80) * (r.ink > 0 ? .5 : 1);
+  if (r.spin <= 0) { const da = turn * dt * Math.min(1, r.v / 80) * (r.ink > 0 ? .5 : 1); if (FRAMES) r.phi = wrapA(r.phi + da); else r.a += da; }
   // 🧲 keep the race close (like Mario Kart): a computer racer behind every real player speeds up, one ahead of them all eases off
   let gap = 0; { const hp = [K, ...RIV.filter(o => o.remote && !o.bot)].filter(o => !o.done).map(progOf), p = progOf(r);
     if (hp.length) { const lo = Math.min(...hp), hi = Math.max(...hp); gap = p > hi ? (hi - p) / N : p < lo ? (lo - p) / N : 0; } }
@@ -2331,7 +2366,7 @@ function rivalStep(r, dt, tt) {
   const ricy = MECH === "ice" && !air && (ground.pad && ground.pad.t === "ice" || (LAKE && LAKE.kind === "ice" && inLake(r.x, r.y)));
   { const rg = MECH === "ice" ? (ricy ? 3 : 7.5) : 99; let dm = r.a - (r.ma == null ? r.a : r.ma); dm = Math.atan2(Math.sin(dm), Math.cos(dm)); r.ma = rg > 50 ? r.a : (r.ma == null ? r.a : r.ma) + dm * Math.min(1, rg * dt); }
   if (!air && ground.pad && (ground.pad.t === "mud" || ground.pad.t === "grass")) r.v = Math.min(r.v, 150);
-  r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD;
+  if (FRAMES) pathMove(r, Math.cos(r.phi) * r.v, Math.sin(r.phi) * r.v, dt); else { r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD; }
   const pad = air ? null : ground.pad;
   if (pad && pad !== r.lastPad) {
     if (pad.t === "boost") giveBoost(r, 1, 110);
@@ -2700,7 +2735,7 @@ function input() {
   if (DEV && DEV.auto && K) {   // local testing only: aim at a point further along the track
     let lo = 0; for (const h of HOLES) { const di = (h.i - K.idx + N) % N; if (di < 40 && Math.abs(h.o || 0) < h.r + 22) lo = (h.o || 0) + h.r + 34; }
     const tg = lo ? at((K.idx + 18) % N, lo) : PTS[(K.idx + 18) % N], want = Math.atan2(tg[1] - K.y, tg[0] - K.x);
-    let d = want - K.a; d = Math.atan2(Math.sin(d), Math.cos(d));
+    let d = want - K.a; d = Math.atan2(Math.sin(d), Math.cos(d)); if (FRAMES && K.ps != null) d = wrapA(Math.atan2(lo - K.pu, 18 * RSPC) - K.phi);   // (glued to a measured road: steer across it, like a player would)
     return { steer: d > .05 ? 1 : d < -.05 ? -1 : 0, drift: DEV.drift != null ? DEV.drift : false, brake: false, item: !!DEV.item };
   }
   const l = keys.ArrowLeft || keys.a, r = keys.ArrowRight || keys.d;
@@ -2849,7 +2884,7 @@ function rescueStep(r, dt) {   // true while being rescued (no driving)
     if (r.rescueLava && LAVA) { r.rescueAt = Math.min(N - FIN_OFF - 2, Math.ceil(LAVA.i + LAVA.v * .7 + 90 / SPC)); r.rescueAlt = null; }   // just ahead of the lava: no free ride
     if (r.rescueAlt != null) { const [x, y] = altAt(r.rescueAlt, 0); r.x = x; r.y = y; r.a = altTan(r.rescueAlt); r.idx = altIdx(r.rescueAlt); }
     else { const [x, y] = at(r.rescueAt, 0); r.x = x; r.y = y; r.a = tangent(r.rescueAt); r.idx = r.rescueAt; }
-    r.z = 0; r.vz = 0; r.ma = r.a;
+    r.z = 0; r.vz = 0; r.ma = r.a; r.ps = null;
     r.lostT = 0; r.wrong = 0;
   }
   if (r.rescue <= 0) { r.rescue = 0; r.inv = 1; }
@@ -2866,7 +2901,7 @@ function step(dt) {
   if (rescueStep(k, dt)) { if (racing) { k.t += dt * 1000; worldStep(dt, tt); } return; }
   k.brakeIn = !!inp.brake;
   if (racing && rideStep(k, dt, k.frozen > 0 ? 0 : (k.flipped ? -inp.steer : inp.steer))) { k.t += dt * 1000; worldStep(dt, tt); return; }   // 🎢 on a ride
-  const near = nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6 && !onRink(k.x, k.y); k.onAlt = near.alt; k.altJ = near.j;
+  if (FRAMES) pathSync(k); const near = FRAMES ? pathNav(k) : nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6 && !onRink(k.x, k.y); k.onAlt = near.alt; k.altJ = near.j;
   if (racing) {
     const lost = (near.d > near.half + 150 && !onRink(k.x, k.y)) || (k.v < 25 && !inp.brake && k.spin <= 0 && k.stall <= 0 && k.squash <= 0);
     k.lostT = lost ? (k.lostT || 0) + dt : Math.max(0, (k.lostT || 0) - dt);
@@ -2954,6 +2989,8 @@ function step(dt) {
   let turn = k.steer * 2.1 * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? .8 : .5) : 1);
   if (k.drift) { turn = (k.drift * 1.55 + k.steer * .9) * Math.min(1, k.v / 110); if (!k.off) { const before = k.charge; k.charge += dt * Math.max(.4, 1 + .7 * k.steer * k.drift);   // steering into the turn charges faster
     if ([.7, 1.5, 2.4].some(th => before < th && k.charge >= th)) tone(k.charge > 2.4 ? 1320 : k.charge > 1.5 ? 990 : 740, .1, "triangle", .06); } }
+  if (FRAMES) { k.phi = wrapA(k.phi + turn * dt); pathMove(k, Math.cos(k.phi) * k.v, Math.sin(k.phi) * k.v - (k.drift ? k.drift * k.v * .16 : 0), dt); }   // 🧲 glued to the measured road: the turn and the speed are taken on its surface
+  else {
   k.a += turn * dt;
   // ❄️ El Nath: on ice the kart keeps going the way it was moving and only slowly follows where it's pointing
   const grip = MECH === "ice" ? (icy ? 1.7 : k.off ? 5 : 4) : 99;   // El Nath: slippery, but a turn can still be held
@@ -2961,6 +2998,7 @@ function step(dt) {
   let mx = Math.cos(k.ma) * k.v, my = Math.sin(k.ma) * k.v;
   if (k.drift) { mx += -Math.sin(k.a) * -k.drift * k.v * .16; my += Math.cos(k.a) * -k.drift * k.v * .16; }   // slide outwards a bit
   k.x += mx * dt * SPD; k.y += my * dt * SPD;
+  }
   if (k.hop > 0) k.hop -= dt;
   // the map edge and roadside things push you back
   if (k.x < 20 || k.y < 20 || k.x > WORLD - 20 || k.y > WORLD - 20) { k.x = Math.min(WORLD - 20, Math.max(20, k.x)); k.y = Math.min(WORLD - 20, Math.max(20, k.y)); k.v *= .5; }
