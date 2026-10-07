@@ -1742,8 +1742,7 @@ export function create(A) {
     const crownGeo = (w, h, depth) => { const shapes = [crownShape(w, h)]; for (const [x, y] of [[-w, h * .5], [0, h], [w, h * .5]]) { const q = new THREE.Shape(); q.absarc(x, y, w * .17, 0, Math.PI * 2, false); shapes.push(q); } return new THREE.ExtrudeGeometry(shapes, { depth, bevelEnabled: true, bevelSize: 1, bevelThickness: 1 }); };
     const drawCrown = (c, cx, cy, w, h, fill) => { c.beginPath(); c.moveTo(cx - w, cy + h); c.lineTo(cx + w, cy + h); c.lineTo(cx + w, cy - h * .5); c.lineTo(cx + w * .5, cy - h * .05); c.lineTo(cx, cy - h); c.lineTo(cx - w * .5, cy - h * .05); c.lineTo(cx - w, cy - h * .5); c.closePath(); c.fillStyle = fill; c.fill();
       for (const [x, y] of [[cx - w, cy - h * .5], [cx, cy - h], [cx + w, cy - h * .5]]) { c.beginPath(); c.arc(x, y, w * .17, 0, 7); c.fill(); } };
-    // the start gate: a gigantic dark wheel over the line with gold edges and crown reliefs, five round crown lamps standing on it, and FAMILY KART written
-    // on the door itself: a bronze-and-gold sign bar across the inside of the wheel, just over head height
+    // the start gate: a gigantic dark wheel over the line with gold edges and crown reliefs, and five round crown lamps standing on it (no sign: the user asked for none)
     ringAt(0, t.ROAD / 2 + 120, (t.ROAD / 2 + 120) * .6, (g, R, cy) => {
       const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 26, 18, 96), bronze); rim.position.y = cy; g.add(rim);
       for (const [rr, tt] of [[R + 26, 6], [R - 26, 6]]) { const q = new THREE.Mesh(new THREE.TorusGeometry(rr, tt, 10, 96), gold); q.position.y = cy; g.add(q); }   // (the two gold edges only: nothing inside the wheel)
@@ -1755,20 +1754,6 @@ export function create(A) {
         const rimL = new THREE.Mesh(new THREE.TorusGeometry(44, 6, 8, 32), gold); rimL.position.set(0, 30, 16); lamp.add(rimL);
         const face = new THREE.Mesh(new THREE.CircleGeometry(39, 32), new THREE.MeshBasicMaterial({ map: lampTex })); face.position.set(0, 30, 16.5); face.rotation.z = -(a2 - Math.PI / 2); lamp.add(face); const back = face.clone(); back.rotation.set(0, Math.PI, a2 - Math.PI / 2); back.position.z = -16.5; lamp.add(back); }   // (the crowns stand upright on every lamp)
       // (nothing inside the wheel: the white wings read as a face without the original's inner ring, so the wheel stays clean)
-      // 🪧 FAMILY KART, written on the door itself: a bronze-and-gold sign bar fixed across the inside of the wheel just over head height, its ends set into the
-      // rim, bowed a little toward the grid; gold letters edged in dark bronze, a crown at each end, lamps along the frame (readable by the pole sitter, so by everyone)
-      const signTex = ctex(1024, 256, (c, W, H) => { const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "#6a4a1e"); gr.addColorStop(.5, "#3e2a0e"); gr.addColorStop(1, "#2a1a06"); c.fillStyle = gr; c.fillRect(0, 0, W, H);   // the dark bronze face
-        c.strokeStyle = "#e8b850"; c.lineWidth = 18; c.strokeRect(9, 9, W - 18, H - 18); c.strokeStyle = "#8a5a18"; c.lineWidth = 3; c.strokeRect(22, 22, W - 44, H - 44);   // the gold frame with a darker inner line
-        for (let x = 40; x < W; x += 56) for (const y of [18, H - 18]) { const bg = c.createRadialGradient(x, y, 1, x, y, 10); bg.addColorStop(0, "#ffffff"); bg.addColorStop(.45, "#fff0b0"); bg.addColorStop(1, "rgba(255,220,120,0)"); c.fillStyle = bg; c.beginPath(); c.arc(x, y, 10, 0, 7); c.fill(); }   // little lamps along the frame
-        c.font = "900 118px Ubuntu, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; const tx = W / 2, ty = H / 2 + 6; c.lineJoin = "round";
-        c.fillStyle = "#120a02"; c.fillText("FAMILY KART", tx + 5, ty + 8); c.strokeStyle = "#1a0e02"; c.lineWidth = 16; c.strokeText("FAMILY KART", tx, ty);   // a shadow and a dark edge
-        const tg = c.createLinearGradient(0, ty - 60, 0, ty + 60); tg.addColorStop(0, "#fff4c8"); tg.addColorStop(.45, "#ffd870"); tg.addColorStop(.55, "#e0a030"); tg.addColorStop(1, "#ffe08a"); c.fillStyle = tg; c.fillText("FAMILY KART", tx, ty);   // gold letters, like the crowns
-        for (const x of [72, W - 72]) { drawCrown(c, x, H / 2 + 10, 30, 24, "#1a0e02"); drawCrown(c, x - 3, H / 2 + 6, 30, 24, "#ffd86a"); } });   // 👑 a gold crown at each end
-      const SR = 600, SW = 372, SH = 58, signGeo = new THREE.CylinderGeometry(SR, SR, SH, 48, 1, true, Math.PI - SW / SR / 2, SW / SR), sign = new THREE.Mesh(signGeo, new THREE.MeshBasicMaterial({ map: signTex, side: THREE.FrontSide }));
-      sign.position.set(0, 34 + SH / 2, SR - 14); g.add(sign);   // (its ends run into the rim; its underside clears the karts)
-      const backTex = signTex.clone(); backTex.needsUpdate = true; backTex.wrapS = THREE.RepeatWrapping; backTex.repeat.x = -1; backTex.offset.x = 1;   // (and readable from the track side too)
-      const signBack = new THREE.Mesh(signGeo, new THREE.MeshBasicMaterial({ map: backTex, side: THREE.BackSide })); signBack.position.copy(sign.position); g.add(signBack);
-      const lip = new THREE.Mesh(new THREE.BoxGeometry(SW - 6, 4, 10), gold); lip.position.set(0, 34 + SH + 1, -14); g.add(lip); const lip2 = lip.clone(); lip2.position.y = 33; g.add(lip2);   // gold rails along its top and bottom edges
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffc870, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(R * 2.4, R * 2.4, 1); glow.position.y = cy; g.add(glow); });
     // enormous rainbow rings floating beside the course, tilted every which way (a big one just left of the start, more further off)
     if (!t.frames) { const rtx = surfaceTex("rainbow64", t.theme, 180); rtx.wrapS = rtx.wrapT = THREE.RepeatWrapping; rtx.repeat.set(36, 2);
