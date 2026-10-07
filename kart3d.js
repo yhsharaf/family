@@ -24,6 +24,14 @@ export function create(A) {
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6b7a5a, 2.1); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff4e0, 1.5); sun.position.set(-.45, 1, .3); scene.add(sun);
   const BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 18);
+  // ✨ three.js's own add-ons (loaded in the background; if they can't load, everything still works the old way): a studio environment for
+  // real reflections on gold, glass and paint, film-quality bloom, and rounded boxes for the karts
+  const FX = { env: null, composer: null, bloom: null, RoundBox: null, ready: false };
+  Promise.all([import("three/addons/environments/RoomEnvironment.js"), import("three/addons/postprocessing/EffectComposer.js"), import("three/addons/postprocessing/RenderPass.js"), import("three/addons/postprocessing/UnrealBloomPass.js"), import("three/addons/postprocessing/OutputPass.js"), import("three/addons/geometries/RoundedBoxGeometry.js")])
+    .then(([RE_, EC, RP, UB, OP, RB]) => { const pm = new THREE.PMREMGenerator(renderer); FX.env = pm.fromScene(new RE_.RoomEnvironment(), .04).texture; pm.dispose(); scene.environment = FX.env; scene.environmentIntensity = .35;
+      FX.composer = new EC.EffectComposer(renderer); FX.composer.addPass(new RP.RenderPass(scene, camera)); FX.bloom = new UB.UnrealBloomPass(new THREE.Vector2(512, 512), .4, .35, .92); FX.composer.addPass(FX.bloom); FX.composer.addPass(new OP.OutputPass());
+      FX.RoundBox = RB.RoundedBoxGeometry; FX.ready = true; karts.forEach(m => scene.remove(m.root)); karts.clear(); if (lastT) { key = null; } })
+    .catch(e => console.info("Family Kart: extra 3D effects unavailable", e));
 
   // ---------------------------------------------------------------- ✨ the next-gen look (an experiment, switched off): the sun
   // casts real shadows, every picture standing in the world gets a soft shadow on the ground, the picture goes through filmic colour, bright
@@ -76,6 +84,9 @@ export function create(A) {
   }
   const fs = (m, target) => { fsQuad.material = m; renderer.setRenderTarget(target); renderer.render(fsScene, fsCam); };
   function draw() {   // one frame: straight to the screen (old look), or through the picture pipeline
+    if (FX.ready && lastT && lastT.theme.skyroad) { const v = renderer.getDrawingBufferSize(new THREE.Vector2()); if (FX.w !== v.x || FX.h !== v.y) { FX.w = v.x; FX.h = v.y; FX.composer.setPixelRatio(1); FX.composer.setSize(v.x, v.y); }
+      renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .78; FX.composer.render(); return; }
+    if (renderer.toneMapping !== THREE.NoToneMapping) renderer.toneMapping = THREE.NoToneMapping;
     if (!(NG && Q >= 1)) { renderer.setRenderTarget(null); renderer.render(scene, camera); return; }
     if (!PP) makePP();
     renderer.setRenderTarget(PP.main); renderer.render(scene, camera);
@@ -381,14 +392,14 @@ export function create(A) {
   }
   function roadMat(tex, decal, glow) {
     const w = WORLD;
-    const m = new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+    const m = glow === 2 ? new THREE.MeshStandardMaterial({ map: tex, roughness: .3, metalness: .05, envMapIntensity: .55, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }) : new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // (the star road's glass tiles are glossy: they catch reflections)
     if (glow) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = tex; m.emissiveIntensity = glow === 2 ? .5 : .55; }   // (Rainbow Road's tiles glow)
     m.onBeforeCompile = sh => { sh.uniforms.decal = { value: decal };
       sh.vertexShader = "varying vec2 vWXZ;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWXZ = position.xz;");
       sh.fragmentShader = "uniform sampler2D decal; varying vec2 vWXZ;\n" + sh.fragmentShader.replace("#include <map_fragment>",
         `#include <map_fragment>\n vec4 dc = texture2D(decal, vec2(vWXZ.x / ${w.toFixed(1)}, 1.0 - vWXZ.y / ${w.toFixed(1)})); diffuseColor.rgb = mix(diffuseColor.rgb, dc.rgb, dc.a);`)
         .replace("#include <emissivemap_fragment>", glow ? "#include <emissivemap_fragment>\n totalEmissiveRadiance *= (1.0 - dc.a);" : "#include <emissivemap_fragment>"); };   // (on a glowing road, what's painted on it, like a hole, doesn't glow)
-    m.customProgramCacheKey = () => "road" + w + (glow ? "g" : "");   // (the world size is baked into the shader, so tracks of different sizes need their own)
+    m.customProgramCacheKey = () => "road" + w + (glow ? "g" + glow : "");   // (the world size is baked into the shader, so tracks of different sizes need their own)
     return m;
   }
   // 🧱 clean cliff walls round each gorge (Mushroom Canyon): smooth vertical strips along the pit's edge - the grassy lip at the top, the
@@ -1411,12 +1422,14 @@ export function create(A) {
     g.fillStyle = "#ffd75e"; g.strokeStyle = "#7a5200"; g.lineWidth = 3; g.beginPath(); g.moveTo(8, 50); g.lineTo(8, 16); g.lineTo(20, 30); g.lineTo(32, 8); g.lineTo(44, 30); g.lineTo(56, 16); g.lineTo(56, 50); g.closePath(); g.fill(); g.stroke();
     g.font = "900 26px Ubuntu, sans-serif"; g.textAlign = "center"; g.lineWidth = 4; g.strokeStyle = "#5a0d10"; g.strokeText("F", 32, 47); g.fillStyle = "#c8232c"; g.fillText("F", 32, 47);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const RBC = {};
   function makeKart(color, ghost, family) {
     const o = ghost ? { transparent: true, opacity: .42, depthWrite: false } : {};
-    const paint = mat(color, { shininess: 80, specular: 0x666666, ...o }), dark = mat(0x23202a, o), tire = mat(0x18161c, { shininess: 10, ...o }), gold = mat(0xe8b43a, { shininess: 90, specular: 0x886622, ...o }),
-      white = mat(0xffffff, o), metal = mat(0x9aa0aa, { shininess: 100, specular: 0xaaaaaa, ...o }), trim = family ? gold : white;
+    const P2 = FX.ready, phys = (c, x) => new THREE.MeshPhysicalMaterial({ color: c, ...x, ...o });   // (with the studio reflections loaded: glossy clear-coat paint and real metal)
+    const paint = P2 ? phys(color, { roughness: .32, metalness: .12, clearcoat: 1, clearcoatRoughness: .07 }) : mat(color, { shininess: 80, specular: 0x666666, ...o }), dark = P2 ? phys(0x23202a, { roughness: .55, metalness: .3 }) : mat(0x23202a, o), tire = P2 ? phys(0x18161c, { roughness: .85 }) : mat(0x18161c, { shininess: 10, ...o }),
+      gold = P2 ? phys(0xf0b83a, { roughness: .2, metalness: 1 }) : mat(0xe8b43a, { shininess: 90, specular: 0x886622, ...o }), white = P2 ? phys(0xffffff, { roughness: .3, clearcoat: .6 }) : mat(0xffffff, o), metal = P2 ? phys(0xc0c6d0, { roughness: .18, metalness: 1 }) : mat(0x9aa0aa, { shininess: 100, specular: 0xaaaaaa, ...o }), trim = family ? gold : white;
     const root = new THREE.Group(), tilt = new THREE.Group(), body = new THREE.Group(); root.add(tilt); tilt.add(body);
-    const add = (m, w, hh, d, x, y, z) => { const me = new THREE.Mesh(BOX, m); me.scale.set(w, hh, d); me.position.set(x, y, z); body.add(me); return me; };
+    const add = (m, w, hh, d, x, y, z) => { let me; if (FX.RoundBox && w > 1.5 && hh > 1.5 && d > 1.5) { const k = w + "," + hh + "," + d; const geo = RBC[k] || (RBC[k] = new FX.RoundBox(w, hh, d, 2, Math.min(w, hh, d) * .3)); me = new THREE.Mesh(geo, m); } else { me = new THREE.Mesh(BOX, m); me.scale.set(w, hh, d); } me.position.set(x, y, z); body.add(me); return me; };   // (rounded edges, like a real toy kart)
     add(dark, 25, 1.6, 13, 0, 3.2, 0);                 // floor pan
     add(paint, 15, 4.2, 11, 0, 6, 0);                  // body
     add(paint, 9, 3, 8.6, 10.5, 5.2, 0);               // nose
@@ -1593,7 +1606,7 @@ export function create(A) {
   function buildStar(t) {
     starFx = null; if (!t.theme.skyroad) return;
     const n = t.N, P = t.PTS, ang = i => { const a = P[(i + n - 2) % n], b = P[(i + 2) % n]; return Math.atan2(b[1] - a[1], b[0] - a[0]); };
-    const gold = new THREE.MeshStandardMaterial({ color: 0xffc24a, metalness: .85, roughness: .28, emissive: 0x5a3a08 }), glowGold = new THREE.MeshBasicMaterial({ color: 0xffd86a }), white = new THREE.MeshBasicMaterial({ color: 0xfff6dc });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xffc860, metalness: 1, roughness: .22, emissive: 0x3a2404, envMapIntensity: 1.2 }), glowGold = new THREE.MeshStandardMaterial({ color: 0xffe08a, metalness: .6, roughness: .3, emissive: 0xffb84a, emissiveIntensity: 1.1 }), white = new THREE.MeshBasicMaterial({ color: 0xfff6dc });
     const grp = new THREE.Group(); scene.add(grp); roadObjs.push(grp);
     // the golden ring gate: a massive gold ring studded with stars and spikes, a chequered light band inside, two great pillars with chequered
     // light panels and the course name down them, a big star crowning it and the FAMILY KART banner
@@ -1617,7 +1630,7 @@ export function create(A) {
       const sign = ctex(1024, 192, (c, W, H) => { const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, "#ffe9a8"); gr.addColorStop(1, "#c8862a"); c.fillStyle = "#2a1a08"; c.fillRect(0, 0, W, H); c.fillStyle = gr; c.font = "900 128px Ubuntu, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("FAMILY KART", W / 2, H / 2 + 6); c.strokeStyle = "#ffd86a"; c.lineWidth = 8; c.strokeRect(6, 6, W - 12, H - 12); });
       const sg = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.1, R * .21), new THREE.MeshBasicMaterial({ map: sign, side: THREE.DoubleSide })); sg.position.set(0, cy + R - 70, 0); g.add(sg); }
     // glowing star railings along both edges by the start / finish
-    { const rail = new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: .95 }), sgeo = new THREE.ShapeGeometry(starShape(17, 8)), ringGeo = new THREE.ShapeGeometry((() => { const o = starShape(17, 8), h2 = new THREE.Path(starShape(12, 5.5).getPoints().reverse()); o.holes.push(h2); return o; })());
+    { const rail = new THREE.MeshStandardMaterial({ color: 0xffd36a, metalness: .7, roughness: .3, emissive: 0xffb040, emissiveIntensity: 1.25 }), sgeo = new THREE.ShapeGeometry(starShape(17, 8)), ringGeo = new THREE.ExtrudeGeometry((() => { const o = starShape(17, 8), h2 = new THREE.Path(starShape(12, 5.5).getPoints().reverse()); o.holes.push(h2); return o; })(), { depth: 2.5, bevelEnabled: true, bevelThickness: 1.2, bevelSize: 1, bevelSegments: 2, curveSegments: 4 });
       const runs = [[n - 75, n + 95, 0], [Math.round(n * .34), Math.round(n * .43), 1], [Math.round(n * .56), Math.round(n * .62), 1]], inGap = k => (t.gaps || []).some(g => k >= g.a - 4 && k <= g.b + 4), cnt = runs.reduce((q, [a, b]) => q + Math.ceil((b - a) / 7) * 2, 0);   // (as in the video: both sides along the start, and on the outside of two bends)
       const outer = k => { let d = ang((k + 6) % n) - ang((k + n - 6) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); return d > 0 ? -1 : 1; }, sides = (only, k) => only ? [outer(k)] : [-1, 1];
       const inst = new THREE.InstancedMesh(ringGeo, rail, cnt), M4 = new THREE.Matrix4(), Qn = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), V = new THREE.Vector3(), Sc = new THREE.Vector3(1.15, 1.15, 1.15); let c0 = 0;
