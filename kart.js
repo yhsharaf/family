@@ -101,11 +101,16 @@ function pathSync(r) {   // before a step: whatever moved the kart from outside 
 function pathPlace(r) {   // where the kart is in the world, from its place on the road
   r.ps = ((r.ps % N) + N) % N; const i = Math.floor(r.ps), j = (i + 1) % N, f = r.ps - i, p = PTS[i], q = PTS[j], b = i * 3, c = j * 3;
   const bx = FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, by = FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f;
-  r.x = r.px = p[0] + (q[0] - p[0]) * f + bx * r.pu; r.y = r.py = p[1] + (q[1] - p[1]) * f + by * r.pu; r.idx = Math.round(r.ps) % N; r.a = r.ma = wrapA(tangent(r.idx) + r.phi);
+  r.x = r.px = p[0] + (q[0] - p[0]) * f + bx * r.pu; r.y = r.py = p[1] + (q[1] - p[1]) * f + by * r.pu; r.idx = Math.round(r.ps) % N; r.a = wrapA(tangent(r.idx) + r.phi); r.ma = wrapA(tangent(r.idx) + (r.mphi != null ? r.mphi : r.phi));
 }
 const pathNav = r => ({ i: r.idx, d: Math.abs(r.pu), alt: false, half: ROAD / 2, u: r.pu });
-function pathMove(r, along, across, dt) {   // the speed, taken along and across the road's surface
-  r.ps += along * dt * SPD / RSPC; r.pu += across * dt * SPD; r.ps = ((r.ps % N) + N) % N;
+const pathTan = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, a = PTS[(i + N - 1) % N], b = PTS[(i + 1) % N], c = PTS[i], d = PTS[(i + 2) % N], t = [b[0] - a[0] + (d[0] - c[0] - b[0] + a[0]) * f, b[1] - a[1] + (d[1] - c[1] - b[1] + a[1]) * f, b[2] - a[2] + (d[2] - c[2] - b[2] + a[2]) * f], l = Math.hypot(t[0], t[1], t[2]) || 1; return [t[0] / l, t[1] / l, t[2] / l]; };   // the road's direction at a spot between two points
+const pathSide = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, b = i * 3, c = ((i + 1) % N) * 3, v = [FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f, FRAMES[b + 2] + (FRAMES[c + 2] - FRAMES[b + 2]) * f], l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+const pathTurn = (s0, s1) => { const t0 = pathTan(s0), b0 = pathSide(s0), t1 = pathTan(s1); return Math.atan2(t1[0] * b0[0] + t1[1] * b0[1] + t1[2] * b0[2], t1[0] * t0[0] + t1[1] * t0[1] + t1[2] * t0[2]); };   // how far the road turns within its own surface between two spots (+ right); a loop bends out of the surface, which doesn't count
+function pathMove(r, along, across, dt, free) {   // the speed, taken along and across the road's surface. The heading is carried along the surface like a real kart's: the road's
+  // own bends don't turn you (you steer round them, and drift), only its tilts carry you (a loop needs no steering). The computer racers keep the road's turn for free (free)
+  const s0 = r.ps; r.ps += along * dt * SPD / RSPC; r.pu += across * dt * SPD; r.ps = ((r.ps % N) + N) % N;
+  const turn = free ? 0 : pathTurn(s0, r.ps); r.phi = wrapA(r.phi - turn); r.mphi = along > 40 ? wrapA(Math.atan2(across, along) - turn) : r.phi;   // (mphi: the way it's actually moving, for the camera)
   const i = Math.floor(r.ps), p = PTS[(i + N - 1) % N], q = PTS[(i + 1) % N], b = i * 3, tx = q[0] - p[0], ty = q[1] - p[1], tl = Math.hypot(tx, ty, q[2] - p[2]) || 1;
   if ((tx * FRAMES[b + 1] - ty * FRAMES[b]) / tl < .35 && !(r.z > 0)) r.v = Math.max(r.v, 150);   // (on a wall or upside down the road's "up" points sideways or down: you can't stall there)
   pathPlace(r);
@@ -1031,9 +1036,9 @@ const TRACKS = {
     // glowing rainbow road floating in the night sky high above a city of lights. Down the long diagonal from the golden gate, round the low loop
     // (under the road you just came down), up through the little spiral, out to the hook on the right, back and up through the big figure-eight
     // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
-    id: "starroad", scale: 2.5, road: 190, cup: "ludi", music: "k_ludi2", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
+    id: "starroad", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_ludi2", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
     path3d: "star64",
-    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", blackbg: true, steer: .75, drift: .5, curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [0, 0, 0], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
     near: [], far: [], mobs: [],
@@ -1104,7 +1109,7 @@ function loadTrack(key) {
   const ctrl = !T.ctrl ? null : WS === 1 ? T.ctrl : T.ctrl.map(p => p.map((v, j) => v * WS));   // (hills scale too, so the slopes stay the same)
   FRAMES = null; RIDES = []; PMK = null; const PD = T.path3d && window.KART_PATHS && KART_PATHS[T.path3d];
   if (PD) {   // 🎢 a track laid along its own 3D path: points every ~6 units along it (measured in 3D, so a loop has its full length), each with the road's sideways direction
-    const P = PD.P.map(p => p.slice()), n = P.length, cum = [0]; let B = PD.B;
+    const SC = T.pathScale || 1, P = PD.P.map(p => p.map(v => v * SC)), n = P.length, cum = [0]; let B = PD.B;   // (pathScale: the course scaled up; the road and the karts stay their size, so it's bigger and longer, like the original)
     for (const [ga, gb] of PD.gaps) { const a = ga - 1, m = gb - a; if (m < 6 || a < 3 || gb + 3 >= n) continue;   // 🪂 a gap's bridge is a smooth flight curve, not a straight line: it leaves the road along the road's own direction and lands along the next piece's, so there's no kink at either end
       const pa = P[a], pb = P[gb], L = Math.hypot(pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]) * .45, dir = (u, v) => { const d = [v[0] - u[0], v[1] - u[1], v[2] - u[2]], l = Math.hypot(d[0], d[1], d[2]) || 1; return d.map(c => c / l * L); }, ta = dir(P[a - 3], pa), tb = dir(pb, P[gb + 3]);
       for (let q = 1; q < m; q++) { const t = q / m, t2 = t * t, t3 = t2 * t, h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = 3 * t2 - 2 * t3, h11 = t3 - t2; P[a + q] = [0, 1, 2].map(j => h00 * pa[j] + h10 * ta[j] + h01 * pb[j] + h11 * tb[j]); } }
@@ -1119,7 +1124,7 @@ function loadTrack(key) {
     for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
       PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
     const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove)
-    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), sd || 0]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) };
+    RIDES = []; PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), sd || 0]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC };
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1913,7 +1918,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=227"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=228"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2371,7 +2376,7 @@ function rivalStep(r, dt, tt) {
   const ricy = MECH === "ice" && !air && (ground.pad && ground.pad.t === "ice" || (LAKE && LAKE.kind === "ice" && inLake(r.x, r.y)));
   { const rg = MECH === "ice" ? (ricy ? 3 : 7.5) : 99; let dm = r.a - (r.ma == null ? r.a : r.ma); dm = Math.atan2(Math.sin(dm), Math.cos(dm)); r.ma = rg > 50 ? r.a : (r.ma == null ? r.a : r.ma) + dm * Math.min(1, rg * dt); }
   if (!air && ground.pad && (ground.pad.t === "mud" || ground.pad.t === "grass")) r.v = Math.min(r.v, 150);
-  if (FRAMES) pathMove(r, Math.cos(r.phi) * r.v, Math.sin(r.phi) * r.v, dt); else { r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD; }
+  if (FRAMES) pathMove(r, Math.cos(r.phi) * r.v, Math.sin(r.phi) * r.v, dt, true); else { r.x += Math.cos(r.ma) * r.v * dt * SPD; r.y += Math.sin(r.ma) * r.v * dt * SPD; }
   const pad = air ? null : ground.pad;
   if (pad && pad !== r.lastPad) {
     if (pad.t === "boost") giveBoost(r, 1, 110);
@@ -2991,10 +2996,11 @@ function step(dt) {
     if (k.charge > .7) { whooshSound(); k.mtN = (k.mtN || 0) + 1; }
     k.drift = 0; k.charge = 0;
   }
-  let turn = k.steer * 2.1 * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? .8 : .5) : 1);
-  if (k.drift) { turn = (k.drift * 1.55 + k.steer * .9) * Math.min(1, k.v / 110); if (!k.off) { const before = k.charge; k.charge += dt * Math.max(.4, 1 + .7 * k.steer * k.drift);   // steering into the turn charges faster
+  const SK = T.theme.steer || 1, DK = T.theme.drift || SK;   // (a track's steering and drift weight: the Star Road's long sweeping bends take a heavier, calmer kart, like the original's; its drift held with no steering runs round a typical bend, counter-steered it runs nearly straight)
+  let turn = k.steer * 2.1 * SK * Math.min(1, Math.abs(k.v) / 110) * (k.v < 0 ? -1 : 1) * (air ? (k.glide ? .8 : .5) : 1);
+  if (k.drift) { turn = (k.drift * 1.55 * DK + k.steer * .9 * SK) * Math.min(1, k.v / 110); if (!k.off) { const before = k.charge; k.charge += dt * Math.max(.4, 1 + .7 * k.steer * k.drift);   // steering into the turn charges faster
     if ([.7, 1.5, 2.4].some(th => before < th && k.charge >= th)) tone(k.charge > 2.4 ? 1320 : k.charge > 1.5 ? 990 : 740, .1, "triangle", .06); } }
-  if (FRAMES) { k.phi = wrapA(k.phi + turn * dt); pathMove(k, Math.cos(k.phi) * k.v, Math.sin(k.phi) * k.v - (k.drift ? k.drift * k.v * .16 : 0), dt); }   // 🧲 glued to the measured road: the turn and the speed are taken on its surface
+  if (FRAMES) { k.phi = wrapA(k.phi + turn * dt); pathMove(k, Math.cos(k.phi) * k.v, Math.sin(k.phi) * k.v - (k.drift ? k.drift * k.v * .16 * SK : 0), dt); }   // 🧲 glued to the measured road: the turn and the speed are taken on its surface
   else {
   k.a += turn * dt;
   // ❄️ El Nath: on ice the kart keeps going the way it was moving and only slowly follows where it's pointing

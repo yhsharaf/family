@@ -2003,13 +2003,13 @@ export function create(A) {
         q.ring.visible = land >= 0; if (land >= 0) { q.ring.position.set(q.th.x, q.g + 3, q.th.y); q.ring.scale.setScalar(36 + land * 240); q.ring.material.opacity = (1 - land) * .9; } }
       else q.m.position.set(q.th.x, q.g + 31 + z, q.th.y); q.sh.position.set(q.th.x, q.g + 1.2, q.th.y); q.sh.material.opacity = .15 + .4 * (1 - Math.min(1, z / 150)); } }
     VW = o.W; VH = o.H; pi = 0; bi = 0; for (const k in mdls) mdls[k].i = 0; for (const m of karts.values()) m.used = false;
-    const a = k.a || 0;
+    const GF = lastT && lastT.frames && k.ps != null ? rideFrame(lastT, { rs: k.ps, rlat: k.pu }) : null;   // 🧲 a glued kart: the road's own frame right under it
+    const a = GF && k.ma != null ? k.ma : (k.a || 0);   // (a glued kart: the camera follows the way it's moving, so in a drift the kart swings sideways on screen)
     if (cam.yaw == null || o.snap) cam.yaw = a;
-    let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * 7);   // the camera swings round a moment after the kart
-    const CU = 34, dist = 58 + 9 * (o.fov || 0), up = CU + Math.min(k.z || 0, 260) * .95;   // (the same camera on every track: the user's favourite - keep it)   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
+    let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * (GF ? 4.5 : 7));   // the camera swings round a moment after the kart (a longer moment on the Star Road, like Mario Kart's)
+    const CU = 34, dist = 58 + (GF ? 13 : 9) * (o.fov || 0), up = CU + Math.min(k.z || 0, 260) * .95;   // (the same camera on every track: the user's favourite - keep it)   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
     const gx = k.x - Math.cos(cam.yaw) * dist, gz = k.y - Math.sin(cam.yaw) * dist;
     const lift = airLift(k); cam.lift = o.snap || cam.lift == null ? lift : cam.lift + (lift - cam.lift) * Math.min(1, o.dt * (lift > cam.lift ? 20 : 6));
-    const GF = lastT && lastT.frames && k.ps != null ? rideFrame(lastT, { rs: k.ps, rlat: k.pu }) : null;   // 🧲 a glued kart: the road's own frame right under it
     const kh = GF ? GF.P.y : RY && k.idx != null ? surfY(k.x, k.y, k.idx) : h(k.x, k.y) + cam.lift, base = RY ? kh : Math.max(kh, h(gx, gz) - 6), want = base + up;   // (flying off the road: follow the road's height, not the ravine under you)
     // the ground part eases (hills, bumps); the jump / glide height follows almost at once, or a fast take-off leaves the camera level with the kart
     const zu = up - CU; cam.base = o.snap || cam.base == null ? base : cam.base + (base - cam.base) * Math.min(1, o.dt * 6); cam.zu = o.snap || cam.zu == null ? zu : cam.zu + (zu - cam.zu) * Math.min(1, o.dt * 16);
@@ -2026,7 +2026,7 @@ export function create(A) {
       let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = GF || rideFrame(lastT, { rs: k.idx, rlat: 0 }); if (GF) F.P.addScaledVector(F.N, Math.min(k.z || 0, 260) * .95); else F.P.set(k.x, kh + Math.min(k.z || 0, 260) * .95, k.y); cam.rf = F; want = smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }
       cam.rw = o.snap ? want : (cam.rw || 0) + (want - (cam.rw || 0)) * Math.min(1, o.dt * 5);
       if (riding) cam.rf = rideFrame(lastT, k);
-      if (GF) { let dp = (k.phi || 0) - (cam.phi || 0); dp = Math.atan2(Math.sin(dp), Math.cos(dp)); cam.phi = o.snap ? (k.phi || 0) : (cam.phi || 0) + dp * Math.min(1, o.dt * 7); if (cam.rw > .5) cam.yaw = a; }   // (behind a glued kart's own heading, a moment after it, like on the flat)
+      if (GF) { const tp = k.mphi != null ? k.mphi : (k.phi || 0); let dp = tp - (cam.phi || 0); dp = Math.atan2(Math.sin(dp), Math.cos(dp)); cam.phi = o.snap ? tp : (cam.phi || 0) + dp * Math.min(1, o.dt * 4.5); if (cam.rw > .5) { let dy = a - cam.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); cam.yaw += dy * Math.min(1, o.dt * 12); } }   // (behind the way a glued kart moves, a moment after it; the flat camera's yaw keeps up meanwhile, for the hand-over)
       if (cam.rw > .001 && cam.rf) { const F = cam.rf, w = cam.rw, fT = GF ? F.T.clone().multiplyScalar(Math.cos(cam.phi || 0)).addScaledVector(F.B, Math.sin(cam.phi || 0)).normalize() : F.T, cp = F.P.clone().addScaledVector(fT, -58 - 9 * (o.fov || 0)).addScaledVector(F.N, CU), lp = F.P.clone().addScaledVector(fT, 56).addScaledVector(F.N, 2);
         camera.position.lerp(cp, w); look.lerp(lp, w); camera.up.set(0, 1, 0).lerp(F.N, w).normalize(); } else camera.up.set(0, 1, 0); }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
@@ -2037,7 +2037,7 @@ export function create(A) {
       sun.target.position.set(fx, fy, fz); sun.position.set(fx + D[0] * 1500, fy + D[1] * 1500, fz + D[2] * 1500); }
     blobI = 0;
     cam.roll = (cam.roll || 0) + ((o.roll || 0) - (cam.roll || 0)) * Math.min(1, o.dt * 6); if (cam.roll) camera.rotateZ(cam.roll);   // leans into a drift
-    camera.fov = 60 + 13 * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    camera.fov = 60 + (GF ? 15 : 13) * (o.fov || 0); camera.aspect = VW / VH; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     camera.getWorldDirection(fwd);
     if (skyMesh) skyMesh.position.set(camera.position.x, camera.position.y + SKY_H / 2 - SKY_BELOW, camera.position.z);
     if (skyMesh) skyMesh.visible = !window.__camOv || !!window.__camSky;
