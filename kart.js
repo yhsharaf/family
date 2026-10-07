@@ -61,8 +61,23 @@ function openPts(c) {
   return out;
 }
 // the current track (loadTrack fills these in)
-let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], HMAP = null, FIREBALLS = [], GEARS = [], HANDS = [], PENDS = [];
+let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], HMAP = null, FRAMES = null, RIDES = [], PMK = null, RSPC = 6, FIREBALLS = [], GEARS = [], HANDS = [], PENDS = [];
 // 🕰️ the clockwork: a hand's angle, a pendulum's bob (swinging across the road), a gear's turn
+// 🎢 a ride: a loop or a wall-twist steeper than a kart can drive is ridden like a rollercoaster: you're carried along the road's own 3D path at the
+// speed you came in with (never slower than a cruise), steering only moves you across it; off the end you're driving again (or gliding, over a gap)
+function rideStep(r, dt, steer) {
+  if (!RIDES.length) return false;
+  if (r.rideLock && (r.idx < r.rideLock.a - 8 || r.idx > r.rideLock.b + 8)) r.rideLock = null;   // (a ride just finished can't catch you again until you're clear of it)
+  if (!r.ride) { if (r.z > 0 || r.rescue > 0) return false; const R = RIDES.find(R => r.idx >= R.a && r.idx < R.b - 2 && R !== r.rideLock); if (!R) return false; r.ride = R; r.rs = r.idx; r.rlat = Math.max(-ROAD / 2 + 18, Math.min(ROAD / 2 - 18, lat(r.x, r.y, r.idx))); r.drift = 0; r.charge = 0; }
+  const R = r.ride; r.v = Math.max(r.v, 235); r.rs += r.v * SPD * dt / RSPC; r.rlat = Math.max(-ROAD / 2 + 18, Math.min(ROAD / 2 - 18, r.rlat + steer * 150 * dt)); r.steer = steer;
+  if (r.rs >= R.b) { r.ride = null; r.rideLock = R; const i = R.b % N, [x, y] = at(i, r.rlat); r.x = x; r.y = y; r.idx = i; r.a = r.ma = tangent(i);
+    if (gapAt(i)) { r.z = 14; r.vz = 40; r.glide = 1; r.v = Math.max(r.v, 250); }   // (straight off the end into the air: the glider opens)
+    return false; }
+  const i = Math.floor(r.rs), f = r.rs - i, p = PTS[i % N], q = PTS[(i + 1) % N], b = (i % N) * 3;
+  r.x = p[0] + (q[0] - p[0]) * f + FRAMES[b] * r.rlat; r.y = p[1] + (q[1] - p[1]) * f + FRAMES[b + 1] * r.rlat; r.idx = i % N; r.z = 0; r.vz = 0;
+  const tx = q[0] - p[0], ty = q[1] - p[1]; if (Math.hypot(tx, ty) > 1) r.a = r.ma = Math.atan2(ty, tx);
+  return true;
+}
 const hmBare = (x, y) => { const M = HMAP, i = Math.round((x - M.x0) / M.step), j = Math.round((y - M.x0) / M.step); if (i < 0 || j < 0 || i >= M.n || j >= M.n) return true; const k = j * M.n + i; return !(M.z[k] === M.z[k]) || M.c[k] === 3; };
 const hmDrop = r => { const M = HMAP, i = Math.round((r.x - M.x0) / M.step), j = Math.round((r.y - M.x0) / M.step); if (i < 0 || j < 0 || i >= M.n || j >= M.n) return true; const z = M.z[j * M.n + i], road = PTS[r.idx] ? PTS[r.idx][2] || 0 : 0; return !(z === z) || z < road - 90; };   // (no ground there, or a sheer drop below the road)
 const handAng = (h, now) => h.ph + now * h.sp;
@@ -983,24 +998,23 @@ const TRACKS = {
     // glowing rainbow road floating in the night sky high above a city of lights. Down the long diagonal from the golden gate, round the low loop
     // (under the road you just came down), up through the little spiral, out to the hook on the right, back and up through the big figure-eight
     // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
-    id: "starroad", scale: 2.5, road: 260, cup: "ludi", music: "k_ludi2", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
-    ctrl: [[750, 1109, 264.3], [749, 1020, 226.9], [749, 923, 189.4], [749, 828, 198.2], [749, 733, 207.0], [749, 638, 222.5], [749, 543, 237.9], [749, 452, 235.7], [749, 368, 221.7], [750, 290, 207.8], [759, 218, 193.8], [785, 161, 192.2], [827, 129, 190.5], [877, 120, 188.9], [923, 131, 187.2], [960, 162, 185.6], [983, 209, 183.9], [983, 268, 182.3], [959, 325, 180.6], [923, 371, 177.3], [876, 412, 174.0], [824, 444, 170.7], [771, 471, 167.4], [718, 497, 165.2], [665, 524, 163.0], [616, 558, 160.8], [576, 601, 158.6], [552, 655, 155.3], [540, 720, 152.0], [526, 785, 148.7], [505, 845, 145.4], [479, 897, 143.9], [469, 945, 142.4], [452, 976, 141.0], [438, 1009, 139.9], [438, 1050, 138.8], [454, 1083, 134.8], [480, 1105, 130.8], [512, 1116, 126.9], [545, 1114, 122.9], [577, 1100, 118.9], [602, 1073, 114.1], [613, 1037, 109.3], [609, 1000, 104.4], [593, 972, 99.6], [568, 951, 94.7], [538, 941, 90.3], [506, 941, 85.9], [477, 954, 81.5], [451, 978, 79.3], [438, 1014, 77.1], [436, 1058, 74.9], [435, 1105, 73.8], [434, 1153, 72.7], [434, 1201, 71.6], [428, 1248, 70.5], [411, 1290, 70.0], [379, 1326, 69.6], [339, 1362, 69.2], [293, 1397, 68.7], [247, 1431, 68.3], [200, 1463, 68.0], [155, 1494, 67.7], [128, 1529, 67.5], [120, 1569, 67.2], [132, 1609, 66.9], [160, 1640, 66.6], [200, 1653, 66.4], [250, 1643, 66.1], [299, 1612, 66.1], [346, 1578, 66.1], [393, 1544, 66.1], [440, 1511, 66.1], [488, 1486, 66.1], [546, 1472, 66.1], [615, 1471, 66.1], [690, 1471, 66.1], [767, 1471, 66.1], [843, 1471, 61.7], [915, 1472, 57.3], [979, 1472, 50.7], [1034, 1483, 44.1], [1080, 1506, 50.7], [1114, 1542, 57.3], [1136, 1586, 60.2], [1143, 1634, 63.1], [1135, 1681, 66.1], [1110, 1724, 66.1], [1069, 1756, 66.1], [1016, 1772, 66.1], [963, 1769, 66.1], [915, 1748, 66.1], [878, 1717, 66.1], [843, 1683, 66.1], [804, 1650, 69.6], [765, 1628, 73.1], [724, 1615, 76.7], [676, 1611, 80.2], [630, 1622, 83.7], [592, 1651, 88.8], [566, 1693, 94.0], [557, 1743, 99.1], [569, 1791, 104.3], [597, 1831, 109.4], [641, 1857, 114.5], [690, 1864, 121.6], [736, 1854, 128.6], [773, 1830, 135.7], [799, 1793, 142.7], [813, 1746, 149.8], [819, 1696, 158.6], [820, 1646, 165.2], [818, 1594, 171.8], [818, 1540, 178.4], [814, 1484, 185.0], [808, 1425, 196.8], [789, 1362, 208.5], [768, 1298, 220.3], [757, 1235, 235.7], [752, 1176, 251.1]],
-    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, smoothXY: 10, road: "rainbow64", curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
+    id: "starroad", scale: 2.5, road: 190, cup: "ludi", music: "k_ludi2", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
+    path3d: "star64",
+    theme: { space: true, skyroad: true, nightsky: true, bank: 95, bankMax: .42, hills: 1, road: "rainbow64", curb: ["#e8b84a", "#fff0b8"], grass: ["#071a20", "#071a20"], flowers: 0, tufts: 0, sky: "#0b2a33", out: "#061418",
       haze: [16, 52, 60], fog: [7000, 21000], line: "rgba(0,0,0,0)", noArch: true,
       clean: { sun: 0xb8c8f0, sunI: .9, dir: [.3, .9, -.3], sky: 0x7ab8c8, gnd: 0x101a28, hemiI: .95, exp: .92, sat: 1.12, con: 1.1, warm: 0, vig: .32, bloom: .8, thr: .6 } },
     near: [], far: [], mobs: [],
     build() {
-      const u = d => Math.round(d / SPC), coins = [], pads = [], gaps = [];
+      const coins = [], pads = [], gaps = [], M = PMK, u = d => Math.round(d / SPC);
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
-      const F = f => Math.round(N * f) % N;   // (a place on the lap, as a fraction of it)
-      // 🪂 the glider ramp: at the top of the start straight, over the teardrop's exit, gliding down onto the teardrop
-      const gl = F(.068); pads.push({ t: "boost", i: gl - 16, len: 7, o: 0, w: 90 }, { t: "glide", i: gl - 7, len: 6, o: 0, w: ROAD }); gaps.push({ a: gl, b: F(.095), kind: "chasm", open: true, caps: [] });
-      // ⚡ boost panels
-      for (const f of [.2, .33, .5, .64, .8]) pads.push({ t: "boost", i: F(f), len: 8, o: 0, w: 80 });
-      // 💧 giant slimes bouncing along two stretches (the original's Chain Chomps)
-      const rollers = [[F(.46), F(.56), 0], [F(.46), F(.56), .5], [F(.66), F(.75), .2], [F(.66), F(.75), .7]].map(([a, b, ph]) => ({ a, b, ph, sp: 140, o: 0 }));
-      row(F(.02), F(.05), 5, 0); row(F(.47), F(.52), 5, j => (j & 1 ? 40 : -40)); row(F(.6), F(.63), 5, 0); row(F(.86), F(.89), 4, 0);
-      return { pads, coins, gaps, rollers, ledges: [{ a: 0, b: N - 1 }], boxes: [...boxRow(Math.round(N * .14), [-60, -20, 20, 60]), ...boxRow(Math.round(N * .38), [-60, -20, 20, 60]), ...boxRow(Math.round(N * .58), [-60, -20, 20, 60]), ...boxRow(Math.round(N * .76), [-60, -20, 20, 60])], extra() {} };
+      // 🪂 the two jumps between the pieces of road (off the end of a ride, or off a glide panel just before): glided over
+      for (const [a, b] of M.gaps) { gaps.push({ a, b, kind: "chasm", open: true, caps: [] }); if (!RIDES.some(R => a >= R.a && a <= R.b + 2)) pads.push({ t: "glide", i: a - 7, len: 6, o: 0, w: ROAD }); }
+      for (const i of M.glide) pads.push({ t: "glide", i: i - 3, len: 6, o: 0, w: ROAD });   // the glide panels where the road drops away beneath you
+      for (const i of M.dash) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: 80 });   // the dash panel
+      const free = i => !RIDES.some(R => i >= R.a - 15 && i <= R.b + 15) && !M.gaps.some(([a, b]) => i >= a - 20 && i <= b + 15);
+      const boxAt = [u(500), M.sections[0] + u(240), M.sections[1] + u(300), N - u(900)].map(i => { let k = i; while (!free(k) && k < N - 1) k++; return k; });
+      row(u(160), u(320), 5, 0); row(M.sections[0] + u(80), M.sections[0] + u(200), 4, 0);
+      return { pads, coins, gaps, ledges: [{ a: 0, b: N - 1 }], boxes: boxAt.flatMap(i => boxRow(i, [-60, -20, 20, 60])), extra() {} };
     },
   },
   // 🔭 Discovery: laid out exactly like Mario Kart 8 Deluxe's Wii Mushroom Gorge (traced from above, every model drawn by us). Down the
@@ -1054,14 +1068,23 @@ function loadTrack(key) {
   if (TRACK_KEY === key) return;
   T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; OPEN = !!T.open; ROAD = T.road || 160;
   WS = T.scale || 1; WORLD = Math.round(TW * WS / 8) * 8;   // a bigger world for a longer lap: the layout (drawn on a 2048 map) is stretched, the road, karts and speed are not
-  const ctrl = WS === 1 ? T.ctrl : T.ctrl.map(p => p.map((v, j) => v * WS));   // (hills scale too, so the slopes stay the same)
-  PTS = OPEN ? openPts(ctrl) : loopPts(ctrl); N = PTS.length; TRACK_LEN = 0;
+  const ctrl = !T.ctrl ? null : WS === 1 ? T.ctrl : T.ctrl.map(p => p.map((v, j) => v * WS));   // (hills scale too, so the slopes stay the same)
+  FRAMES = null; RIDES = []; PMK = null; const PD = T.path3d && window.KART_PATHS && KART_PATHS[T.path3d];
+  if (PD) {   // 🎢 a track laid along its own 3D path: points every ~6 units along it (measured in 3D, so a loop has its full length), each with the road's sideways direction
+    const P = PD.P, B = PD.B, n = P.length, cum = [0]; for (let k = 1; k <= n; k++) { const a = P[k - 1], c = P[k % n]; cum.push(cum[k - 1] + Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2])); }
+    const tot = cum[n], M = Math.round(tot / 6); RSPC = tot / M; PTS = []; FRAMES = new Float32Array(M * 3); let k = 0;
+    for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), a = P[k], c = P[(k + 1) % n], ba = B[k], bc = B[(k + 1) % n];
+      PTS.push([a[0] + (c[0] - a[0]) * f, a[1] + (c[1] - a[1]) * f, a[2] + (c[2] - a[2]) * f]); let bx = ba[0] + (bc[0] - ba[0]) * f, by = ba[1] + (bc[1] - ba[1]) * f, bz = ba[2] + (bc[2] - ba[2]) * f; const bl = Math.hypot(bx, by, bz) || 1; FRAMES.set([bx / bl, by / bl, bz / bl], q * 3); }
+    const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;
+    RIDES = PD.rides.map(([a, b]) => ({ a: mi(a), b: mi(b) })); PMK = { gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b]) => [mi(a), mi(b)]), rings: (PD.marks.rings || []).map(([a, z]) => [mi(a), z]) };
+  } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
+  N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
     if (src) { const n = Math.round(Math.sqrt(src.length / 2)), lut = {}, z = new Float32Array(n * n), c = new Uint8Array(n * n); "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".split("").forEach((ch, k) => lut[ch] = k);
       const hk = WS / (T.hmapWS || WS);   // (the heights were sampled for one size of the track: they scale with it)
       for (let k = 0; k < n * n; k++) { const v = lut[src[2 * k]] * 64 + lut[src[2 * k + 1]]; if (!v) { z[k] = NaN; continue; } z[k] = ((v & 1023) * 4 - 500) * hk; c[k] = v >> 10; }
       HMAP = { n, x0: 5 * WS, step: 10 * WS, z, c, deep: -900 * hk, k: hk, ws: WS }; } }
-  if (T.theme.smoothXY && !OPEN) { const sg = T.theme.smoothXY, W = Math.ceil(sg * 3), wt = []; let ws = 0; for (let k = -W; k <= W; k++) { const w = Math.exp(-k * k / (2 * sg * sg)); wt.push(w); ws += w; }   // (a traced layout's little wobbles eased out, so every bend is one smooth sweep)
+  if (T.theme.smoothXY && !OPEN && !FRAMES) { const sg = T.theme.smoothXY, W = Math.ceil(sg * 3), wt = []; let ws = 0; for (let k = -W; k <= W; k++) { const w = Math.exp(-k * k / (2 * sg * sg)); wt.push(w); ws += w; }   // (a traced layout's little wobbles eased out, so every bend is one smooth sweep)
     const src = PTS.map(p => p.slice()); for (let i = 0; i < N; i++) { let sx = 0, sy = 0; for (let k = -W; k <= W; k++) { const q = src[(i + k + N) % N]; sx += q[0] * wt[k + W]; sy += q[1] * wt[k + W]; } PTS[i][0] = sx / ws; PTS[i][1] = sy / ws; } }
   LAPS = OPEN ? 1 : (T.laps || 3); START_I = OPEN ? (PTS[0].length > 2 ? 90 : 44) : 0;   // (a 3D grid is deeper: it needs more road behind the line)
   { let L = 0; for (let i = 1; i < N; i++) L += Math.hypot(PTS[i][0] - PTS[i - 1][0], PTS[i][1] - PTS[i - 1][1]); SPC = L / (N - 1); }   // world units between track points
@@ -1843,11 +1866,11 @@ let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, dashPads: T.theme.skyroad ? PADS.filter(p => p.t === "boost" || p.t === "glide") : [], rollers: ROLLERS, rollerAt, trees3d: TREES3D, tufts3d: TUFTS3D, belts: BELTS, trains: TRAINS, trainAt, tdrops: TDROPS, tdropAt, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, hmap: HMAP, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, dashPads: T.theme.skyroad ? PADS.filter(p => p.t === "boost" || p.t === "glide") : [], rollers: ROLLERS, rollerAt, trees3d: TREES3D, tufts3d: TUFTS3D, belts: BELTS, trains: TRAINS, trainAt, tdrops: TDROPS, tdropAt, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, hmap: HMAP, frames: FRAMES, rides: RIDES, rspc: RSPC, pmk: PMK, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=213"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=218"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2267,6 +2290,7 @@ const papSound = () => { thunderSound(); tone(90, .5, "sawtooth", .08, 40); for 
 function rivalStep(r, dt, tt) {
   if (r.remote) { remoteStep(r, dt); return; }
   if (rescueStep(r, dt)) return;
+  if (rideStep(r, dt, Math.max(-1, Math.min(1, ((r.lane || 0) * .5 - (r.rlat || 0)) / 40)))) return;   // 🎢
   const near = nav(r.x, r.y, r.idx); r.idx = near.i; r.onAlt = near.alt; r.altJ = near.j; const off = near.d > near.half + CURB * .6, ground = under(near, r.x, r.y), L = ground.L;
   if (r.idx > FORK_A - 45 && r.idx < FORK_A - 5 && r.forkLap !== r.lap) { r.forkLap = r.lap; r.useAlt = Math.random() < .4; }   // pick a road at the fork
   if (r.z > 0 || r.vz > 0) { r.vz -= (r.glide ? 150 : 720) * dt; if (r.glide) { r.vz = Math.max(r.vz, -95); r.v = Math.max(r.v, 245); } r.z += r.vz * dt; if (r.glide && r.z < 14 && gapAt(r.idx)) r.z = 14; if (r.z <= 0) { r.z = 0; r.vz = 0; r.glide = 0; if (!(r.spin > 0) && Math.random() < .5) giveBoost(r, .8, 90); } }
@@ -2836,6 +2860,7 @@ function step(dt) {
   if (k.hitFlash > 0) k.hitFlash -= dt;
   for (let i = COINFX.length - 1; i >= 0; i--) { const c = COINFX[i]; c.t -= dt; c.vy += 320 * dt; c.x += c.vx * dt; c.y += c.vy * dt; if (c.t <= 0) COINFX.splice(i, 1); }
   if (rescueStep(k, dt)) { if (racing) { k.t += dt * 1000; worldStep(dt, tt); } return; }
+  if (racing && rideStep(k, dt, k.frozen > 0 ? 0 : (k.flipped ? -inp.steer : inp.steer))) { k.t += dt * 1000; worldStep(dt, tt); return; }   // 🎢 on a ride
   const near = nav(k.x, k.y, k.idx); k.idx = near.i; k.off = near.d > near.half + CURB * .6 && !onRink(k.x, k.y); k.onAlt = near.alt; k.altJ = near.j;
   if (racing) {
     const lost = (near.d > near.half + 150 && !onRink(k.x, k.y)) || (k.v < 25 && !inp.brake && k.spin <= 0 && k.stall <= 0 && k.squash <= 0);

@@ -150,7 +150,7 @@ export function create(A) {
       E[i] = (Math.sin(6.28 * 2 * s + p1) * 70 + Math.sin(6.28 * 3 * s + p2) * 32) * smooth(.015, .07, cd);
     }
     if (t.PTS[0].length > 2) { for (let i = 0; i < N; i++) E[i] = t.PTS[i][2] * (t.theme.hills ?? 1);   // a track with its own planned hills
-      if (t.theme.skyroad) { const W2 = 34, src = E.slice(), wt = []; let ws = 0; for (let k = -W2; k <= W2; k++) { const w = Math.exp(-(k * k) / (2 * (W2 / 2.2) ** 2)); wt.push(w); ws += w; }   // (the floating road's climbs and dips eased into long smooth curves: no kinks at the crests)
+      if (t.theme.skyroad && !t.frames) { const W2 = 34, src = E.slice(), wt = []; let ws = 0; for (let k = -W2; k <= W2; k++) { const w = Math.exp(-(k * k) / (2 * (W2 / 2.2) ** 2)); wt.push(w); ws += w; }   // (the floating road's climbs and dips eased into long smooth curves: no kinks at the crests)
         for (let i = 0; i < N; i++) { let sum = 0; for (let k = -W2; k <= W2; k++) sum += src[(i + k + N) % N] * wt[k + W2]; E[i] = sum / ws; } }
       return E; }
     let mx = 0; for (let i = 1; i < N; i++) mx = Math.max(mx, Math.abs(E[i] - E[i - 1]) / t.SPC);
@@ -206,7 +206,8 @@ export function create(A) {
       const lh = n ? sum / n : mean;
       for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const w = smooth(L.rx + 150, L.rx + 20, Math.hypot(i * G - L.cx, j * G - L.cy)); if (w > 0) { const o = j * GN + i; HG[o] += (lh - HG[o]) * w; } }
     }
-    if (t.theme.bank) {   // ✨ banked corners: the outside of every bend rises (up to ~9°), like a real circuit; it fades into the grass beyond the verge
+    if (t.frames) { BANKS = new Float32Array(t.N); for (let i = 0; i < t.N; i++) { const F = t.frames, bh = Math.hypot(F[i * 3], F[i * 3 + 1]); BANKS[i] = bh > .2 ? Math.max(-1.6, Math.min(1.6, -F[i * 3 + 2] / bh)) : 0; } }   // (a measured road: its own banking, exactly)
+    else if (t.theme.bank) {   // ✨ banked corners: the outside of every bend rises (up to ~9°), like a real circuit; it fades into the grass beyond the verge
       const P = t.PTS, n = t.N, ang = i => { const a = P[(i + n - 4) % n], b = P[(i + 4) % n]; return Math.atan2(b[1] - a[1], b[0] - a[0]); }, KAP = new Float32Array(n);
       for (let i = 0; i < n; i++) { let d = ang((i + 5) % n) - ang((i + n - 5) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); KAP[i] = d / (10 * t.SPC); }
       const KS = new Float32Array(n); for (let i = 0; i < n; i++) { let sum = 0; for (let k = -12; k <= 12; k++) sum += KAP[(i + k + n) % n]; KS[i] = sum / 25; }
@@ -415,6 +416,35 @@ export function create(A) {
       const body = new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ color: 0x3a3050, emissive: 0x0c0a18, side: THREE.DoubleSide })); scene.add(body); roadObjs.push(body); }
     return [road, curb];
   }
+  // 🎢 a road laid along its own measured 3D path: at every point the road's sideways direction (b) and its up (nrm = along x b), so it banks, twists
+  // onto its side and loops exactly; the glowing surface, the gold kerbs, and a gold underside with sides so it reads as a solid ribbon from anywhere
+  const frameAt = (t, i) => { const n = t.N, F = t.frames; i = ((i % n) + n) % n; const b = [F[i * 3], F[i * 3 + 1], F[i * 3 + 2]], p = t.PTS[i], q = t.PTS[(i + 1) % n], o = t.PTS[(i + n - 1) % n];
+    let tx = q[0] - o[0], ty = q[1] - o[1], tz = q[2] - o[2]; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+    return { p, b, t: [tx, ty, tz], nrm: [ty * b[2] - tz * b[1], tz * b[0] - tx * b[2], tx * b[1] - ty * b[0]] }; };
+  const frameV = (f, o, up) => [f.p[0] + f.b[0] * o + f.nrm[0] * up, f.p[2] + f.b[2] * o + f.nrm[2] * up, f.p[1] + f.b[1] * o + f.nrm[1] * up];   // (game x, y, height -> three x, height, z)
+  const rideFrame = (t, r) => { const i = Math.floor(r.rs), f = r.rs - i, A = frameAt(t, i), B = frameAt(t, i + 1), L = (u, v) => [u[0] + (v[0] - u[0]) * f, u[1] + (v[1] - u[1]) * f, u[2] + (v[2] - u[2]) * f];
+    const p = L(A.p, B.p), b = L(A.b, B.b), tt = L(A.t, B.t), n = L(A.nrm, B.nrm), lat = r.rlat || 0, V3 = (x, y, z) => new THREE.Vector3(x, z, y);
+    return { P: V3(p[0] + b[0] * lat, p[1] + b[1] * lat, p[2] + b[2] * lat), T: V3(...tt).normalize(), N: V3(...n).normalize(), B: V3(...b).normalize() }; };
+  function ribbon3d(t, roadMat, curbMat, skip) {
+    const n = t.N, W = t.ROAD, CUR = t.CURB || 14, K = 8, skipped = i => skip.some(g => i >= g.a && i < g.b), rows = n + 1;
+    const L = [0]; for (let i = 1; i <= n; i++) { const p = t.PTS[i % n], q = t.PTS[i - 1]; L.push(L[i - 1] + Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])); }
+    const rv = Math.max(1, Math.round(L[n] / 192)) / L[n], rc = Math.max(1, Math.round(L[n] / 32)) / L[n], FR = []; for (let i = 0; i < rows; i++) FR.push(frameAt(t, i));
+    const P = [], UV = [], I = [];
+    for (let i = 0; i < rows; i++) for (let k = 0; k <= K; k++) { P.push(...frameV(FR[i], -W / 2 + W * k / K, .5)); UV.push(k / K, L[i] * rv); }
+    for (let i = 0; i < rows - 1; i++) if (!skipped(i)) for (let k = 0; k < K; k++) { const a = i * (K + 1) + k, b = a + K + 1; I.push(a, a + 1, b, a + 1, b + 1, b); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I); geo.computeVertexNormals();
+    const CP = [], CU = [], CI = [];
+    for (const sd of [-1, 1]) { const base = CP.length / 3, prof = [[W / 2, .5], [W / 2, 2.1], [W / 2 + CUR, 2.1], [W / 2 + CUR + 1.5, -1.5]];
+      for (let i = 0; i < rows; i++) for (const [o, up] of prof) { CP.push(...frameV(FR[i], sd * o, up)); CU.push(.5, L[i] * rc); }
+      for (let i = 0; i < rows - 1; i++) if (!skipped(i)) for (let k = 0; k < 3; k++) { const a = base + i * 4 + k, b = a + 4; if (sd > 0) CI.push(a, b, a + 1, a + 1, b, b + 1); else CI.push(a, a + 1, b, a + 1, b + 1, b); } }
+    const cg = new THREE.BufferGeometry(); cg.setAttribute("position", new THREE.Float32BufferAttribute(CP, 3)); cg.setAttribute("uv", new THREE.Float32BufferAttribute(CU, 2)); cg.setIndex(CI); cg.computeVertexNormals();
+    const SP = [], SI = [], T0 = 9, ow = W / 2 + CUR + 1.5;   // the body: gold sides and a gold underside
+    for (let i = 0; i < rows; i++) for (const o of [-ow, ow]) for (const up of [-1.5, -T0]) SP.push(...frameV(FR[i], o, up));
+    for (let i = 0; i < rows - 1; i++) if (!skipped(i)) { const a = i * 4, b = a + 4; SI.push(a, b, a + 1, a + 1, b, b + 1, a + 2, a + 3, b + 2, a + 3, b + 3, b + 2, a + 1, b + 1, a + 3, a + 3, b + 1, b + 3); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.Float32BufferAttribute(SP, 3)); sg.setIndex(SI); sg.computeVertexNormals();
+    const road = new THREE.Mesh(geo, roadMat), curb = new THREE.Mesh(cg, curbMat), body = new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ color: 0xc8963a, emissive: 0x3a2408, side: THREE.DoubleSide }));
+    curbMat.side = THREE.DoubleSide; scene.add(road, curb, body); roadObjs.push(road, curb, body); return [road, curb];
+  }
   function roadMat(tex, decal, glow) {
     const w = WORLD;
     const m = glow === 2 ? new THREE.MeshStandardMaterial({ map: tex, roughness: .92, metalness: 0, envMapIntensity: .08, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }) : new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // (the star road's glass tiles are glossy: they catch reflections)
@@ -472,7 +502,8 @@ export function create(A) {
     if (th.clean && !th.skyroad) { const n = t.N, P = t.PTS, ang = i => { const a = P[(i + n - 3) % n], b = P[(i + 3) % n]; return Math.atan2(b[1] - a[1], b[0] - a[0]); }, bend = new Uint8Array(n);   // ✨ kerbs only round the corners (none down the straights), like a real circuit
       for (let i = 0; i < n; i++) { let d = ang((i + 4) % n) - ang((i + n - 4) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); if (Math.abs(d) / (8 * t.SPC) > 1 / 700) for (let k = -26; k <= 26; k++) bend[(i + k + n) % n] = 1; }
       for (let i = 0; i < n; ) { if (bend[i]) { i++; continue; } let j = i; while (j < n && !bend[j]) j++; mainBare.push({ a: i, b: j }); i = j; } }
-    ribbon(t.PTS, !t.OPEN, t.ROAD, mainMat, cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare, RY ? (x, y, i) => surfY(x, y, i) : null);
+    if (t.frames) ribbon3d(t, mainMat, cm, [...(t.gaps || []), ...(t.hide || [])]);   // 🎢 laid along its own 3D path
+    else ribbon(t.PTS, !t.OPEN, t.ROAD, mainMat, cm, .5, [...(t.gaps || []), ...(t.hide || [])], mainBare, RY ? (x, y, i) => surfY(x, y, i) : null);
     lapGapM = []; tideFn = t.tideAt || null; if (!t.water) waterP = null;
     for (const g of (t.gaps || []).filter(g => g.lap)) { const rm = mainMat.clone(), cmm = cm.clone(), ms = ribbon(t.PTS, !t.OPEN, t.ROAD, rm, cmm, .5, [{ a: -1, b: g.a }, { a: g.b, b: t.N + 2 }], []); lapGapM.push({ g, ms }); }   // 🪵 boardwalk that collapses on a later lap
     phantomM = []; for (const g of (t.gaps || []).filter(g => g.phantom)) {   // 👻 the vanishing roads: the same road, on its own, fading in and out
@@ -1497,7 +1528,7 @@ export function create(A) {
     root.traverse(q => { if (q.isMesh) { q.castShadow = !ghost; q.receiveShadow = true; } });
     return { root, tilt, body, wheels, ice, flames, driver, driverTex, paint, mats, ghost: !!ghost, faded: false, im: null, roll: 0, used: true };
   }
-  const karts = new Map();
+  const karts = new Map(), M4R = new THREE.Matrix4();
   function kart(r, o) {
     let m = karts.get(r);
     if (!m || m.color !== o.color) { if (m) scene.remove(m.root); m = makeKart(o.color, o.ghost, o.family); m.color = o.color; karts.set(r, m); }
@@ -1508,10 +1539,13 @@ export function create(A) {
     const gx = r.x, gy = r.y, a = r.a || 0, ca = Math.cos(a), sa = Math.sin(a);
     const al = airLift(r); m.lift = m.lift == null ? al : m.lift + (al - m.lift) * Math.min(1, (o.dt || .016) * (al > m.lift ? 20 : 8));   // (eased, so landing off the road doesn't jump)
     const H = RY && r.idx != null ? (x, y) => surfAt(x, y, r.idx) : h;   // (on the sky road: the road's own height, even where it crosses itself)
-    m.root.position.set(gx, (RY && r.idx != null ? surfY(gx, gy, r.idx) : h(gx, gy)) + (RY ? 0 : m.lift), gy); m.root.rotation.y = -a;
+    if (lastT && lastT.frames && r.ride) { const F = rideFrame(lastT, r); m.root.position.copy(F.P); m.root.quaternion.setFromRotationMatrix(M4R.makeBasis(F.T, F.N, F.B)); m.tilt.rotation.set(0, 0, 0); }   // 🎢 on a ride: sitting on the road's own 3D path, rolled with it
+    else if (lastT && lastT.frames && r.idx != null) { const F = rideFrame(lastT, { rs: r.idx, rlat: 0 }), fw = new THREE.Vector3(ca, 0, sa); fw.addScaledVector(F.N, -fw.dot(F.N)).normalize(); const sd = new THREE.Vector3().crossVectors(fw, F.N);   // (on a measured road: sitting in the road's own tilt, facing where you're heading)
+      m.root.position.set(gx, surfY(gx, gy, r.idx), gy); m.root.quaternion.setFromRotationMatrix(M4R.makeBasis(fw, F.N, sd)); }
+    else { m.root.position.set(gx, (RY && r.idx != null ? surfY(gx, gy, r.idx) : h(gx, gy)) + (RY ? 0 : m.lift), gy); m.root.rotation.set(0, -a, 0); }
     // lean with the ground: nose up on a climb, tipped on a side slope
-    const f = H(gx + ca * 11, gy + sa * 11) - H(gx - ca * 11, gy - sa * 11), sd = H(gx - sa * 8, gy + ca * 8) - H(gx + sa * 8, gy - ca * 8);
-    m.tilt.rotation.set(Math.atan2(sd, 16) * (RY ? 1 : .9), 0, Math.atan2(f, 22));
+    if (lastT && lastT.frames) m.tilt.rotation.set(0, 0, 0); else { const f = H(gx + ca * 11, gy + sa * 11) - H(gx - ca * 11, gy - sa * 11), sd = H(gx - sa * 8, gy + ca * 8) - H(gx + sa * 8, gy - ca * 8);
+      m.tilt.rotation.set(Math.atan2(sd, 16) * (RY ? 1 : .9), 0, Math.atan2(f, 22)); }
     const t = performance.now() / 1000, spin = r.spin > 0 ? (.9 - r.spin) / .9 * Math.PI * 4 : 0, flip = r.flip > 0 ? (1 - r.flip / .4) * Math.PI * 2 : 0;
     const hop = r.hop > 0 ? Math.sin((r.hop / .18) * Math.PI) * 4 : 0, lift = r.rescue > 0 ? (r.rescue > .7 ? (1.4 - r.rescue) / .7 : r.rescue / .7) * 40 : 0;
     m.body.position.y = Math.max(0, r.z || 0) + hop + lift;
@@ -1706,13 +1740,13 @@ export function create(A) {
       const ban = new THREE.Mesh(new THREE.CylinderGeometry(R * .7, R * .7, 52, 48, 1, true, -.62, 1.24), new THREE.MeshBasicMaterial({ map: banTex, side: THREE.DoubleSide })); ban.rotation.x = Math.PI / 2; ban.rotation.y = Math.PI; ban.position.set(0, cy - R * .7 + R * .82, 18); g.add(ban);
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xffc870, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(R * 2.4, R * 2.4, 1); glow.position.y = cy; g.add(glow); });
     // enormous rainbow rings floating beside the course, tilted every which way (a big one just left of the start, more further off)
-    { const rtx = surfaceTex("rainbow64", t.theme, 180); rtx.wrapS = rtx.wrapT = THREE.RepeatWrapping; rtx.repeat.set(36, 2);
+    if (!t.frames) { const rtx = surfaceTex("rainbow64", t.theme, 180); rtx.wrapS = rtx.wrapT = THREE.RepeatWrapping; rtx.repeat.set(36, 2);
       const rm = new THREE.MeshStandardMaterial({ map: rtx, emissive: 0xffffff, emissiveMap: rtx, emissiveIntensity: .55, roughness: .3, metalness: .05, side: THREE.DoubleSide });
       const [sx, sz] = P[0], a0 = ang(0), fw = [Math.cos(a0), Math.sin(a0)], lt = [Math.sin(a0), -Math.cos(a0)];
       for (const [lat, fwd, up, R, tube, rx, ry] of [[-760, 520, 120, 360, 46, 1.25, .5], [980, 1500, 300, 300, 40, .4, 1.1], [-1500, 2300, 420, 420, 50, .9, -.4], [1500, -900, 260, 330, 42, 1.4, .2]]) {
         const m = new THREE.Mesh(new THREE.TorusGeometry(R, tube, 20, 96), rm); m.position.set(sx + lt[0] * lat + fw[0] * fwd, RE[0] + up, sz + lt[1] * lat + fw[1] * fwd); m.rotation.set(rx, ry - a0, .3); grp.add(m); } }
     // the second arch down the start straight: a gold ring with a band of chequered lights
-    ringAt(150, t.ROAD / 2 + 70, (t.ROAD / 2 + 70) * .55, (g, R, cy) => {
+    for (const ai of t.frames && t.pmk ? t.pmk.sections : [150]) ringAt(ai, t.ROAD / 2 + 70, (t.ROAD / 2 + 70) * .55, (g, R, cy) => {   // (a measured road: one over each section line)
       const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 14, 14, 80), gold); ring.position.y = cy; g.add(ring);
       const chk = ctex(512, 32, (c, W, H) => { for (let k = 0; k < 32; k++) for (let j = 0; j < 2; j++) { c.fillStyle = (k + j) % 2 ? "#141008" : "#fff4d8"; c.fillRect(k * 16, j * 16, 16, 16); } }, true); chk.repeat.set(5, 1);
       const band = new THREE.Mesh(new THREE.TorusGeometry(R - 22, 9, 6, 80), new THREE.MeshBasicMaterial({ map: chk })); band.position.y = cy; g.add(band);
@@ -1722,16 +1756,18 @@ export function create(A) {
     { const rail = new THREE.MeshStandardMaterial({ color: 0xffd36a, metalness: .5, roughness: .35, emissive: 0xffb848, emissiveIntensity: .85 });
       const outline = (ro, ri) => { const o = starShape(ro, ri), h2 = new THREE.Path(starShape(ro * .76, ri * .7).getPoints().reverse()); o.holes.push(h2); return new THREE.ExtrudeGeometry(o, { depth: 2, bevelEnabled: true, bevelThickness: 1, bevelSize: .8, bevelSegments: 2, curveSegments: 3 }); };
       const big = outline(17, 8), small = outline(12, 5.6);
-      const runs = [[n - 110, n + 14, 0], [Math.round(n * .34), Math.round(n * .43), 1], [Math.round(n * .56), Math.round(n * .62), 1]], inGap = k => (t.gaps || []).some(g => k >= g.a - 4 && k <= g.b + 4);
+      const runs = t.frames && t.pmk ? t.pmk.fences.map(([a, b]) => [a, b < a ? b + n : b, 0]) : [[n - 110, n + 14, 0], [Math.round(n * .34), Math.round(n * .43), 1], [Math.round(n * .56), Math.round(n * .62), 1]], inGap = k => (t.gaps || []).some(g => k >= g.a - 4 && k <= g.b + 4);
       const outer = k => { let d = ang((k + 6) % n) - ang((k + n - 6) % n); d = Math.atan2(Math.sin(d), Math.cos(d)); return d > 0 ? -1 : 1; };
       const place = (geo, step, off, hy, cnt) => { const inst = new THREE.InstancedMesh(geo, rail, cnt), M4 = new THREE.Matrix4(), Qn = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), V = new THREE.Vector3(), Sc = new THREE.Vector3(1, 1, 1); let c0 = 0;
         for (const [ra, rb, only] of runs) { const side0 = only ? outer(((Math.round((ra + rb) / 2) % n) + n) % n) : 0; for (let i = ra + off; i < rb; i += step) { const k = ((Math.round(i) % n) + n) % n; if (inGap(k)) continue; const a = ang(k);
-          for (const sd of only ? [side0] : [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB + 2), x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o, y = surfY(x, z, k); if (c0 >= cnt) break; Qn.setFromAxisAngle(up, -a); M4.compose(V.set(x, y + hy, z), Qn, Sc); inst.setMatrixAt(c0++, M4); } } }
+          for (const sd of only ? [side0] : [-1, 1]) { const o = sd * (t.ROAD / 2 + t.CURB + 2); if (c0 >= cnt) break;
+            if (t.frames) { const F = frameAt(t, k), tv = q => new THREE.Vector3(q[0], q[2], q[1]); Qn.setFromRotationMatrix(M4.makeBasis(tv(F.t), tv(F.nrm), tv(F.b))); M4.compose(V.set(...frameV(F, o, hy)), Qn, Sc); inst.setMatrixAt(c0++, M4); continue; }   // (on a measured road: standing up from the road whichever way it's tilted)
+            const x = P[k][0] - Math.sin(a) * o, z = P[k][1] + Math.cos(a) * o, y = surfY(x, z, k); Qn.setFromAxisAngle(up, -a); M4.compose(V.set(x, y + hy, z), Qn, Sc); inst.setMatrixAt(c0++, M4); } } }
         inst.count = c0; inst.instanceMatrix.needsUpdate = true; grp.add(inst); };
       const tot = runs.reduce((q, [a, b]) => q + (b - a), 0); place(big, 5, 0, 17, Math.ceil(tot / 5) * 2 + 8); place(small, 5, 2.5, 11, Math.ceil(tot / 5) * 2 + 8); }
     { const chk = ctex(128, 128, (c, W) => { for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = (x + y) % 2 ? "#2c2c26" : "#4e4c40"; c.fillRect(x * 32, y * 32, 32, 32); c.fillStyle = "rgba(255,240,200,.08)"; c.fillRect(x * 32 + 2, y * 32 + 2, 28, 3); } }, true);   // 🏁 the golden chequered start, as its own crisp strip on the road
       const SP = [], UV = [], IX = [], A0 = -95, A1 = 1, Wd = t.ROAD; let L = 0, prev = null;
-      for (let i = A0; i <= A1; i++) { const k = ((i % n) + n) % n, a = ang(k), p = P[k]; if (prev) L += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p; for (let q = 0; q <= 6; q++) { const o = -Wd / 2 + Wd * q / 6, x = p[0] - Math.sin(a) * o, z = p[1] + Math.cos(a) * o; SP.push(x, surfY(x, z, k) + 1.2, z); UV.push(q / 6 * 3, L / (Wd / 3)); } }
+      for (let i = A0; i <= A1; i++) { const k = ((i % n) + n) % n, a = ang(k), p = P[k]; if (prev) L += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p; for (let q = 0; q <= 6; q++) { const o = -Wd / 2 + Wd * q / 6, x = p[0] - Math.sin(a) * o, z = p[1] + Math.cos(a) * o; if (t.frames) SP.push(...frameV(frameAt(t, k), o, 1.4)); else SP.push(x, surfY(x, z, k) + 1.2, z); UV.push(q / 6 * 3, L / (Wd / 3)); } }
       for (let r0 = 0; r0 < A1 - A0; r0++) for (let q = 0; q < 6; q++) { const a = r0 * 7 + q, b = a + 7; IX.push(a, a + 1, b, a + 1, b + 1, b); }
       const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(SP, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
       const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: chk, roughness: .25, metalness: .2, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -10 })); grp.add(m); }
@@ -1743,7 +1779,7 @@ export function create(A) {
       const SP = [], UV = [], IX = [], w = pd.w || t.ROAD, cols = 4; let L = 0, prev = null;
       for (let q = 0; q <= pd.len * 2; q++) { const fi = pd.i + q / 2, k = ((Math.floor(fi) % n) + n) % n, a = ang(k), p0 = P[k], p1 = P[(k + 1) % n], f = fi - Math.floor(fi), px = p0[0] + (p1[0] - p0[0]) * f, pz = p0[1] + (p1[1] - p0[1]) * f; if (prev) L += Math.hypot(px - prev[0], pz - prev[1]); prev = [px, pz];
         const rise = glide ? Math.sin(Math.min(1, q / (pd.len * 2)) * Math.PI / 2) * 6 : 0;
-        for (let c2 = 0; c2 <= cols; c2++) { const o = (pd.o || 0) - w / 2 + w * c2 / cols, x = px - Math.sin(a) * o, z = pz + Math.cos(a) * o; SP.push(x, surfY(x, z, k) + 2 + rise, z); UV.push(c2 / cols * (w / 64), L / 64); } }
+        for (let c2 = 0; c2 <= cols; c2++) { const o = (pd.o || 0) - w / 2 + w * c2 / cols, x = px - Math.sin(a) * o, z = pz + Math.cos(a) * o; if (t.frames) SP.push(...frameV(frameAt(t, k), o, 2 + rise)); else SP.push(x, surfY(x, z, k) + 2 + rise, z); UV.push(c2 / cols * (w / 64), L / 64); } }
       for (let r0 = 0; r0 < pd.len * 2; r0++) for (let c2 = 0; c2 < cols; c2++) { const a = r0 * (cols + 1) + c2, b = a + cols + 1; IX.push(a, a + 1, b, a + 1, b + 1, b); }
       const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(SP, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(IX); geo.computeVertexNormals();
       const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -12 })); grp.add(m); if (!glide) dashM.push(tx); }
@@ -1757,10 +1793,10 @@ export function create(A) {
       let base = 0; { let bi = 0, bd = 1e12; for (let i = 0; i < n; i += 4) { const d = (P[i][0] - x) ** 2 + (P[i][1] - z) ** 2; if (d < bd) { bd = d; bi = i; } } base = RE[bi]; }
       m.position.set(x, base - 150 + rnd() * 300, z); m.rotation.set(rnd() * .6 - .3, rnd() * 6, rnd() * .6 - .3); grp.add(m); coils.push({ m, sp: (rnd() - .5) * .3 }); }
     const meds = [];
-    for (const fr of [.1, .93]) { const i = Math.round(n * fr), a = ang(i), [x, z] = P[i], R = t.ROAD / 2 + 110, g = new THREE.Group(), wm = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });   // 🌟 the giant glowing star rings you drive through
+    for (const [i0, zz] of t.frames && t.pmk ? t.pmk.rings : [.1, .93].map(fr => [Math.round(n * fr), null])) { const i = i0, a = ang(i), [x, z] = P[i], R = t.ROAD / 2 + 110, g = new THREE.Group(), wm = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });   // 🌟 the giant glowing star rings you drive through
       g.add(new THREE.Mesh(new THREE.TorusGeometry(R, 9, 10, 72), wm)); const pts = starShape(R * .78, R * .36).getPoints().map(p => new THREE.Vector3(p.x, p.y, 0)); g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, "catmullrom", 0), 200, 6, 6, true), wm));
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xfff0c8, transparent: true, opacity: .45, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(R * 3, R * 3, 1); g.add(halo);
-      g.position.set(x, RE[i] + R * .82, z); g.rotation.y = -a + Math.PI / 2; grp.add(g); }
+      g.position.set(x, zz != null ? zz : RE[i] + R * .82, z); g.rotation.y = -a + Math.PI / 2; grp.add(g); }
     for (let k = 0, tries = 0; k < 0 && tries < 400; tries++) { const i = Math.floor(rnd() * n), a = ang(i), sd2 = rnd() < .5 ? -1 : 1, o = sd2 * (t.ROAD / 2 + 260 + rnd() * 300), x = P[i][0] - Math.sin(a) * o, z = P[i][1] + Math.cos(a) * o; if (!far(x, z, 200)) continue; k++;
       const g = new THREE.Group(), ring = new THREE.Mesh(new THREE.TorusGeometry(110, 7, 10, 48), new THREE.MeshBasicMaterial({ color: 0xfff2c8 })), st = new THREE.Mesh(new THREE.ShapeGeometry(starShape(80, 34)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, side: THREE.DoubleSide }));
       const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: 0xfff0c0, transparent: true, opacity: .28, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(300, 300, 1);
@@ -1972,8 +2008,14 @@ export function create(A) {
       tmp.set(qx - Math.cos(qa) * 20, h(qx, qy) + 10, qy - Math.sin(qa) * 20).lerp(look, e); look.copy(tmp);
       cam.yaw = a; cam.y = want; cam.base = base; cam.zu = zu;
     }
+    { const FT = lastT && lastT.frames, riding = !!(FT && k.ride);   // 🎢 on a ride (or a steeply banked bend): the same chase camera (as far back, as high), but in the road's own frame, so it rolls with you
+      let want = riding ? 1 : 0; if (FT && !riding && k.idx != null) { const F = rideFrame(lastT, { rs: k.idx, rlat: 0 }); F.P.set(k.x, kh, k.y); cam.rf = F; want = smooth(.42, .9, Math.acos(Math.max(-1, Math.min(1, F.N.y)))); }
+      cam.rw = o.snap ? want : (cam.rw || 0) + (want - (cam.rw || 0)) * Math.min(1, o.dt * 5);
+      if (riding) cam.rf = rideFrame(lastT, k);
+      if (cam.rw > .001 && cam.rf) { const F = cam.rf, w = cam.rw, cp = F.P.clone().addScaledVector(F.T, -58 - 9 * (o.fov || 0)).addScaledVector(F.N, CU), lp = F.P.clone().addScaledVector(F.T, 56).addScaledVector(F.N, 2);
+        camera.position.lerp(cp, w); look.lerp(lp, w); camera.up.set(0, 1, 0).lerp(F.N, w).normalize(); } else camera.up.set(0, 1, 0); }
     shake = o.shake || 0; if (shake > 0) camera.position.add(tmp.set((Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6, (Math.random() - .5) * shake * 6));
-    if (window.__camOv) { const c = window.__camOv; camera.position.set(c[0], c[1], c[2]); look.set(c[3], c[4], c[5]); if (scene.fog) { scene.__fog = scene.fog; scene.fog = null; } }   // (a dev hook: a fixed camera with no haze, for overview pictures)
+    if (window.__camOv) { const c = window.__camOv; camera.position.set(c[0], c[1], c[2]); look.set(c[3], c[4], c[5]); camera.up.set(0, 1, 0); if (scene.fog) { scene.__fog = scene.fog; scene.fog = null; } }   // (a dev hook: a fixed camera with no haze, for overview pictures)
     else if (scene.__fog) { scene.fog = scene.__fog; scene.__fog = null; }
     camera.lookAt(look);
     if (NG) { const fx = Math.round((k.x + Math.cos(cam.yaw) * 260) / 8) * 8, fz = Math.round((k.y + Math.sin(cam.yaw) * 260) / 8) * 8, fy = Math.round(kh / 8) * 8, D = mood.dir;   // the shadow box sits just ahead of you
