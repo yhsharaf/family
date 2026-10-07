@@ -1884,7 +1884,7 @@ export function create(A) {
     const a = k.a || 0;
     if (cam.yaw == null || o.snap) cam.yaw = a;
     let d = a - cam.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); cam.yaw += d * Math.min(1, o.dt * 7);   // the camera swings round a moment after the kart
-    const CU = SKY ? 30 : 34, dist = (SKY ? 72 : 58) + 9 * (o.fov || 0), up = CU + Math.min(k.z || 0, 260) * .95;   // (the sky road: a touch farther back, so the road leads the eye to the horizon)   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
+    const CU = 34, dist = 58 + 9 * (o.fov || 0), up = CU + Math.min(k.z || 0, 260) * .95;   // (the same camera on every track: the user's favourite - keep it)   // rises with you in the air (big mushroom bounces too)   // up high and looking down at the road, like Mario Kart Tour
     const gx = k.x - Math.cos(cam.yaw) * dist, gz = k.y - Math.sin(cam.yaw) * dist;
     const lift = airLift(k); cam.lift = o.snap || cam.lift == null ? lift : cam.lift + (lift - cam.lift) * Math.min(1, o.dt * (lift > cam.lift ? 20 : 6));
     const kh = SKY && k.idx != null ? surfY(k.x, k.y, k.idx) : h(k.x, k.y) + cam.lift, base = SKY ? kh : Math.max(kh, h(gx, gz) - 6), want = base + up;   // (flying off the road: follow the road's height, not the ravine under you)
