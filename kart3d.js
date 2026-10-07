@@ -1837,12 +1837,12 @@ export function create(A) {
         for (const p of pts) { const dot = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowDisc(), color: cols[k], transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); dot.scale.set(90, 90, 1); dot.position.copy(p); g.add(dot); } }
       g.position.set(cx, 1600 + q * 160, cz); g.lookAt(WORLD / 2, 1600, WORLD / 2); grp.add(g); cons.push({ g, mat, ph: q }); });
     // fireworks: a pool of bursts going off over the city
-    const FN = t.theme.blackbg ? 0 : 6, PN = 160, bursts = [];
+    const FN = 6, PN = 160, bursts = [];   // (over the black sky too: they're the show)
     for (let b = 0; b < FN; b++) { const geo = new THREE.BufferGeometry(), pos = new Float32Array(PN * 3); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
       const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 26, map: glowDisc(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), pts = new THREE.Points(geo, mat); pts.frustumCulled = false; grp.add(pts);
       bursts.push({ pts, pos, mat, vel: new Float32Array(PN * 3), t: 9, life: 2.2, c: new THREE.Vector3() }); }
     const slimes = (t.rollers || []).map(() => { const m = slimeModel(); scene.add(m); roadObjs.push(m); return m; });
-    starFx = { coils, meds, cons, bursts, next: 0, rnd, slimes, rollerAt: t.rollerAt, rollers: t.rollers || [], dashM };
+    starFx = { coils, meds, cons, bursts, next: 0, rnd, slimes, rollerAt: t.rollerAt, rollers: t.rollers || [], dashM, boom: t.boom || null };
   }
   function slimeModel() {   // 💧 a giant cute slime: a glossy blue drop with a pointy top, big shiny eyes, rosy cheeks and a smile
     const g = new THREE.Group(), body = new THREE.MeshPhysicalMaterial({ color: 0x4aa8ff, emissive: 0x0a2a5a, roughness: .15, metalness: 0, clearcoat: 1, transparent: true, opacity: .93 }), S1 = new THREE.SphereGeometry(1, 20, 14);
@@ -1859,7 +1859,7 @@ export function create(A) {
     for (const c of F.coils) c.m.rotation.y += c.sp * dt; for (const m of F.meds) m.g.rotation.y += m.sp * dt;
     for (const c of F.cons) c.mat.opacity = .65 + .3 * Math.sin(now * 1.3 + c.ph);
     F.next -= dt; if (F.next <= 0 && F.bursts.length) { F.next = .5 + F.rnd() * .9; const b = F.bursts.find(q => q.t > q.life) || F.bursts[0], a = F.rnd() * 6.28, d = 900 + F.rnd() * 1800;   // a new firework somewhere round you
-      b.c.set(cx + Math.cos(a) * d, cy + 250 + F.rnd() * 650, cz + Math.sin(a) * d); b.t = 0; b.mat.color.setHSL(F.rnd(), .9, .62); const sp = 260 + F.rnd() * 180;
+      b.c.set(cx + Math.cos(a) * d, cy + 250 + F.rnd() * 650, cz + Math.sin(a) * d); b.t = 0; b.mat.color.setHSL(F.rnd(), .9, .62); const sp = 260 + F.rnd() * 180; if (F.boom) F.boom(d);   // (and you hear it go off)
       for (let k = 0; k < b.pos.length / 3; k++) { const u = F.rnd() * 2 - 1, th = F.rnd() * 6.28, r = Math.sqrt(1 - u * u), s2 = sp * (.85 + F.rnd() * .3); b.vel[k * 3] = r * Math.cos(th) * s2; b.vel[k * 3 + 1] = u * s2; b.vel[k * 3 + 2] = r * Math.sin(th) * s2; b.pos[k * 3] = b.c.x; b.pos[k * 3 + 1] = b.c.y; b.pos[k * 3 + 2] = b.c.z; } }
     for (const b of F.bursts) { if (b.t > b.life) { b.mat.opacity = 0; continue; } b.t += dt; const drag = Math.exp(-1.6 * dt);
       for (let k = 0; k < b.pos.length / 3; k++) { b.vel[k * 3] *= drag; b.vel[k * 3 + 1] = b.vel[k * 3 + 1] * drag - 90 * dt; b.vel[k * 3 + 2] *= drag; b.pos[k * 3] += b.vel[k * 3] * dt; b.pos[k * 3 + 1] += b.vel[k * 3 + 1] * dt; b.pos[k * 3 + 2] += b.vel[k * 3 + 2] * dt; }
