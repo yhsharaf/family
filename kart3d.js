@@ -120,8 +120,11 @@ export function create(A) {
   // 🌈 the sky road: the road floats in the air (and crosses over itself), so karts ride on the road's own height and banking at their place on
   // the track (r.idx), not on the ground under them
   let SKY = false, BANKS = null, SPTS = null;
-  const surfY = (x, y, idx) => { const n = RE.length, i = ((Math.floor(idx) % n) + n) % n, j = (i + 1) % n, f = idx - Math.floor(idx), p = SPTS[i], q0 = SPTS[(i + n - 2) % n], q1 = SPTS[(i + 2) % n], a = Math.atan2(q1[1] - q0[1], q1[0] - q0[0]), dn = -(x - p[0]) * Math.sin(a) + (y - p[1]) * Math.cos(a);
-    return RE[i] + (RE[j] - RE[i]) * f - (BANKS ? BANKS[i] * Math.max(-210, Math.min(210, dn)) : 0); };
+  const surfY = (x, y, idx) => { const n = RE.length, i = ((Math.floor(idx) % n) + n) % n, p = SPTS[i];   // (smooth: the exact spot between the two nearest road points, so the height glides instead of stepping)
+    let j = (i + 1) % n, q = SPTS[j], dx = q[0] - p[0], dy = q[1] - p[1], f = ((x - p[0]) * dx + (y - p[1]) * dy) / (dx * dx + dy * dy || 1);
+    if (f < 0) { j = (i + n - 1) % n; q = SPTS[j]; dx = q[0] - p[0]; dy = q[1] - p[1]; f = ((x - p[0]) * dx + (y - p[1]) * dy) / (dx * dx + dy * dy || 1); }
+    f = Math.max(0, Math.min(1, f)); const q0 = SPTS[(i + n - 2) % n], q1 = SPTS[(i + 2) % n], a = Math.atan2(q1[1] - q0[1], q1[0] - q0[0]), dn = -(x - p[0]) * Math.sin(a) + (y - p[1]) * Math.cos(a);
+    const bank = BANKS ? BANKS[i] + (BANKS[j] - BANKS[i]) * f : 0; return RE[i] + (RE[j] - RE[i]) * f - bank * Math.max(-210, Math.min(210, dn)); };
   const airLift = r => { if (!RE || r.idx == null) return 0; if (!(r.z > 0)) { const i = r.idx | 0; if (!bridgeG.some(g => i > g.a && i < g.b)) return 0; } const g = h(r.x, r.y), e = RE[Math.max(0, Math.min(RE.length - 1, r.idx | 0))]; return Math.max(0, e - g); };   // (and on a rope bridge, over the ravine, you're held up at the road's height)
   const h = (x, y) => {
     const fx = Math.max(0, Math.min(GN - 1.001, x / G)), fy = Math.max(0, Math.min(GN - 1.001, y / G)), i = fx | 0, j = fy | 0, ax = fx - i, ay = fy - j, o = j * GN + i;
@@ -136,7 +139,10 @@ export function create(A) {
       const cd = Math.min(s, 1 - s);
       E[i] = (Math.sin(6.28 * 2 * s + p1) * 70 + Math.sin(6.28 * 3 * s + p2) * 32) * smooth(.015, .07, cd);
     }
-    if (t.PTS[0].length > 2) { for (let i = 0; i < N; i++) E[i] = t.PTS[i][2] * (t.theme.hills ?? 1); return E; }   // a track with its own planned hills
+    if (t.PTS[0].length > 2) { for (let i = 0; i < N; i++) E[i] = t.PTS[i][2] * (t.theme.hills ?? 1);   // a track with its own planned hills
+      if (t.theme.skyroad) { const W2 = 34, src = E.slice(), wt = []; let ws = 0; for (let k = -W2; k <= W2; k++) { const w = Math.exp(-(k * k) / (2 * (W2 / 2.2) ** 2)); wt.push(w); ws += w; }   // (the floating road's climbs and dips eased into long smooth curves: no kinks at the crests)
+        for (let i = 0; i < N; i++) { let sum = 0; for (let k = -W2; k <= W2; k++) sum += src[(i + k + N) % N] * wt[k + W2]; E[i] = sum / ws; } }
+      return E; }
     let mx = 0; for (let i = 1; i < N; i++) mx = Math.max(mx, Math.abs(E[i] - E[i - 1]) / t.SPC);
     const k = Math.min(1, .13 / (mx || 1)) * hills; for (let i = 0; i < N; i++) E[i] *= k;
     return E;
@@ -1910,5 +1916,5 @@ export function create(A) {
   function clearKarts() { for (const m of karts.values()) scene.remove(m.root); karts.clear(); cam.yaw = null; }
   const snap = () => { draw(); return renderer.domElement; };   // (testing) the 3D picture, read right after drawing it
   const liftOf = r => { const m = karts.get(r); return m && m.lift != null ? m.lift : airLift(r); };   // how high above the ground a kart is drawn (for the 2D bits on top: name tags, held items)
-  return { snap, sync, begin, end, spr, box, mdl, kart, proj, hidden, h, liftOf, camera, setQuality, get quality() { return Q; }, get ng() { return NG; }, tune: o => { if (!mood) return; Object.assign(mood, o); sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI; return { ...mood }; }, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
+  return { snap, sync, begin, end, spr, box, mdl, kart, proj, hidden, h, liftOf, camera, surf: (x, y, i) => surfY(x, y, i), setQuality, get quality() { return Q; }, get ng() { return NG; }, tune: o => { if (!mood) return; Object.assign(mood, o); sun.color.setHex(mood.sun); sun.intensity = mood.sunI; sun.position.set(...mood.dir); hemi.color.setHex(mood.sky); hemi.groundColor.setHex(mood.gnd); hemi.intensity = mood.hemiI; return { ...mood }; }, resize, clearKarts, renderer, scene, reset: () => { key = null; }, get key() { return key; } };
 }
