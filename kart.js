@@ -1043,11 +1043,11 @@ const TRACKS = {
 };
 // the cups: 3 tracks each, raced in this order in the Grand Prix. Each new cup has its own twist.
 const CUPS = {
-  henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "discovery", "forest"], rule: "" },
+  henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "town", "forest"], rule: "" },
   elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: brake early and drift round the corners" },
   sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Deep in the forest: boardwalks, ponds and gliders" },
   zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Block Golems, mine carts and lava: no railings in places, so mind the edges" },
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["ld1", "star", "ld3"], rule: "🧸 The clocktower and two rainbow roads: no railings on the rainbows, so mind the edges" },
+  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["discovery", "star", "ld3"], rule: "🔭 The gorge, the Star Road and the Starlight Rainbow: no railings, so mind the edges" },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
 function loadTrack(key) {
@@ -4205,6 +4205,16 @@ function hashRoom() {
 }
 addEventListener("hashchange", hashRoom);
 setTimeout(hashRoom, 60);
+function hashTrack() {   // 🔗 a link straight to one track: #kart/discovery opens the kart page with that track picked, ready to race
+  const m = location.hash.match(/^#kart\/([a-z][a-z0-9]*)$/), key = m && m[1]; if (!key || !TRACKS[key] || !CUPS[cupOf(key)].tracks.includes(key)) return;
+  document.querySelectorAll("section").forEach(sec => sec.classList.toggle("on", sec.id === "kart"));
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#kart"));
+  cup = cupOf(key); track = key; store.set("kart_cup", cup); store.set("kart_track", track);
+  if (mode !== "tt" && !MP.code) { mode = "tt"; store.set("kart_mode", mode); drawMode(); }   // (a solo run on it: a room races its cup from the start)
+  drawTrack();
+}
+addEventListener("hashchange", hashTrack);
+setTimeout(hashTrack, 60);
 // 👀 watching a room race you joined in the middle of: the camera follows one racer (tap or ← → to switch); you're in for the next race
 async function mpWatch(data) {
   if (MP.watching) return; MP.watching = true; const my = ++raceId;
