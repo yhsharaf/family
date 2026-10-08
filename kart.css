@@ -23,7 +23,9 @@
 .kt-wrong { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 14%; background: #d65c54; color: #fff; font-weight: 900; font-size: 18px;
   padding: 4px 12px; border-radius: 10px; border: 2px solid #fff; animation: pop .5s infinite alternate; }
 .kt-wrong[hidden] { display: none; }
-.kt-load { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.15em; letter-spacing: .02em; color: #fff; background: radial-gradient(ellipse at center, #2a2236 0%, #120e18 100%); }
+.kt-load { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; font-weight: 800; font-size: 1.15em; letter-spacing: .02em; color: #fff; background: radial-gradient(ellipse at center, #2a2236 0%, #120e18 100%); }
+.kt-balrog { height: 120px; image-rendering: pixelated; animation: ktBalrog 2.6s ease-in-out infinite; filter: drop-shadow(0 8px 10px rgba(0,0,0,.5)); }   /* 👹 Balrog dances left and right while the room loads (he faces the way he moves) */
+@keyframes ktBalrog { 0% { transform: translateX(-70px) scaleX(1); } 49.9% { transform: translateX(70px) scaleX(1); } 50% { transform: translateX(70px) scaleX(-1); } 99.9% { transform: translateX(-70px) scaleX(-1); } 100% { transform: translateX(-70px) scaleX(1); } }
 .kt-dots::after { content: ""; display: inline-block; width: 1.4em; text-align: left; animation: ktDots 1.2s steps(4) infinite; }
 @keyframes ktDots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
 .kt-load[hidden] { display: none; }
@@ -388,7 +390,7 @@ kbd.w { min-width: 54px; }
 .k-mesoall { opacity: .8; font-weight: 600; }
 
 /* 🎬 the course intro: a white cover that slides off, and the course name on a banner (bottom left, like a race broadcast) */
-.kt-white { position: absolute; inset: 0; z-index: 29; background: #fff; pointer-events: none; opacity: 0; }
+.kt-white { position: absolute; inset: 0; z-index: 29; background: #fff; pointer-events: none; opacity: 0; will-change: opacity; }
 .kt-white[hidden] { display: none; }
 .kt-banner { position: absolute; left: 14px; bottom: 14px; z-index: 28; display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 10px; border-radius: 12px; background: rgba(12, 10, 26, .74); border: 2px solid rgba(255, 215, 120, .6); color: #fff; box-shadow: 0 8px 26px rgba(0, 0, 0, .45); animation: ktBannerIn .6s ease-out both; }
 .kt-banner[hidden] { display: none; }

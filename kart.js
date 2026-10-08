@@ -1995,7 +1995,7 @@ function gridSpot(slot) {
 // ------------------------------------------------------------------ multiplayer (rooms of 2-8, the first one in is the host)
 // Everyone drives their own kart; positions go out ~12 times a second over Realtime broadcast, other players are drawn from those.
 // Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
-const MP = { tally: {}, tallied: null, pick: null, endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "star", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
+const MP = { loaded: {}, tally: {}, tallied: null, pick: null, endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "star", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
 const mpOn = () => mode === "mp" && !!MP.code;
 // 🔒 Room messages are encrypted and signed (AES-GCM) with the room's secret, which the server only gives to players who joined.
 // Someone who just knows the room code can't read them or fake them. The direct-connection setup is never sent without it.
@@ -2089,7 +2089,7 @@ const liveOK = r => r.net && performance.now() - r.net.t < 2500;   // fresh live
 function remoteStep(r, dt) {
   if (!liveOK(r) && r.srvProg != null) {   // no live messages: follow the server's progress along the road (shown slightly see-through)
     const i = OPEN ? Math.round(START_I + r.srvProg * (N - FIN_OFF - START_I)) : Math.round((r.srvProg * LAPS % 1) * N) % N, [x, y] = at(i, 0), f = Math.min(1, dt * 3);
-    r.x += (x - r.x) * f; r.y += (y - r.y) * f; r.a = tangent(i); r.idx = i; r.lap = OPEN ? 0 : Math.min(LAPS - 1, Math.floor(r.srvProg * LAPS)); r.cps = Math.floor((i / N) * 4) % 4; r.gone = false; r.ghost = true; return;
+    r.x += (x - r.x) * f; r.y += (y - r.y) * f; r.a = tangent(i); r.idx = i; r.lap = OPEN ? 0 : Math.min(LAPS - 1, Math.floor(r.srvProg * LAPS)); r.cps = Math.floor((i / N) * 4) % 4; r.gone = false; if (FRAMES) pathRead(r); r.ghost = true; return;
   }
   r.ghost = false;
   if (!r.net) return;
@@ -2100,6 +2100,7 @@ function remoteStep(r, dt) {
   off.x *= k; off.y *= k; off.a *= k;
   r.x = px + off.x; r.y = py + off.y; r.a = pa + off.a; r.v = r.net.v;
   r.gone = performance.now() - r.net.t > 6000;
+  if (FRAMES) pathRead(r);   // 🧲 on a road with its own frames (CAD64) a kart is drawn in the road's frame: its place there is read from where it stands, so it sits on the surface, loops and banks included
 }
 // 🤖 computer racers in rooms are MapleStory monsters in karts
 const BOT_IMG = { "Orange Mushroom": "orange_mushroom", "Ribbon Pig": "ribbon_pig", "Blue Snail": "blue_snail", "Stump": "stump", "Green Mushroom": "green_mushroom", "Horny Mushroom": "horny_mushroom", "Pig": "pig" };
@@ -3754,7 +3755,7 @@ function introFrame() { const I = INTRO; if (!I) return; if (!I.alive() || state
   if (k >= I.shots.length) { introEnd(); return; }
   const sh = I.shots[k], f = Math.max(0, Math.min(1, t / sh.dur)), e = f * f * (3 - 2 * f), L = (a, b) => a.map((v, j) => v + (b[j] - v) * e);
   const p = roadPt(...L(sh.from, sh.to)), look = roadPt(...L(sh.look, sh.look2 || sh.look)); window.__camOv = [...p, ...look];
-  const w = $k("#kWhite"); if (w) { if (k === 0) { const q = Math.min(1, t / .7); w.style.opacity = "1"; w.style.transform = `translateX(${-q * 100}%)`; if (q >= 1) w.style.opacity = "0"; } else { w.style.transform = ""; w.style.opacity = String(Math.max(0, 1 - t / .35)); } }   // (the cover slides off; then a flash at each cut)
+  const w = $k("#kWhite"); if (w && I.fadeK !== k) { I.fadeK = k; w.style.transform = ""; w.style.transition = "none"; w.style.opacity = "1"; void w.offsetWidth; w.style.transition = k === 0 ? "opacity .75s ease-out" : "opacity .4s ease-out"; w.style.opacity = "0"; }   // (the cover fades away on the compositor: smooth even while the scene's first frames are heavy; a flash at each cut)
 }
 function flash(t, ms, kind) { const f = $k("#kFlash"); if (kind === "intro") f.innerHTML = `<img class="k-crown" src="media/crown.png" alt="">` + esc(t); else f.textContent = t; f.className = "k-flash" + (kind ? " " + kind : ""); void f.offsetWidth; f.className += " on"; clearTimeout(flashT); flashT = setTimeout(() => f.className = "k-flash" + (kind ? " " + kind : ""), ms); }
 // phones race sideways: go fullscreen + lock to landscape where the browser allows it (Android), otherwise ask to rotate and pause
@@ -3879,6 +3880,14 @@ function posMsg(r, now) {
 async function settle(alive) { const t0 = performance.now(); let n = 0; if (document.hidden) return;   // (a hidden tab draws no frames: don't wait for them)
   await new Promise(r => { const f = () => { n++; const dt = performance.now() - t0; if (!alive() || (n > 45 && dt > 1500) || dt > 8000) r(); else requestAnimationFrame(f); }; requestAnimationFrame(f); }); }
 let raceId = 0;   // bumps on every start and quit, so timers and loading from an old race can't touch the next one
+async function waitAllLoaded(alive) {   // ⏳ a room race: "Dancing With Balrog…" until every racer has loaded (or 12 s have passed), then the start moves so the whole intro and countdown fit for all
+  MP.loaded[MP.me] = MP.raceNo; mpSend("ld", {}); const ld = $k("#kLoad"), t0 = performance.now();
+  const need = () => MP.players.filter(p => !p.spec && !p.bot && p.name !== MP.me && MP.loaded[p.name] !== MP.raceNo).map(p => p.name);
+  if (need().length) ld.hidden = false;
+  for (let tick = 0; alive() && need().length && performance.now() - t0 < 12000; tick++) { if (tick % 10 === 9) mpSend("ld", {}); await new Promise(r => setTimeout(r, 200)); }   // (said again now and then, for anyone whose channel joined late)
+  if (!alive()) { ld.hidden = true; return false; }
+  MP.goAt = Math.max(MP.goAt, performance.now() + mpIntroMs(MP.track) + 4600 + 400); return true;
+}
 async function start() {
   const my = ++raceId, alive = () => my === raceId && state !== "menu";
   const n = $k("#kName").value.trim().slice(0, 20);
@@ -3909,7 +3918,9 @@ async function start() {
   state = "wait"; B.music(T.music); syncMusicBtn();
   if (mode === "tt") fetchTop();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
-  if (fresh) { await settle(alive); $k("#kLoad").hidden = true; if (!alive()) return; }
+  if (fresh) { await settle(alive); if (!alive()) return; }
+  if (mode === "mp" && !(await waitAllLoaded(alive))) return;   // ⏳ a room: everyone's course intro and countdown start together, once everyone has loaded
+  $k("#kLoad").hidden = true;
   await waitLandscape(); if (!alive() || state !== "wait") return; fit();
   if (PMK && PMK.intro && PMK.intro.length) { state = "intro"; await playIntro(alive, mode === "mp" ? MP.goAt - 4600 : 0); if (!alive() || state !== "intro") return; }   // 🎬 the course intro
   state = "count";
@@ -4139,6 +4150,7 @@ function mpChannel(sb, code) {
   const ch = MP.ch = sb.channel("kartroom:" + code, { config: { broadcast: { self: false } } })
     .on("broadcast", { event: "pb" }, on("pb", payload => { if (payload && Array.isArray(payload.list)) for (const q of payload.list) mpOnPos({ ...q, rc: payload.rc }); }))
     .on("broadcast", { event: "p" }, on("p", mpOnPos))
+    .on("broadcast", { event: "ld" }, on("ld", p => { if (p && p.n) MP.loaded[p.n] = p.rc; }))   // ⏳ "I have loaded this race"
     .on("broadcast", { event: "it" }, on("it", mpOnItem))
     .on("broadcast", { event: "hx" }, on("hx", mpOnHit))
     .on("broadcast", { event: "rtc" }, on("rtc", p2pOnSignal, true))
