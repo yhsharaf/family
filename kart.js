@@ -4459,6 +4459,7 @@ function drawTrack(light) {
   $k("#kPickHead").textContent = inRoom ? "👑 Pick the cup: its 3 races are played one after another" : "Pick the cup for your room";
   $k("#kTrackCard").innerHTML = mode === "gp" ? `<b>🏆 ${C.name}</b><small>${C.tracks.map(c => TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}</small>${rule}`
     : mode === "mp" && C.tracks.length > 1 ? `<b>🏆 ${C.name}: ${C.tracks.length} races in a row</b><small>${C.tracks.map(c => (inRoom && c === rk ? "▶ " : "") + TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}${inRoom ? " · " + CCS[roomCC()].label : ""}</small>${rule}${!inRoom ? `<small>Make a room and you're the host 👑: your room races this cup.</small>` : ""}`
+    : C.tracks.length < 2 ? `<b class="kt-solo">${t.name}</b>${inRoom ? `<small>${CCS[roomCC()].label}</small>` : ""}`   // (just the one track: only its name, by the picture)
     : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : (t.laps || 3) === 1 ? "one long lap" : `${t.laps || 3} laps`} · ${inRoom ? CCS[roomCC()].label + " · " : ""}${t.sub}</small>${rule}${mode === "mp" && !inRoom ? `<small>Make a room and you're the host 👑: ${C.tracks.length > 1 ? "this is the first race" : "everyone races " + t.name}.</small>` : ""}`;
   $k(".kt-track img").src = t.thumb || (t.art || HEN_ART).sky;
   if (mode === "gp") $k("#kGo").textContent = `🏆 Start the ${C.name}!`;

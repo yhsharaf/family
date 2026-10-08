@@ -2,6 +2,7 @@
 .kt-track { display: flex; align-items: center; gap: 10px; background: #fff; border: 2px solid #46a05a; border-radius: 12px; padding: 6px; }
 .kt-track img { width: 86px; height: 48px; object-fit: cover; border-radius: 8px; }
 .kt-track b { display: block; font-size: 15px; } .kt-track small { color: var(--muted); font-size: 12px; }
+.kt-track b.kt-solo { font-size: 22px; letter-spacing: .5px; }
 .kt-mine { font-size: 13px; color: var(--muted); text-align: center; } .kt-mine b { color: var(--ink); }
 .kt-about p { font-size: 14px; line-height: 1.45; margin: 0 0 8px; }
 .kt-soon { color: var(--muted); font-size: 13px !important; }
