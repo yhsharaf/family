@@ -1080,7 +1080,7 @@ const TRACKS = {
   wario: {
     id: "mtwario", thumb: "media/kart/mtwario.webp", scale: 7, road: 200, hmap: "wario", hmapWS: 2.8, cup: "elnath", music: "k_wario", introMusic: "k_wario_intro", name: "Mount Wario", sub: "one run · the summit, the ice canyon, the cave, the dam, the forest and the ski jump", icon: "🏔️", laps: 1, sections: 3, open: true, fall: "❄️ Down the mountain!",
     path3d: "wario64",
-    intro: [{ from: [402, 330, 360], to: [409, -220, 260], look: [388, 0, 60], look2: [398, 0, 40], dur: 4 }, { from: [56, 40, 560], to: [72, -30, 430], look: [70, 0, 0], look2: [92, 0, 0], dur: 3.6 }, { from: [22, 130, 70], to: [21, -130, 80], look: [12, 0, 60], look2: [10, 0, 70], dur: 3.4 }],   // 🎬 the course intro: over the stadium at the foot of the jump, the ice canyon, then the plane at the summit from in front of the grid
+    intro: [{ from: [402, 330, 360], to: [409, -220, 260], look: [388, 0, 60], look2: [398, 0, 40], dur: 4 }, { from: [56, 40, 560], to: [72, -30, 430], look: [70, 0, 0], look2: [92, 0, 0], dur: 3.6 }, { from: [25, 150, 130], to: [24, -150, 140], look: [12, 0, 50], look2: [9, 0, 70], dur: 3.4 }],   // 🎬 the course intro: over the stadium at the foot of the jump, the ice canyon, then the plane at the summit from in front of the grid
     marks: { boxes: [30, 78, 118, 165, 265, 305, 340], dashair: [144], ring: [379], hump: [50], log: [271] },
     theme: { snowland: true, bluesky: true, antigrav: true, sky: "#9fd3ff", grass: ["#eef3fb", "#e6edf8"], flowers: 0, tufts: 0, road: "snowg", curb: ["#ffffff", "#dfe8f6"], noCurb: true, haze: [214, 230, 250], fog: [3500, 14000], hills: 1, line: "rgba(0,0,0,0)", noArch: true, boostT: 1.3, steerEase: 8,
       glide: { up: 160, g: 40, sink: 34, turn: .6, dive: 170, diveG: 260, dash: 70 },
@@ -1090,7 +1090,8 @@ const TRACKS = {
       const pads = [], coins = [], gaps = [], M = PMK, hw = i => (WIDTHS ? WIDTHS[Math.min(N - 1, i)] : ROAD) / 2;
       for (const [a, b] of M.gaps) { gaps.push({ a, b, kind: "chasm", open: true, caps: [] }); pads.push({ t: "glide", i: a - 7, len: 6, o: 0, w: hw(a) * 2 }); }   // 🪂 the three jumps: the cave, off the dam, the ski jump
       for (const i of M.dash) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: hw(i) * 2 });   // ⚡ the dash panels, where the original has them
-      const rings = (M.marks.dashair || []).map(i => ({ i, o: 0, z: 40, r: 50, w: 70, panel: true })).concat((M.marks.ring || []).map(i => ({ i, o: 0, z: 95, r: 60, w: 80, hoop: true })));   // the floating boost panel in the cave, the ring over the stadium
+      for (const i of M.marks.log || []) pads.push({ t: "ramp", i: i - 13, len: 6, o: 0, w: hw(i) * 2 });   // 🪵 a little ramp to hop the fallen log in the forest
+      const rings = (M.marks.dashair || []).flatMap(i => [{ i, o: 0, z: 40, r: 50, w: 70, panel: true }, { i: i - 70, o: -70, z: 80, r: 50, w: 70, panel: true }, { i: i - 70, o: 70, z: 80, r: 50, w: 70, panel: true }]).concat((M.marks.ring || []).map(i => ({ i, o: 0, z: 95, r: 60, w: 80, hoop: true })));   // the floating boost panel in the cave, the ring over the stadium
       const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
       row(M.start + 40, M.start + 160, 5, 0); row(M.sections[0] + 60, M.sections[0] + 150, 4, 0); row(M.sections[1] + 80, M.sections[1] + 200, 5, j => (j % 2 ? 1 : -1) * 30);
       const ledges = [{ a: M.gravity[1] - 10, b: M.dash[3] + 10 }];   // the dam's face: off its edge you fall
@@ -1960,7 +1961,7 @@ const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, START_I, ALT, AN, FORK_
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=264"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=266"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
