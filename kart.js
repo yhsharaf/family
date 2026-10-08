@@ -1044,7 +1044,7 @@ const TRACKS = {
     // glowing rainbow road floating in the night sky high above a city of lights. Down the long diagonal from the golden gate, round the low loop
     // (under the road you just came down), up through the little spiral, out to the hook on the right, back and up through the big figure-eight
     // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
-    id: "cad64", thumb: "media/kart/cad64.webp", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_star", introMusic: "k_star_intro", name: "CAD64", sub: "three sections · the floating rainbow road", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off CAD64!",
+    id: "cad64", thumb: "media/kart/cad64.webp", noCrowd: true, scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_star", introMusic: "k_star_intro", name: "CAD64", sub: "three sections · the floating rainbow road", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off CAD64!",
     path3d: "star64",
     // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
     // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
@@ -1828,6 +1828,7 @@ async function makeCrowd() {
     if (inLake(x, y)) return;
     CROWD.push({ x, y, img: im, s: .46, jump: 6 + Math.random() * 7, sp: 5 + Math.random() * 4, ph: Math.random() * 6, flip: sd > 0, tag });
   });
+  if (T.noCrowd) return;   // (no one cheering on this track)
   const jobs = [];
   // 1 or 2 of the Founders and Core Family cheering somewhere along the track: different people, different spots every race
   const fam = (typeof D !== "undefined" ? D.founders : []).filter(p => p && p.name && !p.traitor && !p.grave).sort(() => Math.random() - .5).slice(0, Math.random() < .5 ? 1 : 2);
