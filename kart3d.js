@@ -1890,11 +1890,15 @@ export function create(A) {
     const wAt = i => t.widths ? t.widths[Math.min(n - 1, i)] : t.ROAD;
     const dashM = buildDashPads(t, grp); warioFx = { dashM };
     // snowy pines: three cones of dark green with a cap of snow on each, a trunk (instanced)
-    if (PD && PD.trees) { const green = new THREE.MeshLambertMaterial({ color: 0x2f6b3c }), snow = new THREE.MeshLambertMaterial({ color: 0xf4f8ff }), bark = new THREE.MeshLambertMaterial({ color: 0x4a3426 });
+    const forest = []; { let fs = 913; const fr = () => (fs = (fs * 16807) % 2147483647) / 2147483647;   // 🌲 the forest: big pines crowding both sides of the road through the woods (the original's trunks line the road there)
+      for (const [a, b, st] of t.styles || []) { if (!(st === "forest" || (st === "snowg" && a > 2600 && a < 3200))) continue;
+        for (let i = a; i < b; i += 22) for (const side of [-1, 1]) { if (fr() < .25) continue; const F = frameAt(t, i), W = wAt(i), o = side * (W / 2 + 45 + fr() * 150), v = frameV(F, o, 0), gy = h(v[0], v[2]); if (gy < v[1] - 160 || gy > v[1] + 120) continue; forest.push([v[0], v[2], 0, 230 + fr() * 130]); } } }
+    const treeList = [...((PD && PD.trees) || []), ...forest];
+    if (treeList.length) { const green = new THREE.MeshLambertMaterial({ color: 0x2f6b3c }), snow = new THREE.MeshLambertMaterial({ color: 0xf4f8ff }), bark = new THREE.MeshLambertMaterial({ color: 0x4a3426 });
       const cone = new THREE.ConeGeometry(1, 1, 9), cyl = new THREE.CylinderGeometry(1, 1, 1, 7), parts = [];
       for (const [lvl, rad, hh] of [[0, 1, .5], [1, .78, .45], [2, .55, .42]]) { parts.push([cone, green, rad, hh, lvl]); parts.push([cone, snow, rad * .92, hh * .55, lvl + .5]); }
-      const insts = parts.map(([g, m]) => new THREE.InstancedMesh(g, m, PD.trees.length)), trunk = new THREE.InstancedMesh(cyl, bark, PD.trees.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), S = new THREE.Vector3();
-      PD.trees.forEach(([x, y, hz, th], k) => { const H = Math.max(120, Math.min(360, th || 200)), base = h(x, y) - 4;
+      const insts = parts.map(([g, m]) => new THREE.InstancedMesh(g, m, treeList.length)), trunk = new THREE.InstancedMesh(cyl, bark, treeList.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), S = new THREE.Vector3();
+      treeList.forEach(([x, y, hz, th], k) => { const H = Math.max(120, Math.min(360, th || 200)), base = h(x, y) - 4;
         parts.forEach(([g, m, rad, hh, lvl], j) => { const cy = base + H * (.22 + lvl * .26) + H * hh * .5; S.set(H * .34 * rad, H * hh, H * .34 * rad); M4.compose(V.set(x, cy, y), Q, S); insts[j].setMatrixAt(k, M4); });
         S.set(H * .05, H * .3, H * .05); M4.compose(V.set(x, base + H * .15, y), Q, S); trunk.setMatrixAt(k, M4); });
       for (const m of [...insts, trunk]) { m.instanceMatrix.needsUpdate = true; grp.add(m); } }
