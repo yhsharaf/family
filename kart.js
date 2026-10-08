@@ -1044,7 +1044,7 @@ const TRACKS = {
     // glowing rainbow road floating in the night sky high above a city of lights. Down the long diagonal from the golden gate, round the low loop
     // (under the road you just came down), up through the little spiral, out to the hook on the right, back and up through the big figure-eight
     // at the top (crossing over itself twice), and down to the line. Heavy banking, no railings: off the edge is a long way down.
-    id: "starroad", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_star", introMusic: "k_star_intro", name: "Star Road", sub: "one long lap · the floating rainbow road · city lights below", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off the Star Road!",
+    id: "cad64", thumb: "media/kart/cad64.webp", scale: 3.5, road: 190, pathScale: 1.5, cup: "ludi", music: "k_star", introMusic: "k_star_intro", name: "CAD64", sub: "three sections · the floating rainbow road", icon: "🌠", laps: 1, sections: 3, fall: "🌌 Fell off CAD64!",
     path3d: "star64",
     // ⚡ the original's chain of boosts (the model only carries the first dash panel): five star rings over orange boost panels on the road, two boost rings in the
     // air after the first glide ramp, and blue full-width dash panels after each landing; placed from the course video's timeline, in measured-data points
@@ -1111,14 +1111,10 @@ const TRACKS = {
   },
 };
 // the cups: 3 tracks each, raced in this order in the Grand Prix. Each new cup has its own twist.
-const CUPS = {
-  henesys: { name: "Henesys Cup", icon: "🍄", tracks: ["henesys", "town", "forest"], rule: "" },
-  elnath: { name: "El Nath Cup", icon: "❄️", tracks: ["en1", "en2", "en3"], rule: "❄️ Icy roads: brake early and drift round the corners" },
-  sleepy: { name: "Sleepywood Cup", icon: "🌙", tracks: ["sw1", "sw2", "sw3"], rule: "🌙 Deep in the forest: boardwalks, ponds and gliders" },
-  zakum: { name: "Zakum Cup", icon: "🔥", tracks: ["zk1", "zk2", "zk3"], rule: "🔥 Block Golems, mine carts and lava: no railings in places, so mind the edges" },
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["discovery", "star", "ld3"], rule: "🔭 The gorge, the Star Road and the Starlight Rainbow: no railings, so mind the edges" },
+const CUPS = {   // (for now just the one track: CAD64; the other cups' tracks stay in the code, not offered)
+  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["star"], rule: "" },
 };
-const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || "henesys";
+const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || Object.keys(CUPS)[0];
 function loadTrack(key) {
   if (TRACK_KEY === key) return;
   T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; OPEN = !!T.open; ROAD = T.road || 160;
@@ -1947,8 +1943,8 @@ async function load3d() {
 const MODES = { gp: "🏆 Grand Prix", race: "🏁 Single race", tt: "⏱️ Time Trial", mp: "👥 Multiplayer" };
 const SHOWN_MODES = ["tt", "mp"];   // Grand Prix and Race are hidden for now
 let mode = SHOWN_MODES.includes(store.get("kart_mode")) ? store.get("kart_mode") : "tt";
-let cup = CUPS[store.get("kart_cup")] ? store.get("kart_cup") : "henesys";   // picked cup (the Grand Prix races all 3 of its tracks)
-let track = TRACKS[store.get("kart_track")] ? store.get("kart_track") : "henesys";   // picked track for Race and Time Trial
+let cup = CUPS[store.get("kart_cup")] ? store.get("kart_cup") : Object.keys(CUPS)[0];   // picked cup (the Grand Prix races all 3 of its tracks)
+let track = TRACKS[store.get("kart_track")] ? store.get("kart_track") : CUPS[cup].tracks[0];   // picked track for Race and Time Trial
 if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
 const GP_RACES = 3, GP_PTS = [10, 8, 6, 4, 3, 2, 1, 0];
 let gp = null;   // { race, names, pts: { name: points } }
@@ -1958,8 +1954,8 @@ const ghostKey = () => `kart_ghost2:${ccId(TRACK_ID, raceCC)}:${me}`;
 const DIFFS = { easy: { skill: .95, band: .07, pick: .55, drift: .3, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .85, drift: .65, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: 1, drift: .9, label: "Hard" } };   // drift: how often a computer racer gets a mini-turbo out of a corner
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
 // speed classes like Mario Kart's: everything on the track moves slower (turning stays the same, so it's easier to steer)
-const CCS = { 50: { spd: .7, label: "🐢 50cc" }, 100: { spd: .85, label: "🏎️ 100cc" }, 150: { spd: 1, label: "🔥 150cc" } };
-let cc = CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 100, SPD = 1;   // 100cc unless you picked another class   // SPD: the class of the race being driven right now
+const CCS = { 100: { spd: .85, label: "🏎️ 100cc" }, 150: { spd: 1, label: "🔥 150cc" }, 200: { spd: 1.2, label: "⚡ 200cc" } };
+let cc = CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 150, SPD = 1;   // 150cc unless you picked another class   // SPD: the class of the race being driven right now
 const ccId = (id, c) => c === 150 ? id : `${id}_${c}`;   // board / ghost / best ids: 150cc keeps the plain track id
 const DIFF = () => DIFFS[diff];
 const RIVAL_COLORS = ["#6eaa64", "#4682be", "#8a6a4a", "#aa64b4", "#3ca0a0", "#e07a12", "#5a64a0"];   // red + gold is yours
@@ -1998,7 +1994,7 @@ function gridSpot(slot) {
 // ------------------------------------------------------------------ multiplayer (rooms of 2-8, the first one in is the host)
 // Everyone drives their own kart; positions go out ~12 times a second over Realtime broadcast, other players are drawn from those.
 // Items reach other players as events; each player only ever decides hits on their OWN kart. The server keeps the room and scores it.
-const MP = { tally: {}, tallied: null, pick: null, endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "henesys", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
+const MP = { tally: {}, tallied: null, pick: null, endAt: 0, firstName: null, code: null, token: null, me: null, host: null, players: [], status: null, track: "star", raceNo: 0, ch: null, poll: null, slot: 0, goAt: 0, sendAt: 0, results: null, finished: false };
 const mpOn = () => mode === "mp" && !!MP.code;
 // 🔒 Room messages are encrypted and signed (AES-GCM) with the room's secret, which the server only gives to players who joined.
 // Someone who just knows the room code can't read them or fake them. The direct-connection setup is never sent without it.
@@ -3893,8 +3889,8 @@ async function start() {
   window.getAC && window.getAC(); fullTries = 0; goLandscape();
   state = "loading";
   if (mode === "gp" && (!gp || gp.over)) gp = { race: 1, names: null, pts: {}, cup };
-  const [mk, mcc] = String(MP.track || "henesys").split("@");
-  const key = mode === "gp" ? CUPS[gp.cup].tracks[gp.race - 1] : mode === "mp" ? (TRACKS[mk] ? mk : "henesys") : track;
+  const [mk, mcc] = String(MP.track || "star").split("@");
+  const key = mode === "gp" ? CUPS[gp.cup].tracks[gp.race - 1] : mode === "mp" ? (TRACKS[mk] && CUPS[cupOf(mk)].tracks.includes(mk) ? mk : "star") : track;
   raceCC = mode === "mp" ? (CCS[mcc] ? +mcc : 150) : cc; SPD = CCS[raceCC].spd;
   let fresh = false; if (!assetsReady || TRACK_KEY !== key) { fresh = true; $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); }
   if (!alive()) { $k("#kLoad").hidden = true; return; }
@@ -4064,7 +4060,7 @@ function mpShowResults(res) {
     if (MP.next && MP.host !== MP.me) setTimeout(() => { if (MP.next && !mpReadyInfo().mine) mpReady(true); }, 600);   // (everyone's ready for the next race automatically)
   }
   $k("#kResult").innerHTML = `<h3>${mine ? (["", "🥇", "🥈", "🥉"][mine.place] || "🏁") + " " + ordinal(mine.place) + " place" : "🏁 Race over"}</h3>${MP.trophy ? trophyHtml(MP.trophy) : ""}
-    <p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">👥 Room ${MP.code} · ${(() => { const rk = String(MP.track).split("@")[0], C = CUPS[cupOf(rk)]; return TRACKS[rk] ? `${C.icon} ${esc(C.name)} race ${C.tracks.indexOf(rk) + 1}/3: ${esc(TRACKS[rk].name)}` : ""; })()} · ${CCS[raceCC].label}</p>
+    <p class="k-mesos">💰 ${K.mesoTotal || 0} mesos collected</p><p class="k-diff">👥 Room ${MP.code} · ${(() => { const rk = String(MP.track).split("@")[0], C = CUPS[cupOf(rk)]; return TRACKS[rk] ? `${C.icon} ${esc(C.name)} race ${C.tracks.indexOf(rk) + 1}/${C.tracks.length}: ${esc(TRACKS[rk].name)}` : ""; })()} · ${CCS[raceCC].label}</p>
     <table class="k-table">${res.map(r => `<tr class="${r.name === MP.me ? "you" : ""}"><td>${ordinal(r.place)}</td><td><img src="${r.bot ? botImg(r.name) : spriteOf(r.name)}" alt=""></td><td>${r.bot ? "🤖 " : ""}${esc(r.name)}</td>
       <td>${r.ms ? fmt(r.ms) : `⏱️ ${Math.round((r.prog || 0) * 100)}%`}</td><td class="pts">+${r.pts}</td></tr>`).join("")}</table>
     <p class="k-rank">${res[0] && res[0].counted === false ? (res[0].humans != null && res[0].humans < 2 ? "⚠️ Races need at least 2 real players to count: no points or times this time." : `⚠️ Only races with 4 or more racers count: no points or times saved this time (${res[0].n} racers).`) : "🏆 Points and times saved (guild members only)."}</p>
@@ -4343,7 +4339,7 @@ setTimeout(hashTrack, 60);
 // 👀 watching a room race you joined in the middle of: the camera follows one racer (tap or ← → to switch); you're in for the next race
 async function mpWatch(data) {
   if (MP.watching) return; MP.watching = true; const my = ++raceId;
-  const [mk, mcc] = String(MP.track || "henesys").split("@"), key = TRACKS[mk] ? mk : "henesys";
+  const [mk, mcc] = String(MP.track || "star").split("@"), key = TRACKS[mk] && CUPS[cupOf(mk)].tracks.includes(mk) ? mk : "star";
   raceCC = CCS[mcc] ? +mcc : 150; SPD = CCS[raceCC].spd; me = MP.me;
   $k("#kMenu").hidden = true; $k("#kResult").hidden = true; $k("#kGame").hidden = false; $k("#kart").classList.add("racing", "watching"); document.body.classList.add("bd-playing");
   state = "loading";
@@ -4447,24 +4443,24 @@ function showBest() {
 }
 $k("#kGo").onclick = () => { if (mode === "mp") { track = CUPS[cup].tracks[0]; MP.next = null; askFull(); mpStart(); } else start(); };
 // the room's track as everyone should see it: the host's own pick, or what the host last told the room
-const roomTrack = () => { const st = String(MP.track || "").split("@")[0]; return MP.host === MP.me ? track : TRACKS[MP.pick] ? MP.pick : TRACKS[st] ? st : "henesys"; };
+const roomTrack = () => { const st = String(MP.track || "").split("@")[0]; return MP.host === MP.me ? track : TRACKS[MP.pick] && CUPS[cupOf(MP.pick)].tracks.includes(MP.pick) ? MP.pick : TRACKS[st] && CUPS[cupOf(st)].tracks.includes(st) ? st : "star"; };
 const roomCC = () => { const sc = String(MP.track || "").split("@")[1]; return MP.host === MP.me ? cc : MP.pick ? (MP.pickCC || 150) : CCS[sc] ? +sc : 150; };
 function drawTrack(light) {
   if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
   const inRoom = mode === "mp" && !!MP.code, rk = inRoom ? roomTrack() : track, C = CUPS[inRoom ? cupOf(rk) : cup];
   const t = TRACKS[mode === "gp" ? C.tracks[0] : rk], pickHidden = mode === "mp" && !!MP.code && MP.host !== MP.me;
   $k("#kCupPick").innerHTML = Object.entries(CUPS).map(([k, c]) => `<button type="button" data-c="${k}" class="${k === cup ? "on" : ""}"><span>${c.icon}</span>${c.name.replace(" Cup", "")}${trophyMark(k)}</button>`).join("");
-  $k("#kCupPick").hidden = pickHidden;
+  $k("#kCupPick").hidden = pickHidden || Object.keys(CUPS).length < 2;   // (only one cup: nothing to pick)
   $k("#kTrackPick").innerHTML = CUPS[cup].tracks.map(k => `<button type="button" data-t="${k}" class="${k === track ? "on" : ""}">${TRACKS[k].icon} ${TRACKS[k].name}</button>`).join("");
-  $k("#kTrackPick").hidden = mode === "gp" || mode === "mp" || pickHidden;   // (multiplayer races whole cups)
+  $k("#kTrackPick").hidden = mode === "gp" || mode === "mp" || pickHidden || CUPS[cup].tracks.length < 2;   // (multiplayer races whole cups)
   $k("#kCC").hidden = pickHidden || mode === "tt";   // Time Trial is always 150cc
   const rule = C.rule ? `<small class="kt-rule">${C.rule}</small>` : "";
-  $k("#kPickHead").hidden = !(mode === "mp" && (!inRoom || MP.host === MP.me));
+  $k("#kPickHead").hidden = !(mode === "mp" && (!inRoom || MP.host === MP.me)) || Object.keys(CUPS).length < 2;
   $k("#kPickHead").textContent = inRoom ? "👑 Pick the cup: its 3 races are played one after another" : "Pick the cup for your room";
   $k("#kTrackCard").innerHTML = mode === "gp" ? `<b>🏆 ${C.name}</b><small>${C.tracks.map(c => TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}</small>${rule}`
-    : mode === "mp" ? `<b>🏆 ${C.name}: 3 races in a row</b><small>${C.tracks.map(c => (inRoom && c === rk ? "▶ " : "") + TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}${inRoom ? " · " + CCS[roomCC()].label : ""}</small>${rule}${!inRoom ? `<small>Make a room and you're the host 👑: your room races this cup.</small>` : ""}`
-    : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : "3 laps"} · ${inRoom ? CCS[roomCC()].label + " · " : ""}${t.sub}</small>${rule}${mode === "mp" && !inRoom ? `<small>Make a room and you're the host 👑: this is the first race.</small>` : ""}`;
-  $k(".kt-track img").src = (t.art || HEN_ART).sky;
+    : mode === "mp" && C.tracks.length > 1 ? `<b>🏆 ${C.name}: ${C.tracks.length} races in a row</b><small>${C.tracks.map(c => (inRoom && c === rk ? "▶ " : "") + TRACKS[c].icon + " " + TRACKS[c].name).join(" → ")}${inRoom ? " · " + CCS[roomCC()].label : ""}</small>${rule}${!inRoom ? `<small>Make a room and you're the host 👑: your room races this cup.</small>` : ""}`
+    : `<b>${t.icon} ${t.name}</b><small>${t.open ? "one long climb" : (t.laps || 3) === 1 ? "one long lap" : `${t.laps || 3} laps`} · ${inRoom ? CCS[roomCC()].label + " · " : ""}${t.sub}</small>${rule}${mode === "mp" && !inRoom ? `<small>Make a room and you're the host 👑: ${C.tracks.length > 1 ? "this is the first race" : "everyone races " + t.name}.</small>` : ""}`;
+  $k(".kt-track img").src = t.thumb || (t.art || HEN_ART).sky;
   if (mode === "gp") $k("#kGo").textContent = `🏆 Start the ${C.name}!`;
   $k("#kBoardName").textContent = t.name;
   if (inRoom && MP.host === MP.me && MP.ch) mpSend("tr", { t: track, cc });   // tell the room what the host picked
@@ -4474,7 +4470,7 @@ $k("#kBoardTabs").addEventListener("click", e => { const b = e.target.closest("[
 $k("#kTrackPick").addEventListener("click", e => { const b = e.target.closest("[data-t]"); if (!b) return; track = b.dataset.t; store.set("kart_track", track); drawTrack(); });
 $k("#kCupPick").addEventListener("click", e => { const b = e.target.closest("[data-c]"); if (!b) return; cup = b.dataset.c; store.set("kart_cup", cup); track = CUPS[cup].tracks[0]; store.set("kart_track", track); gp = null; drawTrack(); });
 function drawMode() {
-  cc = mode === "tt" ? 150 : CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 100;   // Time Trial is always 150cc; Multiplayer keeps your pick
+  cc = mode === "tt" ? 150 : CCS[store.get("kart_cc")] ? +store.get("kart_cc") : 150;   // Time Trial is always 150cc; Multiplayer keeps your pick
   document.querySelectorAll("#kCC [data-cc], #kResult [data-cc]").forEach(b => b.classList.toggle("on", +b.dataset.cc === cc));
   document.querySelectorAll("#kMode [data-m]").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
   $k("#kDiff").hidden = mode === "tt" || mode === "mp"; $k("#kMine").hidden = mode === "mp";   // your best time is about solo tracks, not rooms
