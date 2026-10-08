@@ -1138,11 +1138,11 @@ const TRACKS = {
   },
 };
 // the cups: 3 tracks each, raced in this order in the Grand Prix. Each new cup has its own twist.
-const CUPS = {   // (CAD64 and the new Mount Wario; the other cups' tracks stay in the code, not offered)
+const CUPS = {   // (CAD64; the other cups' tracks stay in the code, not offered)
   ludi: { name: "Ludibrium Cup", icon: "🌠", tracks: ["star"] },
-  elnath: { name: "El Nath Cup", icon: "🏔️", tracks: ["wario"] },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || Object.keys(CUPS)[0];
+const PREVIEW = { elnath: { name: "El Nath Cup", icon: "🏔️", tracks: ["wario"] } };   // 🔗 cups offered only through a track's own link (#kart/<key>) while the user tries them out; the public menu doesn't list them
 function loadTrack(key) {
   if (TRACK_KEY === key) return;
   T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; OPEN = !!T.open; ROAD = T.road || 160;
@@ -4360,7 +4360,9 @@ function hashRoom() {
 addEventListener("hashchange", hashRoom);
 setTimeout(hashRoom, 60);
 function hashTrack() {   // 🔗 a link straight to one track: #kart/discovery opens the kart page with that track picked, ready to race
-  const m = location.hash.match(/^#kart\/([a-z][a-z0-9]*)$/), key = m && m[1]; if (!key || !TRACKS[key] || !CUPS[cupOf(key)].tracks.includes(key)) return;
+  const m = location.hash.match(/^#kart\/([a-z][a-z0-9]*)$/), key = m && m[1];
+  if (key && TRACKS[key] && !Object.values(CUPS).some(c => c.tracks.includes(key))) for (const [c, v] of Object.entries(PREVIEW)) if (v.tracks.includes(key)) CUPS[c] = v;   // (a preview track's link brings its cup along for this visit)
+  if (!key || !TRACKS[key] || !CUPS[cupOf(key)].tracks.includes(key)) return;
   document.querySelectorAll("section").forEach(sec => sec.classList.toggle("on", sec.id === "kart"));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#kart"));
   cup = cupOf(key); track = key; store.set("kart_cup", cup); store.set("kart_track", track);
