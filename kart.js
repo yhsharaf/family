@@ -2713,8 +2713,7 @@ function worldStep(dt, tt) {
       if (GAPS.length && ((a.hopUntil && performance.now() < a.hopUntil + 150) || (b.hopUntil && performance.now() < b.hopUntil + 150))) continue;   // nobody gets knocked off a mushroom bounce: their own games sort it out
       if (a.remote || b.remote) { const me2 = a.remote ? b : a, s2 = me2 === a ? -1 : 1; me2.x += nx * push * 2 * s2; me2.y += ny * push * 2 * s2; }   // only the kart this game drives is moved
       else { a.x -= nx * push; a.y -= ny * push; b.x += nx * push; b.y += ny * push; }
-      if (T.theme.skyroad) { for (const r of [a, b]) if (!r.remote && !(r.spinB > 0) && !(r.spin > 0)) { r.spinB = .5; giveBoost(r, .7, 70); } if (a === K || b === K) { flash("💫 Spin boost!", 600); whooshSound(); } }   // 💫 anti-gravity: a bump is a spin boost
-      else { const fast = a.v > b.v ? a : b; fast.v *= .9; }
+      { const fast = a.v > b.v ? a : b; fast.v *= .9; }
       if (STRONG(a) !== STRONG(b)) { const v = STRONG(a) ? b : a; hit(v, (STRONG(a) ? a : b).rocket > 0 ? "🚀 Run over by a Rocket Booster!" : "💪 Rammed by Hyper Body!"); if (v.spin > 0) { v.v *= .4; if (v === K || a === K || b === K) slamSound(0); } }
       else if ((a.small > 0) !== (b.small > 0)) { const tiny = a.small > 0 ? a : b; hit(tiny, "👟 Flattened!"); tiny.squash = .8; }
       if (a === K || b === K) { K.shake = Math.max(K.shake, .1); if (K.bump <= 0) { bumpSound(); K.bump = .3; } }
@@ -3735,12 +3734,16 @@ let wasPap = false, flipWarnN = 0, flashT = null, warnAt = 0, lastRk = 0, posPop
 // 🎬 the course intro: before the countdown the camera flies over the track's best bits, shot by shot, the course name on a banner; the white loading cover slides off
 // as it starts and a flash of white marks each cut (like the original's). Any tap or key skips it
 let INTRO = null;
-function playIntro(alive) { const shots = PMK && PMK.intro; if (!shots || !shots.length || document.hidden) return Promise.resolve();
-  return new Promise(res => { INTRO = { shots, t0: performance.now(), res, alive }; setTimeout(() => { if (INTRO && INTRO.res === res) introEnd(); }, shots.reduce((q, sh) => q + sh.dur, 0) * 1000 + 1500);   // (ends on time even if no frames get drawn)
+// (a room race waits for its track's intro: everyone's clock moves the start back by the same amount, so the room stays in step)
+const mpIntroMs = tr => { const t = TRACKS[String(tr || "").split("@")[0]], sh = t && t.intro; return sh && sh.length ? sh.reduce((q, x) => q + (x.dur || 3), 0) * 1000 + 600 : 0; };
+function playIntro(alive, endAt) { const shots = PMK && PMK.intro; if (!shots || !shots.length || document.hidden) return Promise.resolve();
+  const len = shots.reduce((q, sh) => q + sh.dur, 0) * 1000, t0 = endAt ? endAt - len : performance.now();   // (a room race: everyone's intro ends together, a late loader joins it part-way)
+  if (endAt && endAt - performance.now() < 800) return Promise.resolve();
+  return new Promise(res => { INTRO = { shots, t0, res, alive }; setTimeout(() => { if (INTRO && INTRO.res === res) introEnd(); }, t0 + len + 1500 - performance.now());   // (ends on time even if no frames get drawn)
     const bn = $k("#kBanner"); if (bn) { $k("#kBannerMode").textContent = mode === "tt" ? "TIME TRIAL" : mode === "gp" ? "GRAND PRIX" : "RACE"; $k("#kBannerName").textContent = T.name; $k("#kBannerIcon").textContent = T.icon || "🏁"; bn.hidden = false; }
     const w = $k("#kWhite"); if (w) { w.hidden = false; w.style.transition = ""; w.style.transform = ""; w.style.opacity = "1"; }
     if (T.introMusic) B.music(T.introMusic);   // 🎵 the intro's own music; the race theme comes back for the countdown
-    window.__camSky = true; const skip = () => { if (INTRO) introEnd(); }; INTRO.skip = skip; addEventListener("pointerdown", skip, { once: true }); addEventListener("keydown", skip, { once: true }); }); }
+    window.__camSky = true; const skip = () => { if (INTRO) introEnd(); }; INTRO.skip = skip; if (!endAt) { addEventListener("pointerdown", skip, { once: true }); addEventListener("keydown", skip, { once: true }); } }); }   // (no skipping in a room race)
 function introEnd() { if (!INTRO) return; const I = INTRO; INTRO = null; window.__camOv = null; removeEventListener("pointerdown", I.skip); removeEventListener("keydown", I.skip);
   const bn = $k("#kBanner"), w = $k("#kWhite"); if (bn) bn.hidden = true;
   if (w) { w.hidden = false; w.style.transform = ""; w.style.transition = ""; w.style.opacity = "1"; requestAnimationFrame(() => { w.style.transition = "opacity .55s ease-out"; w.style.opacity = "0"; }); setTimeout(() => { w.hidden = true; w.style.transition = ""; }, 650); }   // (one last flash of white, into the grid)
@@ -3908,7 +3911,7 @@ async function start() {
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
   if (fresh) { await settle(alive); $k("#kLoad").hidden = true; if (!alive()) return; }
   await waitLandscape(); if (!alive() || state !== "wait") return; fit();
-  if (mode !== "mp" && PMK && PMK.intro && PMK.intro.length) { state = "intro"; await playIntro(alive); if (!alive() || state !== "intro") return; }   // 🎬 the course intro
+  if (PMK && PMK.intro && PMK.intro.length) { state = "intro"; await playIntro(alive, mode === "mp" ? MP.goAt - 4600 : 0); if (!alive() || state !== "intro") return; }   // 🎬 the course intro
   state = "count";
   // the intro: "Family, are you Ready!", then 3, 2, 1 and "Go Family!!!" (a room race starts at the server's time)
   const goIn = mode === "mp" ? Math.max(0, MP.goAt - performance.now()) : 4600;
@@ -4177,8 +4180,8 @@ async function mpPoll(first) {
     const meP = MP.players.find(p => p.name === MP.me), spec = !!(meP && meP.spec);
     if (data.status === "racing" && spec && !MP.watching && state === "menu") mpWatch(data);   // 👀 joined mid-race: watch it
     if (MP.watching && data.status !== "racing") stopWatch();
-    if (data.status === "racing" && !spec && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in > -4) {
-      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000; MP.results = null; MP.endAt = 0; MP.firstName = null; MP.next = null; MP.trophy = null;
+    if (data.status === "racing" && !spec && data.race_no > MP.raceNo && data.starts_in != null && data.starts_in * 1000 + mpIntroMs(data.track) > -4000) {
+      MP.raceNo = data.race_no; MP.goAt = performance.now() + data.starts_in * 1000 + mpIntroMs(data.track); MP.results = null; MP.endAt = 0; MP.firstName = null; MP.next = null; MP.trophy = null;
       { const st = String(data.track || "").split("@")[0]; if (TRACKS[st] && CUPS[cupOf(st)].tracks.indexOf(st) === 0) { MP.tally = {}; MP.tBots = {}; } }   // 🏆 a cup's first race: fresh room standings
       if (mode !== "mp") { mode = "mp"; drawMode(); }
       start();
@@ -4347,7 +4350,7 @@ async function mpWatch(data) {
   if (!assetsReady || TRACK_KEY !== key) { $k("#kLoad").hidden = false; await new Promise(r => setTimeout(r, 30)); if (!assetsReady) await prepare(); loadTrack(key); await loadArt(); setTimeout(() => { $k("#kLoad").hidden = true; }, 1500); }
   if (my !== raceId || !MP.watching) return;
   fit(); K = freshKart(); K.watch = true; setupHazards(); PETALS = []; FWK = []; LAVA = null; makeRivals(); MP.watchI = 0;
-  MP.watchT0 = performance.now() + (data.starts_in || 0) * 1000;
+  MP.watchT0 = performance.now() + (data.starts_in || 0) * 1000 + mpIntroMs(data.track);
   state = "watch"; B.music(T.music); syncMusicBtn();
   if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); }
 }
