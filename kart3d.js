@@ -1537,10 +1537,16 @@ export function create(A) {
     if (kind === "snowball" || kind === "stoneball") { g.position.set(x, h(x, y) + 30, y); g.rotation.set(tt * 4 + x * .01, -a, 0); return; }   // (a giant snowball rolls) const w = Math.sin(tt * 9 + x * .01); g.position.set(x, h(x, y) + (z || 0) + Math.abs(w) * 3, y); g.rotation.set(0, -a, w * .12); g.scale.set(1 + w * .04, 1 - w * .05, 1 + w * .04);
   }
   const boxes = []; let bi = 0;
-  function box(x, y, tt, i, z = 0) {
+  const boxQ = new THREE.Quaternion(), boxQ2 = new THREE.Quaternion(), boxE = new THREE.Euler(), boxM = new THREE.Matrix4();
+  function box(x, y, tt, i, z = 0, ri, ro) {
     let b = boxes[bi++]; if (!b) { b = new THREE.Mesh(BOX, new THREE.MeshPhongMaterial({ map: qTex, transparent: true, opacity: .82, shininess: 90, emissive: 0x222222 })); scene.add(b); boxes.push(b); }
     b.visible = true; b.scale.setScalar(13); b.material.color.setHSL(((tt * .33 + i * .13) % 1), .85, .6);
-    b.position.set(x, h(x, y) + 11 + z + Math.sin(tt * 3 + i) * 1.6, y); b.rotation.set(.35, tt * 1.6 + i, .2);
+    const lift = 11 + z + Math.sin(tt * 3 + i) * 1.6;
+    if (lastT && lastT.frames && ri != null) {   // 🎁 on a measured road: floating over the road's own surface, tilted with it (banks, walls and loops)
+      const F = rideFrame(lastT, { rs: ri, rlat: ro || 0 }); b.position.copy(F.P).addScaledVector(F.N, lift);
+      boxQ.setFromRotationMatrix(boxM.makeBasis(F.T, F.N, F.B)); boxQ2.setFromEuler(boxE.set(.35, tt * 1.6 + i, .2)); b.quaternion.copy(boxQ).multiply(boxQ2); return;
+    }
+    b.position.set(x, h(x, y) + lift, y); b.rotation.set(.35, tt * 1.6 + i, .2);
   }
 
   // ---------------------------------------------------------------- karts
