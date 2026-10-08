@@ -61,7 +61,7 @@ function openPts(c) {
   return out;
 }
 // the current track (loadTrack fills these in)
-let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], HMAP = null, FRAMES = null, RIDES = [], PMK = null, RSPC = 6, FIREBALLS = [], GEARS = [], HANDS = [], PENDS = [];
+let GAPS = [], MOLES = [], HEDGES = [], CHOMPS = [], WANDER = [], BUILDINGS = [], HOLES = [], RINGS = [], PLANE = null, THWOMPS = [], CARTS = [], LEDGES = [], HMAP = null, FRAMES = null, WIDTHS = null, STYLES = null, RIDES = [], PMK = null, RSPC = 6, FIREBALLS = [], GEARS = [], HANDS = [], PENDS = [];
 // 🕰️ the clockwork: a hand's angle, a pendulum's bob (swinging across the road), a gear's turn
 // 🎢 a ride: a loop or a wall-twist steeper than a kart can drive is ridden like a rollercoaster: you're carried along the road's own 3D path at the
 // speed you came in with (never slower than a cruise), steering only moves you across it; off the end you're driving again (or gliding, over a gap)
@@ -99,13 +99,14 @@ function pathSync(r) {   // before a step: whatever moved the kart from outside 
   if (l2 > .12) r.pu += (dx * bx + dy * by) / l2; r.ps += (dx * Math.cos(a) + dy * Math.sin(a)) / RSPC; r.px = r.x; r.py = r.y;
 }
 function pathPlace(r) {   // where the kart is in the world, from its place on the road
-  r.ps = ((r.ps % N) + N) % N; const i = Math.floor(r.ps), j = (i + 1) % N, f = r.ps - i, p = PTS[i], q = PTS[j], b = i * 3, c = j * 3;
+  r.ps = OPEN ? Math.max(0, Math.min(N - 1.001, r.ps)) : ((r.ps % N) + N) % N; const i = Math.floor(r.ps), j = pwr(i + 1), f = r.ps - i, p = PTS[i], q = PTS[j], b = i * 3, c = j * 3;
   const bx = FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, by = FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f;
-  r.x = r.px = p[0] + (q[0] - p[0]) * f + bx * r.pu; r.y = r.py = p[1] + (q[1] - p[1]) * f + by * r.pu; r.idx = Math.round(r.ps) % N; r.a = wrapA(tangent(r.idx) + r.phi); r.ma = wrapA(tangent(r.idx) + (r.mphi != null ? r.mphi : r.phi));
+  r.x = r.px = p[0] + (q[0] - p[0]) * f + bx * r.pu; r.y = r.py = p[1] + (q[1] - p[1]) * f + by * r.pu; r.idx = pwr(Math.round(r.ps)); r.a = wrapA(tangent(r.idx) + r.phi); r.ma = wrapA(tangent(r.idx) + (r.mphi != null ? r.mphi : r.phi));
 }
-const pathNav = r => ({ i: r.idx, d: Math.abs(r.pu), alt: false, half: ROAD / 2, u: r.pu });
-const pathTan = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, a = PTS[(i + N - 1) % N], b = PTS[(i + 1) % N], c = PTS[i], d = PTS[(i + 2) % N], t = [b[0] - a[0] + (d[0] - c[0] - b[0] + a[0]) * f, b[1] - a[1] + (d[1] - c[1] - b[1] + a[1]) * f, b[2] - a[2] + (d[2] - c[2] - b[2] + a[2]) * f], l = Math.hypot(t[0], t[1], t[2]) || 1; return [t[0] / l, t[1] / l, t[2] / l]; };   // the road's direction at a spot between two points
-const pathSide = s => { s = ((s % N) + N) % N; const i = Math.floor(s), f = s - i, b = i * 3, c = ((i + 1) % N) * 3, v = [FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f, FRAMES[b + 2] + (FRAMES[c + 2] - FRAMES[b + 2]) * f], l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+const pathNav = r => ({ i: r.idx, d: Math.abs(r.pu), alt: false, half: (WIDTHS ? WIDTHS[r.idx] : ROAD) / 2, u: r.pu });   // (a measured road can be a different width at every point)
+const pwr = i => OPEN ? Math.max(0, Math.min(N - 1, i)) : ((i % N) + N) % N;   // a path index, wrapped round a loop or clamped on a one-way run
+const pathTan = s => { s = OPEN ? Math.max(0, Math.min(N - 1.001, s)) : ((s % N) + N) % N; const i = Math.floor(s), f = s - i, a = PTS[pwr(i - 1)], b = PTS[pwr(i + 1)], c = PTS[i], d = PTS[pwr(i + 2)], t = [b[0] - a[0] + (d[0] - c[0] - b[0] + a[0]) * f, b[1] - a[1] + (d[1] - c[1] - b[1] + a[1]) * f, b[2] - a[2] + (d[2] - c[2] - b[2] + a[2]) * f], l = Math.hypot(t[0], t[1], t[2]) || 1; return [t[0] / l, t[1] / l, t[2] / l]; };   // the road's direction at a spot between two points
+const pathSide = s => { s = OPEN ? Math.max(0, Math.min(N - 1.001, s)) : ((s % N) + N) % N; const i = Math.floor(s), f = s - i, b = i * 3, c = pwr(i + 1) * 3, v = [FRAMES[b] + (FRAMES[c] - FRAMES[b]) * f, FRAMES[b + 1] + (FRAMES[c + 1] - FRAMES[b + 1]) * f, FRAMES[b + 2] + (FRAMES[c + 2] - FRAMES[b + 2]) * f], l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
 const roadPt = (i, u, up) => { i = ((i % N) + N) % N; const i0 = Math.floor(i), f = i - i0, p0 = PTS[i0], p1 = PTS[(i0 + 1) % N], p = [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f, p0[2] + (p1[2] - p0[2]) * f], b = pathSide(i), t = pathTan(i), n = [t[1] * b[2] - t[2] * b[1], t[2] * b[0] - t[0] * b[2], t[0] * b[1] - t[1] * b[0]]; return [p[0] + b[0] * u + n[0] * up, p[2] + b[2] * u + n[2] * up, p[1] + b[1] * u + n[1] * up]; };   // a spot by the road (u across, up above it) in the 3D picture's coordinates: x, height, y
 const pathTurn = (s0, s1) => { const t0 = pathTan(s0), b0 = pathSide(s0), t1 = pathTan(s1); return Math.atan2(t1[0] * b0[0] + t1[1] * b0[1] + t1[2] * b0[2], t1[0] * t0[0] + t1[1] * t0[1] + t1[2] * t0[2]); };   // how far the road turns within its own surface between two spots (+ right); a loop bends out of the surface, which doesn't count
 function pathMove(r, v, slide, dt, free, dr) {   // the speed, taken along and across the road's surface. The heading is carried along the surface like a real kart's: the road's
@@ -113,11 +114,11 @@ function pathMove(r, v, slide, dt, free, dr) {   // the speed, taken along and a
   // 🌀 a drift (dr: its direction and the steering) is anti-gravity's: the road's bend carries it round when it bends the drift's way, and from there steering in
   // tightens the arc and steering out widens it, so a held drift flows with the track; drifting against a bend slides out like anywhere else
   const along = Math.cos(r.phi) * v, across = Math.sin(r.phi) * v + slide; r.mphi = v > 40 ? Math.atan2(across, along) : r.phi;   // (mphi: the way it's actually moving, for the camera)
-  const s0 = r.ps; r.ps += along * dt * SPD / RSPC; r.pu += across * dt * SPD; r.ps = ((r.ps % N) + N) % N;
+  const s0 = r.ps; r.ps += along * dt * SPD / RSPC; r.pu += across * dt * SPD; r.ps = OPEN ? Math.max(0, Math.min(N - 1.001, r.ps)) : ((r.ps % N) + N) % N;
   const rt = free ? 0 : pathTurn(s0, r.ps); let add = 0;
   if (dr && dr.d && !free) { const d = dr.d, carried = Math.sign(rt) === d ? Math.abs(rt) / dt : 0; add = d * Math.max(T.theme.driftMin ?? .2, carried + (T.theme.driftBase ?? .04) + d * dr.steer * .9) * dt; }   // (a neutral drift holds the bend's line with the faintest pull inside; on a straight it always curves, so a straight drift drags you off in a couple of seconds, like the original's)
   r.phi = wrapA(r.phi + add - rt); r.mphi = wrapA(r.mphi + add - rt);
-  const i = Math.floor(r.ps), p = PTS[(i + N - 1) % N], q = PTS[(i + 1) % N], b = i * 3, tx = q[0] - p[0], ty = q[1] - p[1], tl = Math.hypot(tx, ty, q[2] - p[2]) || 1;
+  const i = Math.floor(r.ps), p = PTS[pwr(i - 1)], q = PTS[pwr(i + 1)], b = i * 3, tx = q[0] - p[0], ty = q[1] - p[1], tl = Math.hypot(tx, ty, q[2] - p[2]) || 1;
   if ((tx * FRAMES[b + 1] - ty * FRAMES[b]) / tl < .35 && !(r.z > 0)) r.v = Math.max(r.v, 150);   // (on a wall or upside down the road's "up" points sideways or down: you can't stall there)
   pathPlace(r);
 }
@@ -1072,6 +1073,31 @@ const TRACKS = {
       return { pads, coins, gaps, rings, ledges: [{ a: 0, b: N - 1 }], boxes: boxAt.flatMap(i => boxRow(i, [-60, -20, 20, 60])), extra() {} };
     },
   },
+  // 🏔️ Mount Wario: a one-way run down a mountain, measured from Mario Kart 8's Mount Wario (the user's local model + the course video), snow and ice
+  // all the way: out of the cargo plane on the summit, the wide slope, the ice canyon between rock walls, the arch (section 2), the chequered ice into the
+  // cave, a glide through the cave past a floating boost panel, the dam's grating hall, anti-gravity down the dam's face, a glide to the forest, the log
+  // jump, the gate (section 3), the slalom through the pines, the run-in with banners, the ski-jump tower and the big jump through the ring into the stadium
+  wario: {
+    id: "mtwario", thumb: "media/kart/mtwario.webp", scale: 7, road: 200, hmap: "wario", hmapWS: 2.8, cup: "elnath", music: "k_wario", introMusic: "k_wario_intro", name: "Mount Wario", sub: "one run · the summit, the ice canyon, the cave, the dam, the forest and the ski jump", icon: "🏔️", laps: 1, sections: 3, open: true, fall: "❄️ Down the mountain!",
+    path3d: "wario64",
+    intro: [{ from: [402, 330, 360], to: [409, -220, 260], look: [388, 0, 60], look2: [398, 0, 40], dur: 4 }, { from: [56, 40, 560], to: [72, -30, 430], look: [70, 0, 0], look2: [92, 0, 0], dur: 3.6 }, { from: [22, 130, 70], to: [21, -130, 80], look: [12, 0, 60], look2: [10, 0, 70], dur: 3.4 }],   // 🎬 the course intro: over the stadium at the foot of the jump, the ice canyon, then the plane at the summit from in front of the grid
+    marks: { boxes: [30, 78, 118, 165, 265, 305, 340], dashair: [144], ring: [379], hump: [50], log: [271] },
+    theme: { snowland: true, bluesky: true, antigrav: true, sky: "#9fd3ff", grass: ["#eef3fb", "#e6edf8"], flowers: 0, tufts: 0, road: "snowg", curb: ["#ffffff", "#dfe8f6"], noCurb: true, haze: [214, 230, 250], fog: [3500, 14000], hills: 1, line: "rgba(0,0,0,0)", noArch: true, boostT: 1.3, steerEase: 8,
+      glide: { up: 160, g: 40, sink: 34, turn: .6, dive: 170, diveG: 260, dash: 70 },
+      clean: { sun: 0xfff6e8, sunI: 2.0, dir: [.3, .85, -.4], sky: 0xcfe6ff, gnd: 0xb8c8dc, hemiI: 1.3, exp: 1, sat: 1, con: 1, warm: 0, vig: 0, bloom: 0, thr: 1, trees: 0, tufts: 0, mobs: 0 } },
+    near: [], far: [], mobs: [],
+    build() {
+      const pads = [], coins = [], gaps = [], M = PMK, hw = i => (WIDTHS ? WIDTHS[Math.min(N - 1, i)] : ROAD) / 2;
+      for (const [a, b] of M.gaps) { gaps.push({ a, b, kind: "chasm", open: true, caps: [] }); pads.push({ t: "glide", i: a - 7, len: 6, o: 0, w: hw(a) * 2 }); }   // 🪂 the three jumps: the cave, off the dam, the ski jump
+      for (const i of M.dash) pads.push({ t: "boost", i: i - 2, len: 8, o: 0, w: hw(i) * 2 });   // ⚡ the dash panels, where the original has them
+      const rings = (M.marks.dashair || []).map(i => ({ i, o: 0, z: 40, r: 50, w: 70, panel: true })).concat((M.marks.ring || []).map(i => ({ i, o: 0, z: 95, r: 60, w: 80, hoop: true })));   // the floating boost panel in the cave, the ring over the stadium
+      const row = (a, b, n, o, z = 0) => { for (let j = 0; j < n; j++) { const i = a + (b - a) * j / (n - 1), [x, y] = at(i, typeof o === "function" ? o(j) : o); coins.push({ x, y, z, got: false }); } };
+      row(M.start + 40, M.start + 160, 5, 0); row(M.sections[0] + 60, M.sections[0] + 150, 4, 0); row(M.sections[1] + 80, M.sections[1] + 200, 5, j => (j % 2 ? 1 : -1) * 30);
+      const ledges = [{ a: M.gravity[1] - 10, b: M.dash[3] + 10 }];   // the dam's face: off its edge you fall
+      const boxes = (M.marks.boxes || []).flatMap(i => { const h = hw(i); return boxRow(i, h > 100 ? [-h * .55, -h * .18, h * .18, h * .55] : [-h * .4, 0, h * .4]); });
+      return { pads, coins, gaps, rings, ledges, boxes, extra() {} };
+    },
+  },
   // 🔭 Discovery: laid out exactly like Mario Kart 8 Deluxe's Wii Mushroom Gorge (traced from above, every model drawn by us). Down the
   // start straight, a slight right and left, over the curving wooden bridge, off the ramp onto one giant bouncy mushroom across the
   // gorge, round the long U, along the cliff into the crystal cave, off the ramp over the cave's pit on two rows of mushrooms, out
@@ -1111,8 +1137,9 @@ const TRACKS = {
   },
 };
 // the cups: 3 tracks each, raced in this order in the Grand Prix. Each new cup has its own twist.
-const CUPS = {   // (for now just the one track: CAD64; the other cups' tracks stay in the code, not offered)
-  ludi: { name: "Ludibrium Cup", icon: "🧸", tracks: ["star"], rule: "" },
+const CUPS = {   // (CAD64 and the new Mount Wario; the other cups' tracks stay in the code, not offered)
+  ludi: { name: "Ludibrium Cup", icon: "🌠", tracks: ["star"] },
+  elnath: { name: "El Nath Cup", icon: "🏔️", tracks: ["wario"] },
 };
 const cupOf = key => Object.keys(CUPS).find(c => CUPS[c].tracks.includes(key)) || Object.keys(CUPS)[0];
 function loadTrack(key) {
@@ -1120,24 +1147,24 @@ function loadTrack(key) {
   T = TRACKS[key]; TRACK_KEY = key; TRACK_ID = T.id; OPEN = !!T.open; ROAD = T.road || 160;
   WS = T.scale || 1; WORLD = Math.round(TW * WS / 8) * 8;   // a bigger world for a longer lap: the layout (drawn on a 2048 map) is stretched, the road, karts and speed are not
   const ctrl = !T.ctrl ? null : WS === 1 ? T.ctrl : T.ctrl.map(p => p.map((v, j) => v * WS));   // (hills scale too, so the slopes stay the same)
-  FRAMES = null; RIDES = []; PMK = null; const PD = T.path3d && window.KART_PATHS && KART_PATHS[T.path3d];
+  FRAMES = null; WIDTHS = null; STYLES = null; RIDES = []; PMK = null; const PD = T.path3d && window.KART_PATHS && KART_PATHS[T.path3d];
   if (PD) {   // 🎢 a track laid along its own 3D path: points every ~6 units along it (measured in 3D, so a loop has its full length), each with the road's sideways direction
-    const SC = T.pathScale || 1, P = PD.P.map(p => p.map(v => v * SC)), n = P.length, cum = [0]; let B = PD.B;   // (pathScale: the course scaled up; the road and the karts stay their size, so it's bigger and longer, like the original)
+    const SC = T.pathScale || 1, P = PD.P.map(p => p.map(v => v * SC)), n = P.length, cum = [0], PO = !!PD.open, wr = i => PO ? Math.max(0, Math.min(n - 1, i)) : ((i % n) + n) % n; let B = PD.B;   // (PO: a one-way run, the path doesn't close; wr: a neighbour index, clamped at the ends of an open path)   // (pathScale: the course scaled up; the road and the karts stay their size, so it's bigger and longer, like the original)
     for (const [ga, gb] of PD.gaps) { const a = ga - 1, m = gb - a; if (m < 6 || a < 3 || gb + 3 >= n) continue;   // 🪂 a gap's bridge is a smooth flight curve, not a straight line: it leaves the road along the road's own direction and lands along the next piece's, so there's no kink at either end
       const pa = P[a], pb = P[gb], L = Math.hypot(pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]) * .45, dir = (u, v) => { const d = [v[0] - u[0], v[1] - u[1], v[2] - u[2]], l = Math.hypot(d[0], d[1], d[2]) || 1; return d.map(c => c / l * L); }, ta = dir(P[a - 3], pa), tb = dir(pb, P[gb + 3]);
       for (let q = 1; q < m; q++) { const t = q / m, t2 = t * t, t3 = t2 * t, h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = 3 * t2 - 2 * t3, h11 = t3 - t2; P[a + q] = [0, 1, 2].map(j => h00 * pa[j] + h10 * ta[j] + h01 * pb[j] + h11 * tb[j]); } }
     { const kern = SG => { const W2 = Math.ceil(SG * 3), wt = []; let ws = 0; for (let k = -W2; k <= W2; k++) { const w = Math.exp(-k * k / (2 * SG * SG)); wt.push(w); ws += w; } return { W2, wt, ws }; };   // 🧈 the measured points carry tracing wobbles: a unit or so in height and a degree or two of pitch and tilt, point to point. At racing speed those read as a washboard, so the path is low-pass filtered: a Gaussian of 3 points (48 units) on the centre line takes out anything shorter than ~100 units and moves the road's real shape by a few units at most; the sideways vectors (banking) get a wider one (8 points, 128 units), since real banking changes over hundreds of units
-      const sm = (A, K) => A.map((_, i) => [0, 1, 2].map(j => { let t = 0; for (let k = -K.W2; k <= K.W2; k++) t += A[(i + k + n) % n][j] * K.wt[k + K.W2]; return t / K.ws; })), P2 = sm(P, kern(PD.smooth ?? 3)), B2 = sm(B, kern(PD.smoothB ?? 8));
-      for (let i = 0; i < n; i++) { P[i] = P2[i]; const p = P2[(i + 1) % n], q = P2[(i + n - 1) % n]; let tx = p[0] - q[0], ty = p[1] - q[1], tz = p[2] - q[2]; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;   // (the sideways vectors stay square to the smoothed road)
+      const sm = (A, K) => A.map((_, i) => [0, 1, 2].map(j => { let t = 0; for (let k = -K.W2; k <= K.W2; k++) t += A[wr(i + k)][j] * K.wt[k + K.W2]; return t / K.ws; })), P2 = sm(P, kern(PD.smooth ?? 3)), B2 = sm(B, kern(PD.smoothB ?? 8));
+      for (let i = 0; i < n; i++) { P[i] = P2[i]; const p = P2[wr(i + 1)], q = P2[wr(i - 1)]; let tx = p[0] - q[0], ty = p[1] - q[1], tz = p[2] - q[2]; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;   // (the sideways vectors stay square to the smoothed road)
         const b = B2[i], d = b[0] * tx + b[1] * ty + b[2] * tz, v = [b[0] - d * tx, b[1] - d * ty, b[2] - d * tz], l = Math.hypot(v[0], v[1], v[2]) || 1; B2[i] = [v[0] / l, v[1] / l, v[2] / l]; }
       B = B2; }
-    for (let k = 1; k <= n; k++) { const a = P[k - 1], c = P[k % n]; cum.push(cum[k - 1] + Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2])); }
-    const tot = cum[n], M = Math.round(tot / 6); RSPC = tot / M; PTS = []; FRAMES = new Float32Array(M * 3); let k = 0;
+    for (let k = 1; k <= (PO ? n - 1 : n); k++) { const a = P[k - 1], c = P[k % n]; cum.push(cum[k - 1] + Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2])); }
+    const tot = cum[cum.length - 1], M = Math.round(tot / 6); RSPC = tot / M; PTS = []; FRAMES = new Float32Array(M * 3); WIDTHS = PD.W ? new Float32Array(M) : null; let k = 0;
     const CR = (p0, p1, p2, p3, f, j) => .5 * (2 * p1[j] + (p2[j] - p0[j]) * f + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * f * f + (3 * p1[j] - p0[j] - 3 * p2[j] + p3[j]) * f * f * f);   // (a smooth curve through the measured points: no facets or kinks between them, for the road, the karts and the camera)
-    for (let q = 0; q < M; q++) { const sq = q * RSPC; while (cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = (k + n - 1) % n, k1 = k % n, k2 = (k + 1) % n, k3 = (k + 2) % n;
-      PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); }
-    const mi = i => Math.round(cum[Math.max(0, Math.min(n, i))] / RSPC) % M;   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove. The fences' measured sides are negated: the model was mirrored into the game, so its left is our right)
-    RIDES = []; PMK = { intro: (T.intro || []).map(sh => ({ dur: sh.dur || 3, from: [mi(sh.from[0]), sh.from[1], sh.from[2]], to: [mi(sh.to[0]), sh.to[1], sh.to[2]], look: [mi(sh.look[0]), sh.look[1], sh.look[2]], look2: sh.look2 ? [mi(sh.look2[0]), sh.look2[1], sh.look2[2]] : null })), gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: PD.marks.fences.map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), rings: T.marks ? [...(T.marks.boosts || []).map(([i, o]) => [mi(i), null, 16, 18, o || 0]), ...(T.marks.airRings || []).map(([i, z, o]) => [mi(i), null, z, 18, o || 0])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, k === "airRings" ? v.map(([i, z, o]) => ({ i: mi(i), z, o: o || 0 })) : k === "boosts" ? v.map(([i, o]) => ({ i: mi(i), o: o || 0 })) : v.map(mi)])) };   // (rings: [point, height, height above the road, radius, sideways]: just bigger than a kart, over the road or on the glider's flight line)
+    for (let q = 0; q < M; q++) { const sq = q * RSPC; while (k + 1 < cum.length - 1 && cum[k + 1] < sq) k++; const f = (sq - cum[k]) / (cum[k + 1] - cum[k] || 1), k0 = wr(k - 1), k1 = wr(k), k2 = wr(k + 1), k3 = wr(k + 2);
+      PTS.push([0, 1, 2].map(j => CR(P[k0], P[k1], P[k2], P[k3], f, j))); const bv = [0, 1, 2].map(j => CR(B[k0], B[k1], B[k2], B[k3], f, j)), bl = Math.hypot(bv[0], bv[1], bv[2]) || 1; FRAMES.set([bv[0] / bl, bv[1] / bl, bv[2] / bl], q * 3); if (WIDTHS) WIDTHS[q] = PD.W[k1] + (PD.W[k2] - PD.W[k1]) * f; }
+    const mi = i => { const v = Math.round(cum[Math.max(0, Math.min(cum.length - 1, i))] / RSPC); return PO ? Math.min(M - 1, v) : v % M; };   // (nothing is ridden any more: glued karts drive the loops and twists themselves, see pathMove. The fences' measured sides are negated: the model was mirrored into the game, so its left is our right)
+    RIDES = []; STYLES = (PD.styles || []).map(([a, b, st]) => [mi(a), Math.min(M, mi(b) + 1), st]); PMK = { intro: (T.intro || []).map(sh => ({ dur: sh.dur || 3, from: [mi(sh.from[0]), sh.from[1], sh.from[2]], to: [mi(sh.to[0]), sh.to[1], sh.to[2]], look: [mi(sh.look[0]), sh.look[1], sh.look[2]], look2: sh.look2 ? [mi(sh.look2[0]), sh.look2[1], sh.look2[2]] : null })), gaps: PD.gaps.map(([a, b]) => [mi(a), mi(b)]), sections: PD.marks.sections.map(mi), glide: PD.marks.glide.map(mi), dash: PD.marks.dash.map(mi), gravity: PD.marks.gravity.map(mi), fences: (PD.marks.fences || []).map(([a, b, sd]) => [mi(a), mi(b), -(sd || 0)]), start: PD.marks.start != null ? mi(PD.marks.start) : null, finish: PD.marks.finish != null ? mi(PD.marks.finish) : null, data: PD, marks: Object.fromEntries(Object.entries(PD.marks).filter(([k, v]) => Array.isArray(v) && typeof v[0] === "number").map(([k, v]) => [k, v.map(mi)])), rings: T.marks ? [...(T.marks.boosts || []).map(([i, o]) => [mi(i), null, 16, 18, o || 0]), ...(T.marks.airRings || []).map(([i, z, o]) => [mi(i), null, z, 18, o || 0])] : (PD.marks.rings || []).map(([a, z]) => [mi(a), z * SC]), startLen: (PD.marks.startStrip || 0) * (PD.K || 1) * SC, own: Object.fromEntries(Object.entries(T.marks || {}).map(([k, v]) => [k, k === "airRings" ? v.map(([i, z, o]) => ({ i: mi(i), z, o: o || 0 })) : k === "boosts" ? v.map(([i, o]) => ({ i: mi(i), o: o || 0 })) : v.map(mi)])) };   // (rings: [point, height, height above the road, radius, sideways]: just bigger than a kart, over the road or on the glider's flight line)
   } else PTS = OPEN ? openPts(ctrl) : loopPts(ctrl);
   N = PTS.length; TRACK_LEN = 0;
   HMAP = null; { const src = T.hmap && window.KART_MAPS && KART_MAPS[T.hmap];   // 🗺️ the track's own landscape: heights (blank = the drop into the clouds) and rock/grass/road
@@ -1147,7 +1174,7 @@ function loadTrack(key) {
       HMAP = { n, x0: 5 * WS, step: 10 * WS, z, c, deep: -900 * hk, k: hk, ws: WS }; } }
   if (T.theme.smoothXY && !OPEN && !FRAMES) { const sg = T.theme.smoothXY, W = Math.ceil(sg * 3), wt = []; let ws = 0; for (let k = -W; k <= W; k++) { const w = Math.exp(-k * k / (2 * sg * sg)); wt.push(w); ws += w; }   // (a traced layout's little wobbles eased out, so every bend is one smooth sweep)
     const src = PTS.map(p => p.slice()); for (let i = 0; i < N; i++) { let sx = 0, sy = 0; for (let k = -W; k <= W; k++) { const q = src[(i + k + N) % N]; sx += q[0] * wt[k + W]; sy += q[1] * wt[k + W]; } PTS[i][0] = sx / ws; PTS[i][1] = sy / ws; } }
-  LAPS = OPEN ? 1 : (T.laps || 3); START_I = OPEN ? (PTS[0].length > 2 ? 90 : 44) : 0;   // (a 3D grid is deeper: it needs more road behind the line)
+  LAPS = OPEN ? 1 : (T.laps || 3); START_I = OPEN ? (PMK && PMK.start != null ? PMK.start : PTS[0].length > 2 ? 90 : 44) : 0;   // (a 3D grid is deeper: it needs more road behind the line)
   { let L = 0; for (let i = 1; i < N; i++) L += Math.hypot(PTS[i][0] - PTS[i - 1][0], PTS[i][1] - PTS[i - 1][1]); SPC = L / (N - 1); }   // world units between track points
   MECH = { elnath: "ice" }[T.cup] || null;   // only El Nath keeps its own rule (slippery ice); the lights-out, swapped controls and lava chase made races annoying
   OUT = T.theme.out ? hexABGR(T.theme.out) : OUT0; HAZE = T.theme.haze || HAZE0;
@@ -1474,7 +1501,7 @@ function paintTrack(dg) {   // dg: paint only what lies ON the road (pads, ramps
   for (const sv of STEAMS) { g.fillStyle = "#3a3a40"; g.beginPath(); g.arc(sv.x, sv.y, (sv.r || 44) * .8, 0, 7); g.fill(); g.strokeStyle = "#8a8d96"; g.lineWidth = 3; for (let k2 = -2; k2 <= 2; k2++) { g.beginPath(); g.moveTo(sv.x - 26, sv.y + k2 * 9); g.lineTo(sv.x + 26, sv.y + k2 * 9); g.stroke(); } }   // 💨 steam vent grates
   for (const ge of GEYSERS) { g.fillStyle = "#2a1a14"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) + 8, 0, 7); g.fill(); g.fillStyle = "#ff6a1a"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) * .7, 0, 7); g.fill(); g.fillStyle = "#ffd060"; g.beginPath(); g.arc(ge.x, ge.y, (ge.r || 36) * .35, 0, 7); g.fill(); }   // 🌋 geyser vents
   const blob = (x, y, a, rx, ry) => () => { g.beginPath(); g.ellipse(x, y, rx, ry, a, 0, 7); };
-  for (const p of PADS) { if (T.theme.skyroad && (p.t === "boost" || p.t === "glide")) continue;   // (the Star Road builds its dash panels in 3D: crisp, glowing)
+  for (const p of PADS) { if ((T.theme.skyroad || T.theme.antigrav) && (p.t === "boost" || p.t === "glide")) continue;   // (the Star Road builds its dash panels in 3D: crisp, glowing)
     if (p.t === "glide") for (let j = 0; j <= p.len; j += .5) for (let c = 0; c < 10; c++) {   // 🪁 a glider ramp: blue with white chevrons
       const o1 = p.o - p.w / 2 + p.w * c / 10, o2 = o1 + p.w / 10 + .5, chev = ((j * 2 + 40 - Math.abs(c - 4.5) * 1.5) % 6) < 3;
       quad(p.i + j, o1, o2, j < .6 || j > p.len - .6 ? "#1d3f8a" : chev ? "#ffffff" : "#2f8fe8");
@@ -1850,7 +1877,7 @@ function greenery(rnd) {
     if (TREES3D.some(o => Math.hypot(o.x - x, o.y - y) < 70)) continue;
     if (HMAP && hmBare(x, y)) continue;   // (not out over the clouds, nor on bare rock)
     const pine = f > .66 && rnd() < .7, pal = pine ? pinesC : greens; TREES3D.push({ x, y, k: pine ? "pine" : "round", s: .8 + rnd() * .7, r: rnd() * 6.28, c: pal[Math.floor(rnd() * pal.length)], c2: pal[Math.floor(rnd() * pal.length)] }); }
-  for (let k = 0, n = Math.round((G.tufts || 1400) * WS * WS / 3); k < n; k++) { const i = Math.floor(rnd() * N), sd = rnd() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 18 + rnd() * rnd() * 260));
+  for (let k = 0, n = Math.round((G.tufts ?? 1400) * WS * WS / 3); k < n; k++) { const i = Math.floor(rnd() * N), sd = rnd() < .5 ? -1 : 1, [x, y] = at(i, sd * (ROAD / 2 + CURB + 18 + rnd() * rnd() * 260));
     if (roadDist(x, y) < ROAD / 2 + CURB + 10 || inLake(x, y) || (HMAP && hmBare(x, y))) continue; const fl = vnoise2(x / 90, y / 90, 9) > .62;
     TUFTS3D.push({ x, y, r: rnd() * 6.28, c: greens[Math.floor(rnd() * greens.length)], f: fl ? flowers[Math.floor(rnd() * flowers.length)] : 0 }); }
   for (let k = 0, got = 0; got < (G.mobs ?? 10) && k < 400; k++) { const x = 80 + rnd() * (WORLD - 160), y = 80 + rnd() * (WORLD - 160), d = roadDist(x, y);   // a few of the map's creatures out in the open meadows (never by the road)
@@ -1927,13 +1954,13 @@ const FIN_OFF = 14;   // an open track's finish line, this many points before it
 let OUT = OUT0, HAZE = HAZE0, sky = null;
 const GH3 = { top: { name: "ghost" }, me: { name: "ghost" } };
 function fireworkSound(d) { const k = Math.max(.12, 1 - (d || 0) / 3600); tone(64 + Math.random() * 40, .4, "sine", .1 * k, 34); noiseHit(1500 + Math.random() * 1400, .45, .04 * k, 1.6); }   // 🎆 a firework going off: a deep thump and a crackle, softer the further away
-const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
+const trackData = () => ({ key: TRACK_KEY, PTS, N, OPEN, START_I, ALT, AN, FORK_A, FORK_B, SPC, ROAD, CURB, ALT_ROAD, ALT_STYLE, tex, theme: T.theme, cup: T.cup, sky, strip: IMG.strip, haze: HAZE,
   decal: () => { const c = document.createElement("canvas"); c.width = c.height = TW; paintTrack(c); return c; }, WORLD,
-  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, dashPads: T.theme.skyroad ? PADS.filter(p => p.t === "boost" || p.t === "glide") : [], rollers: ROLLERS, rollerAt, trees3d: TREES3D, tufts3d: TUFTS3D, belts: BELTS, trains: TRAINS, trainAt, tdrops: TDROPS, tdropAt, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, hmap: HMAP, frames: FRAMES, rides: RIDES, rspc: RSPC, pmk: PMK, boom: T.theme.skyroad ? fireworkSound : null, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
+  gaps: GAPS, hedges: HEDGES, buildings: BUILDINGS, chutes: CHUTES, dashPads: (T.theme.skyroad || T.theme.antigrav) ? PADS.filter(p => p.t === "boost" || p.t === "glide") : [], rollers: ROLLERS, rollerAt, trees3d: TREES3D, tufts3d: TUFTS3D, belts: BELTS, trains: TRAINS, trainAt, tdrops: TDROPS, tdropAt, arms: ZARMS, armAt, zakum: ZAKUM, awake: () => !!ZAKUM && zakAwake(), geysers: GEYSERS, geyserAt, steams: STEAMS, tideAt: T.theme.tide ? tideAt : null, lapGaps: GAPS.filter(g => g.lap).map(g => ({ a: g.a, b: g.b, lap: g.lap })), phantomAt: phantomAlpha, fakes: FAKES, supports: T.supportDefs || [], cave: !!T.theme.cave, trunk: T.trunkDef || null, temple: T.templeDef || null, cable: T.cableDef || null, icefalls: T.icefallDefs || [], bridges3d: BRIDGES3D, solids: OBJS.filter(o => o.solid).map(o => ({ k: o.k, x: o.x, y: o.y, h: o.h3, depth: o.depth, ri: o.ri, dy: o.dy, cross: o.cross, fa: o.fa != null ? o.fa : (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) })), solidImgs: Object.fromEntries(OBJS.filter(o => o.solid).map(o => [o.k, IMG[o.k] || null])), iceStones: T.theme.iceStones ? [0, 1, 2, 3, 4, 5].map(n => IMG["en_ice" + n] || null) : null, moon: T.theme.moon ? IMG.en_moon || null : null, aurora: !!T.theme.aurora, fairy: FAIRY || (T.theme.fairy && LAKE ? LAKE : null), peaks: !!T.theme.peaks, drifts: !!T.theme.drifts, props3d: [...OBJS.filter(o => (o.f3d || K3D.has(o.k)) && o.k !== "fountain"), ...HEDGES.filter(b => K3D.has(b.sprite)).map(b => ({ k: b.sprite, x: b.x, y: b.y, h: b.h * 1.25, s: 0, stone: b.sprite === "xpillar" && !!T.theme.iceStones, fa: tangent(nearest(b.x, b.y).i) + Math.PI }))].map(o => o.fa != null ? o : { ...o, fa: (q => Math.atan2(q[1] - o.y, q[0] - o.x))(at(nearest(o.x, o.y).i, 0)) }), lake: LAKE, caves: CAVES, bare: BARE, rings: RINGS, plane: PLANE, tiles: TILEPAT, thwomps: THWOMPS, thz: thwompZ, carts: CARTS, cartAt, ledges: LEDGES, hmap: HMAP, frames: FRAMES, rides: RIDES, rspc: RSPC, pmk: PMK, widths: WIDTHS, styles: STYLES, open: OPEN, boom: T.theme.skyroad ? fireworkSound : null, gears: GEARS, hands: HANDS, handAng, pends: PENDS, pendAt, hide: HIDE, fireballs: FIREBALLS, fireZ, holes: HOLES.filter(h => h.lap), lapNow: () => (K ? K.lap + 1 : 1), water: T.water ? { level: T.water.level * WS, bed: T.water.bed * WS } : null, sea: T.theme.sea != null ? T.theme.sea * WS : null,
   shrooms: PADS.filter(p => p.t === "shroom").map(p => { const [x, y] = at(p.i + p.len / 2, p.o); return { x, y, a: tangent(p.i), w: p.w, l: p.len * SPC + 8, col: p.col, pad: p }; }) });
 async function load3d() {
   if (G3E || store.get("kart_3d") === "0") return;
-  try { const m = await import("./kart3d.js?v=263"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
+  try { const m = await import("./kart3d.js?v=264"); G3E = m.create({ WORLD, canvas: $k("#k3d"), touch: matchMedia("(pointer: coarse)").matches }); }
   catch (e) { console.warn("Family Kart: 3D unavailable, using the flat view", e); G3E = null; }
 }
 
@@ -2365,14 +2392,15 @@ function rivalStep(r, dt, tt) {
   r.lostT = lost ? (r.lostT || 0) + dt : 0; if (r.lostT > 2.5) { rescue(r); return; }
   if ((r.laneT -= dt) <= 0) { r.lane = (Math.random() - .5) * 100; r.laneT = 1.5 + Math.random() * 3; }
   if (!r.item && !(r.noItem > 0) && mode !== "tt") for (const b of BOXES) if (b.i != null && !(b.z > 0) && b.t <= 0) { const di = OPEN ? b.i - r.idx : (b.i - r.idx + N) % N; if (di > 4 && di < 45) { r.lane = b.o; break; } }   // 🎁 no item: head for a box (dodging below still wins)
-  if (HMAP || (LEDGES.length && LEDGES.some(l => { const j = OPEN ? r.idx + 30 : (r.idx + 30) % N; return (r.idx >= l.a && r.idx <= l.b) || (j >= l.a && j <= l.b); }))) r.lane = Math.max(-ROAD / 2 + 42, Math.min(ROAD / 2 - 42, r.lane));   // no railing here: stay off the edge (holes and hedges below still win)
+  const RW = WIDTHS ? WIDTHS[r.idx] : ROAD;   // (the road's width here)
+  if (HMAP || (LEDGES.length && LEDGES.some(l => { const j = OPEN ? r.idx + 30 : (r.idx + 30) % N; return (r.idx >= l.a && r.idx <= l.b) || (j >= l.a && j <= l.b); }))) r.lane = Math.max(-RW / 2 + 42, Math.min(RW / 2 - 42, r.lane));   // no railing here: stay off the edge (holes and hedges below still win)
   for (const p of PADS) if (p.t === "slime") { const di = (p.i - r.idx + N) % N; if (di < 45 && Math.abs(r.lane - p.o) < 34) r.lane = p.o > 0 ? p.o - 48 : p.o + 48; }
   for (const d of DROPS) { const dd = Math.hypot(d.x - r.x, d.y - r.y); if (dd < 90 && dd > 20 && Math.random() < .5) { const dl = lat(d.x, d.y, r.idx); if (Math.abs(dl - r.lane) < 26) r.lane = dl > 0 ? dl - 40 : dl + 40; } }
   for (const b of HEDGES) if (b.i != null) { const di = (b.i - r.idx + N) % N; if (di > 0 && di < 32 && Math.abs(r.lane - b.o) < b.w / 2 + 24) r.lane = b.o > 0 ? b.o - b.w / 2 - 40 : b.o < 0 ? b.o + b.w / 2 + 40 : (r.lane >= 0 ? b.w / 2 + 40 : -b.w / 2 - 40); }   // 🌿 round the hedges
   for (const d of TDROPS) { const di = (d.i - r.idx + N) % N, q = tdropAt(d, performance.now() / 1000); if (di > 0 && di < 40 && (q.solid || q.p > .2) && Math.abs(r.lane - (d.o || 0)) < 66) r.lane = (d.o || 0) + ((d.o || 0) > 0 ? -1 : (d.o || 0) < 0 ? 1 : (r.lane >= 0 ? 1 : -1)) * 80; }   // 🧱 round the toy bricks
   for (const t of THWOMPS) if (t.i != null) { const di = (t.i - r.idx + N) % N; if (di > 0 && di < 30 && Math.abs(r.lane - (t.o || 0)) < 60) r.lane = (t.o || 0) + (r.lane >= (t.o || 0) ? 1 : -1) * 75; }   // 🗿 the computer racers drive round the Thwomps
   for (const h of HOLES) if (!h.lap || r.lap + 1 >= h.lap) { const di = (h.i - r.idx + N) % N; if (di > 0 && di < 60 && Math.abs(r.lane - (h.o || 0)) < h.r + 22) { const ho = h.o || 0, sd = Math.abs(ho) > 20 ? -Math.sign(ho) : (r.lane >= ho ? 1 : -1); r.lane = ho + sd * (h.r + (Math.abs(ho) > 20 ? 30 : 20)); } }   // 🕳️ and round holes (always round the side that stays on the road)
-  r.lane = Math.max(-ROAD / 2 + 14, Math.min(ROAD / 2 - 14, r.lane));
+  r.lane = Math.max(-RW / 2 + 14, Math.min(RW / 2 - 14, r.lane));
   const onFork = r.useAlt && r.idx >= FORK_A - 4 && r.idx < FORK_B - 6;
   let d; if (FRAMES) d = wrapA(Math.atan2(r.lane - r.pu, 14 * RSPC) - r.phi);   // 🧲 on a measured road: just steer across to the lane (the road's own direction comes free)
   else { const [tx, ty] = onFork ? altAt((near.alt ? near.j : nearAlt(r.x, r.y).j) + 12, Math.max(-ALT_ROAD / 2 + 12, Math.min(ALT_ROAD / 2 - 12, r.lane * .7))) : at(r.idx + 14, r.lane);
@@ -2433,7 +2461,7 @@ function rivalStep(r, dt, tt) {
 const raceNow = () => K.doneAt ? K.t + (performance.now() - K.doneAt) : K.t;
 function lapTick(r) {   // 4 checkpoints in order, then the start line; true when a lap is done
   if (OPEN) {   // one long run: done when you reach the finish line near the end
-    if (r.lap === 0 && r.idx >= N - FIN_OFF) { r.lap = 1; if (r !== K && !r.done) { r.done = true; r.finish = ++finishers; r.finishT = raceNow(); } return true; }
+    if (r.lap === 0 && r.idx >= (PMK && PMK.finish != null ? PMK.finish : N - FIN_OFF)) { r.lap = 1; if (r !== K && !r.done) { r.done = true; r.finish = ++finishers; r.finishT = raceNow(); } return true; }
     r.prog = r.idx / N; return false;
   }
   const prog = r.idx / N, cp = Math.floor(prog * 4);
