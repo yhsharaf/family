@@ -1949,7 +1949,7 @@ if (!CUPS[cup].tracks.includes(track)) track = CUPS[cup].tracks[0];
 const GP_RACES = 3, GP_PTS = [10, 8, 6, 4, 3, 2, 1, 0];
 let gp = null;   // { race, names, pts: { name: points } }
 let ghost = null, ghostRec = [];   // your best Time Trial run, sampled 10 times a second: [t, x, y, a, z]
-const ghostKey = () => `kart_ghost2:${ccId(TRACK_ID, raceCC)}:${me}`;
+const ghostKey = () => `kart_ghost3:${ccId(TRACK_ID, raceCC)}:${me}`;
 // difficulty, picked before the race: rival speed, how hard they catch up, how often they grab items
 const DIFFS = { easy: { skill: .95, band: .07, pick: .55, drift: .3, label: "Easy" }, normal: { skill: 1.16, band: .15, pick: .85, drift: .65, label: "Normal" }, hard: { skill: 1.2, band: .18, pick: 1, drift: .9, label: "Hard" } };   // drift: how often a computer racer gets a mini-turbo out of a corner
 let diff = DIFFS[store.get("kart_diff")] ? store.get("kart_diff") : "normal";
@@ -2750,7 +2750,7 @@ function freshKart() {
     shake: 0, stall: 0, mesos: 0, held: null, lastPad: null, prevDrift: false, prevItem: false, kingWas: 0, ma: a, flipped: false, flipT: 15 + Math.random() * 15 };
 }
 const fmt = ms => ms == null ? "--" : `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.${String(Math.floor(ms % 1000)).padStart(3, "0")}`;
-const bestKey = () => `kart_best2:${ccId(TRACK_ID, raceCC)}:${me}`;
+const bestKey = () => `kart_best3:${ccId(TRACK_ID, raceCC)}:${me}`;   // (the "3" keys: everyone's saved bests, ghosts and best laps start again from zero after CAD64 grew longer)
 let raceCC = 150;
 
 function input() {
@@ -3090,7 +3090,7 @@ function step(dt) {
   if (mode === "tt" && (!ghostRec.length || k.t - ghostRec[ghostRec.length - 1][0] >= 100)) ghostRec.push([Math.round(k.t), Math.round(k.x), Math.round(k.y), +k.a.toFixed(2), Math.round(k.z)]);
   if (lapTick(k)) {
     k.laps.push(k.t - k.lapStart); k.lapStart = k.t; lapSound(); cheerSound();
-    { const lt = k.laps[k.laps.length - 1], key = `kart_bl:${ccId(TRACK_ID, raceCC)}:${me}`, pb = +store.get(key) || 0;   // ⚡ your best lap ever on this track, in any mode
+    { const lt = k.laps[k.laps.length - 1], key = `kart_bl2:${ccId(TRACK_ID, raceCC)}:${me}`, pb = +store.get(key) || 0;   // ⚡ your best lap ever on this track, in any mode
       if (lt > 5000 && (!pb || lt < pb)) { store.set(key, String(Math.round(lt))); if (pb) { setTimeout(() => { if (state === "race" || state === "done") { pop(`⚡ NEW BEST LAP!  −${((pb - lt) / 1000).toFixed(2)}s`, "#ffe14a", true); [880, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, .12, "square", .05), i * 90)); buzz([20, 40, 20]); } }, 700); } } }
     COINS.forEach(c => c.got = false);   // mesos come back every lap (the 10 max stays)
     if (k.lap >= LAPS) finish();
@@ -4437,7 +4437,7 @@ async function loadBoard() {
 if (location.hash === "#kart") loadBoard();
 addEventListener("hashchange", () => { if (location.hash === "#kart") loadBoard(); });
 function showBest() {
-  const bt = TRACKS[mode === "gp" ? CUPS[cup].tracks[0] : track], n = ($k("#kName").value || "").trim(), g = n && guildOf(n), key = `kart_best2:${ccId(bt.id, cc)}:${g ? g.name : n}`;
+  const bt = TRACKS[mode === "gp" ? CUPS[cup].tracks[0] : track], n = ($k("#kName").value || "").trim(), g = n && guildOf(n), key = `kart_best3:${ccId(bt.id, cc)}:${g ? g.name : n}`;
   let b = null; try { b = JSON.parse(store.get(key)); } catch (e) {}
   $k("#kMine").innerHTML = b && b.race ? `🏆 Your best: ${bt.open ? "run" : "race"} <b>${fmt(b.race)}</b>${bt.open ? "" : ` · lap <b>${fmt(b.lap)}</b>`}` : "No time yet on this track. Go set one!";
 }
