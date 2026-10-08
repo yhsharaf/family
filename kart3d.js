@@ -1915,7 +1915,12 @@ export function create(A) {
         for (let k = 0; k <= SEG; k++) { const u = k / SEG, ang = Math.PI * u, o = -Math.cos(ang) * (W / 2 + reach), up = Math.sin(ang) * hgt + 20 + 18 * Math.sin(i * .11 + k); SP.push(...frameV(F, o, up)); UV.push(u * 3, L / 256); } rows++; }
       for (let r0 = 0; r0 < rows - 1; r0++) for (let k = 0; k < SEG; k++) { const a2 = r0 * (SEG + 1) + k, b2 = a2 + SEG + 1; IX.push(a2, a2 + 1, b2, a2 + 1, b2 + 1, b2); }
       return mesh(SP, UV, IX, mat); };
-    for (const [a, b, st] of t.styles || []) if (st === "ice") for (const side of [-1, 1]) strip(a, b, side, rockM, 300, 70, 30);   // the ice canyon's walls
+    const cap = (a, b, side, mat, hgt, lean, gapOut, reach) => { const SP = [], UV = [], IX = []; let rows = 0, L = 0, prev = null;   // a shoulder from a wall's top out to the hillside, so the wall reads as solid rock from above
+      for (let i = a; i < b; i += 3) { const F = frameAt(t, i), W = wAt(i), o = side * (W / 2 + gapOut), hh = hgt * (.85 + .3 * Math.sin(i * .07) + .1 * Math.sin(i * .23)), q = frameV(F, o + side * lean, hh), far = frameV(F, o + side * (lean + reach), hh - 30), gy = h(far[0], far[2]); far[1] = Math.max(gy - 10, hh > 0 ? far[1] - 90 : far[1]);
+        if (prev) L += Math.hypot(q[0] - prev[0], q[2] - prev[2]); prev = q; SP.push(...q, ...far); UV.push(L / 256, .3, L / 256, .55); rows++; }
+      for (let r0 = 0; r0 < rows - 1; r0++) { const a2 = r0 * 2, b2 = a2 + 2; IX.push(a2, b2, a2 + 1, a2 + 1, b2, b2 + 1); }
+      return mesh(SP, UV, IX, mat); };
+    for (const [a, b, st] of t.styles || []) if (st === "ice") for (const side of [-1, 1]) { strip(a, b, side, rockM, 300, 70, 30); cap(a, b, side, rockM, 300, 70, 30, 160); }   // the ice canyon's walls, with a rock shoulder behind each
     { const runs = []; for (const [a, b, st] of t.styles || []) { if (st !== "cave" && st !== "caveice") continue; const last = runs[runs.length - 1]; if (last && a <= last[1] + 320) last[1] = b; else runs.push([a, b]); }   // each cavern (cave stretches close together are one cavern, over the snow and the glide inside it), roofed and walled
       for (const [a, b] of runs) { roof(a, b, caveM, 360, 70); for (const side of [-1, 1]) strip(a, b, side, caveM, 300, 50, 26); }
       for (const [a, b] of runs) for (let i = a + 80; i < b; i += 240) { const F = frameAt(t, i), v = frameV(F, 0, 150), L = new THREE.PointLight(0x9fd8ff, 90000, 1500, 2); L.position.set(v[0], v[1], v[2]); grp.add(L); }   // 💡 cold blue lamps along the cavern
