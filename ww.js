@@ -18,7 +18,7 @@ const ROLES = {
   hunter: ["🏹", "Hunter", "If you die, you get one last shot to take someone down with you."],
   cursed: ["😈", "Cursed", "You're on the village side… until the wolves bite you. Then you become a werewolf."],
 };
-const roster = [...D.founders, ...D.members].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);
+const roster = [...D.founders, ...D.members, ...(window.MERGES || []).flatMap(g => g.members)].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);   // (merged guilds play as guild members too)
 const guildOf = n => roster.find(p => p.name.toLowerCase() === n.trim().toLowerCase());
 const spriteOf = n => (roster.find(p => p.name === n) || {}).sprite;
 

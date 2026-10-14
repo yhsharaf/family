@@ -15,7 +15,7 @@ const COLORS = ["#ffffff", "#c1c1c1", "#ef130b", "#ff7100", "#ffe400", "#00cc00"
 const SIZES = [4, 10, 22, 40];
 
 // everyone in the guild can play: Founders page people + all members, with their sprites
-const roster = [...D.founders, ...D.members].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);
+const roster = [...D.founders, ...D.members, ...(window.MERGES || []).flatMap(g => g.members)].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);   // (merged guilds play as guild members too)
 const spriteOf = n => (roster.find(p => p.name === n) || {}).sprite;
 
 let sb = null, ch = null, me = null, room = "public", joinedAt = 0;

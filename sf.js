@@ -224,7 +224,7 @@ function loadBoard() {
     : `<p class="bd-none">No saved sets yet. Enhance your items, then press 💾 Save results.</p>`;
 }
 // ------------------------------------------------------------------ name (search with pictures, like the other games) and buttons
-const ROSTER = (typeof D !== "undefined" ? [...D.founders, ...D.members] : []).filter((p, i, a) => p && p.name && a.findIndex(q => q.name === p.name) === i);
+const ROSTER = (typeof D !== "undefined" ? [...D.founders, ...D.members, ...(window.MERGES || []).flatMap(g => g.members)] : []).filter((p, i, a) => p && p.name && a.findIndex(q => q.name === p.name) === i);
 function setName() {
   const n = $s("#sfName").value.trim().slice(0, 20), g = n && guildOf(n), nn = g ? g.name : n;
   if (nn.length >= 2 && nn !== me) { me = nn; if (g) store.set("family_me", g.name); auto = false; loadRun(); }

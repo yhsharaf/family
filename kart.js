@@ -4507,7 +4507,7 @@ function drawDiff() { document.querySelectorAll("#kDiff [data-d]").forEach(b => 
 $k("#kDiff").addEventListener("click", e => { const b = e.target.closest("[data-d]"); if (!b) return; diff = b.dataset.d; store.set("kart_diff", diff); drawDiff(); });
 drawDiff();
 // name search with pictures (like Bonk Duel), and your character shown big
-const ROSTER = (typeof D !== "undefined" ? [...D.founders, ...D.members] : []).filter((p, i, a) => p && p.name && a.findIndex(q => q.name === p.name) === i);
+const ROSTER = (typeof D !== "undefined" ? [...D.founders, ...D.members, ...(window.MERGES || []).flatMap(g => g.members)] : []).filter((p, i, a) => p && p.name && a.findIndex(q => q.name === p.name) === i);
 function kShowFace() {
   const n = $k("#kName").value.trim(), g = guildOf(n);
   $k("#kFace").innerHTML = `<img src="${n ? spriteOf(g ? g.name : n) : B.M + "guest.png?v=2"}" alt="">`;

@@ -73,7 +73,7 @@ const DIG = { red: ["nored1.png", 37, 39], cri: ["nocri1.png", 43, 48], blue: ["
 document.head.insertAdjacentHTML("beforeend", "<style>" + Object.entries(FX).map(([k, f]) =>
   `@keyframes bdfx-${k} { from { background-position: 0 0 } to { background-position: -${f.w * f.n}px 0 } }`).join("\n") + "</style>");
 
-const roster = [...D.founders, ...D.members].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);
+const roster = [...D.founders, ...D.members, ...(window.MERGES || []).flatMap(g => g.members)].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i);   // (merged guilds play as guild members too)
 const guildOf = n => roster.find(p => p.name.toLowerCase() === n.trim().toLowerCase());
 const spriteOf = n => (roster.find(p => p.name === n) || {}).sprite || M + "guest.png?v=2";
 
