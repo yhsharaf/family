@@ -93,6 +93,19 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .card .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .card .num { position: absolute; top: 6px; left: 8px; font-size: 11px; color: var(--muted); }
 .badge { position: absolute; top: 6px; right: 6px; font-size: 18px; }
+/* the merges: each merging guild's logo and name orbiting Family's crown */
+.orbit { position: relative; width: min(360px, 88vw); aspect-ratio: 1; margin: 6px auto 26px; }
+.orbit .path { position: absolute; inset: 9%; border: 2px dashed var(--edge); border-radius: 50%; }
+.orbit .sun { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+.orbit .sun img { width: 96px; display: block; margin: 0 auto 4px; animation: bob 1.1s ease-in-out infinite; }
+.orbit .sun .word { font-size: 24px; background: var(--red); }
+.orbit .ring { position: absolute; inset: 9%; animation: orbit var(--d) linear infinite; animation-delay: var(--dl); }
+.orbit .sat { position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%); }
+.orbit .sat > div { display: flex; flex-direction: column; align-items: center; animation: orbit var(--d) linear infinite reverse; animation-delay: var(--dl); }
+.orbit .sat img { width: 64px; height: 64px; image-rendering: pixelated; filter: drop-shadow(2px 3px 0 rgba(60,45,30,.18)); }
+.orbit .sat b { background: var(--card); border: 1px solid var(--edge); border-radius: 10px; padding: 1px 8px; font-size: 14px; white-space: nowrap; box-shadow: 2px 3px 0 rgba(60,45,30,.12); }
+@keyframes orbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .orbit .ring, .orbit .sat > div { animation-duration: 120s; } }
 .mergehead { display: flex; align-items: center; gap: 12px; margin: 6px 0 16px; }
 .mergehead img { width: 64px; height: 64px; image-rendering: pixelated; }
 .mergehead b { display: block; font-size: 22px; } .mergehead span { color: var(--muted); font-size: 14px; }
@@ -275,6 +288,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 
 <section id="merges">
   <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#3d7a5a;--r:2deg">Merges</span></h2>
+  <div class="orbit" id="mergeOrbit"></div>
   <p class="lead">Your cursor is a squeaky hammer 🔨 here too: solve Professor CrtlAltDel's math quiz to get 10 bonks!</p>
   <div id="mergeList"></div>
 </section>
@@ -778,7 +792,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
 <script src="data.js?v=54"></script>
-<script src="merges.js?v=2"></script>
+<script src="merges.js?v=3"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -843,10 +857,13 @@ const mergeCard = (p, i) => `
   <div class="card ${p.leader ? "main" : ""}" style="--r:${rot(i)}" title="${esc(p.name)}">
     <div class="pic">${p.sprite ? `<img class="px cut" src="${p.sprite}" alt="" loading="lazy">` : '<span class="nopic">?</span>'}</div>
     <div class="nm" style="color:var(--gold)">${esc(p.name)}</div>
-    <div class="sub">${p.leader ? "👑 Guild Leader · " : ""}${esc(p.job || "")}</div>
+    <div class="sub">${p.leader ? "👑 Guild Leader · " : ""}${esc(p.job || "")}${p.now ? `<br>now in <b style="color:${gcol(p.now)}">${esc(p.now)}</b>` : ""}</div>
   </div>`;
+{ const M = window.MERGES || [], d = 14;
+  $("#mergeOrbit").innerHTML = `<div class="path"></div><div class="sun"><img class="px" src="media/crown.png" alt=""><span class="word">Family</span></div>` +
+    M.map((g, k) => `<div class="ring" style="--d:${d}s;--dl:${-d * k / M.length}s"><div class="sat"><div>${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<b>${esc(g.guild)}</b></div></div></div>`).join(""); }
 $("#mergeList").innerHTML = (window.MERGES || []).map(g => `
-  <div class="mergehead">${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<div><b>${esc(g.guild)}</b><span>all ${g.members.length} members${g.date ? ` · ${fmt(g.date)}` : ""}</span></div></div>
+  <div class="mergehead">${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<div><b>${esc(g.guild)}</b><span>all ${g.members.length} members${g.members.some(p => p.now) ? `, ${g.members.filter(p => p.now).length} already moved to Family` : ""}${g.date ? ` · ${fmt(g.date)}` : ""}</span></div></div>
   <div class="grid">${g.members.map(mergeCard).join("")}</div>`).join("");
 
 // ---------- members
