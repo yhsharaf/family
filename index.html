@@ -12,7 +12,6 @@
 <link rel="stylesheet" href="duel.css?v=33">
 <link rel="stylesheet" href="kart.css?v=39">
 <link rel="stylesheet" href="sf.css?v=7">
-<link rel="stylesheet" href="br.css?v=1">
 <link rel="stylesheet" href="extras.css?v=47">
 <style>
 :root {
@@ -256,13 +255,12 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <a href="#home" style="--r:-2deg;background:var(--red)">Home</a>
   <a href="#founders" style="--r:2deg;background:var(--gold)">Founders</a>
   <a href="#members" style="--r:-1deg;background:var(--blue)">Members</a>
-  <a href="#merges" style="--r:1deg;background:#3d7a5a">Merges</a>
+  <a href="#merges" style="--r:1deg;background:#c0612b">Merges</a>
   <a href="#timeline" style="--r:2deg;background:var(--green)">Family Tree</a>
   <a href="#memories" style="--r:-2deg;background:#5c3a1e">Memories</a>
   <a href="#guestbook" style="--r:2deg;background:var(--purple)">Guestbook</a>
   <a href="#draw" style="--r:-2deg;background:var(--teal)">Draw & Guess</a>
   <a href="#ww" style="--r:2deg;background:#3b3561">Werewolf</a>
-  <a href="#duel" style="--r:-2deg;background:#c0612b">Bonk Duel</a>
   <a href="#kart" style="--r:2deg;background:#1d1d22">Family Kart</a>
   <a href="#sf" style="--r:-2deg;background:#7a4fc8">Star Force</a>
 </nav>
@@ -295,7 +293,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 </section>
 
 <section id="merges">
-  <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#3d7a5a;--r:2deg">Merges</span></h2>
+  <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#c0612b;--r:2deg">Merges</span></h2>
   <div class="orbit" id="mergeOrbit"></div>
   <p class="lead">Your cursor is a squeaky hammer 🔨 here too: solve Professor CrtlAltDel's math quiz to get 10 bonks!</p>
   <div id="mergeList"></div>
@@ -447,7 +445,8 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   </div>
 </section>
 
-<section id="duel" class="bd">
+<!-- Bonk Duel was removed from the site; its markup stays (never shown) only because duel.js still hosts the music, sound and quiz engine Family Kart and Star Force use (window.BD) -->
+<section id="duel" class="bd" hidden style="display:none !important">
   <h2 class="bd-h"><span class="word" style="background:#c0612b">Bonk</span><span class="word" style="background:var(--blue);--r:2deg">Duel</span></h2>
   <div id="bdLobby" class="sk-home">
     <div class="sk-panel">
@@ -680,7 +679,6 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
         <label>If it booms: <select id="sfAfter"><option value="stop">stop</option><option value="12">restore to 12★</option><option value="13">restore to 13★</option><option value="14">restore to 14★</option><option value="15">restore to 15★</option><option value="16">restore to 16★</option><option value="17">restore to 17★</option><option value="18">restore to 18★</option><option value="19">restore to 19★</option><option value="20">restore to 20★</option></select></label><label><input type="checkbox" id="sfFast"> ⚡ fast</label></div>
       <div class="sf-tally" id="sfTally"></div>
       <div class="sf-score" id="sfScore"></div>
-      <a class="br-promo" href="#br">🃏 <b>Boom Roulette</b> · the multiplayer liar's game at a Kerning City table <span>Play ▶</span></a>
       <div class="sk-err" id="sfErr"></div>
     </div>
     <div class="sk-panel sf-side">
@@ -692,39 +690,6 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
       <ol class="kt-board sf-board" id="sfBoard"></ol>
       <p class="sf-note">Rates, costs and stats are MapleStory Idle's (from <a href="https://mapleidle.gg/database/star-force" target="_blank" rel="noopener">mapleidle.gg</a>). From 20★ an item can be destroyed 💥: it falls back to 12★ with its effects off, and you restore it at 12★–20★ (higher costs more), just like the game. Two modes: 🔥 Start at 20★ (every item begins at 20★, straight into the scary part) or 🌱 Start at 0★; each has its own boards. Switching modes throws your results away unless you share them first. You enhance a set of 8 items (switch with the item buttons). Nothing counts until you press 📤 Share results: then your set is scored, goes on the board, and all 8 items start again from 0★ (🆕 New game also starts from 0★, without sharing). The score rewards high stars, but also luck and knowing when to stop: it compares what each item really cost with what that star costs on average. The Fastest 30★ board is one item, counted the moment it hits 30★. From 12★ each star has its own Enhancement Points gauge (fail +1, drop +2, boom +4, kept on that star even if you drop); when it's full the next try at that star can't fail. Mitigation (as in the game's Sept 3 patch notes, only from 20★ where the risks start): destruction mitigation halves the destroy chance, decrease mitigation removes the drop chance (halves it at 28★+); each costs one extra full set of scrolls and mesos (both = ×3). Scrolls here are unlimited, every try is rolled by the guild server so the board is fair.</p>
     </div>
-  </div>
-</section>
-
-<section id="br" class="br">
-  <h2 class="kt-h"><span class="word" style="background:#2d2832">Boom</span><span class="word" style="background:#c8232c;--r:2deg">Roulette</span></h2>
-  <p class="br-sub">🃏 Liar's Edition · a Kerning City table for 3–6 players · <a href="#sf">⭐ back to Star Force</a></p>
-  <div id="brLobby" class="sk-home">
-    <div class="sk-panel">
-      <div class="sk-name"><input id="brName" placeholder="Type your character name" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20"></div>
-      <div class="kt-create"><button class="sk-btn bd-play" data-a="pub">🌍 Public table</button><button class="sk-btn sk-private" data-a="priv">🔒 Private table</button></div>
-      <div class="kt-open"><b>🌍 Open tables</b><div id="brRooms"></div></div>
-      <div class="kt-join"><input id="brCode" placeholder="Private table code" maxlength="8" autocapitalize="characters"><button class="sk-small" data-a="code">Join</button></div>
-      <div class="sk-err" id="brErr"></div>
-    </div>
-    <div class="sk-panel br-rules">
-      <h3>How to play</h3>
-      <div class="hd-tiles br-tiles">
-        <div><span>🎲</span><b>Enhance in secret</b><small>everyone starts at 20★ with Boom Roulette's own odds: ⭐ 40% at 20★, then 35% · 30% · 27%</small></div>
-        <div><span>🗣️</span><b>Claim anything</b><small>⭐ success · 😐 no change · ⬇️ drop · 💥 boom. True or a lie!</small></div>
-        <div><span>🤥</span><b>Call "Liar!"</b><small>2 calls each. Catch a liar and you get your call back</small></div>
-        <div><span>❤️</span><b>2 lives</b><small>admit a boom −1 · get caught lying −1</small></div>
-        <div><span>⭐</span><b>Claim 24★ to win</b><small>…but your REAL star is checked. Fake it and you're out 💀</small></div>
-        <div><span>🏆</span><b>Or be the last one standing</b><small>about 4 minutes a game</small></div>
-      </div>
-      <h3>🏆 Best liars of the guild</h3>
-      <ol class="kt-board" id="brBoard"></ol>
-    </div>
-  </div>
-  <div id="brGame" hidden>
-    <div class="br-room">
-      <div class="br-table" id="brTable"><div class="br-felt"><div class="br-center" id="brCenter"></div></div><div id="brSeats"></div></div>
-    </div>
-    <div class="sk-panel br-ctl" id="brCtl"></div>
   </div>
 </section>
 
@@ -813,6 +778,7 @@ const rot = i => ((i * 37) % 7 - 3) + "deg";
 
 // ---------- routing
 function show() {
+  if (/^#(duel|br)(\/|$)/.test(location.hash)) { location.replace("#home"); return; }   // (Bonk Duel is gone: old links land on the home page)
   const id = (location.hash || "#home").slice(1);
   document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === id));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + id));
@@ -1082,11 +1048,9 @@ show();
 <script src="duel-songs.js?v=2"></script>
 <script src="kart-songs.js?v=6"></script>
 <script src="duel.js?v=31"></script>
-<script src="duel2.js?v=3"></script>
 <script src="kart_maps.js?v=14"></script>
 <script src="kart.js?v=430"></script>
 <script src="sf.js?v=16"></script>
-<script src="br.js?v=2"></script>
 <script src="extras.js?v=52"></script>
 </body>
 </html>
