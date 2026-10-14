@@ -93,6 +93,14 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .card .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .card .num { position: absolute; top: 6px; left: 8px; font-size: 11px; color: var(--muted); }
 .badge { position: absolute; top: 6px; right: 6px; font-size: 18px; }
+/* home: the merged guilds circle the crown in 3D (a tilted orbit: bigger and in front at the bottom, smaller and behind at the top) */
+.crownorbit { position: relative; display: inline-block; }
+.crownorbit .crown { position: relative; z-index: 2; }
+.crownorbit .oring { position: absolute; left: 50%; top: 58%; border: 2px dashed rgba(122,112,100,.35); border-radius: 50%; pointer-events: none; }
+.crownorbit .oring.back { z-index: 1; clip-path: inset(0 0 50% 0); } .crownorbit .oring.front { z-index: 3; clip-path: inset(50% 0 0 0); }
+.osat { position: absolute; left: 50%; top: 58%; display: flex; flex-direction: column; align-items: center; pointer-events: none; will-change: transform; }
+.osat img { width: 52px; height: 52px; image-rendering: pixelated; filter: drop-shadow(2px 3px 0 rgba(60,45,30,.18)); }
+.osat b { background: var(--card); border: 1px solid var(--edge); border-radius: 10px; padding: 1px 8px; font-size: 13px; white-space: nowrap; box-shadow: 2px 3px 0 rgba(60,45,30,.12); }
 /* the merges: each merging guild's logo and name orbiting Family's crown */
 .orbit { position: relative; width: min(360px, 88vw); aspect-ratio: 1; margin: 6px auto 26px; }
 .orbit .path { position: absolute; inset: 9%; border: 2px dashed var(--edge); border-radius: 50%; }
@@ -263,7 +271,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <main>
 <section id="home">
   <div class="hero">
-    <img class="px crown cut" src="media/crown.png" alt="Family crown">
+    <div class="crownorbit" id="homeOrbit"><img class="px crown cut" src="media/crown.png" alt="Family crown"></div>
     <div class="letters" id="letters"></div>
     <p><span class="word" style="background:#5a5064">a guild history</span> <span class="word" style="background:#968c7d;--r:2deg">Aquila · 2026</span></p>
   </div>
@@ -862,8 +870,28 @@ const mergeCard = (p, i) => `
 { const M = window.MERGES || [], d = 14;
   $("#mergeOrbit").innerHTML = `<div class="path"></div><div class="sun"><img class="px" src="media/crown.png" alt=""><span class="word">Family</span></div>` +
     M.map((g, k) => `<div class="ring" style="--d:${d}s;--dl:${-d * k / M.length}s"><div class="sat"><div>${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<b>${esc(g.guild)}</b></div></div></div>`).join(""); }
+// 🪐 the home page's 3D orbit round the crown
+{ const host = $("#homeOrbit"), M = window.MERGES || [], TILT = -12 * Math.PI / 180, PERIOD = 9000;
+  if (M.length) {
+    const ring = cls => { const r = document.createElement("div"); r.className = "oring " + cls; host.appendChild(r); return r; }, rings = [ring("back"), ring("front")];
+    const sats = M.map(g => { const d = document.createElement("div"); d.className = "osat"; d.innerHTML = `${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<b>${esc(g.guild)}</b>`; host.appendChild(d); return d; });
+    const t0 = performance.now();
+    const frame = now => {
+      requestAnimationFrame(frame);
+      if (!host.offsetParent) return;   // (only while the home page is showing)
+      const R = Math.min(150, innerWidth * .34), ry = R * .3;
+      rings.forEach(r => { r.style.width = 2 * R + "px"; r.style.height = 2 * ry + "px"; r.style.transform = `translate(-50%, -50%) rotate(${TILT}rad)`; });
+      sats.forEach((d, k) => {
+        const a = (now - t0) / PERIOD * Math.PI * 2 + k * Math.PI * 2 / sats.length, x0 = Math.cos(a) * R, y0 = Math.sin(a) * ry, depth = Math.sin(a);   // (depth +1 = nearest, at the bottom)
+        const x = x0 * Math.cos(TILT) - y0 * Math.sin(TILT), y = x0 * Math.sin(TILT) + y0 * Math.cos(TILT), sc = .72 + .28 * (depth + 1) / 2;
+        d.style.transform = `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${sc.toFixed(3)})`;
+        d.style.zIndex = depth > 0 ? 4 : 1; d.style.opacity = (.7 + .3 * (depth + 1) / 2).toFixed(2);
+      });
+    };
+    requestAnimationFrame(frame);
+  } }
 $("#mergeList").innerHTML = (window.MERGES || []).map(g => `
-  <div class="mergehead">${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<div><b>${esc(g.guild)}</b><span>all ${g.members.length} members${g.members.some(p => p.now) ? `, ${g.members.filter(p => p.now).length} already moved to Family` : ""}${g.date ? ` · ${fmt(g.date)}` : ""}</span></div></div>
+  <div class="mergehead">${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<div><b>${esc(g.guild)}</b><span>all ${g.members.length} members${g.date ? ` · ${fmt(g.date)}` : ""}</span></div></div>
   <div class="grid">${g.members.map(mergeCard).join("")}</div>`).join("");
 
 // ---------- members
