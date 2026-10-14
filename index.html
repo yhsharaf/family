@@ -97,8 +97,6 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .crownorbit .crown { position: relative; z-index: 2; }
 .crownorbit .oinf { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); z-index: 1; pointer-events: none; overflow: visible; }
 .crownorbit .oinf path { stroke: rgba(122,112,100,.35); stroke-width: 2; stroke-dasharray: 6 6; }
-.crownorbit .c3dcanvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; pointer-events: none; }
-.crownorbit.c3d > .crown, .crownorbit.c3d .osat, .crownorbit.c3d .oinf { visibility: hidden; }
 .osat { position: absolute; left: 50%; top: 58%; display: flex; flex-direction: column; align-items: center; pointer-events: none; will-change: transform; }
 .osat img { width: 52px; height: 52px; image-rendering: pixelated; filter: drop-shadow(2px 3px 0 rgba(60,45,30,.18)); }
 .osat b { background: var(--card); border: 1px solid var(--edge); border-radius: 10px; padding: 1px 8px; font-size: 13px; white-space: nowrap; box-shadow: 2px 3px 0 rgba(60,45,30,.12); }
@@ -867,7 +865,6 @@ const mergeCard = (p, i) => `
       });
     };
     requestAnimationFrame(frame);
-    if (/crown3d/.test(location.search)) import("./crown3d.js?v=1").then(m => m.start(host)).catch(() => {});   // 👑 PREVIEW: the solid 3D crown
   } }
 // TEMPORARY: BanditsClub merge celebration. Their skulls rain on the home page: they wobble down, bonk the floor with a squash,
 // bounce, and grumble; tap one to pop it. (Remove with the banner and the .skull CSS.)
