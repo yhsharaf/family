@@ -100,6 +100,12 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .osat { position: absolute; left: 50%; top: 58%; display: flex; flex-direction: column; align-items: center; pointer-events: none; will-change: transform; }
 .osat img { width: 52px; height: 52px; image-rendering: pixelated; filter: drop-shadow(2px 3px 0 rgba(60,45,30,.18)); }
 .osat b { background: var(--card); border: 1px solid var(--edge); border-radius: 10px; padding: 1px 8px; font-size: 13px; white-space: nowrap; box-shadow: 2px 3px 0 rgba(60,45,30,.12); }
+/* TEMPORARY: BanditsClub merge celebration (banner + skull rain on the home page) */
+.mergeparty { margin-top: 10px; } .mergeparty .word { font-size: 18px; display: inline-flex; align-items: center; gap: 8px; animation: partywob 1.6s ease-in-out infinite; }
+.mergeparty img { width: 32px; height: 32px; image-rendering: pixelated; }
+@keyframes partywob { 50% { transform: rotate(2deg) scale(1.04); } }
+.skull { position: fixed; top: 0; left: 0; z-index: 40; width: 40px; height: 40px; image-rendering: pixelated; cursor: pointer; user-select: none; -webkit-user-select: none; will-change: transform; }
+.skullsay { position: fixed; z-index: 41; background: #fff; border: 2px solid var(--ink); border-radius: 12px; padding: 1px 8px; font-size: 13px; font-weight: 700; white-space: nowrap; pointer-events: none; transform: translate(-50%, -100%); animation: pop .2s, fadeup 1.1s forwards; }
 /* the merges: each merging guild's logo and name orbiting Family's crown */
 .orbit { position: relative; width: min(360px, 88vw); aspect-ratio: 1; margin: 6px auto 26px; }
 .orbit .path { position: absolute; inset: 9%; border: 2px dashed var(--edge); border-radius: 50%; }
@@ -272,6 +278,8 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
     <div class="crownorbit" id="homeOrbit"><img class="px crown cut" src="media/crown.png" alt="Family crown"></div>
     <div class="letters" id="letters"></div>
     <p><span class="word" style="background:#5a5064">a guild history</span> <span class="word" style="background:#968c7d;--r:2deg">Aquila · 2026</span></p>
+    <!-- TEMPORARY (BanditsClub merge celebration): the banner here, the .skull CSS and the "skull rain" script below; remove all three together -->
+    <p class="mergeparty"><span class="word" style="background:#c0612b">🎉 Celebrating Merge with BanditsClub <img class="px" src="media/emblem_banditsclub.png?v=1" alt="BanditsClub"></span></p>
   </div>
   <div class="stats" id="stats"></div>
   <h2><span class="word" style="background:var(--red)">The</span><span class="word" style="background:var(--blue);--r:2deg">Video</span></h2>
@@ -858,6 +866,32 @@ const mergeCard = (p, i) => `
     };
     requestAnimationFrame(frame);
   } }
+// TEMPORARY: BanditsClub merge celebration. Their skulls rain on the home page: they wobble down, bonk the floor with a squash,
+// bounce, and grumble; tap one to pop it. (Remove with the banner and the .skull CSS.)
+{ const SAYS = ["BONK", "x_x", "hi Family!", "we merged!", "yarr", "ow my head", "who threw me", "*rattle*", "bandits ❤️ family", "nyeh"];
+  const live = [], img = "media/emblem_banditsclub.png?v=1"; let last = performance.now(), next = 0;
+  const say = (x, y, t) => { const b = document.createElement("div"); b.className = "skullsay"; b.textContent = t; b.style.left = x + "px"; b.style.top = y + "px"; document.body.appendChild(b); setTimeout(() => b.remove(), 1100); };
+  const pop = k => { const s = live[k]; say(s.x + 20, s.y, SAYS[Math.floor(Math.random() * SAYS.length)]); s.el.remove(); live.splice(k, 1); };
+  const spawn = () => { const el = document.createElement("img"); el.src = img; el.className = "skull px"; el.alt = ""; document.body.appendChild(el);
+    const sz = 28 + Math.random() * 30, s = { el, sz, x: Math.random() * (innerWidth - sz), y: -sz - 10, vx: (Math.random() - .5) * 60, vy: 40 + Math.random() * 60, r: Math.random() * 360, vr: (Math.random() - .5) * 400, bounces: 0, squash: 0, life: 0, talk: Math.random() < .35 };
+    el.style.width = el.style.height = sz + "px"; el.addEventListener("pointerdown", e => { e.preventDefault(); const k = live.indexOf(s); if (k >= 0) pop(k); }); live.push(s); };
+  const tick = now => {
+    requestAnimationFrame(tick); const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const home = location.hash === "" || location.hash === "#home";
+    if (!home || document.hidden) { while (live.length) { live[0].el.remove(); live.shift(); } return; }
+    if (now > next && live.length < 14) { spawn(); next = now + 450 + Math.random() * 900; }
+    for (let k = live.length - 1; k >= 0; k--) { const s = live[k], floor = innerHeight - s.sz;
+      s.life += dt; s.vy += 520 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.r += s.vr * dt; s.squash = Math.max(0, s.squash - dt * 4);
+      if (s.x < 0 || s.x > innerWidth - s.sz) { s.vx *= -1; s.x = Math.max(0, Math.min(innerWidth - s.sz, s.x)); }
+      if (s.y > floor) { s.y = floor; s.bounces++; s.vy *= -(.55 - s.bounces * .12); s.vr = (Math.random() - .5) * 500; s.squash = 1;
+        if (s.bounces === 1 && s.talk) say(s.x + s.sz / 2, s.y, SAYS[Math.floor(Math.random() * SAYS.length)]);
+        if (s.bounces > 3 || Math.abs(s.vy) < 40) { s.el.remove(); live.splice(k, 1); continue; } }
+      const sq = 1 + s.squash * .35;
+      s.el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) rotate(${(s.squash ? 0 : s.r).toFixed(0)}deg) scale(${sq.toFixed(2)}, ${(1 / sq).toFixed(2)})`;
+      s.el.style.transformOrigin = "50% 100%";
+    }
+  };
+  requestAnimationFrame(tick); }
 $("#mergeList").innerHTML = (window.MERGES || []).map(g => `
   <div class="mergehead">${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<div><b>${esc(g.guild)}</b><span>all ${g.members.length} members${g.date ? ` · ${fmt(g.date)}` : ""}</span></div></div>
   <div class="grid">${g.members.map(mergeCard).join("")}</div>`).join("");
