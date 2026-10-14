@@ -232,6 +232,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <a href="#home" style="--r:-2deg;background:var(--red)">Home</a>
   <a href="#founders" style="--r:2deg;background:var(--gold)">Founders</a>
   <a href="#members" style="--r:-1deg;background:var(--blue)">Members</a>
+  <a href="#merges" style="--r:1deg;background:#3d7a5a">Merges</a>
   <a href="#timeline" style="--r:2deg;background:var(--green)">Family Tree</a>
   <a href="#memories" style="--r:-2deg;background:#5c3a1e">Memories</a>
   <a href="#guestbook" style="--r:2deg;background:var(--purple)">Guestbook</a>
@@ -267,6 +268,11 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   <div class="grid" id="founderGrid"></div>
   <h2 style="margin-top:34px"><span class="word" style="background:#6e9a4a">Core</span><span class="word" style="background:var(--gold);--r:2deg">Family</span></h2>
   <div class="grid" id="coreGrid"></div>
+</section>
+
+<section id="merges">
+  <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#3d7a5a;--r:2deg">Merges</span></h2>
+  <div id="mergeList"></div>
 </section>
 
 <section id="members">
@@ -768,6 +774,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
 <script src="data.js?v=54"></script>
+<script src="merges.js?v=1"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -826,6 +833,17 @@ const founderCard = (f, i) => `
   </div>`;
 $("#founderGrid").innerHTML = founders.map(founderCard).join("");
 $("#coreGrid").innerHTML = core.map((f, i) => founderCard(f, i + 3)).join("");
+
+// ---------- merges: guilds that merged into Family, drawn like the Founders
+const mergeCard = (p, i) => `
+  <div class="card ${p.leader ? "main" : ""}" style="--r:${rot(i)}" title="${esc(p.name)}">
+    <div class="pic">${p.sprite ? `<img class="px cut" src="${p.sprite}" alt="" loading="lazy">` : '<span class="nopic">?</span>'}</div>
+    <div class="nm" style="color:var(--gold)">${esc(p.name)}</div>
+    <div class="sub">${p.leader ? "👑 Guild Leader · " : ""}${esc(p.job || "")}</div>
+  </div>`;
+$("#mergeList").innerHTML = (window.MERGES || []).map(g => `
+  <p class="lead">${esc(g.guild)}: all ${g.members.length} members${g.date ? ` (${fmt(g.date)})` : ""}.</p>
+  <div class="grid">${g.members.map(mergeCard).join("")}</div>`).join("");
 
 // ---------- members
 let filter = "all";
