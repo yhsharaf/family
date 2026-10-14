@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="kart.css?v=39">
 <link rel="stylesheet" href="sf.css?v=7">
 <link rel="stylesheet" href="br.css?v=1">
-<link rel="stylesheet" href="extras.css?v=46">
+<link rel="stylesheet" href="extras.css?v=47">
 <style>
 :root {
   --paper: #f3ecde; --paper2: #ece2cc; --ink: #2d2832; --muted: #7a7064; --card: #fcfaf4; --edge: #d7cdbc;
@@ -93,6 +93,9 @@ p.lead { color: var(--muted); font-size: 18px; max-width: 760px; }
 .card .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .card .num { position: absolute; top: 6px; left: 8px; font-size: 11px; color: var(--muted); }
 .badge { position: absolute; top: 6px; right: 6px; font-size: 18px; }
+.mergehead { display: flex; align-items: center; gap: 12px; margin: 6px 0 16px; }
+.mergehead img { width: 64px; height: 64px; image-rendering: pixelated; }
+.mergehead b { display: block; font-size: 22px; } .mergehead span { color: var(--muted); font-size: 14px; }
 .card.main { grid-column: span 2; border: 3px solid var(--gold); background: #fff8e4; }
 .card.main .pic { height: 190px; } .card.main .pic img { transform: scale(1.8); transform-origin: 50% 100%; }
 .card.grave img { opacity: .8; }
@@ -272,6 +275,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 
 <section id="merges">
   <h2><span class="word" style="background:var(--gold)">The</span><span class="word" style="background:#3d7a5a;--r:2deg">Merges</span></h2>
+  <p class="lead">Your cursor is a squeaky hammer 🔨 here too: solve Professor CrtlAltDel's math quiz to get 10 bonks!</p>
   <div id="mergeList"></div>
 </section>
 
@@ -774,7 +778,7 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 <footer>Family · Aquila · MapleStory Idle RPG — made with love by the guild. Data: msidle.gg, mapleidle.gg and our own screenshots.</footer>
 
 <script src="data.js?v=54"></script>
-<script src="merges.js?v=1"></script>
+<script src="merges.js?v=2"></script>
 <script>
 const D = window.FAMILY;
 const $ = s => document.querySelector(s);
@@ -842,7 +846,7 @@ const mergeCard = (p, i) => `
     <div class="sub">${p.leader ? "👑 Guild Leader · " : ""}${esc(p.job || "")}</div>
   </div>`;
 $("#mergeList").innerHTML = (window.MERGES || []).map(g => `
-  <p class="lead">${esc(g.guild)}: all ${g.members.length} members${g.date ? ` (${fmt(g.date)})` : ""}.</p>
+  <div class="mergehead">${g.emblem ? `<img class="px" src="${g.emblem}" alt="">` : ""}<div><b>${esc(g.guild)}</b><span>all ${g.members.length} members${g.date ? ` · ${fmt(g.date)}` : ""}</span></div></div>
   <div class="grid">${g.members.map(mergeCard).join("")}</div>`).join("");
 
 // ---------- members
@@ -1038,6 +1042,6 @@ show();
 <script src="kart.js?v=430"></script>
 <script src="sf.js?v=16"></script>
 <script src="br.js?v=2"></script>
-<script src="extras.js?v=51"></script>
+<script src="extras.js?v=52"></script>
 </body>
 </html>

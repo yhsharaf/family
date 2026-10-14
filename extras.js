@@ -357,14 +357,16 @@ function squeak(pitch = 1) {
 const OUCH = ["ow!", "why me 😭", "gm to you too", "BONK", "*squeak*", "rude!", "I founded this guild!", "x_x", "not the face!", "ok I deserved that"];
 const bonkCounts = {};
 function showBonks() {
-  let top = null, tv = 0;
-  document.querySelectorAll("#founderGrid .card, #coreGrid .card").forEach(c => {
-    const n = bonkCounts[c.title] || 0;
-    let b = c.querySelector(".bonks"); if (!b) { b = document.createElement("span"); b.className = "bonks"; c.appendChild(b); }
-    b.textContent = n ? `🔨 ${n.toLocaleString()}` : ""; c.classList.remove("mostbonked");
-    if (n > tv) { tv = n; top = c; }
-  });
-  if (top) top.classList.add("mostbonked");
+  for (const sel of ["#founderGrid .card, #coreGrid .card", "#mergeList .card"]) {   // (the Founders and the Merges each have their own most bonked)
+    let top = null, tv = 0;
+    document.querySelectorAll(sel).forEach(c => {
+      const n = bonkCounts[c.title] || 0;
+      let b = c.querySelector(".bonks"); if (!b) { b = document.createElement("span"); b.className = "bonks"; c.appendChild(b); }
+      b.textContent = n ? `🔨 ${n.toLocaleString()}` : ""; c.classList.remove("mostbonked");
+      if (n > tv) { tv = n; top = c; }
+    });
+    if (top) top.classList.add("mostbonked");
+  }
 }
 async function loadBonks() {
   if (!(await ready)) return;
@@ -482,7 +484,7 @@ function showPass() {
   if (!b) { b = document.createElement("div"); b.id = "bonkPass"; b.className = "bonkpass"; document.body.appendChild(b); }
   const n = bonkPass ? bonkPass.left : 0;
   b.innerHTML = n > 0 ? `🔨 <b>${n}</b> free bonk${n === 1 ? "" : "s"} left` : "";
-  b.hidden = !n || !["#founders"].includes(location.hash);
+  b.hidden = !n || !["#founders", "#merges"].includes(location.hash);
 }
 addEventListener("hashchange", showPass);
 async function freeBonk(c) {
@@ -499,6 +501,7 @@ function onBonk(e) {  // "click" = a real tap; scrolling over a card no longer b
 }
 $("#founderGrid").addEventListener("click", onBonk);
 $("#coreGrid").addEventListener("click", onBonk);
+$("#mergeList").addEventListener("click", onBonk);
 
 // ---------- Whack-a-Founder
 const arc = $("#arcade"), holes = $("#holes");
