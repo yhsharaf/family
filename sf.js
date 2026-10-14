@@ -1,10 +1,12 @@
 // Star Force simulator: MapleStory Idle's real enhancement rates, costs and stat bonuses (from mapleidle.gg's database).
-// Every try is rolled by the guild server (sf_roll), so the leaderboard is fair; this page only animates what the server rolled.
+// A pure simulator: every try is rolled right here on your own device with the game's rules, and your sets and your best results
+// are kept in this browser only. Nothing is sent anywhere.
 // Scrolls are unlimited: we count how many each item has eaten.
 (() => {
 const $s = q => document.querySelector(q);
 const B = window.BD; if (!B || !$s("#sf")) return;
 const { esc, store, spriteOf, guildOf } = B;
+const load = k => { try { return JSON.parse(store.get(k)) || null; } catch (e) { return null; } }, save = (k, v) => store.set(k, JSON.stringify(v));
 
 // from star n to n+1: success, maintain, decrease, destroy (%), Star Force scrolls, mesos
 const R = [[100, 0, 0, 0, 1, 20000], [100, 0, 0, 0, 1, 30000], [90, 10, 0, 0, 2, 40000], [85, 15, 0, 0, 3, 50000], [80, 20, 0, 0, 4, 60000], [70, 30, 0, 0, 5, 70000],
@@ -51,9 +53,9 @@ const num = n => Math.round(n).toLocaleString("en-US");
 const short = n => n >= 1e9 ? (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + "B" : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M" : n >= 1e4 ? Math.round(n / 1e3) + "K" : num(n);
 
 let mode = store.get("sf_mode") === "0" ? 0 : 20;   // game mode: every item starts at 20★ (default) or 0★
-let SET = null, me = "", tok = null, run = null, item = store.get("sf_item") || "zakum_helmet", busy = false, auto = false, boardView = "score", shown = null;
+let SET = null, me = "", run = null, item = store.get("sf_item") || "zakum_helmet", busy = false, auto = false, shown = null;
 const fresh = () => ({ star: mode, best: mode, attempts: 0, scrolls: 0, mesos: 0, booms: 0, reached: {}, item, pity: {}, red: 0, broken: false, restores: 0 });
-const tokKey = () => `sf_tok${mode ? mode : ""}:${me.toLowerCase()}`;
+const setKey = () => `sf_set${mode}`, histKey = () => `sf_hist${mode}`;   // (this device: the open 8-item set, and your saved results, per mode)
 
 // ------------------------------------------------------------------ drawing
 function drawItems() {
@@ -98,16 +100,16 @@ function draw(s = shown || run || fresh()) {
     <div><span>💥</span><b>${num(s.booms)}</b><small>booms</small></div>
     <div><span>💎</span><b>${short(s.red || 0)}</b><small>red diamonds · ${s.restores || 0} restores</small></div>`;
   const T = setTotals(s);
-  $s("#sfScore").innerHTML = T.tries ? `<div class="sf-myscore"><span>🏅 Your 8-item set's score if you share now</span><b>${num(T.score)}</b>
+  $s("#sfScore").innerHTML = T.tries ? `<div class="sf-myscore"><span>🏅 Your 8-item set's score if you save now</span><b>${num(T.score)}</b>
     <small>${T.items} item${T.items === 1 ? "" : "s"} enhanced · best ${T.best}★ · luck ×${T.luck.toFixed(2)} ${T.luck >= 1 ? "🍀" : "🥲"} (spent ${short(T.spent)} vs ${short(T.avg)} on average)<br>
     this item: ${num(scoreOf(s).score)} pts</small></div>
-    <div class="sf-endbtns"><button class="sk-btn bd-play" data-end="share">📤 Share results</button><button class="sk-btn sk-private" data-end="new">🆕 New game</button></div>` : "";
+    <div class="sf-endbtns"><button class="sk-btn bd-play" data-end="share">💾 Save results</button><button class="sk-btn sk-private" data-end="new">🆕 New game</button></div>` : "";
   const rows = Object.entries(s.reached || {}).map(([k, v]) => [+k, v]).sort((a, b) => a[0] - b[0]);
   $s("#sfTrials").innerHTML = rows.length ? `<table class="k-table sf-ttable"><tr><th>Star</th><th>Tries</th><th>Scrolls</th><th>💥</th></tr>${rows.map(([k, v]) =>
     `<tr class="${k >= 20 ? "hi" : ""}"><td>${k}★</td><td>${num(v[0])}</td><td>${num(v[1])}</td><td>${v[2] || ""}</td></tr>`).join("")}</table>`
     : `<p class="bd-none">Press ⭐ Enhance: the first time your item reaches each star, it shows here with how many tries and scrolls it took.</p>`;
-  $s("#sfGo").disabled = busy || auto || st >= MAX || !me || !!s.broken;
-  $s("#sfAuto").textContent = auto ? "⏹ Stop" : "▶ Auto"; $s("#sfAuto").disabled = (!auto && (busy || st >= MAX || !!s.broken)) || !me;
+  $s("#sfGo").disabled = busy || auto || st >= MAX || !!s.broken;
+  $s("#sfAuto").textContent = auto ? "⏹ Stop" : "▶ Auto"; $s("#sfAuto").disabled = !auto && (busy || st >= MAX || !!s.broken);
   drawItems();
 }
 
@@ -136,26 +138,37 @@ const sounds = {
 };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-// ------------------------------------------------------------------ the server
-async function sb() { const c = await B.client(); if (!c) $s("#sfErr").textContent = "The Star Force server isn't reachable right now."; return c; }
-async function loadRun() {
-  SET = null; run = null; shown = null; tok = me ? store.get(tokKey()) : null;
-  if (!tok && me) { const c = await sb(); if (c) { const { data } = await c.rpc("sf_find", { p_name: me, p_start: mode }); if (data && data.r === "ok") { tok = data.token; store.set(tokKey(), tok); } } }
-  if (tok) { const c = await sb(); if (c) { const { data } = await c.rpc("sf_get", { p_tok: tok }); if (data && data.r === "ok" && !data.closed) { SET = data; run = SET.items[item] || null; } else { tok = null; store.del && store.del(tokKey()); } } }
-  draw();
+// ------------------------------------------------------------------ the rolls (on this device, with the game's rules)
+function loadRun() { SET = load(setKey()) || { items: {} }; run = SET.items[item] || null; shown = null; draw(); }
+const keep = () => save(setKey(), SET);
+// up to n tries on one item, exactly like the game: pity, mitigation, booms (restored automatically to restoreTo, or stop)
+function simulate(r, n, stop, boomStop, restoreTo) {
+  let seq = "", i = 0;
+  r.pity = { ...(r.pity || {}) }; r.reached = { ...(r.reached || {}) };
+  while (i < Math.min(Math.max(n || 1, 1), 1000) && r.star < MAX) {
+    if (r.broken) { const f = FIX[restoreTo]; if (!f) break;
+      r.red += f[0]; r.mesos += f[1]; r.scrolls += f[2]; r.restores++; r.star = restoreTo; r.broken = false; seq += String.fromCharCode(97 + restoreTo - 12); }
+    const at = r.star, rt = R[at], m = mit(at), pm = PITY[at], pts = r.pity[at] || 0; let o, add = 0;
+    r.attempts++; r.scrolls += rt[4] * m.mult; r.mesos += rt[5] * m.mult;
+    if (pm && pts >= pm) { o = "G"; r.star++; }
+    else { const x = Math.random() * 100;
+      if (x < m.ok) { o = "S"; r.star++; }
+      else if (x < m.ok + m.boom) { o = "B"; r.star = 12; r.broken = true; r.booms++; add = 4; }
+      else if (x < m.ok + m.boom + m.down) { o = "D"; r.star--; add = 2; }
+      else { o = "M"; add = 1; } }
+    if (pm) { if (o === "S" || o === "G") delete r.pity[at]; else r.pity[at] = Math.min(pts + add, pm); }
+    seq += o; i++;
+    if (r.star > r.best) r.best = r.star;
+    if ((o === "S" || o === "G") && !r.reached[r.star]) r.reached[r.star] = [r.attempts, r.scrolls, r.booms];
+    if ((o === "B" && (boomStop || restoreTo == null)) || r.star >= stop) break;
+  }
+  return seq;
 }
-async function ensureRun() {
-  if (tok && SET) return true;
-  const c = await sb(); if (!c) return false;
-  const { data } = await c.rpc("sf_open", { p_name: me, p_start: mode });
-  if (!data || data.r !== "ok") { $s("#sfErr").textContent = "Couldn't start, try again."; return false; }
-  tok = data.token; store.set(tokKey(), tok); SET = { items: {} }; run = null; return true;
-}
-// roll on the server, then play back what happened, one try at a time
+// roll, then play back what happened, one try at a time
 async function roll(n, stop, restoreTo) {
-  const c = await sb(); if (!c) return null;
-  const { data, error } = await c.rpc("sf_roll", { p_tok: tok, p_item: item, p_n: n, p_stop: stop, p_boom_stop: !restoreTo, p_restore: restoreTo || null, p_dec: $s("#sfDec").checked, p_des: $s("#sfDes").checked });
-  if (error || !data || data.r !== "ok") { $s("#sfErr").textContent = data && data.r === "gone" ? "That item is gone. Start a new one." : "The server said no (too fast?). Try again in a moment."; return null; }
+  const next = JSON.parse(JSON.stringify(run || fresh())), seq = simulate(next, n, stop, !restoreTo, restoreTo || null);
+  SET.items[item] = next; keep();
+  const data = { seq, run: next };
   $s("#sfErr").textContent = "";
   const fast = $s("#sfFast").checked, s = { ...(shown || run || fresh()) }, step = n === 1 ? 0 : fast ? 0 : 110;
   for (let i = 0; i < data.seq.length; i++) {
@@ -185,14 +198,13 @@ async function roll(n, stop, restoreTo) {
   return { ...data, ...data.run };
 }
 async function enhanceOnce() {
-  if (busy || auto || !me) return; busy = true; draw();
-  try { if (await ensureRun()) { $s("#sfStage").classList.add("charge"); await wait(450); $s("#sfStage").classList.remove("charge"); await roll(1, MAX, null); } }
+  if (busy || auto) return; busy = true; draw();
+  try { $s("#sfStage").classList.add("charge"); await wait(450); $s("#sfStage").classList.remove("charge"); await roll(1, MAX, null); }
   finally { busy = false; draw(); }
 }
 async function autoRun() {
   if (auto) { auto = false; draw(); return; }
-  if (busy || !me) return;
-  if (!(await ensureRun())) return;
+  if (busy) return;
   auto = true; draw();
   const pick = +$s("#sfStop").value, st0 = run ? run.star : mode, stop = pick === 1 ? st0 + 1 : Math.max(pick, st0 + 1), after = $s("#sfAfter").value, restoreTo = after === "stop" ? null : +after;
   try {
@@ -205,30 +217,18 @@ async function autoRun() {
   } finally { auto = false; draw(); loadBoard(); }
 }
 
-// ------------------------------------------------------------------ leaderboard
-async function loadBoard() {
-  document.querySelectorAll("#sfBoardTabs [data-b]").forEach(b => b.classList.toggle("on", b.dataset.b === boardView));
-  const c = await B.client(); if (!c) return;
-  const { data } = await c.rpc("sf_board", { p_start: mode }); if (!data) return;
-  const rows = data[boardView] || [];
-  const line = r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b>`;
-  if (boardView === "score") { $s("#sfBoard").innerHTML = rows.length ? rows.map(r => `${line(r)}<span class="sf-st">${num(r.score)}</span><small>${r.best}★ · luck ×${(+r.avg / Math.max(1, +r.spent)).toFixed(2)} · ${short(+r.spent)} spent</small></li>`).join("") : `<p class="bd-none">No shared results yet. Press 📤 Share results to be the first!</p>`; return; }
-  if (boardView === "fast30") { const nm = k => (ITEMS.find(i => i[0] === k) || [k, k])[1];
-    $s("#sfBoard").innerHTML = rows.length ? rows.map(r => `${line(r)}<span class="sf-st">${num(r.tries)} tries</span><small>30★ ${esc(nm(r.item))} · ${num(r.scr)} 📜 · ${short(+r.mesos)} mesos · ${num(r.red)} 💎${r.bm ? ` · ${r.bm}💥` : ""}</small></li>`).join("") : `<p class="bd-none">Nobody has taken an item to 30★ yet. It takes about 300,000 tries on average… or a lot of luck.</p>`; return; }
-  if (boardView === "lucky") { $s("#sfBoard").innerHTML = rows.length ? rows.map(r => `${line(r)}<span class="sf-st">×${(+r.luck).toFixed(2)}</span><small>${r.best}★ for ${short(+r.spent)} (avg ${short(+r.avg)})</small></li>`).join("") : `<p class="bd-none">Share a ${mode ? "21" : "20"}★+ result to show up here.</p>`; return; }
-  $s("#sfBoard").innerHTML = !rows.length ? `<p class="bd-none">Nobody on the board yet. Be the first!</p>` : boardView === "top"
-    ? rows.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b><span class="sf-st">${r.best}★</span><small>${num(r.scr || 0)} scrolls · ${num(r.att || 0)} tries${r.bm ? ` · ${r.bm}💥` : ""}</small></li>`).join("")
-    : rows.map(r => `<li><img src="${spriteOf(r.player)}" alt=""><b>${esc(r.player)}</b><span class="sf-st">${usd(r.scrolls)}</span><small>${num(r.scrolls)} 📜 in one game · best ${r.best}★${r.booms ? ` · ${num(r.booms)}💥` : ""}</small></li>`).join("");
+// ------------------------------------------------------------------ your best sets (this device only)
+function loadBoard() {
+  const rows = (load(histKey()) || []).slice().sort((a, b) => b.score - a.score).slice(0, 10);
+  $s("#sfBoard").innerHTML = rows.length ? rows.map(r => `<li><img src="${spriteOf(r.player || me || "")}" alt=""><b>${esc(r.player || "You")}</b><span class="sf-st">${num(r.score)}</span><small>${r.best}★ · luck ×${(r.avg / Math.max(1, r.spent)).toFixed(2)} · ${short(r.spent)} spent · ${usd(r.scrolls || 0)} · ${new Date(r.at).toLocaleDateString()}</small></li>`).join("")
+    : `<p class="bd-none">No saved sets yet. Enhance your items, then press 💾 Save results.</p>`;
 }
-$s("#sfBoardTabs").addEventListener("click", e => { const b = e.target.closest("[data-b]"); if (!b) return; boardView = b.dataset.b; loadBoard(); });
-
 // ------------------------------------------------------------------ name (search with pictures, like the other games) and buttons
 const ROSTER = (typeof D !== "undefined" ? [...D.founders, ...D.members] : []).filter((p, i, a) => p && p.name && a.findIndex(q => q.name === p.name) === i);
 function setName() {
   const n = $s("#sfName").value.trim().slice(0, 20), g = n && guildOf(n), nn = g ? g.name : n;
-  $s("#sfGuest").hidden = !n || !!g;
   if (nn.length >= 2 && nn !== me) { me = nn; if (g) store.set("family_me", g.name); auto = false; loadRun(); }
-  else if (nn.length < 2) { me = ""; run = null; draw(); }
+  else if (nn.length < 2) me = "";
 }
 // your character shown big, and the name search with pictures and arrow keys (same as Family Kart)
 function showFace() {
@@ -261,33 +261,30 @@ $s("#sfFix").addEventListener("click", async e => {
   const b = e.target.closest("[data-fix]"); if (!b || busy || !run || !run.broken) return;
   busy = true; draw();
   try {
-    const c = await sb(); if (!c) return;
-    const { data } = await c.rpc("sf_fix", { p_tok: tok, p_item: item, p_star: +b.dataset.fix });
-    if (data && data.r === "ok") { run = data.run; SET.items[item] = run; flash(`🔧 Restored to ${b.dataset.fix}★`, "keep"); fx("ok"); }
-    else $s("#sfErr").textContent = "Couldn't restore, try again.";
+    const to = +b.dataset.fix, f = FIX[to]; if (!f) return;
+    run = { ...run, red: (run.red || 0) + f[0], mesos: run.mesos + f[1], scrolls: run.scrolls + f[2], restores: (run.restores || 0) + 1, star: to, broken: false };
+    SET.items[item] = run; keep(); flash(`🔧 Restored to ${to}★`, "keep"); fx("ok");
   } finally { busy = false; draw(); }
 });
 for (const id of ["#sfDec", "#sfDes"]) { $s(id).checked = store.get("sf" + id) === "1"; $s(id).addEventListener("change", () => { store.set("sf" + id, $s(id).checked ? "1" : "0"); draw(); }); }
 $s("#sfScore").addEventListener("click", async e => {
   const b = e.target.closest("[data-end]"); if (!b || busy || auto || !SET) return;
-  const T = setTotals(run), guest = !guildOf(me);
+  const T = setTotals(run);
   const msg = b.dataset.end === "share"
-    ? `📤 Share your results?\n\n${T.items} item${T.items === 1 ? "" : "s"} · best ${T.best}★ · score ${num(T.score)}${guest ? "\n(Guests don't show on the guild board.)" : ""}\n\n⚠️ After sharing, ALL 8 items RESET TO ${mode}★ and you start a brand new set. This can't be undone.`
-    : `🆕 Start a new game?\n\n⚠️ ALL 8 items RESET TO ${mode}★ and these results will NOT be shared (best ${T.best}★, score ${num(T.score)}).\n\nAre you sure you don't want to share them first?`;
+    ? `💾 Save your results?\n\n${T.items} item${T.items === 1 ? "" : "s"} · best ${T.best}★ · score ${num(T.score)}\n\n⚠️ After saving, ALL 8 items RESET TO ${mode}★ and you start a brand new set. This can't be undone.`
+    : `🆕 Start a new game?\n\n⚠️ ALL 8 items RESET TO ${mode}★ and these results will NOT be saved (best ${T.best}★, score ${num(T.score)}).\n\nAre you sure you don't want to save them first?`;
   if (!confirm(msg)) return;
   await closeSet(b.dataset.end === "share");
 });
-// share (or throw away) the open set; a fresh one starts at the mode's star
+// save (or throw away) the open set; a fresh one starts at the mode's star
 async function closeSet(share) {
-  busy = true; draw();
-  try {
-    const c = await sb(); if (!c) return false;
-    const { data } = await c.rpc("sf_close", { p_tok: tok, p_share: share });
-    if (!data || data.r !== "ok") { $s("#sfErr").textContent = "Couldn't do that, try again."; return false; }
-    tok = data.token; store.set(tokKey(), tok); SET = { items: {} }; run = null; shown = null;
-    flash(share ? `📤 Shared! Score ${num(data.score)}${data.rank && guildOf(me) ? ` · #${data.rank}` : ""}` : `🆕 A fresh set, all ${mode}★`, "ok");
-    loadBoard(); return true;
-  } finally { busy = false; draw(); }
+  const T = setTotals(run);
+  if (share && T.spent > 0) { const h = load(histKey()) || [];
+    h.push({ player: me, score: T.score, best: T.best, avg: T.avg, spent: T.spent, items: T.items, scrolls: Object.values(SET.items).reduce((a, x) => a + (x.scrolls || 0), 0), at: Date.now() });
+    save(histKey(), h.sort((a, b) => b.score - a.score).slice(0, 30)); }
+  SET = { items: {} }; run = null; shown = null; keep();
+  flash(share ? `💾 Saved! Score ${num(T.score)}` : `🆕 A fresh set, all ${mode}★`, "ok");
+  loadBoard(); draw(); return true;
 }
 function drawMode() {
   document.querySelectorAll("#sfMode [data-m]").forEach(b => b.classList.toggle("on", +b.dataset.m === mode));
@@ -296,13 +293,9 @@ function drawMode() {
 }
 // switching modes throws the current set away unless it's shared first (sharing resets it to this mode's start)
 $s("#sfMode").addEventListener("click", async e => { const b = e.target.closest("[data-m]"); if (!b || busy || auto || +b.dataset.m === mode) return;
-  const T = SET && tok ? setTotals(run) : null, to = +b.dataset.m;
+  const T = SET ? setTotals(run) : null, to = +b.dataset.m;
   if (T && T.items) {
-    if (confirm(`📤 Share your ${mode}★ mode results before switching to ${to}★?\n\n${T.items} item${T.items === 1 ? "" : "s"} · best ${T.best}★ · score ${num(T.score)}\n\nOK = share them (your ${mode}★ set resets to ${mode}★), then switch.\nCancel = don't share.`)) {
-      if (!(await closeSet(true))) return;
-    } else if (confirm(`⚠️ Switch to ${to}★ WITHOUT sharing?\n\nYour ${mode}★ mode results (best ${T.best}★, score ${num(T.score)}) will NOT be saved. They're gone for good.`)) {
-      if (!(await closeSet(false))) return;
-    } else return;
+    // (each mode keeps its own open set on this device, so switching loses nothing)
   }
   mode = to; store.set("sf_mode", String(mode)); drawMode(); loadRun(); loadBoard(); });
 drawMode();
@@ -311,5 +304,5 @@ $s("#sfAuto").onclick = autoRun;
 addEventListener("keydown", e => { if (location.hash === "#sf" && e.key === " " && document.activeElement === document.body) { e.preventDefault(); enhanceOnce(); } });
 addEventListener("hashchange", () => { if (location.hash !== "#sf") auto = false; else loadBoard(); });
 $s("#sfName").value = store.get("family_me") || "";
-setName(); showFace(); draw(); if (location.hash === "#sf") loadBoard();
+setName(); showFace(); loadRun(); loadBoard();
 })();
